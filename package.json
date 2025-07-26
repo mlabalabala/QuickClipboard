@@ -1,0 +1,25 @@
+{
+  "name": "quickclipboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "vite": "^7.0.4"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.6.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2",
+    "@tauri-apps/plugin-opener": "^2.4.0",
+    "sortablejs": "^1.15.6"
+  }
+}

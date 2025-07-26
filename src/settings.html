@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 - 快速剪贴板</title>
+  <link rel="stylesheet" href="./assets/icons-webfont/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="settings.css">
+  <link rel="stylesheet" href="themes.css">
+
+</head>
+
+<body>
+  <div class="settings-container">
+    <!-- 设置标题栏 -->
+    <div class="settings-header">
+      <div class="header-content">
+        <div class="header-left">
+          <i class="ti ti-settings"></i>
+          <h1>设置</h1>
+        </div>
+        <div class="header-controls">
+          <button class="control-button minimize-btn" id="minimize-btn" title="最小化">
+            <i class="ti ti-minus"></i>
+          </button>
+          <button class="control-button maximize-btn" id="maximize-btn" title="最大化">
+            <i class="ti ti-square"></i>
+          </button>
+          <button class="control-button close-button" id="close-settings" title="关闭">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置内容区域 -->
+    <div class="settings-content">
+      <!-- 侧边栏导航 -->
+      <div class="settings-sidebar">
+        <nav class="settings-nav">
+          <a href="#general" class="nav-item active" data-section="general">
+            <i class="ti ti-settings"></i>
+            <span>常规设置</span>
+          </a>
+          <a href="#appearance" class="nav-item" data-section="appearance">
+            <i class="ti ti-palette"></i>
+            <span>外观主题</span>
+          </a>
+          <a href="#shortcuts" class="nav-item" data-section="shortcuts">
+            <i class="ti ti-keyboard"></i>
+            <span>快捷键</span>
+          </a>
+          <a href="#clipboard" class="nav-item" data-section="clipboard">
+            <i class="ti ti-clipboard"></i>
+            <span>剪贴板</span>
+          </a>
+          <a href="#ai-translation" class="nav-item" data-section="ai-translation">
+            <i class="ti ti-language"></i>
+            <span>AI翻译</span>
+          </a>
+          <a href="#preview" class="nav-item" data-section="preview">
+            <i class="ti ti-eye"></i>
+            <span>预览窗口</span>
+          </a>
+          <a href="#screenshot" class="nav-item" data-section="screenshot">
+            <i class="ti ti-camera"></i>
+            <span>截屏设置</span>
+          </a>
+          <a href="#sound" class="nav-item" data-section="sound">
+            <i class="ti ti-volume"></i>
+            <span>音效设置</span>
+          </a>
+          <a href="#support" class="nav-item" data-section="support">
+            <i class="ti ti-heart"></i>
+            <span>支持作者</span>
+          </a>
+          <a href="#about" class="nav-item" data-section="about">
+            <i class="ti ti-info-circle"></i>
+            <span>关于</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- 主要设置面板 -->
+      <div class="settings-main">
+        <!-- 常规设置 -->
+        <div class="settings-section active" id="general-section">
+          <div class="section-header">
+            <h2>常规设置</h2>
+            <p>配置应用的基本行为和功能</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">开机自启动</label>
+                <p class="setting-description">系统启动时自动运行快速剪贴板</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-start">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item" style="display: none;">
+              <div class="setting-info">
+                <label class="setting-label">启动时隐藏窗口</label>
+                <p class="setting-description">应用启动后自动隐藏到系统托盘</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="start-hidden">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">以管理员运行</label>
+                <p class="setting-description">如果无法在某些软件中使用快捷键请启用该项</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="run-as-admin">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启动通知</label>
+                <p class="setting-description">应用启动时显示系统通知</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="show-startup-notification">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">剪贴板历史数量</label>
+                <p class="setting-description">保存的剪贴板历史记录数量</p>
+              </div>
+              <div class="setting-control">
+                <select id="history-limit" class="setting-select">
+                  <option value="50">50 条</option>
+                  <option value="100">100 条</option>
+                  <option value="200">200 条</option>
+                  <option value="500">500 条</option>
+                  <option value="9999">9999 条</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 外观主题 -->
+        <div class="settings-section" id="appearance-section">
+          <div class="section-header">
+            <h2>外观主题</h2>
+            <p>自定义应用的外观和主题</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">主题选择</label>
+                <p class="setting-description">选择您喜欢的界面主题</p>
+              </div>
+              <div class="setting-control">
+                <div class="theme-selector">
+                  <div class="theme-option" data-theme="auto">
+                    <div class="theme-preview theme-auto-preview"></div>
+                    <span>跟随系统</span>
+                  </div>
+                  <div class="theme-option" data-theme="light">
+                    <div class="theme-preview theme-light-preview"></div>
+                    <span>浅色主题</span>
+                  </div>
+                  <div class="theme-option" data-theme="dark">
+                    <div class="theme-preview theme-dark-preview"></div>
+                    <span>深色主题</span>
+                  </div>
+                  <div class="theme-option" data-theme="transparent" style="display: none;">
+                    <div class="theme-preview theme-transparent-preview"></div>
+                    <span>透明主题</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item" style="display: none;">
+              <div class="setting-info">
+                <label class="setting-label">窗口透明度</label>
+                <p class="setting-description">调整窗口的透明度（仅透明主题）</p>
+              </div>
+              <div class="setting-control">
+                <div class="slider-container">
+                  <input type="range" id="opacity-slider" min="0.3" max="1" step="0.1" value="0.9">
+                  <span class="slider-value">90%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 快捷键设置 -->
+        <div class="settings-section" id="shortcuts-section">
+          <div class="section-header">
+            <h2>快捷键设置</h2>
+            <p>自定义全局快捷键</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">显示/隐藏窗口</label>
+                <p class="setting-description">快速显示或隐藏剪贴板窗口</p>
+              </div>
+              <div class="setting-control">
+                <!-- <div class="shortcut-input">
+                <input type="text" id="toggle-shortcut" class="shortcut-input" placeholder="点击设置快捷键" readonly>
+                <button class="shortcut-clear" title="恢复默认">
+                  <i class="ti ti-refresh"></i>
+                </button>
+                </div> -->
+                <div class="shortcut-input-group">
+                  <input type="text" id="toggle-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+                <div class="shortcut-presets">
+                  <label class="setting-description">常用快捷键：</label>
+                  <button class="preset-btn" data-shortcut="Win+V">Win+V (推荐)</button>
+                  <button class="preset-btn" data-shortcut="Alt+V">Alt+V</button>
+                  <button class="preset-btn" data-shortcut="Ctrl+Alt+V">Ctrl+Alt+V</button>
+                  <button class="preset-btn" data-shortcut="F1">F1</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启用数字快捷键</label>
+                <p class="setting-description">使用 Ctrl+数字 快速复制剪贴板项目</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="number-shortcuts">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 剪贴板设置 -->
+        <div class="settings-section" id="clipboard-section">
+          <div class="section-header">
+            <h2>剪贴板设置</h2>
+            <p>配置剪贴板监听和处理选项</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">监听剪贴板</label>
+                <p class="setting-description">自动监听系统剪贴板变化</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="clipboard-monitor">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">忽略重复内容</label>
+                <p class="setting-description">复制重复内容时自动移动到列表顶部（保留此设置以兼容旧版本）</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ignore-duplicates">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">保存图片</label>
+                <p class="setting-description">自动保存复制的图片到剪贴板历史</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="save-images">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI翻译设置 -->
+        <div class="settings-section" id="ai-translation-section">
+          <div class="section-header">
+            <h2>AI翻译设置</h2>
+            <p>配置AI自动翻译功能和相关选项</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启用AI翻译</label>
+                <p class="setting-description">开启AI自动翻译功能</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-translation-enabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">API密钥</label>
+                <p class="setting-description">硅基流动API密钥，用于调用AI翻译服务</p>
+              </div>
+              <div class="setting-control">
+                <input type="password" id="ai-api-key" class="setting-input" placeholder="请输入API密钥">
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">AI模型</label>
+                <p class="setting-description">选择用于翻译的AI模型</p>
+              </div>
+              <div class="setting-control">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="ai-model" class="setting-select" style="flex: 1;">
+                    <option value="deepseek-v3">DeepSeek V3</option>
+                    <option value="qwen-turbo">通义千问 Turbo</option>
+                    <option value="chatglm3-6b">ChatGLM3-6B</option>
+                    <option value="yi-34b-chat">Yi-34B-Chat</option>
+                  </select>
+                  <button class="setting-button-small" id="refresh-ai-models" title="刷新模型列表">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">API地址</label>
+                <p class="setting-description">硅基流动API服务地址</p>
+              </div>
+              <div class="setting-control">
+                <input type="text" id="ai-base-url" class="setting-input" placeholder="https://api.siliconflow.cn/v1">
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">目标语言</label>
+                <p class="setting-description">翻译的目标语言。选择"自动"时，中文自动翻译成英文，英文自动翻译成中文</p>
+              </div>
+              <div class="setting-control">
+                <select id="ai-target-language" class="setting-select">
+                  <option value="auto">自动（中文↔英文）</option>
+                  <option value="zh-CN">中文（简体）</option>
+                  <option value="zh-TW">中文（繁体）</option>
+                  <option value="en">英语</option>
+                  <option value="ja">日语</option>
+                  <option value="ko">韩语</option>
+                  <option value="fr">法语</option>
+                  <option value="de">德语</option>
+                  <option value="es">西班牙语</option>
+                  <option value="ru">俄语</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item" style="display: none;">
+              <div class="setting-info">
+                <label class="setting-label">复制时翻译</label>
+                <p class="setting-description">复制文本时自动进行翻译</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-translate-on-copy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">粘贴时翻译</label>
+                <p class="setting-description">粘贴文本时自动进行翻译</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-translate-on-paste">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">输入速度</label>
+                <p class="setting-description">翻译结果的输入速度（字符/秒）</p>
+              </div>
+              <div class="setting-control">
+                <div class="slider-container">
+                  <input type="range" id="ai-input-speed" min="10" max="100" step="5" value="50">
+                  <span class="slider-value">50 字符/秒</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">翻译提示词</label>
+                <p class="setting-description">自定义AI翻译的提示词模板，{target_language}会被替换为目标语言</p>
+              </div>
+              <div class="setting-control">
+                <textarea id="ai-translation-prompt" class="setting-textarea" rows="3"
+                  placeholder="请将以下文本翻译成{target_language}，只返回翻译结果，不要添加任何解释："></textarea>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">测试翻译</label>
+                <p class="setting-description">测试AI翻译功能是否正常工作</p>
+              </div>
+              <div class="setting-control">
+                <button class="setting-button" id="test-ai-translation">
+                  <i class="ti ti-test-pipe"></i>
+                  测试翻译
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 音效设置 -->
+        <div class="settings-section" id="sound-section">
+          <div class="section-header">
+            <h2>音效设置</h2>
+            <p>配置复制和粘贴操作的音效提示</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启用音效</label>
+                <p class="setting-description">开启或关闭操作音效提示</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="sound-enabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">音量大小</label>
+                <p class="setting-description">调整音效播放音量</p>
+              </div>
+              <div class="setting-control">
+                <div class="slider-container">
+                  <input type="range" id="sound-volume" min="0" max="100" step="5" value="50">
+                  <span class="slider-value">50%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">复制音效</label>
+                <p class="setting-description">复制操作时播放的音效文件</p>
+              </div>
+              <div class="setting-control">
+                <div class="sound-input-group">
+                  <input type="text" id="copy-sound-path" placeholder="选择音效文件或输入网络地址" class="sound-input">
+                  <button class="sound-browse-btn" id="browse-copy-sound">
+                    <i class="ti ti-folder"></i>
+                  </button>
+                  <button class="sound-test-btn" id="test-copy-sound">
+                    <i class="ti ti-player-play"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">粘贴音效</label>
+                <p class="setting-description">粘贴操作时播放的音效文件</p>
+              </div>
+              <div class="setting-control">
+                <div class="sound-input-group">
+                  <input type="text" id="paste-sound-path" placeholder="选择音效文件或输入网络地址" class="sound-input">
+                  <button class="sound-browse-btn" id="browse-paste-sound">
+                    <i class="ti ti-folder"></i>
+                  </button>
+                  <button class="sound-test-btn" id="test-paste-sound">
+                    <i class="ti ti-player-play"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">预设音效</label>
+                <p class="setting-description">选择内置的音效方案</p>
+              </div>
+              <div class="setting-control">
+                <select id="sound-preset" class="setting-select">
+                  <option value="">自定义</option>
+                  <option value="default">默认音效</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">缓存管理</label>
+                <p class="setting-description">清理网络音效缓存文件</p>
+              </div>
+              <div class="setting-control">
+                <button class="setting-button" id="clear-sound-cache">
+                  <i class="ti ti-trash"></i>
+                  清理缓存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 预览窗口设置 -->
+        <div class="settings-section" id="preview-section">
+          <div class="section-header">
+            <h2>预览窗口设置</h2>
+            <p>配置快速预览窗口的功能和外观</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启用预览窗口</label>
+                <p class="setting-description">启用快速预览剪贴板历史的功能</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="preview-enabled" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">预览快捷键</label>
+                <p class="setting-description">设置显示预览窗口的全局快捷键</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="preview-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear-btn" id="clear-preview-shortcut">
+                    <i class="ti ti-x"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">显示项目数量</label>
+                <p class="setting-description">预览窗口中同时显示的剪贴板项目数量，窗口高度会自动调整</p>
+              </div>
+              <div class="setting-control">
+                <select id="preview-items-count" class="setting-select">
+                  <option value="3">3 项</option>
+                  <option value="5" selected>5 项</option>
+                  <option value="7">7 项</option>
+                  <option value="9">9 项</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">自动粘贴</label>
+                <p class="setting-description">松开快捷键时自动粘贴选中的项目</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="preview-auto-paste" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">滚动音效</label>
+                <p class="setting-description">在预览窗口中滚动时播放音效</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="preview-scroll-sound" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">滚动音效文件</label>
+                <p class="setting-description">预览窗口滚动时播放的音效文件</p>
+              </div>
+              <div class="setting-control">
+                <div class="sound-input-group">
+                  <input type="text" id="preview-scroll-sound-path" placeholder="选择音效文件或输入网络地址" class="sound-input">
+                  <button class="sound-browse-btn" id="browse-preview-scroll-sound">
+                    <i class="ti ti-folder"></i>
+                  </button>
+                  <button class="sound-test-btn" id="test-preview-scroll-sound">
+                    <i class="ti ti-player-play"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 截屏设置 -->
+        <div class="settings-section" id="screenshot-section">
+          <div class="section-header">
+            <h2>截屏设置</h2>
+            <p>配置截屏功能和快捷键</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">启用截屏功能</label>
+                <p class="setting-description">启用内置的截屏功能</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="screenshot-enabled" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">截屏快捷键</label>
+                <p class="setting-description">设置全局截屏快捷键</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="screenshot-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear-btn" id="clear-screenshot-shortcut">
+                    <i class="ti ti-x"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">截屏质量</label>
+                <p class="setting-description">设置截屏图片的压缩质量</p>
+              </div>
+              <div class="setting-control">
+                <select id="screenshot-quality" class="setting-select">
+                  <option value="100">最高质量 (PNG)</option>
+                  <option value="95">高质量 (95%)</option>
+                  <option value="85" selected>标准质量 (85%)</option>
+                  <option value="75">中等质量 (75%)</option>
+                  <option value="60">低质量 (60%)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">自动保存到剪贴板</label>
+                <p class="setting-description">截屏后自动将图片保存到剪贴板历史</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="screenshot-auto-save" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">显示截屏提示</label>
+                <p class="setting-description">截屏时显示操作提示信息</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="screenshot-show-hints" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 支持作者页面 -->
+        <div class="settings-section" id="support-section">
+          <div class="section-header">
+            <h2>支持作者</h2>
+            <p>如果这个小工具对您有帮助，欢迎支持作者继续开发</p>
+          </div>
+
+          <div class="support-content">
+            <div class="support-message">
+              <div class="support-text">
+                <h3>💝 感谢您的使用</h3>
+                <p>QuickClipboard 是一个开源的剪贴板管理工具，致力于提升您的工作效率。</p>
+                <p>如果这个工具对您有帮助，您可以通过以下方式支持作者：</p>
+
+                <ul class="support-list">
+                  <li>⭐ 给项目点个 Star</li>
+                  <li>🐛 反馈 Bug 和建议</li>
+                  <li>📢 推荐给朋友使用</li>
+                  <li>☕ 请作者喝杯咖啡</li>
+                </ul>
+
+                <p class="support-note">您的支持是作者持续开发的动力！</p>
+              </div>
+
+              <div class="qr-code-container">
+                <div class="qr-code-section">
+                  <h4>微信赞赏</h4>
+                  <div class="qr-code">
+                    <img src="./assets/wxzsm.png" alt="微信赞赏码" />
+                  </div>
+                  <p class="qr-desc">扫码支持作者</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="github-section">
+              <h3>🚀 开源项目</h3>
+              <p>QuickClipboard 是一个开源项目，欢迎访问 GitHub 仓库：</p>
+              <div class="github-link">
+                <button class="about-button open-github">
+                  <i class="ti ti-brand-github"></i>
+                  访问 GitHub 仓库
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 关于页面 -->
+        <div class="settings-section" id="about-section">
+          <div class="section-header">
+            <h2>关于</h2>
+            <p>应用信息和版本详情</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="about-info">
+              <div class="app-icon">
+                <i class="ti ti-clipboard"></i>
+              </div>
+              <h3>快速剪贴板</h3>
+              <p class="version" id="app-version">版本 加载中...</p>
+              <p class="description">
+                一个功能强大的剪贴板管理工具，帮助您更高效地管理和使用剪贴板内容。
+              </p>
+
+              <div class="about-links">
+                <button class="about-button" id="check-updates">
+                  <i class="ti ti-download"></i>
+                  检查更新
+                </button>
+                <button class="about-button open-github">
+                  <i class="ti ti-brand-github"></i>
+                  GitHub
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/settings.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,900 @@
+// AI翻译管理模块
+import { invoke } from '@tauri-apps/api/core';
+import { listen, emit } from '@tauri-apps/api/event';
+import {
+  aiTranslationSwitch,
+  setIsAiTranslationEnabled,
+  isAiTranslationEnabled
+} from './config.js';
+import { showNotification } from './ui.js';
+
+// AI翻译状态管理
+let aiTranslationConfig = {
+  enabled: false,
+  apiKey: '',
+  model: 'deepseek-v3',
+  baseUrl: 'https://api.siliconflow.cn/v1',
+  targetLanguage: 'auto',
+  translateOnCopy: false,
+  translateOnPaste: true,
+  translationPrompt: '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
+  inputSpeed: 50
+};
+
+/**
+ * 初始化AI翻译功能
+ */
+export async function initAiTranslation() {
+  console.log('初始化AI翻译功能...');
+
+  // 加载AI翻译设置
+  await loadAiTranslationSettings();
+
+  // 设置AI翻译开关事件监听
+  setupAiTranslationSwitch();
+
+  // 监听设置窗口的AI翻译状态变化
+  await setupAiTranslationEventListeners();
+
+  // 设置取消按钮事件
+  setupCancelButton();
+
+  console.log('AI翻译功能初始化完成');
+}
+
+/**
+ * 加载AI翻译设置
+ */
+async function loadAiTranslationSettings() {
+  try {
+    const settings = await invoke('get_settings');
+
+    aiTranslationConfig = {
+      enabled: settings.aiTranslationEnabled || false,
+      apiKey: settings.aiApiKey || '',
+      model: settings.aiModel || 'deepseek-v3',
+      baseUrl: settings.aiBaseUrl || 'https://api.siliconflow.cn/v1',
+      targetLanguage: settings.aiTargetLanguage || 'auto',
+      translateOnCopy: settings.aiTranslateOnCopy || false,
+      translateOnPaste: settings.aiTranslateOnPaste || true,
+      translationPrompt: settings.aiTranslationPrompt || '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
+      inputSpeed: settings.aiInputSpeed || 50
+    };
+
+    // 更新UI状态
+    setIsAiTranslationEnabled(aiTranslationConfig.enabled);
+    if (aiTranslationSwitch) {
+      aiTranslationSwitch.checked = aiTranslationConfig.enabled;
+    }
+
+    console.log('AI翻译设置已加载:', aiTranslationConfig);
+  } catch (error) {
+    console.error('加载AI翻译设置失败:', error);
+  }
+}
+
+/**
+ * 设置AI翻译开关事件监听
+ */
+function setupAiTranslationSwitch() {
+  if (!aiTranslationSwitch) {
+    console.warn('AI翻译开关元素未找到');
+    return;
+  }
+
+  aiTranslationSwitch.addEventListener('change', async (event) => {
+    const enabled = event.target.checked;
+    console.log('AI翻译开关状态变化:', enabled);
+
+    try {
+      // 检查AI翻译配置是否有效
+      const isConfigValid = await invoke('check_ai_translation_config');
+
+      if (enabled && !isConfigValid) {
+        // 配置无效，显示提示并重置开关
+        event.target.checked = false;
+        showAiTranslationConfigError();
+        return;
+      }
+
+      // 更新本地状态
+      setIsAiTranslationEnabled(enabled);
+      aiTranslationConfig.enabled = enabled;
+
+      // 保存设置到后端
+      await saveAiTranslationSetting('aiTranslationEnabled', enabled);
+
+      // 发送状态变化事件给设置窗口
+      await broadcastAiTranslationStateChange(enabled);
+
+    } catch (error) {
+      console.error('切换AI翻译状态失败:', error);
+      // 恢复开关状态
+      event.target.checked = !enabled;
+    }
+  });
+}
+
+/**
+ * 设置AI翻译事件监听器
+ */
+async function setupAiTranslationEventListeners() {
+  try {
+    // 监听设置窗口的AI翻译状态变化
+    await listen('ai-translation-state-changed', (event) => {
+      const { enabled } = event.payload;
+      console.log('收到AI翻译状态变化事件:', enabled);
+
+      // 更新本地状态
+      setIsAiTranslationEnabled(enabled);
+      aiTranslationConfig.enabled = enabled;
+
+      // 更新开关UI
+      if (aiTranslationSwitch) {
+        aiTranslationSwitch.checked = enabled;
+      }
+    });
+
+    // 监听AI翻译设置更新
+    await listen('ai-translation-settings-updated', (event) => {
+      console.log('收到AI翻译设置更新事件:', event.payload);
+
+      // 重新加载设置
+      loadAiTranslationSettings();
+    });
+
+    // 监听后端发送的AI翻译取消事件
+    await listen('ai-translation-cancelled', () => {
+      console.log('收到后端AI翻译取消事件');
+      hideTranslationIndicator();
+      showTranslationNotification('翻译已取消', 'warning', 1500);
+    });
+
+  } catch (error) {
+    console.error('设置AI翻译事件监听器失败:', error);
+  }
+}
+
+/**
+ * 保存AI翻译设置
+ */
+async function saveAiTranslationSetting(key, value) {
+  try {
+    const settings = await invoke('get_settings');
+    settings[key] = value;
+    await invoke('save_settings', { settings });
+    console.log(`AI翻译设置已保存: ${key} = ${value}`);
+  } catch (error) {
+    console.error('保存AI翻译设置失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 广播AI翻译状态变化
+ */
+async function broadcastAiTranslationStateChange(enabled) {
+  try {
+    // 发送事件给设置窗口
+    await emit('ai-translation-state-changed', { enabled });
+    console.log('广播AI翻译状态变化:', enabled);
+  } catch (error) {
+    console.error('广播AI翻译状态变化失败:', error);
+  }
+}
+
+/**
+ * 显示AI翻译配置错误提示
+ */
+function showAiTranslationConfigError() {
+  // 这里可以显示一个提示框，告诉用户需要先配置AI翻译设置
+  console.warn('AI翻译配置无效，请先在设置中配置API密钥等信息');
+
+  // 可以考虑打开设置窗口并跳转到AI翻译设置页面
+  if (window.showAlert) {
+    window.showAlert('AI翻译配置无效', '请先在设置中配置API密钥、模型等信息后再启用AI翻译功能。');
+  } else {
+    alert('AI翻译配置无效，请先在设置中配置API密钥、模型等信息。');
+  }
+}
+
+/**
+ * 测试AI翻译功能
+ */
+export async function testAiTranslation() {
+  try {
+    console.log('开始测试AI翻译功能...');
+    const result = await invoke('test_ai_translation');
+    console.log('AI翻译测试成功:', result);
+    return result;
+  } catch (error) {
+    console.error('AI翻译测试失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 取消正在进行的翻译
+ */
+export async function cancelTranslation() {
+  try {
+    await invoke('cancel_translation');
+    hideTranslationIndicator();
+    showTranslationNotification('翻译已取消', 'warning', 1500);
+    console.log('[AI翻译] 用户取消翻译');
+  } catch (error) {
+    console.error('取消翻译失败:', error);
+  }
+}
+
+/**
+ * 根据检测到的语言自动选择目标语言
+ */
+function getAutoTargetLanguage(text) {
+  const detectedLang = detectTextLanguage(text);
+  console.log('检测到的语言:', detectedLang);
+
+  // 自动选择逻辑：中文→英文，英文→中文，其他→中文
+  switch (detectedLang) {
+    case 'zh':
+      return 'en'; // 中文翻译成英文
+    case 'en':
+      return 'zh-CN'; // 英文翻译成中文
+    default:
+      return 'zh-CN'; // 其他语言默认翻译成中文
+  }
+}
+
+/**
+ * 翻译文本并输入
+ */
+export async function translateAndInputText(text) {
+  let originalTargetLanguage = null;
+
+  try {
+    // 翻译开始反馈
+    await handleTranslationStart(text);
+    showTranslationStatus('translating');
+
+    // 检查是否需要自动选择目标语言
+    if (aiTranslationConfig.targetLanguage === 'auto') {
+      // 保存原始设置
+      originalTargetLanguage = aiTranslationConfig.targetLanguage;
+
+      // 自动选择目标语言
+      const autoTargetLanguage = getAutoTargetLanguage(text);
+      console.log('自动选择的目标语言:', autoTargetLanguage);
+
+      // 临时更新设置
+      await saveAiTranslationSetting('aiTargetLanguage', autoTargetLanguage);
+      aiTranslationConfig.targetLanguage = autoTargetLanguage;
+    }
+
+    console.log('开始翻译文本:', text);
+    await invoke('translate_and_input_text', { text });
+
+    // 如果使用了自动选择，恢复原始设置
+    if (originalTargetLanguage !== null) {
+      await saveAiTranslationSetting('aiTargetLanguage', originalTargetLanguage);
+      aiTranslationConfig.targetLanguage = originalTargetLanguage;
+    }
+
+    // 翻译成功反馈
+    await handleTranslationSuccess(text, text.length); // 这里无法获取实际翻译长度，使用原文长度
+    console.log('文本翻译和输入完成');
+  } catch (error) {
+    console.error('翻译文本失败:', error);
+
+    // 如果使用了自动选择，确保恢复原始设置
+    if (originalTargetLanguage !== null) {
+      try {
+        await saveAiTranslationSetting('aiTargetLanguage', originalTargetLanguage);
+        aiTranslationConfig.targetLanguage = originalTargetLanguage;
+      } catch (restoreError) {
+        console.error('恢复目标语言设置失败:', restoreError);
+      }
+    }
+
+    // 检查是否是用户取消
+    if (error.toString().includes('翻译已被取消')) {
+      hideTranslationIndicator();
+      showTranslationNotification('翻译已取消', 'warning', 1500);
+      return; // 不抛出错误，因为这是正常的取消操作
+    }
+
+    // 翻译失败反馈
+    await handleTranslationError(error, text);
+
+    // 根据错误类型提供不同的错误信息
+    const errorMessage = getTranslationErrorMessage(error);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * 获取翻译错误信息
+ */
+function getTranslationErrorMessage(error) {
+  const errorStr = error.toString().toLowerCase();
+
+  // 网络相关错误
+  if (errorStr.includes('network') || errorStr.includes('网络') ||
+    errorStr.includes('connection') || errorStr.includes('连接')) {
+    return '网络连接失败，请检查网络连接';
+  }
+
+  // 认证相关错误
+  if (errorStr.includes('authentication') || errorStr.includes('认证') ||
+    errorStr.includes('401') || errorStr.includes('unauthorized') ||
+    errorStr.includes('invalid api key') || errorStr.includes('api key')) {
+    return 'API认证失败，请检查API密钥是否正确';
+  }
+
+  // 限流相关错误
+  if (errorStr.includes('rate limit') || errorStr.includes('限流') ||
+    errorStr.includes('429') || errorStr.includes('too many requests') ||
+    errorStr.includes('quota') || errorStr.includes('配额')) {
+    return 'API调用频率过高或配额不足，请稍后再试';
+  }
+
+  // 超时相关错误
+  if (errorStr.includes('timeout') || errorStr.includes('超时') ||
+    errorStr.includes('timed out') || errorStr.includes('time out')) {
+    return '翻译请求超时，请稍后再试';
+  }
+
+  // 服务器错误
+  if (errorStr.includes('500') || errorStr.includes('502') ||
+    errorStr.includes('503') || errorStr.includes('504') ||
+    errorStr.includes('server error') || errorStr.includes('服务器错误')) {
+    return '服务器暂时不可用，请稍后再试';
+  }
+
+  // 配置相关错误
+  if (errorStr.includes('config') || errorStr.includes('配置') ||
+    errorStr.includes('setting') || errorStr.includes('设置')) {
+    return 'AI翻译配置错误，请检查设置';
+  }
+
+  // 模型相关错误
+  if (errorStr.includes('model') || errorStr.includes('模型') ||
+    errorStr.includes('not found') || errorStr.includes('不存在')) {
+    return '所选AI模型不可用，请尝试其他模型';
+  }
+
+  // 内容相关错误
+  if (errorStr.includes('content') || errorStr.includes('内容') ||
+    errorStr.includes('text too long') || errorStr.includes('文本过长')) {
+    return '文本内容不符合要求，请检查文本长度和格式';
+  }
+
+  // 权限相关错误
+  if (errorStr.includes('permission') || errorStr.includes('权限') ||
+    errorStr.includes('forbidden') || errorStr.includes('403')) {
+    return '权限不足，请检查API密钥权限';
+  }
+
+  // 默认错误信息
+  return `翻译失败: ${error}`;
+}
+
+/**
+ * 安全的翻译文本并输入（带降级处理）
+ */
+export async function safeTranslateAndInputText(text, fallbackCallback) {
+  try {
+    await translateAndInputText(text);
+    return { success: true, method: 'translation' };
+  } catch (error) {
+    console.warn('AI翻译失败，使用降级处理:', error);
+
+    // 执行降级回调（通常是原始粘贴）
+    if (fallbackCallback && typeof fallbackCallback === 'function') {
+      try {
+        await fallbackCallback();
+        return { success: true, method: 'fallback', error: error.message };
+      } catch (fallbackError) {
+        console.error('降级处理也失败了:', fallbackError);
+        return { success: false, method: 'none', error: fallbackError.message };
+      }
+    } else {
+      return { success: false, method: 'none', error: error.message };
+    }
+  }
+}
+
+/**
+ * 重试翻译（带指数退避）
+ */
+export async function retryTranslation(text, maxRetries = 3, baseDelay = 1000) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`翻译尝试 ${attempt}/${maxRetries}:`, text);
+      await translateAndInputText(text);
+      return { success: true, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      console.warn(`翻译尝试 ${attempt} 失败:`, error);
+
+      // 如果是配置错误或认证错误，不需要重试
+      const errorStr = error.toString().toLowerCase();
+      if (errorStr.includes('config') || errorStr.includes('authentication') || errorStr.includes('401')) {
+        break;
+      }
+
+      // 如果不是最后一次尝试，等待后重试
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt - 1); // 指数退避
+        console.log(`等待 ${delay}ms 后重试...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * 获取AI翻译配置
+ */
+export function getAiTranslationConfig() {
+  return { ...aiTranslationConfig };
+}
+
+/**
+ * 检查是否应该进行翻译
+ */
+export function shouldTranslate(context = 'paste') {
+  if (!aiTranslationConfig.enabled) {
+    return false;
+  }
+
+  if (context === 'copy') {
+    return aiTranslationConfig.translateOnCopy;
+  } else if (context === 'paste') {
+    return aiTranslationConfig.translateOnPaste;
+  }
+
+  return false;
+}
+
+/**
+ * 检查文本是否适合翻译
+ */
+export function isTextSuitableForTranslation(text) {
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+
+  const trimmedText = text.trim();
+
+  // 过滤掉太短的文本
+  if (trimmedText.length < 2) {
+    return false;
+  }
+
+  // 过滤掉太长的文本（超过5000字符）
+  if (trimmedText.length > 5000) {
+    console.warn('文本过长，不适合翻译:', trimmedText.length);
+    return false;
+  }
+
+  // 过滤掉纯数字、纯符号等
+  const hasLetters = /[a-zA-Z\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(trimmedText);
+  if (!hasLetters) {
+    return false;
+  }
+
+  // 过滤掉URL（更严格的检测）
+  const urlPatterns = [
+    /^https?:\/\/[^\s]+$/i,
+    /^ftp:\/\/[^\s]+$/i,
+    /^www\.[^\s]+\.[a-z]{2,}$/i,
+    /^[a-zA-Z0-9-]+\.[a-z]{2,}(\/[^\s]*)?$/i
+  ];
+
+  for (const pattern of urlPatterns) {
+    if (pattern.test(trimmedText)) {
+      return false;
+    }
+  }
+
+  // 过滤掉邮箱地址
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailPattern.test(trimmedText)) {
+    return false;
+  }
+
+  // 过滤掉文件路径（Windows和Unix）
+  const filePathPatterns = [
+    /^[a-zA-Z]:\\[^\s]*$/,  // Windows路径
+    /^\/[^\s]*$/,           // Unix路径
+    /^~\/[^\s]*$/,          // 用户目录路径
+    /^\.\/[^\s]*$/,         // 相对路径
+    /^\.\.\/[^\s]*$/        // 上级目录路径
+  ];
+
+  for (const pattern of filePathPatterns) {
+    if (pattern.test(trimmedText)) {
+      return false;
+    }
+  }
+  // 过滤掉代码片段（更全面的检测）
+  const codePatterns = [
+    /^\s*[\{\[\(].*[\}\]\)]\s*$/s, // 包含大括号、方括号、圆括号的内容
+    /^\s*<[^>]+>.*<\/[^>]+>\s*$/s, // HTML标签
+    /^\s*function\s+\w+\s*\(/i, // JavaScript函数
+    /^\s*def\s+\w+\s*\(/i, // Python函数
+    /^\s*class\s+\w+/i, // 类定义
+    /^\s*import\s+/i, // 导入语句
+    /^\s*#include\s+/i, // C/C++包含语句
+    /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL查询
+    /^\s*\w+\s*=\s*\w+\s*\([^)]*\)\s*;?\s*$/i, // 函数调用
+    /^\s*\/\*.*\*\/\s*$/s, // 多行注释
+    /^\s*\/\/.*$/m, // 单行注释
+    /^\s*#.*$/m, // Shell注释或预处理指令
+    /^\s*<!--.*-->\s*$/s, // HTML注释
+    /^\s*\{[^}]*\}\s*$/s, // JSON对象
+    /^\s*\[[^\]]*\]\s*$/s, // JSON数组
+  ];
+  for (const pattern of codePatterns) {
+    if (pattern.test(trimmedText)) {
+      return false;
+    }
+  }
+
+  // 过滤掉特殊字符过多的文本
+  const specialCharCount = (trimmedText.match(/[^\w\s\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
+  const specialCharRatio = specialCharCount / trimmedText.length;
+  if (specialCharRatio > 0.5) {
+    return false;
+  }
+
+  // 过滤掉重复字符过多的文本（调整阈值，避免误判正常英文文本）
+  const uniqueChars = new Set(trimmedText.toLowerCase()).size;
+  const uniqueRatio = uniqueChars / trimmedText.length;
+  if (uniqueRatio < 0.03 && trimmedText.length > 20) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * 检查翻译配置是否有效
+ */
+export function isTranslationConfigValid() {
+  return aiTranslationConfig.enabled &&
+    aiTranslationConfig.apiKey &&
+    aiTranslationConfig.apiKey.trim() !== '' &&
+    aiTranslationConfig.model &&
+    aiTranslationConfig.model.trim() !== '' &&
+    aiTranslationConfig.baseUrl &&
+    aiTranslationConfig.baseUrl.trim() !== '' &&
+    aiTranslationConfig.targetLanguage &&
+    aiTranslationConfig.targetLanguage.trim() !== '';
+}
+
+/**
+ * 检查是否应该进行翻译（完整检查）
+ */
+export function shouldTranslateText(text, context = 'paste') {
+  // 基础开关检查
+  if (!shouldTranslate(context)) {
+    return { should: false, reason: 'AI翻译功能未启用或未配置相应的翻译时机' };
+  }
+
+  // 配置有效性检查
+  if (!isTranslationConfigValid()) {
+    return { should: false, reason: 'AI翻译配置无效，请检查API密钥等设置' };
+  }
+
+  // 文本适合性检查
+  if (!isTextSuitableForTranslation(text)) {
+    return { should: false, reason: '文本不适合翻译（可能是代码、URL、路径等）' };
+  }
+
+  return { should: true, reason: '满足翻译条件' };
+}
+
+/**
+ * 检测文本语言（简单实现）
+ */
+export function detectTextLanguage(text) {
+  if (!text || typeof text !== 'string') {
+    return 'unknown';
+  }
+
+  const trimmedText = text.trim();
+
+  // 检测中文
+  const chinesePattern = /[\u4e00-\u9fa5]/;
+  const chineseMatches = trimmedText.match(/[\u4e00-\u9fa5]/g);
+  const chineseRatio = chineseMatches ? chineseMatches.length / trimmedText.length : 0;
+
+  // 检测英文
+  const englishPattern = /[a-zA-Z]/;
+  const englishMatches = trimmedText.match(/[a-zA-Z]/g);
+  const englishRatio = englishMatches ? englishMatches.length / trimmedText.length : 0;
+
+  // 检测日文
+  const japanesePattern = /[\u3040-\u309f\u30a0-\u30ff]/;
+  const japaneseMatches = trimmedText.match(/[\u3040-\u309f\u30a0-\u30ff]/g);
+  const japaneseRatio = japaneseMatches ? japaneseMatches.length / trimmedText.length : 0;
+
+  // 检测韩文
+  const koreanPattern = /[\uac00-\ud7af]/;
+  const koreanMatches = trimmedText.match(/[\uac00-\ud7af]/g);
+  const koreanRatio = koreanMatches ? koreanMatches.length / trimmedText.length : 0;
+
+  // 根据比例判断主要语言
+  const ratios = [
+    { lang: 'zh', ratio: chineseRatio },
+    { lang: 'en', ratio: englishRatio },
+    { lang: 'ja', ratio: japaneseRatio },
+    { lang: 'ko', ratio: koreanRatio }
+  ];
+
+  ratios.sort((a, b) => b.ratio - a.ratio);
+
+  // 如果最高比例超过30%，认为是该语言
+  if (ratios[0].ratio > 0.3) {
+    return ratios[0].lang;
+  }
+
+  return 'unknown';
+}
+
+/**
+ * 播放翻译相关音效
+ */
+export async function playTranslationSound(type = 'success') {
+  try {
+    // 检查音效是否启用
+    const settings = await invoke('get_settings');
+    if (!settings.soundEnabled) {
+      return;
+    }
+
+    let soundPath;
+    switch (type) {
+      case 'start':
+        soundPath = 'sounds/translation_start.mp3'; // 翻译开始音效
+        break;
+      case 'success':
+        soundPath = 'sounds/translation_success.mp3'; // 翻译成功音效
+        break;
+      case 'error':
+        soundPath = 'sounds/translation_error.mp3'; // 翻译失败音效
+        break;
+      default:
+        soundPath = 'sounds/notification.mp3'; // 默认通知音效
+    }
+
+    // 播放音效
+    await invoke('play_sound', { path: soundPath });
+  } catch (error) {
+    console.warn('播放翻译音效失败:', error);
+  }
+}
+
+/**
+ * 显示翻译通知
+ */
+export function showTranslationNotification(message, type = 'info', duration = 3000) {
+  try {
+    // 添加翻译图标前缀
+    const iconMap = {
+      'success': '✅',
+      'error': '❌',
+      'warning': '⚠️',
+      'info': '🌐'
+    };
+
+    const icon = iconMap[type] || '🌐';
+    const fullMessage = `${icon} ${message}`;
+
+    showNotification(fullMessage, type, duration);
+  } catch (error) {
+    console.warn('显示翻译通知失败:', error);
+  }
+}
+
+/**
+ * 显示翻译状态提示
+ */
+export function showTranslationStatus(status, details = '') {
+  const statusMap = {
+    'starting': { text: '正在启动翻译...', icon: '🚀' },
+    'translating': { text: '正在翻译...', icon: '🌐' },
+    'inputting': { text: '正在输入翻译结果...', icon: '⌨️' },
+    'completed': { text: '翻译完成', icon: '✅' },
+    'failed': { text: '翻译失败', icon: '❌' },
+    'cancelled': { text: '翻译已取消', icon: '⏹️' }
+  };
+
+  const statusInfo = statusMap[status] || { text: status, icon: '📝' };
+  const message = details ? `${statusInfo.text}: ${details}` : statusInfo.text;
+
+  updateTranslationIndicator(`${statusInfo.icon} ${message}`);
+  console.log(`[AI翻译] ${message}`);
+}
+
+/**
+ * 翻译成功的用户反馈
+ */
+export async function handleTranslationSuccess(originalText, translatedLength) {
+  try {
+    // 播放成功音效
+    await playTranslationSound('success');
+
+    // 显示成功通知
+    const message = `翻译完成 (${originalText.length} → ${translatedLength} 字符)`;
+    showTranslationNotification(message, 'success', 2000);
+
+    // 更新状态
+    showTranslationStatus('completed');
+
+    console.log('[AI翻译] 翻译成功:', { originalLength: originalText.length, translatedLength });
+  } catch (error) {
+    console.warn('处理翻译成功反馈失败:', error);
+  }
+}
+
+/**
+ * 翻译失败的用户反馈
+ */
+export async function handleTranslationError(error, originalText) {
+  try {
+    // 播放错误音效
+    await playTranslationSound('error');
+
+    // 显示错误通知
+    const errorMessage = getTranslationErrorMessage(error);
+    showTranslationNotification(errorMessage, 'error', 4000);
+
+    // 更新状态
+    showTranslationStatus('failed', errorMessage);
+
+    console.error('[AI翻译] 翻译失败:', { error: errorMessage, originalText: originalText.substring(0, 100) });
+  } catch (feedbackError) {
+    console.warn('处理翻译失败反馈失败:', feedbackError);
+  }
+}
+
+/**
+ * 翻译开始的用户反馈
+ */
+export async function handleTranslationStart(text) {
+  try {
+    // 播放开始音效
+    await playTranslationSound('start');
+
+    // 显示开始通知
+    const message = `开始翻译 (${text.length} 字符)`;
+    showTranslationNotification(message, 'info', 1500);
+
+    // 更新状态
+    showTranslationStatus('starting');
+
+    console.log('[AI翻译] 翻译开始:', { textLength: text.length });
+  } catch (error) {
+    console.warn('处理翻译开始反馈失败:', error);
+  }
+}
+
+/**
+ * 设置取消按钮事件
+ */
+function setupCancelButton() {
+  const cancelButton = document.getElementById('cancel-translation-btn');
+  if (cancelButton) {
+    cancelButton.addEventListener('click', async () => {
+      await cancelTranslation();
+    });
+  }
+}
+
+
+
+/**
+ * 取消正在进行的翻译（内部函数）
+ */
+function cancelTranslationInternal() {
+  hideTranslationIndicator();
+  showTranslationNotification('翻译已取消', 'warning', 1500);
+  console.log('[AI翻译] 用户取消翻译');
+}
+
+/**
+ * 优化的翻译状态管理
+ */
+let currentTranslationId = null;
+
+/**
+ * 开始新的翻译任务
+ */
+function startTranslationTask() {
+  currentTranslationId = Date.now().toString();
+  return currentTranslationId;
+}
+
+/**
+ * 检查翻译任务是否仍然有效
+ */
+function isTranslationTaskValid(taskId) {
+  return currentTranslationId === taskId;
+}
+
+/**
+ * 完成翻译任务
+ */
+function completeTranslationTask(taskId) {
+  if (isTranslationTaskValid(taskId)) {
+    currentTranslationId = null;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 显示翻译进度指示器
+ */
+export function showTranslationIndicator(text = '正在翻译...') {
+  const indicator = document.getElementById('ai-translation-indicator');
+  if (indicator) {
+    const textElement = indicator.querySelector('.indicator-text');
+    if (textElement) {
+      textElement.textContent = text;
+    }
+
+    // 添加淡入动画
+    indicator.style.opacity = '0';
+    indicator.style.display = 'block';
+
+    // 使用requestAnimationFrame确保动画流畅
+    requestAnimationFrame(() => {
+      indicator.style.transition = 'opacity 0.3s ease-in-out';
+      indicator.style.opacity = '1';
+    });
+  }
+}
+
+/**
+ * 隐藏翻译进度指示器
+ */
+export function hideTranslationIndicator() {
+  const indicator = document.getElementById('ai-translation-indicator');
+  if (indicator) {
+    // 添加淡出动画
+    indicator.style.transition = 'opacity 0.3s ease-in-out';
+    indicator.style.opacity = '0';
+
+    // 动画完成后隐藏元素
+    setTimeout(() => {
+      indicator.style.display = 'none';
+    }, 300);
+  }
+}
+
+/**
+ * 更新翻译进度指示器文本
+ */
+export function updateTranslationIndicator(text) {
+  const indicator = document.getElementById('ai-translation-indicator');
+  if (indicator) {
+    const textElement = indicator.querySelector('.indicator-text');
+    if (textElement) {
+      // 添加文本更新动画
+      textElement.style.transition = 'opacity 0.2s ease-in-out';
+      textElement.style.opacity = '0.7';
+
+      setTimeout(() => {
+        textElement.textContent = text;
+        textElement.style.opacity = '1';
+      }, 100);
+    }
+  }
+}
