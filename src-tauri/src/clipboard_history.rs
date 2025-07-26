@@ -289,6 +289,32 @@ pub fn delete_item_by_id(id: usize) -> Result<(), String> {
     delete_item_by_index(id)
 }
 
+// 更新剪贴板项目内容
+pub fn update_item_content(index: usize, new_content: String) -> Result<(), String> {
+    let mut history = CLIPBOARD_HISTORY.lock().unwrap();
+
+    if index >= history.len() {
+        return Err(format!(
+            "索引 {} 超出范围，当前历史记录数量: {}",
+            index,
+            history.len()
+        ));
+    }
+
+    // 更新指定索引的内容
+    if let Some(item) = history.get_mut(index) {
+        *item = new_content.clone();
+
+        // 保存到文件
+        save_history(&history);
+
+        println!("已更新索引为 {} 的剪贴板项目内容", index);
+        Ok(())
+    } else {
+        Err(format!("无法找到索引为 {} 的剪贴板项目", index))
+    }
+}
+
 // 清空所有剪贴板历史
 pub fn clear_all() -> Result<(), String> {
     let mut history = CLIPBOARD_HISTORY.lock().unwrap();

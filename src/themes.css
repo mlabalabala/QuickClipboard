@@ -28,7 +28,7 @@
 body {
   /* background-color: rgba(255, 255, 255, var(--window-opacity)); */
   background: transparent;
-  color: #666;
+  color: #222;
   transition: all var(--transition-duration) ease;
 }
 
@@ -448,7 +448,7 @@ body {
 /* =================== 亮色主题 =================== */
 body.theme-light {
   background-color: #ffffff;
-  color: #666;
+  color: #222;
 }
 
 .theme-light .title-bar {
@@ -548,7 +548,7 @@ body.theme-light {
 .theme-light .icon-select {
   background-color: white;
   border-color: #e0e0e0;
-  color: #333;
+  color: #222;
 }
 
 .theme-light .quick-text-title {
@@ -582,14 +582,14 @@ body.theme-light {
 }
 
 .theme-light .form-group label {
-  color: #666;
+  color: #222;
 }
 
 .theme-light .form-group input,
 .theme-light .form-group textarea {
   background-color: white;
   border-color: #e0e0e0;
-  color: #333;
+  color: #222;
 }
 
 .theme-light .toggle-label {
@@ -1260,11 +1260,17 @@ body.theme-dark {
 .theme-dark .context-menu {
   background: #2d2d2d !important;
   border-color: #404040 !important;
-  color: #e0e0e0;
+  color: #e0e0e0 !important;
 }
 
 .theme-dark .context-menu-item {
+  color: #e0e0e0 !important;
   border-bottom-color: #404040;
+}
+
+/* 最后一项 */
+.theme-dark .context-menu-item:last-child {
+  color: rgb(255, 77, 79) !important;
 }
 
 .theme-dark .context-menu-item:hover {

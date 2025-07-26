@@ -30,9 +30,18 @@ export async function setupClipboardEventListener() {
       console.log('收到剪贴板变化通知');
       refreshClipboardHistory();
     });
-    console.log('剪贴板事件监听器已设置');
+
+    // 监听常用文本刷新事件
+    await listen('refreshQuickTexts', () => {
+      console.log('收到常用文本刷新通知');
+      import('../js/quickTexts.js').then(module => {
+        module.refreshQuickTexts();
+      });
+    });
+
+    console.log('剪贴板和常用文本事件监听器已设置');
   } catch (error) {
-    console.error('设置剪贴板事件监听失败:', error);
+    console.error('设置事件监听失败:', error);
   }
 }
 

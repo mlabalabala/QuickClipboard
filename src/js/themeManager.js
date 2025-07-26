@@ -177,8 +177,10 @@ export function removeThemeChangeListener(listener) {
 /**
  * 通知主题变更
  */
-function notifyThemeChange() {
+async function notifyThemeChange() {
   const effectiveTheme = getEffectiveTheme();
+
+  // 通知本窗口的监听器
   themeChangeListeners.forEach(listener => {
     try {
       listener(currentTheme, effectiveTheme);
@@ -186,6 +188,15 @@ function notifyThemeChange() {
       console.error('主题变更监听器执行失败:', error);
     }
   });
+
+  // 发送事件到其他窗口
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('theme-changed', effectiveTheme);
+    console.log('已发送主题变化事件:', effectiveTheme);
+  } catch (error) {
+    console.error('发送主题变化事件失败:', error);
+  }
 }
 
 /**

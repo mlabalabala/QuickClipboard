@@ -515,7 +515,24 @@ async function clearClipboardHistory() {
 
 // 显示剪贴板右键菜单
 function showClipboardContextMenu(event, item, index) {
-  const menuItems = [
+  const menuItems = [];
+
+  // 检查是否为文本类型（非图片）
+  const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
+  const contentType = isImage ? 'image' : getContentType(item.text);
+
+  // 只对文本类型显示编辑选项
+  if (contentType === 'text' || contentType === 'link') {
+    menuItems.push({
+      icon: 'ti-edit',
+      text: '编辑',
+      onClick: async () => {
+        await openTextEditor(item, index);
+      }
+    });
+  }
+
+  menuItems.push(
     {
       icon: 'ti-star',
       text: '添加到常用文本',
@@ -545,12 +562,45 @@ function showClipboardContextMenu(event, item, index) {
         await clearClipboardHistory();
       }
     }
-  ];
+  );
 
   showContextMenu(event, {
     content: item.text,
     items: menuItems
   });
+}
+
+// 打开文本编辑器
+async function openTextEditor(item, index) {
+  try {
+    // 打开文本编辑窗口
+    await invoke('open_text_editor_window');
+
+    // 准备编辑数据
+    const editorData = {
+      index: index,
+      content: item.text,
+      title: `剪贴板项目 #${index + 1}`,
+      timestamp: item.timestamp
+    };
+
+    // 延迟发送数据，确保窗口已完全加载
+    setTimeout(async () => {
+      try {
+        // 获取编辑器窗口并发送数据
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit('editor-data', editorData);
+        console.log('已发送编辑数据到文本编辑器');
+      } catch (error) {
+        console.error('发送编辑数据失败:', error);
+        showNotification('打开编辑器失败', 'error');
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error('打开文本编辑器失败:', error);
+    showNotification('打开编辑器失败', 'error');
+  }
 }
 
 // 创建图片元素（支持延迟加载）

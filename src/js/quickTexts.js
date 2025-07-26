@@ -64,7 +64,7 @@ export function filterQuickTexts() {
   renderQuickTexts();
 }
 
-// 显示常用文本模态框
+// 显示常用文本模态框（用于添加新文本）
 export function showQuickTextModal(text = null) {
   setEditingQuickTextId(text ? text.id : null);
 
@@ -94,8 +94,38 @@ export function hideQuickTextModal() {
 }
 
 // 编辑常用文本
-export function editQuickText(text) {
-  showQuickTextModal(text);
+export async function editQuickText(text) {
+  try {
+    // 打开文本编辑窗口
+    await invoke('open_text_editor_window');
+
+    // 准备编辑数据
+    const editorData = {
+      type: 'quick-text',
+      id: text.id,
+      title: text.title,
+      content: text.content,
+      groupId: text.group_id || text.groupId || '',
+      timestamp: text.timestamp
+    };
+
+    // 延迟发送数据，确保窗口已完全加载
+    setTimeout(async () => {
+      try {
+        // 获取编辑器窗口并发送数据
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit('editor-data', editorData);
+        console.log('已发送常用文本编辑数据到文本编辑器');
+      } catch (error) {
+        console.error('发送编辑数据失败:', error);
+        showNotification('打开编辑器失败', 'error');
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error('打开文本编辑器失败:', error);
+    showNotification('打开编辑器失败', 'error');
+  }
 }
 
 // 保存常用文本
@@ -244,7 +274,7 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
 
 // 设置常用文本功能
 export function setupQuickTexts() {
-  // 添加按钮
+  // 添加按钮 - 仍然使用模态框
   document.getElementById('add-quick-text-btn').addEventListener('click', () => {
     showQuickTextModal();
   });

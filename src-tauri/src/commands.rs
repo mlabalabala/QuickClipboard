@@ -654,6 +654,70 @@ pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// =================== 文本编辑窗口命令 ===================
+
+// 打开文本编辑窗口
+#[tauri::command]
+pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
+    // 检查文本编辑窗口是否已经存在
+    if let Some(editor_window) = app.get_webview_window("text-editor") {
+        // 如果窗口已存在，显示并聚焦
+        editor_window
+            .show()
+            .map_err(|e| format!("显示文本编辑窗口失败: {}", e))?;
+        editor_window
+            .set_focus()
+            .map_err(|e| format!("聚焦文本编辑窗口失败: {}", e))?;
+    } else {
+        // 如果窗口不存在，创建新窗口
+        let editor_window = tauri::WebviewWindowBuilder::new(
+            &app,
+            "text-editor",
+            tauri::WebviewUrl::App("textEditor.html".into()),
+        )
+        .title("文本编辑器 - 快速剪贴板")
+        .inner_size(800.0, 600.0)
+        .min_inner_size(400.0, 300.0)
+        .center()
+        .resizable(true)
+        .maximizable(true)
+        .decorations(false) // 去除标题栏
+        .build()
+        .map_err(|e| format!("创建文本编辑窗口失败: {}", e))?;
+
+        // 设置窗口圆角（Windows 11）
+        #[cfg(windows)]
+        {
+            if let Err(e) = crate::window_effects::set_window_rounded(&editor_window) {
+                println!("设置文本编辑窗口圆角失败: {}", e);
+            }
+        }
+
+        editor_window
+            .show()
+            .map_err(|e| format!("显示文本编辑窗口失败: {}", e))?;
+
+        // 设置窗口关闭事件处理
+        let app_handle = app.clone();
+        editor_window.on_window_event(move |event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                // 当编辑窗口关闭时，可以执行一些清理操作
+                println!("文本编辑窗口已关闭");
+            }
+        });
+
+        // 在开发模式下打开开发者工具
+        #[cfg(debug_assertions)]
+        {
+            editor_window.open_devtools();
+        }
+    }
+
+    Ok(())
+}
+
 // 获取设置
 #[tauri::command]
 pub fn get_settings() -> Result<serde_json::Value, String> {
@@ -942,10 +1006,52 @@ pub fn delete_clipboard_item(id: usize) -> Result<(), String> {
     clipboard_history::delete_item_by_id(id)
 }
 
+// 更新剪贴板项目内容
+#[tauri::command]
+pub fn update_clipboard_item(index: usize, content: String) -> Result<(), String> {
+    clipboard_history::update_item_content(index, content)
+}
+
 // 清空剪贴板历史
 #[tauri::command]
 pub fn clear_clipboard_history() -> Result<(), String> {
     clipboard_history::clear_all()
+}
+
+// 发送剪贴板更新事件
+#[tauri::command]
+pub async fn emit_clipboard_updated(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Emitter;
+
+    // 发送事件到主窗口
+    if let Some(main_window) = app.get_webview_window("main") {
+        let _ = main_window.emit("clipboard-changed", ());
+    }
+
+    // 发送事件到预览窗口
+    if let Some(preview_window) = app.get_webview_window("preview") {
+        let _ = preview_window.emit("clipboard-history-updated", ());
+    }
+
+    Ok(())
+}
+
+// 发送常用文本更新事件
+#[tauri::command]
+pub async fn emit_quick_texts_updated(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Emitter;
+
+    // 发送事件到主窗口
+    if let Some(main_window) = app.get_webview_window("main") {
+        let _ = main_window.emit("refreshQuickTexts", ());
+    }
+
+    // 发送事件到预览窗口
+    if let Some(preview_window) = app.get_webview_window("preview") {
+        let _ = preview_window.emit("quick-texts-updated", ());
+    }
+
+    Ok(())
 }
 
 // 通知预览窗口标签切换

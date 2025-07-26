@@ -98,7 +98,8 @@
       "capabilities": [
         "default",
         "settings",
-        "preview"
+        "preview",
+        "text-editor"
       ]
     }
   },
