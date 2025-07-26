@@ -12,7 +12,7 @@ import { showNotification } from './ui.js';
 let aiTranslationConfig = {
   enabled: false,
   apiKey: '',
-  model: 'deepseek-v3',
+  model: 'Qwen/Qwen2-7B-Instruct',
   baseUrl: 'https://api.siliconflow.cn/v1',
   targetLanguage: 'auto',
   translateOnCopy: false,
@@ -52,7 +52,7 @@ async function loadAiTranslationSettings() {
     aiTranslationConfig = {
       enabled: settings.aiTranslationEnabled || false,
       apiKey: settings.aiApiKey || '',
-      model: settings.aiModel || 'deepseek-v3',
+      model: settings.aiModel || 'Qwen/Qwen2-7B-Instruct',
       baseUrl: settings.aiBaseUrl || 'https://api.siliconflow.cn/v1',
       targetLanguage: settings.aiTargetLanguage || 'auto',
       translateOnCopy: settings.aiTranslateOnCopy || false,
@@ -187,15 +187,13 @@ async function broadcastAiTranslationStateChange(enabled) {
  * 显示AI翻译配置错误提示
  */
 function showAiTranslationConfigError() {
-  // 这里可以显示一个提示框，告诉用户需要先配置AI翻译设置
   console.warn('AI翻译配置无效，请先在设置中配置API密钥等信息');
 
+  // 使用自定义翻译通知系统显示错误提示
+  showTranslationNotification('请先配置API密钥和模型信息', 'error', 4000);
+
   // 可以考虑打开设置窗口并跳转到AI翻译设置页面
-  if (window.showAlert) {
-    window.showAlert('AI翻译配置无效', '请先在设置中配置API密钥、模型等信息后再启用AI翻译功能。');
-  } else {
-    alert('AI翻译配置无效，请先在设置中配置API密钥、模型等信息。');
-  }
+  // 这里可以添加自动打开设置页面的逻辑
 }
 
 /**
@@ -271,7 +269,7 @@ export async function translateAndInputText(text) {
     }
 
     console.log('开始翻译文本:', text);
-    await invoke('translate_and_input_text', { text });
+    await invoke('translate_text_smart', { text });
 
     // 如果使用了自动选择，恢复原始设置
     if (originalTargetLanguage !== null) {
@@ -468,96 +466,96 @@ export function isTextSuitableForTranslation(text) {
     return false;
   }
 
-  const trimmedText = text.trim();
+  // const trimmedText = text.trim();
 
-  // 过滤掉太短的文本
-  if (trimmedText.length < 2) {
-    return false;
-  }
+  // // 过滤掉太短的文本
+  // if (trimmedText.length < 2) {
+  //   return false;
+  // }
 
-  // 过滤掉太长的文本（超过5000字符）
-  if (trimmedText.length > 5000) {
-    console.warn('文本过长，不适合翻译:', trimmedText.length);
-    return false;
-  }
+  // // 过滤掉太长的文本（超过5000字符）
+  // if (trimmedText.length > 5000) {
+  //   console.warn('文本过长，不适合翻译:', trimmedText.length);
+  //   return false;
+  // }
 
-  // 过滤掉纯数字、纯符号等
-  const hasLetters = /[a-zA-Z\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(trimmedText);
-  if (!hasLetters) {
-    return false;
-  }
+  // // 过滤掉纯数字、纯符号等
+  // const hasLetters = /[a-zA-Z\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(trimmedText);
+  // if (!hasLetters) {
+  //   return false;
+  // }
 
-  // 过滤掉URL（更严格的检测）
-  const urlPatterns = [
-    /^https?:\/\/[^\s]+$/i,
-    /^ftp:\/\/[^\s]+$/i,
-    /^www\.[^\s]+\.[a-z]{2,}$/i,
-    /^[a-zA-Z0-9-]+\.[a-z]{2,}(\/[^\s]*)?$/i
-  ];
+  // // 过滤掉URL（更严格的检测）
+  // const urlPatterns = [
+  //   /^https?:\/\/[^\s]+$/i,
+  //   /^ftp:\/\/[^\s]+$/i,
+  //   /^www\.[^\s]+\.[a-z]{2,}$/i,
+  //   /^[a-zA-Z0-9-]+\.[a-z]{2,}(\/[^\s]*)?$/i
+  // ];
 
-  for (const pattern of urlPatterns) {
-    if (pattern.test(trimmedText)) {
-      return false;
-    }
-  }
+  // for (const pattern of urlPatterns) {
+  //   if (pattern.test(trimmedText)) {
+  //     return false;
+  //   }
+  // }
 
-  // 过滤掉邮箱地址
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (emailPattern.test(trimmedText)) {
-    return false;
-  }
+  // // 过滤掉邮箱地址
+  // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // if (emailPattern.test(trimmedText)) {
+  //   return false;
+  // }
 
-  // 过滤掉文件路径（Windows和Unix）
-  const filePathPatterns = [
-    /^[a-zA-Z]:\\[^\s]*$/,  // Windows路径
-    /^\/[^\s]*$/,           // Unix路径
-    /^~\/[^\s]*$/,          // 用户目录路径
-    /^\.\/[^\s]*$/,         // 相对路径
-    /^\.\.\/[^\s]*$/        // 上级目录路径
-  ];
+  // // 过滤掉文件路径（Windows和Unix）
+  // const filePathPatterns = [
+  //   /^[a-zA-Z]:\\[^\s]*$/,  // Windows路径
+  //   /^\/[^\s]*$/,           // Unix路径
+  //   /^~\/[^\s]*$/,          // 用户目录路径
+  //   /^\.\/[^\s]*$/,         // 相对路径
+  //   /^\.\.\/[^\s]*$/        // 上级目录路径
+  // ];
 
-  for (const pattern of filePathPatterns) {
-    if (pattern.test(trimmedText)) {
-      return false;
-    }
-  }
-  // 过滤掉代码片段（更全面的检测）
-  const codePatterns = [
-    /^\s*[\{\[\(].*[\}\]\)]\s*$/s, // 包含大括号、方括号、圆括号的内容
-    /^\s*<[^>]+>.*<\/[^>]+>\s*$/s, // HTML标签
-    /^\s*function\s+\w+\s*\(/i, // JavaScript函数
-    /^\s*def\s+\w+\s*\(/i, // Python函数
-    /^\s*class\s+\w+/i, // 类定义
-    /^\s*import\s+/i, // 导入语句
-    /^\s*#include\s+/i, // C/C++包含语句
-    /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL查询
-    /^\s*\w+\s*=\s*\w+\s*\([^)]*\)\s*;?\s*$/i, // 函数调用
-    /^\s*\/\*.*\*\/\s*$/s, // 多行注释
-    /^\s*\/\/.*$/m, // 单行注释
-    /^\s*#.*$/m, // Shell注释或预处理指令
-    /^\s*<!--.*-->\s*$/s, // HTML注释
-    /^\s*\{[^}]*\}\s*$/s, // JSON对象
-    /^\s*\[[^\]]*\]\s*$/s, // JSON数组
-  ];
-  for (const pattern of codePatterns) {
-    if (pattern.test(trimmedText)) {
-      return false;
-    }
-  }
+  // for (const pattern of filePathPatterns) {
+  //   if (pattern.test(trimmedText)) {
+  //     return false;
+  //   }
+  // }
+  // // 过滤掉代码片段（更全面的检测）
+  // const codePatterns = [
+  //   /^\s*[\{\[\(].*[\}\]\)]\s*$/s, // 包含大括号、方括号、圆括号的内容
+  //   /^\s*<[^>]+>.*<\/[^>]+>\s*$/s, // HTML标签
+  //   /^\s*function\s+\w+\s*\(/i, // JavaScript函数
+  //   /^\s*def\s+\w+\s*\(/i, // Python函数
+  //   /^\s*class\s+\w+/i, // 类定义
+  //   /^\s*import\s+/i, // 导入语句
+  //   /^\s*#include\s+/i, // C/C++包含语句
+  //   /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL查询
+  //   /^\s*\w+\s*=\s*\w+\s*\([^)]*\)\s*;?\s*$/i, // 函数调用
+  //   /^\s*\/\*.*\*\/\s*$/s, // 多行注释
+  //   /^\s*\/\/.*$/m, // 单行注释
+  //   /^\s*#.*$/m, // Shell注释或预处理指令
+  //   /^\s*<!--.*-->\s*$/s, // HTML注释
+  //   /^\s*\{[^}]*\}\s*$/s, // JSON对象
+  //   /^\s*\[[^\]]*\]\s*$/s, // JSON数组
+  // ];
+  // for (const pattern of codePatterns) {
+  //   if (pattern.test(trimmedText)) {
+  //     return false;
+  //   }
+  // }
 
-  // 过滤掉特殊字符过多的文本
-  const specialCharCount = (trimmedText.match(/[^\w\s\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
-  const specialCharRatio = specialCharCount / trimmedText.length;
-  if (specialCharRatio > 0.5) {
-    return false;
-  }
+  // // 过滤掉特殊字符过多的文本
+  // const specialCharCount = (trimmedText.match(/[^\w\s\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
+  // const specialCharRatio = specialCharCount / trimmedText.length;
+  // if (specialCharRatio > 0.5) {
+  //   return false;
+  // }
 
-  // 过滤掉重复字符过多的文本（调整阈值，避免误判正常英文文本）
-  const uniqueChars = new Set(trimmedText.toLowerCase()).size;
-  const uniqueRatio = uniqueChars / trimmedText.length;
-  if (uniqueRatio < 0.03 && trimmedText.length > 20) {
-    return false;
-  }
+  // // 过滤掉重复字符过多的文本（调整阈值，避免误判正常英文文本）
+  // const uniqueChars = new Set(trimmedText.toLowerCase()).size;
+  // const uniqueRatio = uniqueChars / trimmedText.length;
+  // if (uniqueRatio < 0.03 && trimmedText.length > 20) {
+  //   return false;
+  // }
 
   return true;
 }

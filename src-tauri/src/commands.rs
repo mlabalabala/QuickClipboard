@@ -1136,15 +1136,18 @@ pub fn disable_ai_translation_cancel_shortcut() -> Result<(), String> {
     Ok(())
 }
 
-/// 翻译文本并流式输入
+/// 翻译文本并直接粘贴（非流式）
 #[tauri::command]
-pub async fn translate_and_input_text(text: String) -> Result<(), String> {
+pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
     // 重置取消状态
     TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
 
     // 启用AI翻译取消快捷键
     #[cfg(windows)]
     crate::keyboard_hook::enable_ai_translation_cancel();
+
+    // 确保在函数结束时禁用快捷键
+    let _guard = TranslationGuard;
 
     let settings = crate::settings::get_global_settings();
 
@@ -1157,6 +1160,83 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     if !crate::ai_translator::is_translation_config_valid(&settings) {
         return Err("AI翻译配置不完整".to_string());
     }
+
+    // 预处理输入文本
+    let processed_text = preprocess_translation_text(&text)?;
+
+    // 创建翻译配置
+    let translation_config = crate::ai_translator::config_from_settings(&settings);
+
+    // 创建翻译器
+    let translator = match crate::ai_translator::AITranslator::new(translation_config) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("创建翻译器失败: {}", e)),
+    };
+
+    // 开始翻译（非流式）
+    match translator.translate(&processed_text).await {
+        Ok(translated_text) => {
+            // 检查是否被取消
+            if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
+                println!("翻译在粘贴前被用户取消");
+                return Err("翻译已被取消".to_string());
+            }
+
+            println!("翻译完成，结果长度: {} 字符", translated_text.len());
+
+            // 设置剪贴板内容并粘贴
+            crate::clipboard_monitor::set_pasting_state(true);
+
+            // 使用现有的剪贴板设置功能
+            set_clipboard_content_no_history(translated_text)?;
+
+            // 执行粘贴操作
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(10));
+                #[cfg(windows)]
+                windows_paste();
+
+                // 播放粘贴音效
+                crate::sound_manager::play_paste_sound();
+
+                // 粘贴完成后重置粘贴状态
+                thread::sleep(Duration::from_millis(500));
+                crate::clipboard_monitor::set_pasting_state(false);
+            });
+
+            Ok(())
+        }
+        Err(e) => Err(format!("翻译失败: {}", e)),
+    }
+}
+
+/// 翻译文本并流式输入（改进版本）
+#[tauri::command]
+pub async fn translate_and_input_text(text: String) -> Result<(), String> {
+    // 重置取消状态
+    TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
+
+    // 启用AI翻译取消快捷键
+    #[cfg(windows)]
+    crate::keyboard_hook::enable_ai_translation_cancel();
+
+    // 确保在函数结束时禁用快捷键
+    let _guard = TranslationGuard;
+
+    let settings = crate::settings::get_global_settings();
+
+    // 检查翻译是否启用
+    if !settings.ai_translation_enabled {
+        return Err("AI翻译功能未启用".to_string());
+    }
+
+    // 检查配置是否有效
+    if !crate::ai_translator::is_translation_config_valid(&settings) {
+        return Err("AI翻译配置不完整".to_string());
+    }
+
+    // 预处理输入文本
+    let processed_text = preprocess_translation_text(&text)?;
 
     // 创建翻译配置
     let translation_config = crate::ai_translator::config_from_settings(&settings);
@@ -1172,16 +1252,16 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     crate::text_input_simulator::update_global_input_simulator_config(input_config);
 
     // 开始翻译
-    match translator.translate_stream(&text).await {
+    match translator.translate_stream(&processed_text).await {
         Ok(mut receiver) => {
+            let mut accumulated_text = String::new();
+            let mut chunk_count = 0;
+
             // 处理流式响应并实时输入
             while let Some(translation_result) = receiver.recv().await {
                 // 检查是否被取消
                 if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
                     println!("翻译被用户取消");
-                    // 禁用AI翻译取消快捷键
-                    #[cfg(windows)]
-                    crate::keyboard_hook::disable_ai_translation_cancel();
                     return Err("翻译已被取消".to_string());
                 }
 
@@ -1193,36 +1273,119 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
                             return Err("翻译已被取消".to_string());
                         }
 
-                        // 流式输入翻译片段
-                        if let Err(e) =
-                            crate::text_input_simulator::simulate_text_chunk_input(&chunk).await
+                        // 详细的AI返回内容调试
+                        let newline_count = chunk.matches('\n').count();
+                        let has_digits = chunk.chars().any(|c| c.is_ascii_digit());
+                        let has_colon = chunk.contains(':') || chunk.contains('：');
+
+                        if newline_count > 0 || has_digits || has_colon || chunk.len() > 20 {
+                            println!(
+                                "AI片段{}: 长度={}, 换行符={}, 数字={}, 冒号={}, 内容: {:?}",
+                                chunk_count + 1,
+                                chunk.len(),
+                                newline_count,
+                                has_digits,
+                                has_colon,
+                                chunk
+                            );
+                        }
+
+                        // 累积文本用于错误恢复
+                        accumulated_text.push_str(&chunk);
+                        chunk_count += 1;
+
+                        // 使用改进的智能输入方法
+                        match crate::text_input_simulator::simulate_text_chunk_input_smart(&chunk)
+                            .await
                         {
-                            println!("输入翻译片段失败: {}", e);
+                            Ok(()) => {
+                                // 成功时不输出信息，减少日志噪音
+                            }
+                            Err(e) => {
+                                println!("输入失败: {}", e);
+
+                                // 尝试使用降级输入方法
+                                match crate::text_input_simulator::simulate_text_chunk_input_precise(&chunk).await {
+                                    Ok(()) => {
+                                        println!("降级输入成功");
+                                    }
+                                    Err(fallback_error) => {
+                                        println!("降级输入也失败: {}", fallback_error);
+                                        // 继续处理下一个片段，而不是完全失败
+                                    }
+                                }
+                            }
                         }
                     }
                     crate::ai_translator::TranslationResult::Complete => {
+                        println!(
+                            "翻译完成，总共处理 {} 个片段，累积长度: {}",
+                            chunk_count,
+                            accumulated_text.len()
+                        );
                         break;
                     }
                     crate::ai_translator::TranslationResult::Error(e) => {
-                        // 禁用AI翻译取消快捷键
-                        #[cfg(windows)]
-                        crate::keyboard_hook::disable_ai_translation_cancel();
                         return Err(format!("翻译失败: {}", e));
                     }
                 }
             }
 
-            // 翻译成功完成，禁用AI翻译取消快捷键
-            #[cfg(windows)]
-            crate::keyboard_hook::disable_ai_translation_cancel();
-
             Ok(())
         }
-        Err(e) => {
-            // 翻译启动失败，禁用AI翻译取消快捷键
-            #[cfg(windows)]
-            crate::keyboard_hook::disable_ai_translation_cancel();
-            Err(format!("启动翻译失败: {}", e))
+        Err(e) => Err(format!("启动翻译失败: {}", e)),
+    }
+}
+
+/// 翻译守护结构，确保在函数结束时清理资源
+struct TranslationGuard;
+
+impl Drop for TranslationGuard {
+    fn drop(&mut self) {
+        #[cfg(windows)]
+        crate::keyboard_hook::disable_ai_translation_cancel();
+    }
+}
+
+/// 预处理翻译文本
+fn preprocess_translation_text(text: &str) -> Result<String, String> {
+    // 检查文本长度
+    if text.is_empty() {
+        return Err("输入文本为空".to_string());
+    }
+
+    if text.len() > 50_000 {
+        return Err("输入文本过长，超过50KB限制".to_string());
+    }
+
+    // 规范化文本格式
+    let normalized = text
+        .replace("\r\n", "\n") // 统一换行符
+        .replace('\r', "\n"); // 处理Mac格式换行符
+
+    // 移除过多的连续空行（保留最多2个连续换行）
+    let cleaned = regex::Regex::new(r"\n{3,}")
+        .unwrap()
+        .replace_all(&normalized, "\n\n")
+        .to_string();
+
+    Ok(cleaned)
+}
+
+/// 智能翻译文本（根据设置选择流式输入或直接粘贴）
+#[tauri::command]
+pub async fn translate_text_smart(text: String) -> Result<(), String> {
+    let settings = crate::settings::get_global_settings();
+
+    // 根据输出模式设置选择翻译方式
+    match settings.ai_output_mode.as_str() {
+        "paste" => {
+            println!("使用直接粘贴模式进行翻译");
+            translate_and_paste_text(text).await
+        }
+        "stream" | _ => {
+            println!("使用流式输入模式进行翻译");
+            translate_and_input_text(text).await
         }
     }
 }

@@ -197,6 +197,33 @@ impl AITranslator {
         Ok(Self { client, config })
     }
 
+    /// 翻译文本（非流式，返回完整结果）
+    pub async fn translate(&self, text: &str) -> Result<String, TranslationError> {
+        let mut receiver = self.translate_stream(text).await?;
+        let mut result = String::new();
+
+        // 收集所有流式响应片段
+        while let Some(translation_result) = receiver.recv().await {
+            match translation_result {
+                TranslationResult::Chunk(chunk) => {
+                    result.push_str(&chunk);
+                }
+                TranslationResult::Complete => {
+                    break;
+                }
+                TranslationResult::Error(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        if result.is_empty() {
+            Err(TranslationError::ConfigError("翻译结果为空".to_string()))
+        } else {
+            Ok(result)
+        }
+    }
+
     /// 翻译文本（流式）
     pub async fn translate_stream(
         &self,

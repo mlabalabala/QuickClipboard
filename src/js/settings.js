@@ -76,13 +76,15 @@ const defaultSettings = {
   // AI翻译设置
   aiTranslationEnabled: false,
   aiApiKey: '',
-  aiModel: 'deepseek-v3',
+  aiModel: 'Qwen/Qwen2-7B-Instruct',
   aiBaseUrl: 'https://api.siliconflow.cn/v1',
   aiTargetLanguage: 'auto',
   aiTranslateOnCopy: false,
   aiTranslateOnPaste: true,
   aiTranslationPrompt: '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
-  aiInputSpeed: 50
+  aiInputSpeed: 50,
+  aiNewlineMode: 'auto',
+  aiOutputMode: 'stream'
 };
 
 // 加载设置
@@ -184,6 +186,8 @@ function initializeUI() {
   document.getElementById('ai-translate-on-paste').checked = settings.aiTranslateOnPaste;
   document.getElementById('ai-translation-prompt').value = settings.aiTranslationPrompt;
   document.getElementById('ai-input-speed').value = settings.aiInputSpeed;
+  document.getElementById('ai-newline-mode').value = settings.aiNewlineMode;
+  document.getElementById('ai-output-mode').value = settings.aiOutputMode;
 
   // 更新AI输入速度显示
   updateAiInputSpeedDisplay(settings.aiInputSpeed);
@@ -280,7 +284,7 @@ function bindSettingEvents() {
     'screenshot-auto-save', 'screenshot-show-hints',
     'ai-translation-enabled', 'ai-api-key', 'ai-model', 'ai-base-url',
     'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
-    'ai-translation-prompt', 'ai-input-speed'
+    'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode'
   ];
 
   settingInputs.forEach(id => {
@@ -1111,6 +1115,49 @@ function bindAiTranslationEvents() {
     });
   }
 
+  // AI换行符处理模式选择
+  const aiNewlineModeSelect = document.getElementById('ai-newline-mode');
+  if (aiNewlineModeSelect) {
+    aiNewlineModeSelect.addEventListener('change', (e) => {
+      settings.aiNewlineMode = e.target.value;
+      console.log('AI换行符处理模式已更新:', e.target.value);
+      saveSettings();
+    });
+  }
+
+  // AI输出模式选择
+  const aiOutputModeSelect = document.getElementById('ai-output-mode');
+  if (aiOutputModeSelect) {
+    aiOutputModeSelect.addEventListener('change', (e) => {
+      settings.aiOutputMode = e.target.value;
+      console.log('AI输出模式已更新:', e.target.value);
+      saveSettings();
+    });
+  }
+
+  // API密钥输入框 - 当用户输入密钥后自动刷新模型列表
+  const apiKeyInput = document.getElementById('ai-api-key');
+  if (apiKeyInput) {
+    let refreshTimeout = null;
+
+    apiKeyInput.addEventListener('input', (e) => {
+      const apiKey = e.target.value.trim();
+
+      // 清除之前的定时器
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+
+      // 如果API密钥不为空且长度合理，延迟刷新模型列表
+      if (apiKey && apiKey.length > 10) {
+        refreshTimeout = setTimeout(async () => {
+          console.log('API密钥已更新，自动刷新模型列表...');
+          await refreshAiModelsList(true); // silent模式
+        }, 1500); // 延迟1.5秒，避免频繁请求
+      }
+    });
+  }
+
   // 刷新AI模型列表按钮
   const refreshModelsButton = document.getElementById('refresh-ai-models');
   if (refreshModelsButton) {
@@ -1261,14 +1308,31 @@ async function refreshAiModelsList(silent = false) {
       modelSelect.insertBefore(option, modelSelect.firstChild);
     }
 
-    // 恢复之前选中的模型，不要自动改变用户的选择
-    if (currentModel) {
-      modelSelect.value = currentModel;
-    } else if (models.length > 0) {
-      // 只有在没有保存的模型时才选择第一个
-      modelSelect.value = models[0];
-      settings.aiModel = models[0];
-      await saveSettings();
+    // 智能选择模型：优先选择推荐模型，然后是当前模型，最后是第一个可用模型
+    let selectedModel = null;
+
+    // 1. 如果推荐模型可用，优先选择它
+    const recommendedModel = 'Qwen/Qwen2-7B-Instruct';
+    if (models.includes(recommendedModel)) {
+      selectedModel = recommendedModel;
+    }
+    // 2. 如果当前模型仍然可用，保持选择
+    else if (currentModel && models.includes(currentModel)) {
+      selectedModel = currentModel;
+    }
+    // 3. 否则选择第一个可用模型
+    else if (models.length > 0) {
+      selectedModel = models[0];
+    }
+
+    if (selectedModel) {
+      modelSelect.value = selectedModel;
+      // 只有在模型发生变化时才更新设置
+      if (settings.aiModel !== selectedModel) {
+        settings.aiModel = selectedModel;
+        await saveSettings();
+        console.log('自动选择AI模型:', selectedModel);
+      }
     }
 
     if (!silent) {
@@ -1302,6 +1366,7 @@ async function refreshAiModelsList(silent = false) {
 function getModelDisplayName(modelId) {
   // 常见模型的友好名称映射
   const modelNames = {
+    'Qwen/Qwen2-7B-Instruct': 'Qwen2-7B-Instruct（推荐）',
     'deepseek-v3': 'DeepSeek V3',
     'deepseek-chat': 'DeepSeek Chat',
     'deepseek-coder': 'DeepSeek Coder',

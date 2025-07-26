@@ -351,6 +351,7 @@
               <div class="setting-control">
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <select id="ai-model" class="setting-select" style="flex: 1;">
+                    <option value="Qwen/Qwen2-7B-Instruct">Qwen2-7B-Instruct（推荐）</option>
                     <option value="deepseek-v3">DeepSeek V3</option>
                     <option value="qwen-turbo">通义千问 Turbo</option>
                     <option value="chatglm3-6b">ChatGLM3-6B</option>
@@ -423,13 +424,41 @@
             <div class="setting-item">
               <div class="setting-info">
                 <label class="setting-label">输入速度</label>
-                <p class="setting-description">翻译结果的输入速度（字符/秒）</p>
+                <p class="setting-description">翻译结果的输入速度（字符/秒），过高的值可能会导致字符丢失，最好保持默认值！</p>
               </div>
               <div class="setting-control">
                 <div class="slider-container">
                   <input type="range" id="ai-input-speed" min="10" max="100" step="5" value="50">
                   <span class="slider-value">50 字符/秒</span>
                 </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">输出模式</label>
+                <p class="setting-description">选择翻译结果的输出方式。"流式输出"实时显示翻译过程，"直接粘贴"等翻译完成后一次性粘贴</p>
+              </div>
+              <div class="setting-control">
+                <select id="ai-output-mode" class="setting-select">
+                  <option value="stream">流式输出（推荐）</option>
+                  <option value="paste">直接粘贴</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">换行符处理</label>
+                <p class="setting-description">选择翻译输入时如何处理换行符。"自动选择"兼容性最好，"Shift+Enter"可避免在某些程序中自动提交</p>
+              </div>
+              <div class="setting-control">
+                <select id="ai-newline-mode" class="setting-select">
+                  <option value="auto">自动选择（推荐）</option>
+                  <option value="shift_enter">Shift+Enter</option>
+                  <option value="enter">Enter键</option>
+                  <option value="unicode">Unicode换行符</option>
+                </select>
               </div>
             </div>
 

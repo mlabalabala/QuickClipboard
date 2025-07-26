@@ -50,7 +50,9 @@ pub struct AppSettings {
     pub ai_translate_on_copy: bool,
     pub ai_translate_on_paste: bool,
     pub ai_translation_prompt: String,
-    pub ai_input_speed: u32, // 输入速度，字符/秒
+    pub ai_input_speed: u32,     // 输入速度，字符/秒
+    pub ai_newline_mode: String, // 换行符处理模式：auto, enter, shift_enter, unicode
+    pub ai_output_mode: String,  // 输出模式：stream（流式输出）, paste（直接粘贴）
 }
 
 impl Default for AppSettings {
@@ -95,7 +97,7 @@ impl Default for AppSettings {
             // AI翻译设置默认值
             ai_translation_enabled: false,
             ai_api_key: "".to_string(),
-            ai_model: "deepseek-v3".to_string(),
+            ai_model: "Qwen/Qwen2-7B-Instruct".to_string(),
             ai_base_url: "https://api.siliconflow.cn/v1".to_string(),
             ai_target_language: "auto".to_string(),
             ai_translate_on_copy: false,
@@ -103,7 +105,9 @@ impl Default for AppSettings {
             ai_translation_prompt:
                 "请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式："
                     .to_string(),
-            ai_input_speed: 50, // 50字符/秒
+            ai_input_speed: 50,                // 50字符/秒
+            ai_newline_mode: "auto".to_string(), // 默认使用自动模式，兼容性最好
+            ai_output_mode: "stream".to_string(), // 默认使用流式输出
         }
     }
 }
@@ -358,6 +362,14 @@ impl AppSettings {
         if let Some(v) = json.get("aiInputSpeed").and_then(|v| v.as_u64()) {
             println!("更新AI输入速度: {}", v);
             self.ai_input_speed = v as u32;
+        }
+        if let Some(v) = json.get("aiNewlineMode").and_then(|v| v.as_str()) {
+            println!("更新AI换行符处理模式: {}", v);
+            self.ai_newline_mode = v.to_string();
+        }
+        if let Some(v) = json.get("aiOutputMode").and_then(|v| v.as_str()) {
+            println!("更新AI输出模式: {}", v);
+            self.ai_output_mode = v.to_string();
         }
     }
 }

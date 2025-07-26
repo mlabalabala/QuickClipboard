@@ -464,6 +464,8 @@ pub fn run() {
             screenshot::take_fullscreen_screenshot,
             commands::test_ai_translation,
             commands::translate_and_input_text,
+            commands::translate_and_paste_text,
+            commands::translate_text_smart,
             commands::check_ai_translation_config,
             commands::get_available_ai_models,
             commands::cancel_translation,
