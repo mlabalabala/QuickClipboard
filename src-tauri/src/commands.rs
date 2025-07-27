@@ -603,7 +603,17 @@ pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 
     // 检查设置窗口是否已经存在
     if let Some(settings_window) = app.get_webview_window("settings") {
-        // 如果窗口已存在，显示并聚焦
+        // 如果窗口已存在，检查是否最小化并恢复
+        let is_minimized = settings_window.is_minimized().unwrap_or(false);
+
+        if is_minimized {
+            // 如果窗口被最小化，先取消最小化
+            settings_window
+                .unminimize()
+                .map_err(|e| format!("取消最小化设置窗口失败: {}", e))?;
+        }
+
+        // 显示并聚焦窗口
         settings_window
             .show()
             .map_err(|e| format!("显示设置窗口失败: {}", e))?;
