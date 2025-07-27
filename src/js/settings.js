@@ -1397,8 +1397,21 @@ function bindAiTranslationEvents() {
     if (element) {
       element.addEventListener('change', async () => {
         try {
-          // 发送AI翻译设置更新事件到主窗口
-          await emit('ai-translation-settings-updated', settings);
+          // 收集当前表单的最新AI翻译设置值
+          const currentAiSettings = {
+            aiTargetLanguage: document.getElementById('ai-target-language')?.value || settings.aiTargetLanguage,
+            aiTranslateOnCopy: document.getElementById('ai-translate-on-copy')?.checked || false,
+            aiTranslateOnPaste: document.getElementById('ai-translate-on-paste')?.checked || false,
+            aiTranslationPrompt: document.getElementById('ai-translation-prompt')?.value || settings.aiTranslationPrompt,
+            aiInputSpeed: parseInt(document.getElementById('ai-input-speed')?.value) || settings.aiInputSpeed,
+            aiNewlineMode: document.getElementById('ai-newline-mode')?.value || settings.aiNewlineMode,
+            aiOutputMode: document.getElementById('ai-output-mode')?.value || settings.aiOutputMode
+          };
+
+          console.log('发送最新的AI翻译设置:', currentAiSettings);
+
+          // 发送AI翻译设置更新事件到主窗口，使用最新的设置值
+          await emit('ai-translation-settings-updated', currentAiSettings);
         } catch (error) {
           console.error('发送AI翻译设置更新事件失败:', error);
         }

@@ -20,7 +20,7 @@ import {
 let aiTranslationConfig = {
   targetLanguage: 'auto',
   translateOnCopy: false,
-  translateOnPaste: true,
+  translateOnPaste: false, // 默认关闭，等待从后端加载真实设置
   translationPrompt: '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
   inputSpeed: 50
 };
@@ -73,11 +73,14 @@ async function loadAiTranslationSettings() {
 
     aiTranslationConfig = {
       targetLanguage: settings.aiTargetLanguage || 'auto',
-      translateOnCopy: settings.aiTranslateOnCopy || false,
-      translateOnPaste: settings.aiTranslateOnPaste || true,
+      translateOnCopy: settings.aiTranslateOnCopy === true, // 明确使用布尔值，避免默认值覆盖
+      translateOnPaste: settings.aiTranslateOnPaste === true, // 明确使用布尔值，避免默认值覆盖
       translationPrompt: settings.aiTranslationPrompt || '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
       inputSpeed: settings.aiInputSpeed || 50
     };
+
+    console.log('AI翻译配置加载完成:', aiTranslationConfig);
+    console.log('后端设置值 - aiTranslateOnPaste:', settings.aiTranslateOnPaste, '类型:', typeof settings.aiTranslateOnPaste);
 
     // 更新UI状态
     setIsAiTranslationEnabled(settings.aiTranslationEnabled);
@@ -156,8 +159,23 @@ async function setupAiTranslationEventListeners() {
     await listen('ai-translation-settings-updated', (event) => {
       console.log('收到AI翻译设置更新事件:', event.payload);
 
-      // 重新加载设置
-      loadAiTranslationSettings();
+      // 直接使用接收到的最新设置更新本地配置
+      const newSettings = event.payload;
+      if (newSettings) {
+        aiTranslationConfig = {
+          targetLanguage: newSettings.aiTargetLanguage || aiTranslationConfig.targetLanguage,
+          translateOnCopy: newSettings.aiTranslateOnCopy === true, // 明确使用布尔值
+          translateOnPaste: newSettings.aiTranslateOnPaste === true, // 明确使用布尔值
+          translationPrompt: newSettings.aiTranslationPrompt || aiTranslationConfig.translationPrompt,
+          inputSpeed: newSettings.aiInputSpeed || aiTranslationConfig.inputSpeed
+        };
+
+        console.log('AI翻译配置已更新:', aiTranslationConfig);
+        console.log('接收到的设置 - aiTranslateOnPaste:', newSettings.aiTranslateOnPaste, '类型:', typeof newSettings.aiTranslateOnPaste);
+      } else {
+        // 如果没有接收到具体设置，则重新加载
+        loadAiTranslationSettings();
+      }
     });
 
     // 监听后端发送的AI翻译取消事件
