@@ -26,9 +26,32 @@ function isInputFocused() {
 export async function setupClipboardEventListener() {
   try {
     // 监听来自后端的剪贴板变化事件
-    await listen('clipboard-changed', () => {
+    await listen('clipboard-changed', async () => {
       console.log('收到剪贴板变化通知');
+
+      // 刷新剪贴板历史
       refreshClipboardHistory();
+
+      // 检查是否需要复制时翻译
+      try {
+        // 首先检查是否正在粘贴状态，避免循环翻译
+        const isPasting = await invoke('is_currently_pasting');
+        if (isPasting) {
+          console.log('当前处于粘贴状态，跳过复制时翻译检查');
+          return;
+        }
+
+        // 获取最新的剪贴板内容
+        const clipboardText = await invoke('get_clipboard_text');
+        if (clipboardText && clipboardText.trim()) {
+          // 动态导入AI翻译模块并执行复制时翻译
+          const { translateAndInputOnCopy } = await import('./aiTranslation.js');
+          await translateAndInputOnCopy(clipboardText);
+        }
+      } catch (error) {
+        // 复制时翻译失败不应该影响正常的剪贴板功能
+        console.warn('复制时翻译检查失败:', error);
+      }
     });
 
     // 监听常用文本刷新事件

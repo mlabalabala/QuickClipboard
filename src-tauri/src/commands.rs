@@ -1496,6 +1496,166 @@ pub async fn translate_text_smart(text: String) -> Result<(), String> {
     }
 }
 
+/// 复制时翻译并直接输入到目标位置
+#[tauri::command]
+pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
+    // 重置取消状态
+    TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
+
+    // 启用AI翻译取消快捷键
+    #[cfg(windows)]
+    crate::keyboard_hook::enable_ai_translation_cancel();
+
+    // 确保在函数结束时禁用快捷键
+    let _guard = TranslationGuard;
+
+    let settings = crate::settings::get_global_settings();
+
+    // 检查翻译是否启用
+    if !settings.ai_translation_enabled {
+        return Err("AI翻译功能未启用".to_string());
+    }
+
+    // 检查配置是否有效
+    if !crate::ai_translator::is_translation_config_valid(&settings) {
+        return Err("AI翻译配置不完整".to_string());
+    }
+
+    // 预处理输入文本
+    let processed_text = preprocess_translation_text(&text)?;
+
+    // 创建翻译配置和输入配置
+    let translation_config = crate::ai_translator::config_from_settings(&settings);
+    let input_config = crate::text_input_simulator::config_from_settings(&settings);
+
+    // 创建翻译器
+    let translator = match crate::ai_translator::AITranslator::new(translation_config) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("创建翻译器失败: {}", e)),
+    };
+
+    // 更新输入模拟器配置
+    crate::text_input_simulator::update_global_input_simulator_config(input_config);
+
+    println!("开始复制时翻译，原文长度: {} 字符", processed_text.len());
+
+    // 根据输出模式选择翻译方式
+    match settings.ai_output_mode.as_str() {
+        "paste" => {
+            // 直接粘贴模式：翻译后设置剪贴板并粘贴
+            println!("复制时翻译使用直接粘贴模式");
+            match translator.translate(&processed_text).await {
+                Ok(translated_text) => {
+                    // 检查是否被取消
+                    if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
+                        println!("翻译在粘贴前被用户取消");
+                        return Err("翻译已被取消".to_string());
+                    }
+
+                    println!("复制时翻译完成，结果长度: {} 字符", translated_text.len());
+
+                    // 设置粘贴状态，防止触发新的复制检测
+                    crate::clipboard_monitor::set_pasting_state(true);
+
+                    // 设置剪贴板内容并粘贴
+                    set_clipboard_content_no_history(translated_text)?;
+
+                    // 执行粘贴操作
+                    thread::spawn(move || {
+                        thread::sleep(Duration::from_millis(10));
+                        #[cfg(windows)]
+                        windows_paste();
+
+                        // 播放粘贴音效
+                        crate::sound_manager::play_paste_sound();
+
+                        // 粘贴完成后重置粘贴状态
+                        thread::sleep(Duration::from_millis(500));
+                        crate::clipboard_monitor::set_pasting_state(false);
+                    });
+
+                    Ok(())
+                }
+                Err(e) => Err(format!("复制时翻译失败: {}", e)),
+            }
+        }
+        "stream" | _ => {
+            // 流式输入模式：翻译后直接输入到目标位置
+            println!("复制时翻译使用流式输入模式");
+            match translator.translate_stream(&processed_text).await {
+                Ok(mut receiver) => {
+                    let mut accumulated_text = String::new();
+                    let mut chunk_count = 0;
+
+                    // 处理流式翻译结果
+                    loop {
+                        // 检查是否被取消
+                        if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
+                            println!("复制时翻译被用户取消");
+                            return Err("翻译已被取消".to_string());
+                        }
+
+                        match receiver.recv().await {
+                            Some(result) => match result {
+                                crate::ai_translator::TranslationResult::Chunk(chunk) => {
+                                    // 累积文本用于错误恢复
+                                    accumulated_text.push_str(&chunk);
+                                    chunk_count += 1;
+
+                                    // 使用改进的智能输入方法
+                                    match crate::text_input_simulator::simulate_text_chunk_input_smart(&chunk).await {
+                                        Ok(()) => {
+                                            // 成功时不输出信息，减少日志噪音
+                                        }
+                                        Err(e) => {
+                                            println!("输入失败: {}", e);
+
+                                            // 尝试使用降级输入方法
+                                            match crate::text_input_simulator::simulate_text_chunk_input_precise(&chunk).await {
+                                                Ok(()) => {
+                                                    println!("降级输入成功");
+                                                }
+                                                Err(fallback_error) => {
+                                                    println!("降级输入也失败: {}", fallback_error);
+                                                    // 继续处理下一个片段，而不是完全失败
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                crate::ai_translator::TranslationResult::Complete => {
+                                    println!(
+                                        "复制时翻译完成，总共处理 {} 个片段，累积长度: {}",
+                                        chunk_count,
+                                        accumulated_text.len()
+                                    );
+                                    break;
+                                }
+                                crate::ai_translator::TranslationResult::Error(e) => {
+                                    return Err(format!("复制时翻译失败: {}", e));
+                                }
+                            },
+                            None => {
+                                println!("翻译流意外结束");
+                                break;
+                            }
+                        }
+                    }
+
+                    Ok(())
+                }
+                Err(e) => Err(format!("启动复制时翻译失败: {}", e)),
+            }
+        }
+    }
+}
+
+/// 检查当前是否处于粘贴状态
+#[tauri::command]
+pub fn is_currently_pasting() -> bool {
+    crate::clipboard_monitor::is_currently_pasting()
+}
+
 /// 检查AI翻译配置是否有效
 #[tauri::command]
 pub fn check_ai_translation_config() -> Result<bool, String> {

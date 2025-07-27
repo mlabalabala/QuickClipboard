@@ -412,6 +412,69 @@ function getTranslationErrorMessage(error) {
 }
 
 /**
+ * 复制时翻译文本并直接输入到目标位置
+ * @param {string} text - 要翻译的文本
+ * @returns {Promise<void>}
+ */
+export async function translateAndInputOnCopy(text) {
+  // 检查是否应该进行翻译
+  const translationCheck = shouldTranslateText(text, 'copy');
+  if (!translationCheck.should) {
+    console.log('跳过复制时翻译:', translationCheck.reason);
+    return;
+  }
+
+  console.log('开始复制时翻译:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+
+  // 显示翻译指示器
+  showTranslationIndicator('正在翻译复制的内容...');
+
+  try {
+    // 自动选择目标语言
+    let originalTargetLanguage = null;
+    if (aiTranslationConfig.targetLanguage === 'auto') {
+      const detectedLanguage = detectTextLanguage(text);
+      const targetLanguage = detectedLanguage === 'zh' ? 'en' : 'zh-CN';
+
+      originalTargetLanguage = aiTranslationConfig.targetLanguage;
+      await saveAiTranslationSetting('aiTargetLanguage', targetLanguage);
+      aiTranslationConfig.targetLanguage = targetLanguage;
+
+      console.log(`自动选择目标语言: ${detectedLanguage} -> ${targetLanguage}`);
+    }
+
+    // 调用后端翻译并直接输入到目标位置
+    await invoke('translate_and_input_on_copy', { text });
+
+    // 如果使用了自动选择，恢复原始设置
+    if (originalTargetLanguage !== null) {
+      await saveAiTranslationSetting('aiTargetLanguage', originalTargetLanguage);
+      aiTranslationConfig.targetLanguage = originalTargetLanguage;
+    }
+
+    // 翻译成功反馈
+    showTranslationNotification('复制内容已翻译并输入', 'success', 1500);
+    console.log('复制时翻译完成');
+  } catch (error) {
+    console.error('复制时翻译失败:', error);
+
+    // 如果使用了自动选择，确保恢复原始设置
+    if (originalTargetLanguage !== null) {
+      try {
+        await saveAiTranslationSetting('aiTargetLanguage', originalTargetLanguage);
+        aiTranslationConfig.targetLanguage = originalTargetLanguage;
+      } catch (restoreError) {
+        console.error('恢复目标语言设置失败:', restoreError);
+      }
+    }
+
+    showTranslationNotification(`复制时翻译失败: ${error}`, 'error', 3000);
+  } finally {
+    hideTranslationIndicator();
+  }
+}
+
+/**
  * 安全的翻译文本并输入（带降级处理）
  */
 export async function safeTranslateAndInputText(text, fallbackCallback) {

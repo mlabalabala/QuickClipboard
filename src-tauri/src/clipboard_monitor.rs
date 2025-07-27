@@ -76,12 +76,12 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
 
                 // 添加到历史记录，并检查是否真的添加了新内容
                 // 如果正在粘贴，不移动重复内容的位置
-                let move_duplicates = !is_currently_pasting();
+                let move_duplicates = !is_pasting_internal();
                 let was_added =
                     clipboard_history::add_to_history_with_check_and_move(content, move_duplicates);
 
                 // 只有在真正添加了新内容且非粘贴状态下才播放复制音效
-                if was_added && !is_currently_pasting() {
+                if was_added && !is_pasting_internal() {
                     crate::sound_manager::play_copy_sound();
                 }
 
@@ -148,7 +148,12 @@ pub fn set_pasting_state(is_pasting: bool) {
     IS_PASTING.store(is_pasting, Ordering::Relaxed);
 }
 
-// 检查是否正在粘贴
-fn is_currently_pasting() -> bool {
+// 检查是否正在粘贴（内部使用）
+fn is_pasting_internal() -> bool {
+    IS_PASTING.load(Ordering::Relaxed)
+}
+
+// 检查是否正在粘贴（公开接口）
+pub fn is_currently_pasting() -> bool {
     IS_PASTING.load(Ordering::Relaxed)
 }
