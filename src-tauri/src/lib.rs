@@ -1,5 +1,6 @@
 // =================== 模块引入 ===================
 mod admin_privileges;
+mod ai_config;
 mod ai_translator;
 mod clipboard_content;
 mod clipboard_history;
@@ -472,6 +473,7 @@ pub fn run() {
             commands::translate_text_smart,
             commands::check_ai_translation_config,
             commands::get_available_ai_models,
+            commands::test_ai_config,
             commands::cancel_translation,
             commands::enable_ai_translation_cancel_shortcut,
             commands::disable_ai_translation_cancel_shortcut

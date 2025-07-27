@@ -1507,38 +1507,38 @@ pub fn check_ai_translation_config() -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_available_ai_models() -> Result<Vec<String>, String> {
     let settings = crate::settings::get_global_settings();
+    let ai_config = crate::ai_config::create_ai_config_from_settings(&settings);
 
-    if settings.ai_api_key.is_empty() {
-        return Err("API密钥未设置".to_string());
+    if !ai_config.is_valid() {
+        return Err("AI配置无效，请检查API密钥等设置".to_string());
     }
 
-    let client = reqwest::Client::new();
-    let url = format!("{}/models", settings.ai_base_url);
+    let config_manager = crate::ai_config::AIConfigManager::new(ai_config)
+        .map_err(|e| format!("创建AI配置管理器失败: {}", e))?;
 
-    let response = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", settings.ai_api_key))
-        .send()
+    config_manager
+        .get_available_models()
         .await
-        .map_err(|e| format!("请求失败: {}", e))?;
+        .map_err(|e| format!("获取模型列表失败: {}", e))
+}
 
-    if !response.status().is_success() {
-        return Err(format!("API请求失败: {}", response.status()));
+/// 测试AI配置
+#[tauri::command]
+pub async fn test_ai_config() -> Result<bool, String> {
+    let settings = crate::settings::get_global_settings();
+    let ai_config = crate::ai_config::create_ai_config_from_settings(&settings);
+
+    if !ai_config.is_valid() {
+        return Err("AI配置无效".to_string());
     }
 
-    let json: serde_json::Value = response
-        .json()
+    let config_manager = crate::ai_config::AIConfigManager::new(ai_config)
+        .map_err(|e| format!("创建AI配置管理器失败: {}", e))?;
+
+    config_manager
+        .test_config()
         .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
+        .map_err(|e| format!("AI配置测试失败: {}", e))?;
 
-    let mut models = Vec::new();
-    if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
-        for model in data {
-            if let Some(id) = model.get("id").and_then(|id| id.as_str()) {
-                models.push(id.to_string());
-            }
-        }
-    }
-
-    Ok(models)
+    Ok(true)
 }

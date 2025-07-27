@@ -4,6 +4,11 @@ import { emit, listen } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { setTheme, getCurrentTheme, getAvailableThemes, addThemeChangeListener } from './themeManager.js';
 import { updateShortcutDisplay } from './settingsManager.js';
+import {
+  initAIConfig,
+  getCurrentAIConfig,
+  saveAIConfig
+} from './aiConfig.js';
 
 // =================== 启动横幅 ===================
 function printSettingsBanner() {
@@ -37,6 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 初始化主题管理器
   const { initThemeManager } = await import('./themeManager.js');
   initThemeManager();
+
+  // 初始化AI配置管理器
+  await initAIConfig();
 
   await loadSettings();
   initializeUI();
@@ -176,11 +184,14 @@ function initializeUI() {
   document.getElementById('screenshot-auto-save').checked = settings.screenshot_auto_save;
   document.getElementById('screenshot-show-hints').checked = settings.screenshot_show_hints;
 
+  // AI配置设置
+  const aiConfig = getCurrentAIConfig();
+  document.getElementById('ai-api-key').value = aiConfig.apiKey;
+  document.getElementById('ai-model').value = aiConfig.model;
+  document.getElementById('ai-base-url').value = aiConfig.baseUrl;
+
   // AI翻译设置
   document.getElementById('ai-translation-enabled').checked = settings.aiTranslationEnabled;
-  document.getElementById('ai-api-key').value = settings.aiApiKey;
-  document.getElementById('ai-model').value = settings.aiModel;
-  document.getElementById('ai-base-url').value = settings.aiBaseUrl;
   document.getElementById('ai-target-language').value = settings.aiTargetLanguage;
   document.getElementById('ai-translate-on-copy').checked = settings.aiTranslateOnCopy;
   document.getElementById('ai-translate-on-paste').checked = settings.aiTranslateOnPaste;
@@ -251,6 +262,9 @@ function bindEvents() {
   // 音效设置事件
   bindSoundEvents();
 
+  // AI配置设置事件
+  bindAiConfigEvents();
+
   // AI翻译设置事件
   bindAiTranslationEvents();
 
@@ -282,8 +296,7 @@ function bindSettingEvents() {
     'preview-scroll-sound', 'preview-scroll-sound-path',
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
     'screenshot-auto-save', 'screenshot-show-hints',
-    'ai-translation-enabled', 'ai-api-key', 'ai-model', 'ai-base-url',
-    'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
+    'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode'
   ];
 
@@ -1102,6 +1115,198 @@ async function showConfirmDialog(title, message, confirmText, cancelText) {
   });
 }
 
+// 绑定AI配置设置事件
+function bindAiConfigEvents() {
+
+  // AI配置输入框
+  const aiConfigInputs = ['ai-api-key', 'ai-model', 'ai-base-url'];
+  aiConfigInputs.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', async () => {
+        try {
+          const configKey = id.replace('ai-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+          const config = {};
+          config[configKey] = element.value;
+
+          // 保存AI配置到后端
+          await saveAIConfig(config);
+
+          // 同时更新前端settings对象
+          const settingsKey = 'ai' + configKey.charAt(0).toUpperCase() + configKey.slice(1);
+          settings[settingsKey] = element.value;
+
+          // 显示保存成功提示
+          showNotification('AI配置已保存', 'success');
+
+          console.log(`AI配置已更新: ${configKey} = ${element.value}`);
+        } catch (error) {
+          console.error('保存AI配置失败:', error);
+        }
+      });
+    }
+  });
+
+  // API密钥输入框 - 当用户输入密钥后自动刷新模型列表
+  const apiKeyInput = document.getElementById('ai-api-key');
+  if (apiKeyInput) {
+    let refreshTimeout = null;
+
+    apiKeyInput.addEventListener('input', (e) => {
+      const apiKey = e.target.value.trim();
+
+      // 清除之前的定时器
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+
+      // 如果API密钥不为空且长度合理，延迟刷新模型列表
+      if (apiKey && apiKey.length > 10) {
+        refreshTimeout = setTimeout(async () => {
+          console.log('API密钥已更新，自动刷新模型列表...');
+          await refreshAiConfigModelsList(true); // silent模式
+        }, 1500); // 延迟1.5秒，避免频繁请求
+      }
+    });
+  }
+
+  // 页面加载时自动刷新模型列表（如果有API密钥）
+  setTimeout(async () => {
+    const aiConfig = getCurrentAIConfig();
+    if (aiConfig.apiKey && aiConfig.apiKey.trim() !== '') {
+      console.log('自动刷新AI模型列表...');
+      await refreshAiConfigModelsList(true); // silent模式，不显示错误提示
+    }
+  }, 1000); // 延迟1秒确保页面完全加载
+
+  // 刷新AI模型列表按钮
+  const refreshModelsButton = document.getElementById('refresh-ai-models');
+  if (refreshModelsButton) {
+    refreshModelsButton.addEventListener('click', async () => {
+      await refreshAiConfigModelsList();
+    });
+  }
+
+  // 测试AI配置按钮
+  const testConfigButton = document.getElementById('test-ai-config');
+  if (testConfigButton) {
+    testConfigButton.addEventListener('click', async () => {
+      try {
+        testConfigButton.disabled = true;
+        testConfigButton.innerHTML = '<i class="ti ti-loader"></i> 测试中...';
+
+        // 动态导入AI配置模块的函数
+        const { testAIConfig } = await import('./aiConfig.js');
+
+        const testResult = await testAIConfig();
+        if (testResult) {
+          showNotification('AI配置测试成功', 'success');
+        } else {
+          throw new Error('AI配置测试失败');
+        }
+      } catch (error) {
+        console.error('AI配置测试失败:', error);
+        showNotification(`AI配置测试失败: ${error.message}`, 'error');
+      } finally {
+        testConfigButton.disabled = false;
+        testConfigButton.innerHTML = '<i class="ti ti-test-pipe"></i> 测试配置';
+      }
+    });
+  }
+}
+
+// 刷新AI配置页面的模型列表
+async function refreshAiConfigModelsList(silent = false) {
+  const refreshButton = document.getElementById('refresh-ai-models');
+  const modelSelect = document.getElementById('ai-model');
+
+  if (!refreshButton || !modelSelect) {
+    return;
+  }
+
+  try {
+    // 显示加载状态
+    refreshButton.disabled = true;
+    refreshButton.innerHTML = '<i class="ti ti-loader ti-spin"></i>';
+
+    // 获取当前AI配置
+    const aiConfig = getCurrentAIConfig();
+
+    // 检查配置是否有效
+    if (!aiConfig.apiKey || !aiConfig.baseUrl) {
+      throw new Error('请先设置API密钥和API地址');
+    }
+
+    // 动态导入AI配置模块的函数
+    const { getAvailableAIModels, getModelDisplayName } = await import('./aiConfig.js');
+
+    // 获取可用模型列表
+    const models = await getAvailableAIModels();
+
+    if (!models || models.length === 0) {
+      throw new Error('未获取到可用模型列表');
+    }
+
+    // 保存当前选中的模型
+    const currentModel = aiConfig.model;
+
+    // 清空现有选项
+    modelSelect.innerHTML = '';
+
+    // 添加新的模型选项
+    models.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = getModelDisplayName(model);
+      modelSelect.appendChild(option);
+    });
+
+    // 如果当前模型不在新列表中，添加它作为选项
+    if (currentModel && !models.includes(currentModel)) {
+      const option = document.createElement('option');
+      option.value = currentModel;
+      option.textContent = getModelDisplayName(currentModel) + ' (自定义)';
+      modelSelect.insertBefore(option, modelSelect.firstChild);
+    }
+
+    // 设置选中的模型
+    if (currentModel) {
+      modelSelect.value = currentModel;
+    } else if (models.length > 0) {
+      // 如果没有当前模型，选择推荐模型或第一个模型
+      const recommendedModel = 'Qwen/Qwen2-7B-Instruct';
+      const selectedModel = models.includes(recommendedModel) ? recommendedModel : models[0];
+      modelSelect.value = selectedModel;
+
+      // 更新AI配置
+      await saveAIConfig({ model: selectedModel });
+    }
+
+    if (!silent) {
+      showNotification(`成功加载 ${models.length} 个可用模型`, 'success');
+    }
+    console.log('已刷新AI模型列表:', models);
+
+  } catch (error) {
+    console.error('刷新AI模型列表失败:', error);
+
+    if (!silent) {
+      let errorMessage = '刷新模型列表失败';
+      if (error.message.includes('请先设置')) {
+        errorMessage = error.message;
+      } else if (error.toString().includes('API请求失败')) {
+        errorMessage = 'API请求失败，请检查网络连接和API密钥';
+      }
+
+      showNotification(errorMessage, 'error');
+    }
+  } finally {
+    // 恢复按钮状态
+    refreshButton.disabled = false;
+    refreshButton.innerHTML = '<i class="ti ti-refresh"></i>';
+  }
+}
+
 // 绑定AI翻译设置事件
 function bindAiTranslationEvents() {
   // AI输入速度滑块
@@ -1135,44 +1340,7 @@ function bindAiTranslationEvents() {
     });
   }
 
-  // API密钥输入框 - 当用户输入密钥后自动刷新模型列表
-  const apiKeyInput = document.getElementById('ai-api-key');
-  if (apiKeyInput) {
-    let refreshTimeout = null;
 
-    apiKeyInput.addEventListener('input', (e) => {
-      const apiKey = e.target.value.trim();
-
-      // 清除之前的定时器
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-
-      // 如果API密钥不为空且长度合理，延迟刷新模型列表
-      if (apiKey && apiKey.length > 10) {
-        refreshTimeout = setTimeout(async () => {
-          console.log('API密钥已更新，自动刷新模型列表...');
-          await refreshAiModelsList(true); // silent模式
-        }, 1500); // 延迟1.5秒，避免频繁请求
-      }
-    });
-  }
-
-  // 刷新AI模型列表按钮
-  const refreshModelsButton = document.getElementById('refresh-ai-models');
-  if (refreshModelsButton) {
-    refreshModelsButton.addEventListener('click', async () => {
-      await refreshAiModelsList();
-    });
-  }
-
-  // 页面加载时自动刷新模型列表（如果有API密钥）
-  setTimeout(async () => {
-    if (settings.aiApiKey && settings.aiApiKey.trim() !== '') {
-      console.log('自动刷新AI模型列表...');
-      await refreshAiModelsList(true); // silent模式，不显示错误提示
-    }
-  }, 1000); // 延迟1秒确保页面完全加载
 
   // AI翻译测试按钮
   const testButton = document.getElementById('test-ai-translation');
@@ -1182,13 +1350,13 @@ function bindAiTranslationEvents() {
         testButton.disabled = true;
         testButton.innerHTML = '<i class="ti ti-loader"></i> 测试中...';
 
-        // 先保存当前设置
-        await saveSettings();
+        // 重新加载设置以确保使用最新的配置
+        await loadSettings();
 
-        // 检查配置是否有效
+        // 检查AI翻译配置是否有效
         const isConfigValid = await invoke('check_ai_translation_config');
         if (!isConfigValid) {
-          throw new Error('AI翻译配置无效，请检查API密钥、模型等设置');
+          throw new Error('AI翻译配置无效，请检查AI配置和翻译设置');
         }
 
         const result = await invoke('test_ai_translation');
@@ -1253,137 +1421,6 @@ function bindAiTranslationEvents() {
   });
 }
 
-// 刷新AI模型列表
-async function refreshAiModelsList(silent = false) {
-  const refreshButton = document.getElementById('refresh-ai-models');
-  const modelSelect = document.getElementById('ai-model');
 
-  if (!refreshButton || !modelSelect) {
-    return;
-  }
 
-  // 检查是否有API密钥
-  if (!settings.aiApiKey || settings.aiApiKey.trim() === '') {
-    if (!silent) {
-      showNotification('请先设置API密钥', 'warning');
-    }
-    return;
-  }
 
-  try {
-    // 显示加载状态
-    refreshButton.disabled = true;
-    refreshButton.innerHTML = '<i class="ti ti-loader ti-spin"></i>';
-
-    // 先保存当前设置以确保API密钥等配置是最新的
-    await saveSettings();
-
-    // 获取可用模型列表
-    const models = await invoke('get_available_ai_models');
-
-    if (!models || models.length === 0) {
-      throw new Error('未获取到可用模型列表');
-    }
-
-    // 保存当前选中的模型（从settings中获取，而不是从UI）
-    const currentModel = settings.aiModel;
-    console.log('当前保存的模型:', currentModel);
-
-    // 清空现有选项
-    modelSelect.innerHTML = '';
-
-    // 添加新的模型选项
-    models.forEach(model => {
-      const option = document.createElement('option');
-      option.value = model;
-      option.textContent = getModelDisplayName(model);
-      modelSelect.appendChild(option);
-    });
-
-    // 如果当前模型不在新列表中，添加它作为选项（保持用户选择）
-    if (currentModel && !models.includes(currentModel)) {
-      const option = document.createElement('option');
-      option.value = currentModel;
-      option.textContent = getModelDisplayName(currentModel) + ' (自定义)';
-      modelSelect.insertBefore(option, modelSelect.firstChild);
-    }
-
-    // 智能选择模型：优先选择推荐模型，然后是当前模型，最后是第一个可用模型
-    let selectedModel = null;
-
-    // 1. 如果推荐模型可用，优先选择它
-    const recommendedModel = 'Qwen/Qwen2-7B-Instruct';
-    if (models.includes(recommendedModel)) {
-      selectedModel = recommendedModel;
-    }
-    // 2. 如果当前模型仍然可用，保持选择
-    else if (currentModel && models.includes(currentModel)) {
-      selectedModel = currentModel;
-    }
-    // 3. 否则选择第一个可用模型
-    else if (models.length > 0) {
-      selectedModel = models[0];
-    }
-
-    if (selectedModel) {
-      modelSelect.value = selectedModel;
-      // 只有在模型发生变化时才更新设置
-      if (settings.aiModel !== selectedModel) {
-        settings.aiModel = selectedModel;
-        await saveSettings();
-        console.log('自动选择AI模型:', selectedModel);
-      }
-    }
-
-    if (!silent) {
-      showNotification(`成功加载 ${models.length} 个可用模型`, 'success');
-    }
-    console.log('已刷新AI模型列表:', models);
-
-  } catch (error) {
-    console.error('刷新AI模型列表失败:', error);
-
-    if (!silent) {
-      let errorMessage = '刷新模型列表失败';
-      if (error.toString().includes('API密钥未设置')) {
-        errorMessage = '请先设置API密钥';
-      } else if (error.toString().includes('API请求失败')) {
-        errorMessage = 'API请求失败，请检查网络连接和API密钥';
-      } else if (error.toString().includes('未获取到可用模型列表')) {
-        errorMessage = '未获取到可用模型，请检查API配置';
-      }
-
-      showNotification(errorMessage, 'error');
-    }
-  } finally {
-    // 恢复按钮状态
-    refreshButton.disabled = false;
-    refreshButton.innerHTML = '<i class="ti ti-refresh"></i>';
-  }
-}
-
-// 获取模型的显示名称
-function getModelDisplayName(modelId) {
-  // 常见模型的友好名称映射
-  const modelNames = {
-    'Qwen/Qwen2-7B-Instruct': 'Qwen2-7B-Instruct（推荐）',
-    'deepseek-v3': 'DeepSeek V3',
-    'deepseek-chat': 'DeepSeek Chat',
-    'deepseek-coder': 'DeepSeek Coder',
-    'qwen-turbo': '通义千问 Turbo',
-    'qwen-plus': '通义千问 Plus',
-    'qwen-max': '通义千问 Max',
-    'qwen2.5-72b-instruct': 'Qwen2.5-72B-Instruct',
-    'qwen2.5-32b-instruct': 'Qwen2.5-32B-Instruct',
-    'qwen2.5-14b-instruct': 'Qwen2.5-14B-Instruct',
-    'qwen2.5-7b-instruct': 'Qwen2.5-7B-Instruct',
-    'chatglm3-6b': 'ChatGLM3-6B',
-    'yi-34b-chat': 'Yi-34B-Chat',
-    'yi-6b-chat': 'Yi-6B-Chat',
-    'baichuan2-13b-chat': 'Baichuan2-13B-Chat',
-    'internlm2-chat-7b': 'InternLM2-Chat-7B',
-    'internlm2-chat-20b': 'InternLM2-Chat-20B'
-  };
-
-  return modelNames[modelId] || modelId;
-}

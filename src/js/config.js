@@ -101,6 +101,10 @@ export function setIsAiTranslationEnabled(enabled) {
   isAiTranslationEnabled = enabled;
 }
 
+export function getIsAiTranslationEnabled() {
+  return isAiTranslationEnabled;
+}
+
 export function setClipboardSortable(sortable) {
   clipboardSortable = sortable;
 }

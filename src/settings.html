@@ -55,6 +55,10 @@
             <i class="ti ti-clipboard"></i>
             <span>剪贴板</span>
           </a>
+          <a href="#ai-config" class="nav-item" data-section="ai-config">
+            <i class="ti ti-brain"></i>
+            <span>AI配置</span>
+          </a>
           <a href="#ai-translation" class="nav-item" data-section="ai-translation">
             <i class="ti ti-language"></i>
             <span>AI翻译</span>
@@ -312,6 +316,72 @@
           </div>
         </div>
 
+        <!-- AI配置设置 -->
+        <div class="settings-section" id="ai-config-section">
+          <div class="section-header">
+            <h2>AI配置</h2>
+            <p>配置AI服务的基本参数，可被各种AI功能复用</p>
+          </div>
+
+          <div class="settings-group">
+
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">API密钥</label>
+                <p class="setting-description">AI服务API密钥，用于调用AI服务</p>
+              </div>
+              <div class="setting-control">
+                <input type="password" id="ai-api-key" class="setting-input" placeholder="请输入API密钥">
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">AI模型</label>
+                <p class="setting-description">选择用于AI服务的模型</p>
+              </div>
+              <div class="setting-control">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="ai-model" class="setting-select" style="flex: 1;">
+                    <option value="Qwen/Qwen2-7B-Instruct">Qwen2-7B-Instruct（推荐）</option>
+                    <option value="deepseek-v3">DeepSeek V3</option>
+                    <option value="qwen-turbo">通义千问 Turbo</option>
+                    <option value="chatglm3-6b">ChatGLM3-6B</option>
+                    <option value="yi-34b-chat">Yi-34B-Chat</option>
+                  </select>
+                  <button class="setting-button-small" id="refresh-ai-models" title="刷新模型列表">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">API地址</label>
+                <p class="setting-description">AI服务API地址</p>
+              </div>
+              <div class="setting-control">
+                <input type="text" id="ai-base-url" class="setting-input" placeholder="https://api.siliconflow.cn/v1">
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">测试AI配置</label>
+                <p class="setting-description">测试AI配置是否正常工作</p>
+              </div>
+              <div class="setting-control">
+                <button class="setting-button" id="test-ai-config">
+                  <i class="ti ti-test-pipe"></i>
+                  测试配置
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- AI翻译设置 -->
         <div class="settings-section" id="ai-translation-section">
           <div class="section-header">
@@ -333,46 +403,7 @@
               </div>
             </div>
 
-            <div class="setting-item">
-              <div class="setting-info">
-                <label class="setting-label">API密钥</label>
-                <p class="setting-description">硅基流动API密钥，用于调用AI翻译服务</p>
-              </div>
-              <div class="setting-control">
-                <input type="password" id="ai-api-key" class="setting-input" placeholder="请输入API密钥">
-              </div>
-            </div>
 
-            <div class="setting-item">
-              <div class="setting-info">
-                <label class="setting-label">AI模型</label>
-                <p class="setting-description">选择用于翻译的AI模型</p>
-              </div>
-              <div class="setting-control">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <select id="ai-model" class="setting-select" style="flex: 1;">
-                    <option value="Qwen/Qwen2-7B-Instruct">Qwen2-7B-Instruct（推荐）</option>
-                    <option value="deepseek-v3">DeepSeek V3</option>
-                    <option value="qwen-turbo">通义千问 Turbo</option>
-                    <option value="chatglm3-6b">ChatGLM3-6B</option>
-                    <option value="yi-34b-chat">Yi-34B-Chat</option>
-                  </select>
-                  <button class="setting-button-small" id="refresh-ai-models" title="刷新模型列表">
-                    <i class="ti ti-refresh"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-item">
-              <div class="setting-info">
-                <label class="setting-label">API地址</label>
-                <p class="setting-description">硅基流动API服务地址</p>
-              </div>
-              <div class="setting-control">
-                <input type="text" id="ai-base-url" class="setting-input" placeholder="https://api.siliconflow.cn/v1">
-              </div>
-            </div>
 
             <div class="setting-item">
               <div class="setting-info">

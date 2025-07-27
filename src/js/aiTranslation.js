@@ -4,16 +4,20 @@ import { listen, emit } from '@tauri-apps/api/event';
 import {
   aiTranslationSwitch,
   setIsAiTranslationEnabled,
-  isAiTranslationEnabled
+  getIsAiTranslationEnabled
 } from './config.js';
 import { showNotification } from './ui.js';
+import {
+  initAIConfig,
+  loadAIConfig,
+  saveAIConfig,
+  getCurrentAIConfig,
+  isAIConfigValid,
+  addConfigChangeListener
+} from './aiConfig.js';
 
-// AI翻译状态管理
+// AI翻译特定配置（非通用AI配置）
 let aiTranslationConfig = {
-  enabled: false,
-  apiKey: '',
-  model: 'Qwen/Qwen2-7B-Instruct',
-  baseUrl: 'https://api.siliconflow.cn/v1',
   targetLanguage: 'auto',
   translateOnCopy: false,
   translateOnPaste: true,
@@ -27,6 +31,9 @@ let aiTranslationConfig = {
 export async function initAiTranslation() {
   console.log('初始化AI翻译功能...');
 
+  // 初始化AI配置管理器
+  await initAIConfig();
+
   // 加载AI翻译设置
   await loadAiTranslationSettings();
 
@@ -39,7 +46,21 @@ export async function initAiTranslation() {
   // 设置取消按钮事件
   setupCancelButton();
 
+  // 监听AI配置变化
+  addConfigChangeListener(onAIConfigChanged);
+
   console.log('AI翻译功能初始化完成');
+}
+
+/**
+ * AI配置变化监听器
+ * @param {Object} aiConfig - 变化后的AI配置
+ */
+function onAIConfigChanged(aiConfig) {
+  console.log('AI配置发生变化:', aiConfig);
+
+  // AI配置变化不影响AI翻译开关状态
+  // AI翻译开关状态只受AI翻译设置的影响
 }
 
 /**
@@ -48,12 +69,9 @@ export async function initAiTranslation() {
 async function loadAiTranslationSettings() {
   try {
     const settings = await invoke('get_settings');
+    const aiConfig = await loadAIConfig();
 
     aiTranslationConfig = {
-      enabled: settings.aiTranslationEnabled || false,
-      apiKey: settings.aiApiKey || '',
-      model: settings.aiModel || 'Qwen/Qwen2-7B-Instruct',
-      baseUrl: settings.aiBaseUrl || 'https://api.siliconflow.cn/v1',
       targetLanguage: settings.aiTargetLanguage || 'auto',
       translateOnCopy: settings.aiTranslateOnCopy || false,
       translateOnPaste: settings.aiTranslateOnPaste || true,
@@ -62,12 +80,13 @@ async function loadAiTranslationSettings() {
     };
 
     // 更新UI状态
-    setIsAiTranslationEnabled(aiTranslationConfig.enabled);
+    setIsAiTranslationEnabled(settings.aiTranslationEnabled);
     if (aiTranslationSwitch) {
-      aiTranslationSwitch.checked = aiTranslationConfig.enabled;
+      aiTranslationSwitch.checked = settings.aiTranslationEnabled;
     }
 
     console.log('AI翻译设置已加载:', aiTranslationConfig);
+    console.log('AI配置已加载:', aiConfig);
   } catch (error) {
     console.error('加载AI翻译设置失败:', error);
   }
@@ -99,9 +118,8 @@ function setupAiTranslationSwitch() {
 
       // 更新本地状态
       setIsAiTranslationEnabled(enabled);
-      aiTranslationConfig.enabled = enabled;
 
-      // 保存设置到后端
+      // 保存AI翻译设置到后端
       await saveAiTranslationSetting('aiTranslationEnabled', enabled);
 
       // 发送状态变化事件给设置窗口
@@ -127,7 +145,6 @@ async function setupAiTranslationEventListeners() {
 
       // 更新本地状态
       setIsAiTranslationEnabled(enabled);
-      aiTranslationConfig.enabled = enabled;
 
       // 更新开关UI
       if (aiTranslationSwitch) {
@@ -445,7 +462,14 @@ export function getAiTranslationConfig() {
  * 检查是否应该进行翻译
  */
 export function shouldTranslate(context = 'paste') {
-  if (!aiTranslationConfig.enabled) {
+  // 检查AI功能是否启用
+  const aiConfig = getCurrentAIConfig();
+  if (!aiConfig.enabled) {
+    return false;
+  }
+
+  // 检查AI翻译功能是否启用
+  if (!getIsAiTranslationEnabled()) {
     return false;
   }
 
@@ -564,14 +588,19 @@ export function isTextSuitableForTranslation(text) {
  * 检查翻译配置是否有效
  */
 export function isTranslationConfigValid() {
-  return aiTranslationConfig.enabled &&
-    aiTranslationConfig.apiKey &&
-    aiTranslationConfig.apiKey.trim() !== '' &&
-    aiTranslationConfig.model &&
-    aiTranslationConfig.model.trim() !== '' &&
-    aiTranslationConfig.baseUrl &&
-    aiTranslationConfig.baseUrl.trim() !== '' &&
-    aiTranslationConfig.targetLanguage &&
+  // 检查AI配置是否有效
+  const aiConfig = getCurrentAIConfig();
+  if (!aiConfig.enabled || !isAIConfigValid(aiConfig)) {
+    return false;
+  }
+
+  // 检查AI翻译功能是否启用
+  if (!getIsAiTranslationEnabled()) {
+    return false;
+  }
+
+  // 检查翻译特定配置
+  return aiTranslationConfig.targetLanguage &&
     aiTranslationConfig.targetLanguage.trim() !== '';
 }
 

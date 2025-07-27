@@ -31,50 +31,38 @@
 //! translator.translate_stream("Hello, world!", tx).await?;
 //! ```
 
+use crate::ai_config::AIConfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// AI翻译配置结构体
 ///
-/// 包含AI翻译所需的所有配置参数，包括API认证信息、模型选择、
-/// 目标语言设置等。
+/// 包含AI翻译所需的所有配置参数，基于通用的AIConfig，
+/// 并添加翻译特定的配置。
 ///
 /// ## 字段说明
-/// - `api_key`: 硅基流动API密钥，用于身份认证
-/// - `model`: 要使用的AI模型名称（如"deepseek-chat"）
-/// - `base_url`: API服务的基础URL
+/// - `ai_config`: 通用AI配置（API密钥、模型、基础URL等）
 /// - `target_language`: 目标翻译语言代码（如"zh-CN"、"en"）
 /// - `prompt_template`: 翻译提示词模板，支持{target_language}占位符
-/// - `timeout`: API请求超时时间
 #[derive(Debug, Clone)]
 pub struct TranslationConfig {
-    /// API密钥，用于身份认证
-    pub api_key: String,
-    /// AI模型名称
-    pub model: String,
-    /// API服务基础URL
-    pub base_url: String,
+    /// 通用AI配置
+    pub ai_config: AIConfig,
     /// 目标语言代码
     pub target_language: String,
     /// 翻译提示词模板
     pub prompt_template: String,
-    /// 请求超时时间
-    pub timeout: Duration,
 }
 
 impl Default for TranslationConfig {
     fn default() -> Self {
         Self {
-            api_key: String::new(),
-            model: "deepseek-chat".to_string(),
-            base_url: "https://api.siliconflow.cn/v1".to_string(),
+            ai_config: AIConfig::default(),
             target_language: "zh-CN".to_string(),
             prompt_template:
                 "请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式："
                     .to_string(),
-            timeout: Duration::from_secs(120),
         }
     }
 }
@@ -181,16 +169,12 @@ unsafe impl Sync for AITranslator {}
 impl AITranslator {
     /// 创建新的AI翻译器
     pub fn new(config: TranslationConfig) -> Result<Self, TranslationError> {
-        if config.api_key.is_empty() {
-            return Err(TranslationError::ConfigError("API密钥不能为空".to_string()));
-        }
-
-        if config.base_url.is_empty() {
-            return Err(TranslationError::ConfigError("API地址不能为空".to_string()));
+        if !config.ai_config.is_valid() {
+            return Err(TranslationError::ConfigError("AI配置无效".to_string()));
         }
 
         let client = Client::builder()
-            .timeout(config.timeout)
+            .timeout(config.ai_config.timeout())
             .build()
             .map_err(TranslationError::NetworkError)?;
 
@@ -237,19 +221,19 @@ impl AITranslator {
             .replace("{target_language}", &self.config.target_language);
 
         let request = TranslationRequest {
-            model: self.config.model.clone(),
+            model: self.config.ai_config.model.clone(),
             messages: vec![Message {
                 role: "user".to_string(),
                 content: format!("{}\n\n{}", prompt, text),
             }],
             stream: true,
-            temperature: 0.3,
-            max_tokens: 2048,
+            temperature: self.config.ai_config.temperature,
+            max_tokens: self.config.ai_config.max_tokens,
         };
 
-        let url = format!("{}/chat/completions", self.config.base_url);
+        let url = self.config.ai_config.get_chat_completions_url();
         let client = self.client.clone();
-        let api_key = self.config.api_key.clone();
+        let api_key = self.config.ai_config.api_key.clone();
 
         // 调试输出
         println!("AI翻译请求:");
@@ -367,8 +351,8 @@ impl AITranslator {
 
     /// 更新配置
     pub fn update_config(&mut self, config: TranslationConfig) -> Result<(), TranslationError> {
-        if config.api_key.is_empty() {
-            return Err(TranslationError::ConfigError("API密钥不能为空".to_string()));
+        if !config.ai_config.is_valid() {
+            return Err(TranslationError::ConfigError("AI配置无效".to_string()));
         }
 
         self.config = config;
@@ -383,20 +367,16 @@ impl AITranslator {
 
 /// 从应用设置创建翻译配置
 pub fn config_from_settings(settings: &crate::settings::AppSettings) -> TranslationConfig {
+    let ai_config = crate::ai_config::create_ai_config_from_settings(settings);
+
     TranslationConfig {
-        api_key: settings.ai_api_key.clone(),
-        model: settings.ai_model.clone(),
-        base_url: settings.ai_base_url.clone(),
+        ai_config,
         target_language: settings.ai_target_language.clone(),
         prompt_template: settings.ai_translation_prompt.clone(),
-        timeout: Duration::from_secs(120),
     }
 }
 
 /// 检查翻译配置是否有效
 pub fn is_translation_config_valid(settings: &crate::settings::AppSettings) -> bool {
-    !settings.ai_api_key.is_empty()
-        && !settings.ai_base_url.is_empty()
-        && !settings.ai_model.is_empty()
-        && !settings.ai_target_language.is_empty()
+    crate::ai_config::is_ai_config_valid(settings) && !settings.ai_target_language.is_empty()
 }

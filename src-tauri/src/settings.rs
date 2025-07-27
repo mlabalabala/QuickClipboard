@@ -219,6 +219,8 @@ impl AppSettings {
             "aiTranslateOnPaste": self.ai_translate_on_paste,
             "aiTranslationPrompt": self.ai_translation_prompt,
             "aiInputSpeed": self.ai_input_speed,
+            "aiNewlineMode": self.ai_newline_mode,
+            "aiOutputMode": self.ai_output_mode,
         })
     }
 
