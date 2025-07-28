@@ -1194,6 +1194,16 @@ body.theme-dark {
   background-color: var(--primary-color) !important;
 }
 
+.theme-dark .file-item {
+  background-color: #313131;
+  border: 0.1px solid #7c7c7c;
+}
+
+.theme-dark .file-item .file-info * {
+  color: #ffffff !important;
+
+}
+
 /* 设置页面的toggle-slider样式 - 暗色主题 */
 .theme-dark .settings-modal .toggle-slider {
   background-color: #555 !important;

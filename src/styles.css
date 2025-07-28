@@ -514,6 +514,13 @@ body {
   gap: 6px;
   max-height: 120px;
   overflow-y: auto;
+  direction: rtl;
+  /* 右到左布局，使滚动条显示在左边 */
+}
+
+.clipboard-files>* {
+  direction: ltr;
+  /* 恢复内容的正常方向 */
 }
 
 .file-item {
@@ -523,7 +530,7 @@ body {
   padding: 4px 6px;
   border-radius: 4px;
   background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  border: 0.1px solid #d4d4d4;
   transition: all 0.2s ease;
 }
 
@@ -580,6 +587,13 @@ body {
   max-height: 80px !important;
   overflow-y: auto;
   min-width: 100% !important;
+  direction: rtl;
+  /* 右到左布局，使滚动条显示在左边 */
+}
+
+.files-container>* {
+  direction: ltr;
+  /* 恢复内容的正常方向 */
 }
 
 .file-count {
@@ -1671,4 +1685,40 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* 全局滚动条 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 6px;
+}
+
+/* 滚动轨道 - 弱化存在感 */
+::-webkit-scrollbar-track {
+  padding: 2px 0;
+}
+
+/* 滚动滑块 */
+::-webkit-scrollbar-thumb {
+  /* 浅灰色基调 */
+  background: #d0d0d0;
+  border-radius: 3px;
+  box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
+}
+
+/* 滑块悬停状态 */
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+  transform: scaleX(1.2);
+}
+
+/* 滑块激活状态（点击拖动时） */
+::-webkit-scrollbar-thumb:active {
+  background: #696969;
+}
+
+/* 角落交汇区域（垂直+水平滚动条交汇处） */
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
