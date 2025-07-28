@@ -268,10 +268,31 @@ export function renderClipboardItems() {
       return;
     }
 
-    // 搜索过滤：仅匹配文本和链接条目
+    // 搜索过滤：支持文本、链接和文件类型
     if (searchTerm) {
-      if (isImage) return;
-      if (!item.text.toLowerCase().includes(searchTerm)) {
+      let shouldShow = false;
+
+      if (contentType === 'files') {
+        // 文件类型：搜索文件名和路径
+        try {
+          const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+          const filesData = JSON.parse(filesJson);
+          const searchableText = filesData.files.map(file =>
+            `${file.name} ${file.path} ${file.file_type}`
+          ).join(' ').toLowerCase();
+          shouldShow = searchableText.includes(searchTerm);
+        } catch (error) {
+          shouldShow = false;
+        }
+      } else if (contentType === 'image') {
+        // 图片类型：暂不支持搜索
+        shouldShow = false;
+      } else {
+        // 文本和链接类型：搜索内容
+        shouldShow = item.text.toLowerCase().includes(searchTerm);
+      }
+
+      if (!shouldShow) {
         return;
       }
     }

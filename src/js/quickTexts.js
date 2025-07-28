@@ -324,11 +324,29 @@ export function renderQuickTexts() {
       return false;
     }
 
-    // 搜索过滤：仅匹配文本和链接条目
+    // 搜索过滤：支持文本、链接和文件类型
     if (searchTerm) {
-      if (isImage) return false;
-      return text.title.toLowerCase().includes(searchTerm) ||
-        text.content.toLowerCase().includes(searchTerm);
+      if (contentType === 'files') {
+        // 文件类型：搜索标题和文件内容
+        try {
+          const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
+          const filesData = JSON.parse(filesJson);
+          const searchableText = filesData.files.map(file =>
+            `${file.name} ${file.path} ${file.file_type}`
+          ).join(' ').toLowerCase();
+          return text.title.toLowerCase().includes(searchTerm) ||
+            searchableText.includes(searchTerm);
+        } catch (error) {
+          return text.title.toLowerCase().includes(searchTerm);
+        }
+      } else if (contentType === 'image') {
+        // 图片类型：只搜索标题
+        return text.title.toLowerCase().includes(searchTerm);
+      } else {
+        // 文本和链接类型：搜索标题和内容
+        return text.title.toLowerCase().includes(searchTerm) ||
+          text.content.toLowerCase().includes(searchTerm);
+      }
     }
 
     return true;
