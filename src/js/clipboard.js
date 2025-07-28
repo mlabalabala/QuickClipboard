@@ -711,10 +711,10 @@ function createFilesElement(container, item) {
       // 文件图标
       const iconElement = document.createElement('img');
       iconElement.className = 'file-icon';
-      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
       iconElement.alt = file.file_type;
-      iconElement.style.width = '16px';
-      iconElement.style.height = '16px';
+      iconElement.style.width = '24px';
+      iconElement.style.height = '24px';
 
       // 文件信息
       const infoElement = document.createElement('div');

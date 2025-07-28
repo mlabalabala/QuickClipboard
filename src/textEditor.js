@@ -405,8 +405,6 @@ function resetToOriginal() {
   }
 }
 
-// 这个函数已被移除，因为新设计不需要清空按钮
-
 // 更新保存按钮状态
 function updateSaveButton() {
   saveBtn.disabled = !hasUnsavedChanges;

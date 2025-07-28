@@ -243,26 +243,199 @@ pub fn get_file_info(path: &str) -> Result<FileInfo, String> {
     })
 }
 
-// 获取文件图标（简化版本）
+// 获取文件图标（Windows系统图标）
 #[cfg(windows)]
 pub fn get_file_icon(path: &str) -> Result<String, String> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{
+        CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, ReleaseDC,
+        SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+    };
+    use windows::Win32::UI::Shell::{
+        SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_SMALLICON, SHGFI_USEFILEATTRIBUTES,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
+
+    let path_obj = Path::new(path);
+
+    // 如果文件不存在，使用扩展名获取图标
+    let use_file_attributes = !path_obj.exists();
+
+    // 转换路径为 Windows 宽字符
+    let wide_path: Vec<u16> = OsStr::new(path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        let mut file_info: SHFILEINFOW = std::mem::zeroed();
+        let mut flags = SHGFI_ICON;
+
+        if use_file_attributes {
+            flags |= SHGFI_USEFILEATTRIBUTES;
+        }
+
+        use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
+
+        let result = SHGetFileInfoW(
+            windows::core::PCWSTR(wide_path.as_ptr()),
+            FILE_FLAGS_AND_ATTRIBUTES(0),
+            Some(&mut file_info),
+            std::mem::size_of::<SHFILEINFOW>() as u32,
+            flags,
+        );
+
+        if result == 0 || file_info.hIcon.is_invalid() {
+            // 如果获取系统图标失败，回退到简单图标
+            return Ok(get_fallback_icon(path));
+        }
+
+        // 获取图标信息
+        let mut icon_info: ICONINFO = std::mem::zeroed();
+        if GetIconInfo(file_info.hIcon, &mut icon_info).is_err() {
+            let _ = DestroyIcon(file_info.hIcon);
+            return Ok(get_fallback_icon(path));
+        }
+
+        // 创建设备上下文
+        let screen_dc = GetDC(HWND(0));
+        let mem_dc = CreateCompatibleDC(screen_dc);
+
+        if mem_dc.is_invalid() {
+            let _ = ReleaseDC(HWND(0), screen_dc);
+            let _ = DeleteObject(icon_info.hbmColor);
+            let _ = DeleteObject(icon_info.hbmMask);
+            let _ = DestroyIcon(file_info.hIcon);
+            return Ok(get_fallback_icon(path));
+        }
+
+        // 创建兼容位图 (32x32 像素)
+        let icon_size = 64;
+        let bitmap = CreateCompatibleBitmap(screen_dc, icon_size, icon_size);
+        if bitmap.is_invalid() {
+            let _ = DeleteDC(mem_dc);
+            let _ = ReleaseDC(HWND(0), screen_dc);
+            let _ = DeleteObject(icon_info.hbmColor);
+            let _ = DeleteObject(icon_info.hbmMask);
+            let _ = DestroyIcon(file_info.hIcon);
+            return Ok(get_fallback_icon(path));
+        }
+
+        let old_bitmap = SelectObject(mem_dc, bitmap);
+
+        // 绘制图标到位图
+        use windows::Win32::UI::WindowsAndMessaging::DrawIconEx;
+        let draw_result = DrawIconEx(
+            mem_dc,
+            0,
+            0,
+            file_info.hIcon,
+            icon_size,
+            icon_size,
+            0,
+            windows::Win32::Graphics::Gdi::HBRUSH(0),
+            windows::Win32::UI::WindowsAndMessaging::DI_NORMAL,
+        );
+
+        if draw_result.is_err() {
+            let _ = SelectObject(mem_dc, old_bitmap);
+            let _ = DeleteObject(bitmap);
+            let _ = DeleteDC(mem_dc);
+            let _ = ReleaseDC(HWND(0), screen_dc);
+            let _ = DeleteObject(icon_info.hbmColor);
+            let _ = DeleteObject(icon_info.hbmMask);
+            let _ = DestroyIcon(file_info.hIcon);
+            return Ok(get_fallback_icon(path));
+        }
+
+        // 获取位图数据
+        let mut bmp_info = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: icon_size,
+                biHeight: -icon_size, // 负值表示自上而下
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [windows::Win32::Graphics::Gdi::RGBQUAD::default(); 1],
+        };
+
+        let mut pixel_data: Vec<u8> = vec![0; (icon_size * icon_size * 4) as usize];
+
+        use windows::Win32::Graphics::Gdi::GetDIBits;
+        let bits_result = GetDIBits(
+            mem_dc,
+            bitmap,
+            0,
+            icon_size as u32,
+            Some(pixel_data.as_mut_ptr() as *mut _),
+            &mut bmp_info,
+            DIB_RGB_COLORS,
+        );
+
+        // 清理资源
+        let _ = SelectObject(mem_dc, old_bitmap);
+        let _ = DeleteObject(bitmap);
+        let _ = DeleteDC(mem_dc);
+        let _ = ReleaseDC(HWND(0), screen_dc);
+        let _ = DeleteObject(icon_info.hbmColor);
+        let _ = DeleteObject(icon_info.hbmMask);
+        let _ = DestroyIcon(file_info.hIcon);
+
+        if bits_result == 0 {
+            return Ok(get_fallback_icon(path));
+        }
+
+        // 转换 BGRA 到 RGBA 并生成 PNG
+        for chunk in pixel_data.chunks_mut(4) {
+            chunk.swap(0, 2); // B <-> R
+        }
+
+        // 使用 image crate 创建 PNG
+        match image::RgbaImage::from_raw(icon_size as u32, icon_size as u32, pixel_data) {
+            Some(img) => {
+                let mut png_data = Vec::new();
+                match img.write_to(
+                    &mut std::io::Cursor::new(&mut png_data),
+                    image::ImageFormat::Png,
+                ) {
+                    Ok(_) => {
+                        use base64::{engine::general_purpose, Engine as _};
+                        let base64_data = general_purpose::STANDARD.encode(&png_data);
+                        Ok(format!("data:image/png;base64,{}", base64_data))
+                    }
+                    Err(_) => Ok(get_fallback_icon(path)),
+                }
+            }
+            None => Ok(get_fallback_icon(path)),
+        }
+    }
+}
+
+// 回退图标函数
+fn get_fallback_icon(path: &str) -> String {
     use std::path::Path;
 
     let path_obj = Path::new(path);
 
-    // 根据文件类型返回不同的图标
     if path_obj.is_dir() {
-        // 文件夹图标
-        Ok(get_folder_icon())
+        get_folder_icon()
     } else {
-        // 根据文件扩展名返回图标
         let extension = path_obj
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("")
             .to_lowercase();
-
-        Ok(get_file_icon_by_extension(&extension))
+        get_file_icon_by_extension(&extension)
     }
 }
 
