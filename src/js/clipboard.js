@@ -758,7 +758,7 @@ function createFilesElement(container, item) {
     filesContainer.className = 'clipboard-files';
 
     // 创建文件列表
-    filesData.files.forEach((file, index) => {
+    filesData.files.forEach((file) => {
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
 
@@ -790,15 +790,6 @@ function createFilesElement(container, item) {
       fileItem.appendChild(infoElement);
 
       filesContainer.appendChild(fileItem);
-
-      // 限制显示的文件数量
-      if (index >= 4) {
-        const moreElement = document.createElement('div');
-        moreElement.className = 'file-more';
-        moreElement.textContent = `... 还有 ${filesData.files.length - 5} 个文件`;
-        filesContainer.appendChild(moreElement);
-        return false; // 跳出循环
-      }
     });
 
     // 文件容器不需要特殊的点击事件处理，让事件冒泡到父级 clipboard-item

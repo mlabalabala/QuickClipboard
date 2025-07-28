@@ -602,9 +602,8 @@ function createQuickTextFilesElement(container, text) {
     fileCountElement.textContent = `${filesData.files.length} 个文件`;
     filesContainer.appendChild(fileCountElement);
 
-    // 创建文件列表（最多显示3个文件）
-    const displayFiles = filesData.files.slice(0, 3);
-    displayFiles.forEach((file, index) => {
+    // 创建文件列表（显示所有文件）
+    filesData.files.forEach((file) => {
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
 
@@ -636,14 +635,6 @@ function createQuickTextFilesElement(container, text) {
       fileItem.appendChild(infoElement);
       filesContainer.appendChild(fileItem);
     });
-
-    // 如果有更多文件，显示省略号
-    if (filesData.files.length > 3) {
-      const moreElement = document.createElement('div');
-      moreElement.className = 'file-more';
-      moreElement.textContent = `... 还有 ${filesData.files.length - 3} 个文件`;
-      filesContainer.appendChild(moreElement);
-    }
 
     container.appendChild(filesContainer);
   } catch (error) {
