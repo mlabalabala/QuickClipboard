@@ -367,12 +367,29 @@ pub fn run() {
                                                     std::thread::sleep(
                                                         std::time::Duration::from_millis(10),
                                                     );
-                                                    match commands::paste_history_item(idx, window)
-                                                    {
-                                                        Ok(_) => println!("粘贴历史记录成功"),
-                                                        Err(e) => {
-                                                            println!("粘贴历史记录失败: {}", e)
+                                                    // 获取历史记录内容
+                                                    let content = {
+                                                        let history = crate::clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
+                                                        if idx < history.len() {
+                                                            Some(history[idx].clone())
+                                                        } else {
+                                                            None
                                                         }
+                                                    };
+
+                                                    if let Some(content) = content {
+                                                        let params = crate::commands::PasteContentParams {
+                                                            content,
+                                                            quick_text_id: None,
+                                                            one_time: None,
+                                                        };
+                                                        let window_clone = window.clone();
+                                                        tauri::async_runtime::spawn(async move {
+                                                            match crate::commands::paste_content(params, window_clone).await {
+                                                                Ok(_) => println!("粘贴历史记录成功"),
+                                                                Err(e) => println!("粘贴历史记录失败: {}", e),
+                                                            }
+                                                        });
                                                     }
                                                 });
                                             }
@@ -408,7 +425,6 @@ pub fn run() {
             get_clipboard_text,
             set_clipboard_text,
             get_clipboard_history,
-            paste_history_item,
             refresh_clipboard,
             set_window_pinned,
             toggle_window_visibility,
@@ -419,7 +435,6 @@ pub fn run() {
             add_quick_text,
             update_quick_text,
             delete_quick_text,
-            paste_quick_text,
             add_clipboard_to_favorites,
             enable_mouse_monitoring_command,
             disable_mouse_monitoring_command,
@@ -486,7 +501,7 @@ pub fn run() {
             commands::get_file_info,
             commands::get_clipboard_files,
             commands::set_clipboard_files,
-            commands::paste_files,
+            commands::paste_content,
             commands::open_file_location
         ])
         .run(tauri::generate_context!())

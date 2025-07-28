@@ -445,7 +445,7 @@ export function renderClipboardItems() {
             hideTranslationIndicator();
           }
         } else {
-          // 原始粘贴逻辑
+          // 统一粘贴逻辑
           const isImage = contentType === 'image';
           const isFiles = contentType === 'files';
 
@@ -459,17 +459,12 @@ export function renderClipboardItems() {
             clipboardItem.appendChild(loadingIndicator);
           }
 
-          if (isFiles) {
-            // 文件类型使用专门的粘贴命令
-            await invoke('paste_files', { filesData: item.text });
-          } else {
-            // 其他类型使用历史记录粘贴
-            const params = {
-              index,
-              one_time: false // 剪贴板历史不支持一次性粘贴
-            };
-            await invoke('paste_history_item', { params });
-          }
+          // 使用统一的粘贴命令
+          await invoke('paste_content', {
+            params: {
+              content: item.text
+            }
+          });
           setActiveItem(index);
           // 粘贴逻辑已在Rust端处理窗口显示/隐藏
         }

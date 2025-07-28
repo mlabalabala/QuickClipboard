@@ -26,18 +26,6 @@ use crate::window_management;
 static TRANSLATION_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Deserialize)]
-pub struct PasteHistoryParams {
-    pub index: usize,
-    pub one_time: Option<bool>,
-}
-
-#[derive(Deserialize)]
-pub struct PasteQuickTextParams {
-    pub id: String,
-    pub one_time: Option<bool>,
-}
-
-#[derive(Deserialize)]
 pub struct GroupParams {
     #[serde(rename = "groupId")]
     pub group_id: String,
@@ -149,85 +137,6 @@ pub fn refresh_clipboard() -> Result<(), String> {
             }
         }
         Err(e) => Err(format!("获取剪贴板失败: {}", e)),
-    }
-}
-
-// 粘贴指定索引的历史记录
-#[tauri::command]
-pub fn paste_history_item(params: PasteHistoryParams, window: WebviewWindow) -> Result<(), String> {
-    let index = params.index;
-    let one_time = params.one_time;
-    // println!("尝试粘贴历史记录项目 {}, 一次性粘贴: {:?}", index, one_time);
-    let content_opt = {
-        let history = CLIPBOARD_HISTORY.lock().unwrap();
-        history.iter().nth(index).cloned()
-    };
-
-    if let Some(content) = content_opt {
-        // 设置粘贴状态，防止触发复制音效
-        crate::clipboard_monitor::set_pasting_state(true);
-
-        // 如果是图片，预加载图片数据以提高响应速度
-        if content.starts_with("image:") {
-            let image_id = content.strip_prefix("image:").unwrap_or("");
-            // 预加载图片数据到内存，确保粘贴时快速响应
-            if let Ok(image_manager) = get_image_manager() {
-                if let Ok(manager) = image_manager.lock() {
-                    // 预加载图片数据，如果失败也继续执行
-                    let _ = manager.get_image_data_url(image_id);
-                }
-            }
-        }
-
-        // 粘贴时不添加到历史记录，因为这是从历史记录中取出的内容
-        set_clipboard_content_no_history(content)?;
-        // println!("成功设置剪贴板内容");
-        let is_pinned = window_management::get_window_pinned();
-
-        if is_pinned {
-            // 固定模式：直接粘贴，不隐藏窗口
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(10));
-                #[cfg(windows)]
-                windows_paste();
-
-                // 播放粘贴音效
-                crate::sound_manager::play_paste_sound();
-
-                // 粘贴完成后重置粘贴状态
-                thread::sleep(Duration::from_millis(500)); // 增加等待时间，防止连续粘贴时状态冲突
-                crate::clipboard_monitor::set_pasting_state(false);
-            });
-        } else {
-            // 非固定模式：隐藏窗口后粘贴
-            // 1. 粘贴前隐藏窗口
-            window.hide().ok();
-            // 2. 还原焦点
-            window_management::restore_last_focus().ok();
-            // 3. 停止鼠标监听（因为窗口已隐藏）
-            #[cfg(windows)]
-            disable_mouse_monitoring();
-
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(10));
-                #[cfg(windows)]
-                windows_paste();
-
-                // 播放粘贴音效
-                crate::sound_manager::play_paste_sound();
-
-                // 粘贴完成后重置粘贴状态
-                thread::sleep(Duration::from_millis(500)); // 等待时间，防止连续粘贴时状态冲突
-                crate::clipboard_monitor::set_pasting_state(false);
-            });
-        }
-
-        // 剪贴板历史不支持一次性粘贴，因为会与实时监听冲突
-        // 一次性粘贴功能仅适用于常用文本
-
-        Ok(())
-    } else {
-        Err(format!("索引 {} 超出历史范围", index))
     }
 }
 
@@ -407,86 +316,6 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
 
     // 添加到常用文本
     quick_texts::add_quick_text(title, final_content)
-}
-
-// 粘贴常用文本
-#[tauri::command]
-pub fn paste_quick_text(params: PasteQuickTextParams, window: WebviewWindow) -> Result<(), String> {
-    let id = params.id.clone();
-    let one_time = params.one_time;
-    println!("尝试粘贴常用文本 {}, 一次性粘贴: {:?}", id, one_time);
-
-    if let Some(quick_text) = quick_texts::get_quick_text_by_id(id.clone()) {
-        // 设置粘贴状态，防止触发复制音效
-        crate::clipboard_monitor::set_pasting_state(true);
-
-        set_clipboard_content_no_history(quick_text.content)?;
-        println!("成功设置剪贴板内容");
-
-        let is_pinned = window_management::get_window_pinned();
-
-        if is_pinned {
-            // 固定模式：直接粘贴，不隐藏窗口
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(10));
-                #[cfg(windows)]
-                windows_paste();
-
-                // 播放粘贴音效
-                crate::sound_manager::play_paste_sound();
-
-                // 粘贴完成后重置粘贴状态
-                thread::sleep(Duration::from_millis(500)); // 增加等待时间，防止连续粘贴时状态冲突
-                crate::clipboard_monitor::set_pasting_state(false);
-            });
-        } else {
-            // 非固定模式：隐藏窗口后粘贴
-            // 1. 粘贴前隐藏窗口
-            window.hide().ok();
-            // 2. 还原焦点
-            window_management::restore_last_focus().ok();
-            // 3. 停止鼠标监听（因为窗口已隐藏）
-            #[cfg(windows)]
-            disable_mouse_monitoring();
-
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(10));
-                #[cfg(windows)]
-                windows_paste();
-
-                // 播放粘贴音效
-                crate::sound_manager::play_paste_sound();
-
-                // 粘贴完成后重置粘贴状态
-                thread::sleep(Duration::from_millis(500)); // 增加等待时间，防止连续粘贴时状态冲突
-                crate::clipboard_monitor::set_pasting_state(false);
-            });
-        }
-
-        // 如果是一次性粘贴，删除该项并暂时禁用剪贴板监听
-        if one_time.unwrap_or(false) {
-            println!("执行一次性粘贴删除常用文本，ID: {}", id);
-
-            // 暂时禁用剪贴板监听，避免粘贴的内容重新被添加到历史
-            clipboard_history::set_monitoring_enabled(false);
-
-            match quick_texts::delete_quick_text(id.clone()) {
-                Ok(_) => println!("常用文本删除成功"),
-                Err(e) => println!("常用文本删除失败: {}", e),
-            }
-
-            // 延迟重新启用剪贴板监听
-            thread::spawn(|| {
-                thread::sleep(Duration::from_millis(500)); // 等待500ms
-                clipboard_history::set_monitoring_enabled(true);
-                println!("剪贴板监听已重新启用");
-            });
-        }
-
-        Ok(())
-    } else {
-        Err(format!("常用文本 {} 不存在", id))
-    }
 }
 
 // =================== 鼠标监听控制命令 ===================
@@ -1705,75 +1534,6 @@ pub async fn set_clipboard_files(files: Vec<String>) -> Result<(), String> {
     crate::file_handler::set_clipboard_files(&files)
 }
 
-#[tauri::command]
-pub async fn paste_files(files_data: String, window: WebviewWindow) -> Result<(), String> {
-    // 解析文件数据
-    if !files_data.starts_with("files:") {
-        return Err("无效的文件数据格式".to_string());
-    }
-
-    let files_json = &files_data[6..]; // 去掉 "files:" 前缀
-    let files_data: serde_json::Value =
-        serde_json::from_str(files_json).map_err(|e| format!("解析文件数据失败: {}", e))?;
-
-    let files = files_data["files"].as_array().ok_or("文件数据格式错误")?;
-
-    let file_paths: Vec<String> = files
-        .iter()
-        .filter_map(|f| f["path"].as_str())
-        .map(|s| s.to_string())
-        .collect();
-
-    if file_paths.is_empty() {
-        return Err("没有找到有效的文件路径".to_string());
-    }
-
-    // 设置粘贴状态，防止触发复制音效
-    crate::clipboard_monitor::set_pasting_state(true);
-
-    // 将文件路径设置到剪贴板
-    crate::file_handler::set_clipboard_files(&file_paths)?;
-
-    let is_pinned = window_management::get_window_pinned();
-
-    if is_pinned {
-        // 固定模式：直接粘贴，不隐藏窗口
-        thread::spawn(move || {
-            thread::sleep(Duration::from_millis(10));
-            #[cfg(windows)]
-            windows_paste();
-
-            // 播放粘贴音效
-            crate::sound_manager::play_paste_sound();
-
-            // 粘贴完成后重置粘贴状态
-            thread::sleep(Duration::from_millis(500));
-            crate::clipboard_monitor::set_pasting_state(false);
-        });
-    } else {
-        // 非固定模式：隐藏窗口后粘贴
-        window.hide().ok();
-        window_management::restore_last_focus().ok();
-        #[cfg(windows)]
-        disable_mouse_monitoring();
-
-        thread::spawn(move || {
-            thread::sleep(Duration::from_millis(10));
-            #[cfg(windows)]
-            windows_paste();
-
-            // 播放粘贴音效
-            crate::sound_manager::play_paste_sound();
-
-            // 粘贴完成后重置粘贴状态
-            thread::sleep(Duration::from_millis(500));
-            crate::clipboard_monitor::set_pasting_state(false);
-        });
-    }
-
-    Ok(())
-}
-
 /// 获取可用的AI模型列表
 #[tauri::command]
 pub async fn get_available_ai_models() -> Result<Vec<String>, String> {
@@ -1859,6 +1619,191 @@ pub async fn open_file_location(file_path: String) -> Result<(), String> {
             Err(e) => Err(format!("打开文件位置失败: {}", e)),
         }
     }
+}
+
+// 统一粘贴参数
+#[derive(serde::Deserialize)]
+pub struct PasteContentParams {
+    pub content: String,
+    pub quick_text_id: Option<String>, // 如果是常用文本，提供ID
+    pub one_time: Option<bool>,        // 是否一次性粘贴
+}
+
+// 统一粘贴命令 - 自动识别内容类型并执行相应的粘贴操作
+#[tauri::command]
+pub async fn paste_content(
+    params: PasteContentParams,
+    window: WebviewWindow,
+) -> Result<(), String> {
+    println!("统一粘贴命令被调用，内容长度: {}", params.content.len());
+
+    // 判断内容类型并执行相应的粘贴操作
+    if params.content.starts_with("files:") {
+        // 文件类型粘贴
+        paste_files_internal(params.content, window).await
+    } else if params.content.starts_with("data:image/") || params.content.starts_with("image:") {
+        // 图片类型粘贴
+        paste_image_internal(params.content, window).await
+    } else {
+        // 文本类型粘贴
+        paste_text_internal(params.content, window).await
+    }?;
+
+    // 处理一次性粘贴逻辑
+    if let (Some(quick_text_id), Some(true)) = (params.quick_text_id, params.one_time) {
+        // 删除一次性常用文本
+        if let Err(e) = quick_texts::delete_quick_text(quick_text_id) {
+            eprintln!("删除一次性常用文本失败: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+// 内部文件粘贴函数
+async fn paste_files_internal(files_data: String, window: WebviewWindow) -> Result<(), String> {
+    // 解析文件数据
+    if !files_data.starts_with("files:") {
+        return Err("无效的文件数据格式".to_string());
+    }
+
+    let files_json = &files_data[6..]; // 去掉 "files:" 前缀
+    let files_data: serde_json::Value =
+        serde_json::from_str(files_json).map_err(|e| format!("解析文件数据失败: {}", e))?;
+
+    let files = files_data["files"].as_array().ok_or("文件数据格式错误")?;
+
+    let file_paths: Vec<String> = files
+        .iter()
+        .filter_map(|file| file["path"].as_str())
+        .map(|path| path.to_string())
+        .collect();
+
+    if file_paths.is_empty() {
+        return Err("没有找到有效的文件路径".to_string());
+    }
+
+    // 设置剪贴板文件
+    crate::file_handler::set_clipboard_files(&file_paths)?;
+
+    // 执行粘贴操作
+    if !crate::paste_utils::windows_paste() {
+        return Err("粘贴操作失败".to_string());
+    }
+
+    // 播放粘贴音效
+    crate::sound_manager::play_paste_sound();
+
+    // 处理窗口显示/隐藏
+    let is_pinned = crate::window_management::get_window_pinned();
+    if !is_pinned {
+        if let Err(e) = window.hide() {
+            eprintln!("隐藏窗口失败: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+// 内部图片粘贴函数
+async fn paste_image_internal(image_content: String, window: WebviewWindow) -> Result<(), String> {
+    // 设置粘贴状态，防止移动历史记录位置
+    crate::clipboard_monitor::set_pasting_state(true);
+
+    // 处理图片内容到剪贴板
+    if image_content.starts_with("image:") {
+        // 新格式：image:id，需要通过图片管理器获取完整数据
+        let image_id = &image_content[6..];
+        let image_manager = crate::image_manager::get_image_manager().map_err(|e| {
+            crate::clipboard_monitor::set_pasting_state(false);
+            format!("获取图片管理器失败: {}", e)
+        })?;
+        let image_data = image_manager
+            .lock()
+            .unwrap()
+            .get_image_data_url(image_id)
+            .map_err(|e| {
+                crate::clipboard_monitor::set_pasting_state(false);
+                format!("获取图片数据失败: {}", e)
+            })?;
+
+        // 将图片数据设置到剪贴板（不添加到历史记录，避免重复）
+        if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_data) {
+            crate::clipboard_monitor::set_pasting_state(false);
+            return Err(e);
+        }
+    } else if image_content.starts_with("data:image/") {
+        // 旧格式：完整的data URL
+        if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_content) {
+            crate::clipboard_monitor::set_pasting_state(false);
+            return Err(e);
+        }
+    } else {
+        crate::clipboard_monitor::set_pasting_state(false);
+        return Err("不支持的图片格式".to_string());
+    }
+
+    // 执行粘贴操作
+    if !crate::paste_utils::windows_paste() {
+        crate::clipboard_monitor::set_pasting_state(false);
+        return Err("粘贴操作失败".to_string());
+    }
+
+    // 播放粘贴音效
+    crate::sound_manager::play_paste_sound();
+
+    // 处理窗口显示/隐藏
+    let is_pinned = crate::window_management::get_window_pinned();
+    if !is_pinned {
+        if let Err(e) = window.hide() {
+            eprintln!("隐藏窗口失败: {}", e);
+        }
+    }
+
+    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        crate::clipboard_monitor::set_pasting_state(false);
+    });
+
+    Ok(())
+}
+
+// 内部文本粘贴函数
+async fn paste_text_internal(text_content: String, window: WebviewWindow) -> Result<(), String> {
+    // 设置粘贴状态，防止移动历史记录位置
+    crate::clipboard_monitor::set_pasting_state(true);
+
+    // 将文本设置到剪贴板（不添加到历史记录，避免重复）
+    if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(text_content) {
+        crate::clipboard_monitor::set_pasting_state(false);
+        return Err(e);
+    }
+
+    // 执行粘贴操作
+    if !crate::paste_utils::windows_paste() {
+        crate::clipboard_monitor::set_pasting_state(false);
+        return Err("粘贴操作失败".to_string());
+    }
+
+    // 播放粘贴音效
+    crate::sound_manager::play_paste_sound();
+
+    // 处理窗口显示/隐藏
+    let is_pinned = crate::window_management::get_window_pinned();
+    if !is_pinned {
+        if let Err(e) = window.hide() {
+            eprintln!("隐藏窗口失败: {}", e);
+        }
+    }
+
+    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        crate::clipboard_monitor::set_pasting_state(false);
+    });
+
+    Ok(())
 }
 
 // 生成文件类型的标题

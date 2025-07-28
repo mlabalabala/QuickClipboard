@@ -464,17 +464,14 @@ export function renderQuickTexts() {
           quickTextItem.appendChild(loadingIndicator);
         }
 
-        if (isFiles) {
-          // 文件类型使用专门的粘贴命令
-          await invoke('paste_files', { filesData: text.content });
-        } else {
-          // 其他类型使用常用文本粘贴
-          const params = {
-            id: text.id,
+        // 使用统一的粘贴命令
+        await invoke('paste_content', {
+          params: {
+            content: text.content,
+            quick_text_id: text.id,
             one_time: isOneTimePaste
-          };
-          await invoke('paste_quick_text', { params });
-        }
+          }
+        });
 
         // 粘贴逻辑已在Rust端处理窗口显示/隐藏
 

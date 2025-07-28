@@ -572,11 +572,24 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
         if state.tab == "clipboard" {
             // 粘贴剪贴板历史项
             if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                let params = crate::commands::PasteHistoryParams {
-                    index,
-                    one_time: Some(false),
+                // 获取历史记录内容
+                let content = {
+                    let history = crate::clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
+                    if index < history.len() {
+                        Some(history[index].clone())
+                    } else {
+                        None
+                    }
                 };
-                crate::commands::paste_history_item(params, main_window.clone())?;
+
+                if let Some(content) = content {
+                    let params = crate::commands::PasteContentParams {
+                        content,
+                        quick_text_id: None,
+                        one_time: None,
+                    };
+                    crate::commands::paste_content(params, main_window.clone()).await?;
+                }
             }
         } else if state.tab == "quick-texts" {
             // 粘贴常用文本
@@ -589,11 +602,12 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
                 if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                    let params = crate::commands::PasteQuickTextParams {
-                        id: quick_text.id.clone(),
+                    let params = crate::commands::PasteContentParams {
+                        content: quick_text.content.clone(),
+                        quick_text_id: Some(quick_text.id.clone()),
                         one_time: Some(false),
                     };
-                    crate::commands::paste_quick_text(params, main_window.clone())?;
+                    crate::commands::paste_content(params, main_window.clone()).await?;
                 }
             }
         }

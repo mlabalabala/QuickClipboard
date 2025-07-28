@@ -453,17 +453,33 @@ fn handle_number_shortcut_paste(index: usize) {
 
     if let Some(window) = MAIN_WINDOW_HANDLE.get().cloned() {
         std::thread::spawn(move || {
-            use crate::commands::paste_history_item;
             use crate::window_management::set_last_focus_hwnd;
             use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
             let hwnd = unsafe { GetForegroundWindow() };
             set_last_focus_hwnd(hwnd.0);
-            let params = crate::commands::PasteHistoryParams {
-                index,
-                one_time: Some(false),
+
+            // 获取历史记录内容
+            let content = {
+                let history = crate::clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
+                if index < history.len() {
+                    Some(history[index].clone())
+                } else {
+                    None
+                }
             };
-            let _ = paste_history_item(params, window);
+
+            if let Some(content) = content {
+                let params = crate::commands::PasteContentParams {
+                    content,
+                    quick_text_id: None,
+                    one_time: None,
+                };
+                let window_clone = window.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::commands::paste_content(params, window_clone).await;
+                });
+            }
         });
     }
 }
