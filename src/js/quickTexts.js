@@ -382,6 +382,9 @@ export function renderQuickTexts() {
       }
 
       contentElement.appendChild(imgElement);
+    } else if (contentType === 'files') {
+      // 处理文件类型
+      createQuickTextFilesElement(contentElement, text);
     } else {
       contentElement.textContent = text.content;
     }
@@ -429,21 +432,32 @@ export function renderQuickTexts() {
       }
 
       try {
-        // 如果是图片，显示加载状态
-        const isImage = getContentType(text.content) === 'image';
-        if (isImage) {
+        // 检查内容类型并显示加载状态
+        const contentType = getContentType(text.content);
+        const isImage = contentType === 'image';
+        const isFiles = contentType === 'files';
+
+        if (isImage || isFiles) {
           quickTextItem.classList.add('processing');
           const loadingIndicator = document.createElement('div');
           loadingIndicator.className = 'loading-indicator';
-          loadingIndicator.innerHTML = '<div class="spinner"></div><span>准备中...</span>';
+          const message = isFiles ? '准备粘贴文件...' : '准备中...';
+          loadingIndicator.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
           quickTextItem.appendChild(loadingIndicator);
         }
 
-        const params = {
-          id: text.id,
-          one_time: isOneTimePaste
-        };
-        await invoke('paste_quick_text', { params });
+        if (isFiles) {
+          // 文件类型使用专门的粘贴命令
+          await invoke('paste_files', { filesData: text.content });
+        } else {
+          // 其他类型使用常用文本粘贴
+          const params = {
+            id: text.id,
+            one_time: isOneTimePaste
+          };
+          await invoke('paste_quick_text', { params });
+        }
+
         // 粘贴逻辑已在Rust端处理窗口显示/隐藏
 
         // 如果是一次性粘贴，刷新常用文本列表
@@ -496,4 +510,80 @@ function showQuickTextContextMenu(event, text) {
     content: text.content,
     items: menuItems
   });
+}
+
+// 创建常用文本文件元素
+function createQuickTextFilesElement(container, text) {
+  try {
+    // 解析文件数据
+    const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    // 创建文件容器
+    const filesContainer = document.createElement('div');
+    filesContainer.className = 'files-container';
+
+    // 添加文件数量标识
+    const fileCountElement = document.createElement('div');
+    fileCountElement.className = 'file-count';
+    fileCountElement.textContent = `${filesData.files.length} 个文件`;
+    filesContainer.appendChild(fileCountElement);
+
+    // 创建文件列表（最多显示3个文件）
+    const displayFiles = filesData.files.slice(0, 3);
+    displayFiles.forEach((file, index) => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+
+      // 文件图标
+      const iconElement = document.createElement('img');
+      iconElement.className = 'file-icon';
+      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+      iconElement.alt = file.file_type;
+      iconElement.style.width = '20px';
+      iconElement.style.height = '20px';
+
+      // 文件信息
+      const infoElement = document.createElement('div');
+      infoElement.className = 'file-info';
+
+      const nameElement = document.createElement('div');
+      nameElement.className = 'file-name';
+      nameElement.textContent = file.name;
+      nameElement.title = file.path;
+
+      const detailsElement = document.createElement('div');
+      detailsElement.className = 'file-details';
+      detailsElement.textContent = `${formatFileSize(file.size)} • ${file.file_type}`;
+
+      infoElement.appendChild(nameElement);
+      infoElement.appendChild(detailsElement);
+
+      fileItem.appendChild(iconElement);
+      fileItem.appendChild(infoElement);
+      filesContainer.appendChild(fileItem);
+    });
+
+    // 如果有更多文件，显示省略号
+    if (filesData.files.length > 3) {
+      const moreElement = document.createElement('div');
+      moreElement.className = 'file-more';
+      moreElement.textContent = `... 还有 ${filesData.files.length - 3} 个文件`;
+      filesContainer.appendChild(moreElement);
+    }
+
+    container.appendChild(filesContainer);
+  } catch (error) {
+    console.error('解析文件数据失败:', error);
+    container.textContent = '文件数据解析失败';
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }

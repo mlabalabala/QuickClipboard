@@ -572,6 +572,49 @@ body {
   font-style: italic;
 }
 
+/* 文件容器样式 */
+.files-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 80px !important;
+  overflow-y: auto;
+  min-width: 100% !important;
+}
+
+.file-count {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* 常用文本中的文件样式 */
+.quick-text-content .files-container {
+  max-height: 80px;
+}
+
+.quick-text-content .file-item {
+  padding: 3px 5px;
+}
+
+.quick-text-content .file-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.quick-text-content .file-name {
+  font-size: 11px;
+}
+
+.quick-text-content .file-details {
+  font-size: 9px;
+}
+
+.quick-text-content .file-count {
+  font-size: 10px;
+}
+
 
 
 /* 剪贴板项操作按钮样式 */
@@ -770,6 +813,7 @@ body {
   -webkit-box-orient: vertical;
   margin-right: 60px;
   /* 为操作按钮留出空间 */
+  width: 100%;
 }
 
 /* 常用文本图片样式 */
