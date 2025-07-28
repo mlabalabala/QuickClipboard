@@ -164,11 +164,12 @@ body {
   top: 4px;
   right: 6px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 1);
-  background: rgba(255, 255, 255, 0.5);
+  color: rgb(255, 255, 255);
+  background: rgb(255, 79, 79);
   padding: 1px 4px;
   border-radius: 2px;
-  font-weight: 500;
+  font-weight: blod;
+  border: 1px solid rgba(255, 255, 255, 1);
 }
 
 /* 滚动动画 */
@@ -191,4 +192,33 @@ body {
   font-size: 24px;
   margin-bottom: 8px;
   opacity: 0.6;
+}
+
+/* 文件显示样式 */
+.preview-file-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.preview-file-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.preview-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-file-name {
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

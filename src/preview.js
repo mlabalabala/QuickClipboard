@@ -343,6 +343,63 @@ function createPreviewItem(item, index, position = 'current') {
 
     previewItem.appendChild(imgElement);
     previewItem.appendChild(textElement);
+  } else if (contentType === 'files') {
+    // 解析文件数据
+    try {
+      const filesJson = itemText.substring(6); // 去掉 "files:" 前缀
+      const filesData = JSON.parse(filesJson);
+
+      if (filesData.files && filesData.files.length > 0) {
+        const firstFile = filesData.files[0];
+        const fileName = firstFile.name || firstFile.path.split(/[/\\]/).pop() || '未知文件';
+        const totalFiles = filesData.files.length;
+
+        // 设置类型指示器，包含文件数量信息
+        if (totalFiles > 1) {
+          typeIndicator.textContent = `文件 (${totalFiles})`;
+        } else {
+          typeIndicator.textContent = '文件';
+        }
+
+        // 创建文件显示容器
+        const fileContainer = document.createElement('div');
+        fileContainer.className = 'preview-file-container';
+
+        // 文件图标 - 使用真实的系统图标
+        const fileIcon = document.createElement('img');
+        fileIcon.className = 'preview-file-icon';
+        fileIcon.src = firstFile.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+        fileIcon.alt = firstFile.file_type || '文件';
+        fileIcon.style.width = '20px';
+        fileIcon.style.height = '20px';
+
+        // 文件名（不再显示数量，因为已经在类型指示器中显示）
+        const fileInfo = document.createElement('div');
+        fileInfo.className = 'preview-file-info';
+
+        const fileNameElement = document.createElement('div');
+        fileNameElement.className = 'preview-file-name';
+        fileNameElement.textContent = fileName;
+
+        fileInfo.appendChild(fileNameElement);
+
+        fileContainer.appendChild(fileIcon);
+        fileContainer.appendChild(fileInfo);
+        previewItem.appendChild(fileContainer);
+      } else {
+        // 解析失败时的回退显示
+        const textElement = document.createElement('div');
+        textElement.className = 'preview-text';
+        textElement.textContent = '文件数据';
+        previewItem.appendChild(textElement);
+      }
+    } catch (e) {
+      // 解析失败时的回退显示
+      const textElement = document.createElement('div');
+      textElement.className = 'preview-text';
+      textElement.textContent = '文件数据';
+      previewItem.appendChild(textElement);
+    }
   } else if (contentType === 'link') {
     typeIndicator.textContent = '链接';
 
@@ -370,6 +427,10 @@ function createPreviewItem(item, index, position = 'current') {
 function getContentType(text) {
   if (text.startsWith('data:image/') || text.startsWith('image:')) {
     return 'image';
+  }
+
+  if (text.startsWith('files:')) {
+    return 'files';
   }
 
   // 检测HTTP/HTTPS链接
