@@ -17,7 +17,8 @@ use crate::clipboard_content::{
 use crate::clipboard_history::{self, ClipboardItem, CLIPBOARD_HISTORY};
 use crate::groups::{self, Group};
 use crate::image_manager::get_image_manager;
-use crate::keyboard_hook::{disable_mouse_monitoring, enable_mouse_monitoring, windows_paste};
+use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring};
+use crate::paste_utils::windows_paste;
 use crate::quick_texts::{self, QuickText};
 use crate::window_management;
 
@@ -779,11 +780,11 @@ pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
 
     // 6. 数字快捷键设置
     #[cfg(windows)]
-    crate::keyboard_hook::set_number_shortcuts_enabled(app_settings.number_shortcuts);
+    crate::global_state::set_number_shortcuts_enabled(app_settings.number_shortcuts);
 
     // 7. 预览窗口快捷键设置
     #[cfg(windows)]
-    crate::keyboard_hook::update_preview_shortcut(&app_settings.preview_shortcut);
+    crate::global_state::update_preview_shortcut_config(&app_settings.preview_shortcut);
 
     // 6. 更新音效设置
     let sound_settings = crate::sound_manager::SoundSettings {
@@ -1240,7 +1241,7 @@ pub fn cancel_translation() -> Result<(), String> {
 #[tauri::command]
 pub fn enable_ai_translation_cancel_shortcut() -> Result<(), String> {
     #[cfg(windows)]
-    crate::keyboard_hook::enable_ai_translation_cancel();
+    crate::global_state::enable_ai_translation_cancel();
     Ok(())
 }
 
@@ -1248,7 +1249,7 @@ pub fn enable_ai_translation_cancel_shortcut() -> Result<(), String> {
 #[tauri::command]
 pub fn disable_ai_translation_cancel_shortcut() -> Result<(), String> {
     #[cfg(windows)]
-    crate::keyboard_hook::disable_ai_translation_cancel();
+    crate::global_state::disable_ai_translation_cancel();
     Ok(())
 }
 
@@ -1260,7 +1261,7 @@ pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
 
     // 启用AI翻译取消快捷键
     #[cfg(windows)]
-    crate::keyboard_hook::enable_ai_translation_cancel();
+    crate::global_state::enable_ai_translation_cancel();
 
     // 确保在函数结束时禁用快捷键
     let _guard = TranslationGuard;
@@ -1334,7 +1335,7 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
 
     // 启用AI翻译取消快捷键
     #[cfg(windows)]
-    crate::keyboard_hook::enable_ai_translation_cancel();
+    crate::global_state::enable_ai_translation_cancel();
 
     // 确保在函数结束时禁用快捷键
     let _guard = TranslationGuard;
@@ -1459,7 +1460,7 @@ struct TranslationGuard;
 impl Drop for TranslationGuard {
     fn drop(&mut self) {
         #[cfg(windows)]
-        crate::keyboard_hook::disable_ai_translation_cancel();
+        crate::global_state::disable_ai_translation_cancel();
     }
 }
 
@@ -1514,7 +1515,7 @@ pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
 
     // 启用AI翻译取消快捷键
     #[cfg(windows)]
-    crate::keyboard_hook::enable_ai_translation_cancel();
+    crate::global_state::enable_ai_translation_cancel();
 
     // 确保在函数结束时禁用快捷键
     let _guard = TranslationGuard;

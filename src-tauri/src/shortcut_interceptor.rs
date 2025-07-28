@@ -1,0 +1,200 @@
+// 快捷键拦截器 - 专门用于拦截主窗口快捷键，防止触发系统剪贴板
+
+use once_cell::sync::OnceCell;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+
+// 全局状态
+#[cfg(windows)]
+static SHORTCUT_HOOK_HANDLE: Mutex<Option<windows::Win32::UI::WindowsAndMessaging::HHOOK>> =
+    Mutex::new(None);
+
+#[cfg(windows)]
+static SHORTCUT_INTERCEPTION_ENABLED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(windows)]
+static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
+
+// 当前配置的主窗口快捷键
+#[cfg(windows)]
+static CURRENT_SHORTCUT: Mutex<Option<crate::global_state::ParsedShortcut>> = Mutex::new(None);
+
+// 快捷键拦截标志（防止重复触发）
+#[cfg(windows)]
+static SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
+
+// =================== 键盘钩子函数 ===================
+
+#[cfg(windows)]
+unsafe extern "system" fn shortcut_hook_proc(
+    code: i32,
+    wparam: windows::Win32::Foundation::WPARAM,
+    lparam: windows::Win32::Foundation::LPARAM,
+) -> windows::Win32::Foundation::LRESULT {
+    use windows::Win32::Foundation::LRESULT;
+    use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CallNextHookEx, HC_ACTION, KBDLLHOOKSTRUCT, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN,
+        WM_SYSKEYUP,
+    };
+
+    if code == HC_ACTION as i32 && SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::Relaxed) {
+        let kbd_data = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
+        let vk_code = kbd_data.vkCode;
+
+        if let Some(shortcut) = CURRENT_SHORTCUT.lock().unwrap().as_ref() {
+            // 检查是否是目标按键
+            if vk_code == shortcut.key_code {
+                match wparam.0 as u32 {
+                    WM_KEYDOWN | WM_SYSKEYDOWN => {
+                        // 检查修饰键状态
+                        let ctrl_pressed = (GetAsyncKeyState(0x11) & 0x8000u16 as i16) != 0; // VK_CONTROL
+                        let shift_pressed = (GetAsyncKeyState(0x10) & 0x8000u16 as i16) != 0; // VK_SHIFT
+                        let alt_pressed = (GetAsyncKeyState(0x12) & 0x8000u16 as i16) != 0; // VK_MENU
+                        let win_pressed = (GetAsyncKeyState(0x5B) & 0x8000u16 as i16) != 0 // VK_LWIN
+                            || (GetAsyncKeyState(0x5C) & 0x8000u16 as i16) != 0; // VK_RWIN
+
+                        // 检查是否匹配快捷键组合
+                        if ctrl_pressed == shortcut.ctrl
+                            && shift_pressed == shortcut.shift
+                            && alt_pressed == shortcut.alt
+                            && win_pressed == shortcut.win
+                        {
+                            // 检查当前前台窗口是否是自己的窗口
+                            let is_own_window = if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                                crate::window_management::is_current_window_own_app(window)
+                            } else {
+                                false
+                            };
+
+                            // 只在其他应用窗口中拦截，在自己窗口中让轮询系统处理
+                            if !is_own_window {
+                                // 防止重复触发
+                                if !SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
+                                    SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
+
+                                    // 在新线程中显示主窗口
+                                    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                                        let window_clone = window.clone();
+                                        std::thread::spawn(move || {
+                                            crate::window_management::toggle_webview_window_visibility(window_clone);
+                                        });
+                                    }
+
+                                    // 拦截事件，防止传递给系统
+                                    return LRESULT(1);
+                                }
+                            }
+                            // 在自己窗口中不拦截，让轮询系统处理
+                        }
+                    }
+                    WM_KEYUP | WM_SYSKEYUP => {
+                        // 按键释放时重置触发标志
+                        if vk_code == shortcut.key_code {
+                            SHORTCUT_TRIGGERED.store(false, Ordering::Relaxed);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    CallNextHookEx(None, code, wparam, lparam)
+}
+
+// =================== 公共接口 ===================
+
+// 初始化快捷键拦截器
+#[cfg(windows)]
+pub fn initialize_shortcut_interceptor(window: tauri::WebviewWindow) {
+    MAIN_WINDOW_HANDLE.set(window).ok();
+}
+
+// 安装快捷键钩子
+#[cfg(windows)]
+pub fn install_shortcut_hook() {
+    use windows::Win32::Foundation::HINSTANCE;
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowsHookExW, WH_KEYBOARD_LL};
+
+    let mut hook_handle = SHORTCUT_HOOK_HANDLE.lock().unwrap();
+    if hook_handle.is_none() {
+        unsafe {
+            match SetWindowsHookExW(WH_KEYBOARD_LL, Some(shortcut_hook_proc), HINSTANCE(0), 0) {
+                Ok(hook) => {
+                    *hook_handle = Some(hook);
+                }
+                Err(_e) => {
+                    // 静默处理错误
+                }
+            }
+        }
+    }
+}
+
+// 卸载快捷键钩子
+#[cfg(windows)]
+pub fn uninstall_shortcut_hook() {
+    use windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx;
+
+    SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
+
+    let mut hook_handle = SHORTCUT_HOOK_HANDLE.lock().unwrap();
+    if let Some(hook) = hook_handle.take() {
+        unsafe {
+            let _ = UnhookWindowsHookEx(hook);
+        }
+    }
+}
+
+// 启用快捷键拦截
+#[cfg(windows)]
+pub fn enable_shortcut_interception() {
+    SHORTCUT_INTERCEPTION_ENABLED.store(true, Ordering::SeqCst);
+}
+
+// 禁用快捷键拦截
+#[cfg(windows)]
+pub fn disable_shortcut_interception() {
+    SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
+    SHORTCUT_TRIGGERED.store(false, Ordering::SeqCst);
+}
+
+// 更新要拦截的快捷键
+#[cfg(windows)]
+pub fn update_shortcut_to_intercept(shortcut: &str) {
+    if let Some(parsed) = crate::global_state::parse_shortcut(shortcut) {
+        let mut current_shortcut = CURRENT_SHORTCUT.lock().unwrap();
+        *current_shortcut = Some(parsed.clone());
+    }
+}
+
+// 检查拦截是否启用
+#[cfg(windows)]
+pub fn is_interception_enabled() -> bool {
+    SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::Relaxed)
+}
+
+// 非Windows平台的空实现
+#[cfg(not(windows))]
+pub fn initialize_shortcut_interceptor(_window: tauri::WebviewWindow) {}
+
+#[cfg(not(windows))]
+pub fn install_shortcut_hook() {}
+
+#[cfg(not(windows))]
+pub fn uninstall_shortcut_hook() {}
+
+#[cfg(not(windows))]
+pub fn enable_shortcut_interception() {}
+
+#[cfg(not(windows))]
+pub fn disable_shortcut_interception() {}
+
+#[cfg(not(windows))]
+pub fn update_shortcut_to_intercept(_shortcut: &str) {}
+
+#[cfg(not(windows))]
+pub fn is_interception_enabled() -> bool {
+    false
+}

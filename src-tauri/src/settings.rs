@@ -131,19 +131,11 @@ impl AppSettings {
     /// 从文件加载设置
     pub fn load() -> Self {
         match Self::load_from_file() {
-            Ok(settings) => {
-                println!("成功加载设置文件");
-                settings
-            }
-            Err(e) => {
-                println!("加载设置文件失败，使用默认设置: {}", e);
+            Ok(settings) => settings,
+            Err(_e) => {
                 let default_settings = Self::default();
                 // 自动保存默认设置到文件
-                if let Err(save_err) = default_settings.save() {
-                    println!("保存默认设置失败: {}", save_err);
-                } else {
-                    println!("已创建默认设置文件");
-                }
+                let _ = default_settings.save();
                 default_settings
             }
         }
@@ -285,15 +277,12 @@ impl AppSettings {
 
         // 截屏设置
         if let Some(v) = json.get("screenshot_enabled").and_then(|v| v.as_bool()) {
-            println!("更新截屏启用状态: {}", v);
             self.screenshot_enabled = v;
         }
         if let Some(v) = json.get("screenshot_shortcut").and_then(|v| v.as_str()) {
-            println!("更新截屏快捷键: {} -> {}", self.screenshot_shortcut, v);
             self.screenshot_shortcut = v.to_string();
         }
         if let Some(v) = json.get("screenshot_quality").and_then(|v| v.as_u64()) {
-            println!("更新截屏质量: {}", v);
             self.screenshot_quality = v as u8;
         }
         if let Some(v) = json.get("screenshot_auto_save").and_then(|v| v.as_bool()) {
@@ -305,72 +294,56 @@ impl AppSettings {
 
         // 预览窗口设置
         if let Some(v) = json.get("previewEnabled").and_then(|v| v.as_bool()) {
-            println!("更新预览窗口启用状态: {}", v);
             self.preview_enabled = v;
         }
         if let Some(v) = json.get("previewShortcut").and_then(|v| v.as_str()) {
-            println!("更新预览窗口快捷键: {} -> {}", self.preview_shortcut, v);
             self.preview_shortcut = v.to_string();
         }
         if let Some(v) = json.get("previewItemsCount").and_then(|v| v.as_u64()) {
-            println!("更新预览项目数量: {}", v);
             self.preview_items_count = v as u32;
         }
         if let Some(v) = json.get("previewAutoPaste").and_then(|v| v.as_bool()) {
-            println!("更新预览自动粘贴: {}", v);
             self.preview_auto_paste = v;
         }
         if let Some(v) = json.get("previewScrollSound").and_then(|v| v.as_bool()) {
-            println!("更新预览滚动音效: {}", v);
             self.preview_scroll_sound = v;
         }
         if let Some(v) = json.get("previewScrollSoundPath").and_then(|v| v.as_str()) {
-            println!("更新预览滚动音效路径: {}", v);
             self.preview_scroll_sound_path = v.to_string();
         }
 
         // AI翻译设置
         if let Some(v) = json.get("aiTranslationEnabled").and_then(|v| v.as_bool()) {
-            println!("更新AI翻译启用状态: {}", v);
             self.ai_translation_enabled = v;
         }
         if let Some(v) = json.get("aiApiKey").and_then(|v| v.as_str()) {
             self.ai_api_key = v.to_string();
         }
         if let Some(v) = json.get("aiModel").and_then(|v| v.as_str()) {
-            println!("更新AI模型: {}", v);
             self.ai_model = v.to_string();
         }
         if let Some(v) = json.get("aiBaseUrl").and_then(|v| v.as_str()) {
-            println!("更新AI API地址: {}", v);
             self.ai_base_url = v.to_string();
         }
         if let Some(v) = json.get("aiTargetLanguage").and_then(|v| v.as_str()) {
-            println!("更新AI目标语言: {}", v);
             self.ai_target_language = v.to_string();
         }
         if let Some(v) = json.get("aiTranslateOnCopy").and_then(|v| v.as_bool()) {
-            println!("更新复制时翻译: {}", v);
             self.ai_translate_on_copy = v;
         }
         if let Some(v) = json.get("aiTranslateOnPaste").and_then(|v| v.as_bool()) {
-            println!("更新粘贴时翻译: {}", v);
             self.ai_translate_on_paste = v;
         }
         if let Some(v) = json.get("aiTranslationPrompt").and_then(|v| v.as_str()) {
-            println!("更新AI翻译提示词: {}", v);
             self.ai_translation_prompt = v.to_string();
         }
         if let Some(v) = json.get("aiInputSpeed").and_then(|v| v.as_u64()) {
-            println!("更新AI输入速度: {}", v);
             self.ai_input_speed = v as u32;
         }
         if let Some(v) = json.get("aiNewlineMode").and_then(|v| v.as_str()) {
-            println!("更新AI换行符处理模式: {}", v);
             self.ai_newline_mode = v.to_string();
         }
         if let Some(v) = json.get("aiOutputMode").and_then(|v| v.as_str()) {
-            println!("更新AI输出模式: {}", v);
             self.ai_output_mode = v.to_string();
         }
     }

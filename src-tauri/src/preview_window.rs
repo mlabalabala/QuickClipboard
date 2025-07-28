@@ -25,11 +25,9 @@ pub fn init_preview_window() {
     PREVIEW_WINDOW_VISIBLE.store(false, Ordering::SeqCst);
     PREVIEW_CURRENT_INDEX.store(0, Ordering::SeqCst);
 
-    // 重置键盘钩子中的预览状态
+    // 重置预览状态
     #[cfg(windows)]
-    crate::keyboard_hook::reset_preview_state();
-
-    println!("预览窗口模块初始化完成");
+    crate::global_state::PREVIEW_SHORTCUT_HELD.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
 // 显示预览窗口
@@ -37,11 +35,8 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
     // 检查预览窗口是否启用
     let settings = crate::settings::get_global_settings();
     if !settings.preview_enabled {
-        println!("预览窗口功能已禁用，跳过显示");
         return Ok(());
     }
-
-    println!("开始显示预览窗口");
 
     // 根据当前设置调整窗口尺寸
     let width = 350.0;
@@ -117,7 +112,7 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         // 启用鼠标监听以捕获滚轮事件
         #[cfg(windows)]
         {
-            crate::keyboard_hook::enable_mouse_monitoring();
+            crate::mouse_hook::enable_mouse_monitoring();
             println!("已启用鼠标监听");
         }
 
@@ -151,7 +146,7 @@ pub async fn hide_preview_window() -> Result<(), String> {
         // 禁用鼠标监听
         #[cfg(windows)]
         {
-            crate::keyboard_hook::disable_mouse_monitoring();
+            crate::mouse_hook::disable_mouse_monitoring();
             println!("已禁用鼠标监听");
         }
 
@@ -576,7 +571,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
 
         if state.tab == "clipboard" {
             // 粘贴剪贴板历史项
-            if let Some(main_window) = crate::keyboard_hook::MAIN_WINDOW_HANDLE.get() {
+            if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 let params = crate::commands::PasteHistoryParams {
                     index,
                     one_time: Some(false),
@@ -593,7 +588,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
 
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
-                if let Some(main_window) = crate::keyboard_hook::MAIN_WINDOW_HANDLE.get() {
+                if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                     let params = crate::commands::PasteQuickTextParams {
                         id: quick_text.id.clone(),
                         one_time: Some(false),

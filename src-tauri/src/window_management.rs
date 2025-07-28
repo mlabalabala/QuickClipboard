@@ -1,6 +1,4 @@
-use crate::keyboard_hook::{
-    disable_mouse_monitoring, enable_mouse_monitoring, WINDOW_PINNED_STATE,
-};
+use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring, WINDOW_PINNED_STATE};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::WebviewWindow;
@@ -106,6 +104,51 @@ pub fn set_main_window_auto_shown(auto_shown: bool) {
 // 获取主窗口自动显示状态
 pub fn get_main_window_auto_shown() -> bool {
     MAIN_WINDOW_AUTO_SHOWN.load(Ordering::SeqCst)
+}
+
+// 检查当前前台窗口是否是自己的应用窗口
+#[cfg(windows)]
+pub fn is_current_window_own_app(window: &tauri::WebviewWindow) -> bool {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+
+    unsafe {
+        let foreground_hwnd = GetForegroundWindow();
+        if let Ok(app_hwnd_raw) = window.hwnd() {
+            let app_hwnd = HWND(app_hwnd_raw.0 as usize as isize);
+            return foreground_hwnd == app_hwnd;
+        }
+    }
+    false
+}
+
+#[cfg(not(windows))]
+pub fn is_current_window_own_app(_window: &tauri::WebviewWindow) -> bool {
+    false
+}
+
+// 激活窗口，用于隐藏系统剪贴板
+#[cfg(windows)]
+pub fn simulate_click_on_window(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{BringWindowToTop, SetForegroundWindow};
+
+    if let Ok(hwnd_raw) = window.hwnd() {
+        let hwnd = HWND(hwnd_raw.0 as usize as isize);
+
+        unsafe {
+            // 方法1：设置为前台窗口
+            let _ = SetForegroundWindow(hwnd);
+
+            // 方法2：将窗口置顶
+            let _ = BringWindowToTop(hwnd);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn simulate_click_on_window(_window: &tauri::WebviewWindow) {
+    // 非Windows平台暂不实现
 }
 
 // 如果主窗口是自动显示的，则隐藏它
@@ -250,8 +293,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
         let mut use_caret = false;
         let mut caret_source = "unknown";
 
-        println!("开始获取插入符位置...");
-
         // 获取插入符位置的主要方法
         if !use_caret {
             let foreground_window = GetForegroundWindow();
@@ -262,26 +303,15 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                 let window_class = get_window_class_name(foreground_window);
                 let window_title = get_window_title(foreground_window);
 
-                println!(
-                    "前台窗口信息 - 线程ID: {}, 类名: '{}', 标题: '{}'",
-                    thread_id, window_class, window_title
-                );
-
                 // 检查是否为浏览器或WebView窗口
                 let is_browser_or_webview =
                     is_browser_or_webview_window(&window_class, &window_title);
 
                 if is_browser_or_webview {
-                    println!("检测到浏览器/WebView窗口，使用智能定位策略");
-
                     // 对于浏览器/WebView窗口，使用鼠标位置作为基准
                     if GetCursorPos(&mut caret_pos).is_ok() {
                         use_caret = true;
                         caret_source = "browser_mouse_position";
-                        println!(
-                            "✓ 浏览器窗口使用鼠标位置: ({}, {})",
-                            caret_pos.x, caret_pos.y
-                        );
                     }
                 } else {
                     // 对于非浏览器窗口，尝试获取真实插入符位置
@@ -303,16 +333,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                     };
 
                     if GetGUIThreadInfo(thread_id, &mut gui_info).is_ok() {
-                        println!(
-                            "GUI线程信息 - 插入符窗口: {:?}, 矩形: ({},{},{},{}), 焦点窗口: {:?}",
-                            gui_info.hwndCaret,
-                            gui_info.rcCaret.left,
-                            gui_info.rcCaret.top,
-                            gui_info.rcCaret.right,
-                            gui_info.rcCaret.bottom,
-                            gui_info.hwndFocus
-                        );
-
                         // 检查是否有有效的插入符信息
                         if gui_info.hwndCaret.0 != 0 {
                             // 使用插入符矩形的左下角作为基准点
@@ -323,10 +343,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                             if ClientToScreen(gui_info.hwndCaret, &mut caret_pos).as_bool() {
                                 use_caret = true;
                                 caret_source = "gui_thread_caret";
-                                println!(
-                                    "✓ 非浏览器窗口获取插入符位置: ({}, {}) [窗口: {:?}]",
-                                    caret_pos.x, caret_pos.y, gui_info.hwndCaret
-                                );
                             }
                         } else if gui_info.hwndFocus.0 != 0 {
                             // 如果没有插入符，尝试使用焦点窗口的智能位置
@@ -347,10 +363,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                                 {
                                     caret_pos = mouse_pos;
                                     caret_source = "focus_window_mouse";
-                                    println!(
-                                        "✓ 使用焦点窗口内的鼠标位置: ({}, {})",
-                                        caret_pos.x, caret_pos.y
-                                    );
                                 } else {
                                     // 使用窗口中心偏左上的位置
                                     caret_pos.x =
@@ -358,10 +370,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                                     caret_pos.y =
                                         focus_rect.top + (focus_rect.bottom - focus_rect.top) / 3;
                                     caret_source = "focus_window_center";
-                                    println!(
-                                        "✓ 使用焦点窗口中心位置: ({}, {})",
-                                        caret_pos.x, caret_pos.y
-                                    );
                                 }
                                 use_caret = true;
                             }
@@ -377,7 +385,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                 return Err("获取光标位置失败".to_string());
             }
             caret_source = "mouse";
-            println!("✗ 回退到鼠标位置: ({}, {})", caret_pos.x, caret_pos.y);
         }
 
         // 获取插入符/鼠标所在的显示器信息
@@ -419,18 +426,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
             let work_width = monitor_info.rcWork.right - monitor_info.rcWork.left;
             let work_height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
 
-            println!(
-                "显示器信息 - 屏幕: ({},{}) {}x{}, 工作区: ({},{}) {}x{}",
-                screen_left,
-                screen_top,
-                screen_width,
-                screen_height,
-                work_left,
-                work_top,
-                work_width,
-                work_height
-            );
-
             (
                 screen_left,
                 screen_top,
@@ -445,7 +440,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
             // 回退到主屏幕
             let screen_width = GetSystemMetrics(SM_CXSCREEN);
             let screen_height = GetSystemMetrics(SM_CYSCREEN);
-            println!("回退到主屏幕: {}x{}", screen_width, screen_height);
             (
                 0,
                 0,
@@ -471,18 +465,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
         let mut target_y;
         let mut position_strategy = "unknown";
 
-        println!(
-            "开始定位计算 - 插入符: ({}, {}), 窗口尺寸: {}x{}, 工作区: ({},{}) {}x{}",
-            caret_pos.x,
-            caret_pos.y,
-            window_width,
-            window_height,
-            work_left,
-            work_top,
-            work_width,
-            work_height
-        );
-
         // 策略1：尝试在左下角显示（优先策略）
         target_x = caret_pos.x - window_width - margin;
         target_y = caret_pos.y + margin;
@@ -493,7 +475,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
             && target_x + window_width <= work_left + work_width
         {
             position_strategy = "left_bottom";
-            println!("✓ 使用左下角策略");
         } else {
             // 策略2：尝试在右下角显示
             target_x = caret_pos.x + margin;
@@ -504,7 +485,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                 && target_y + window_height <= work_top + work_height
             {
                 position_strategy = "right_bottom";
-                println!("✓ 使用右下角策略");
             } else {
                 // 策略3：尝试在左上角显示
                 target_x = caret_pos.x - window_width - margin;
@@ -515,7 +495,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                     && target_x + window_width <= work_left + work_width
                 {
                     position_strategy = "left_top";
-                    println!("✓ 使用左上角策略");
                 } else {
                     // 策略4：尝试在右上角显示
                     target_x = caret_pos.x + margin;
@@ -523,10 +502,8 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
 
                     if target_x + window_width <= work_left + work_width && target_y >= work_top {
                         position_strategy = "right_top";
-                        println!("✓ 使用右上角策略");
                     } else {
                         // 策略5：智能调整到最佳可用位置
-                        println!("使用自适应策略");
 
                         // 水平方向：优先左侧，不够则右侧，再不够则居中
                         if caret_pos.x - window_width - margin >= work_left {
@@ -564,11 +541,6 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
         } else if target_y + window_height > work_top + work_height {
             target_y = work_top + work_height - window_height;
         }
-
-        println!(
-            "窗口定位策略: {} | 插入符来源: {} | 最终位置: ({}, {}) | 窗口尺寸: {}x{}",
-            position_strategy, caret_source, target_x, target_y, window_width, window_height
-        );
 
         // 设置窗口位置
         let position = tauri::PhysicalPosition::new(target_x, target_y);
@@ -641,7 +613,6 @@ fn is_browser_or_webview_window(class_name: &str, window_title: &str) -> bool {
     // 检查类名
     for browser_class in &browser_classes {
         if class_name.contains(browser_class) {
-            println!("通过类名识别为浏览器窗口: '{}'", class_name);
             return true;
         }
     }
@@ -669,7 +640,6 @@ fn is_browser_or_webview_window(class_name: &str, window_title: &str) -> bool {
     let title_lower = window_title.to_lowercase();
     for keyword in &browser_title_keywords {
         if title_lower.contains(&keyword.to_lowercase()) {
-            println!("通过标题识别为浏览器窗口: '{}'", window_title);
             return true;
         }
     }
@@ -683,7 +653,6 @@ fn is_browser_or_webview_window(class_name: &str, window_title: &str) -> bool {
         || title_lower.contains(".net")
         || title_lower.contains("localhost")
     {
-        println!("通过URL特征识别为浏览器窗口: '{}'", window_title);
         return true;
     }
 

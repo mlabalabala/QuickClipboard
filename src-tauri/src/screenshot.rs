@@ -120,28 +120,21 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
         );
 
         // 首次显示窗口
-        println!("步骤1: 首次显示窗口");
         if let Err(e) = screenshot_window.show() {
             println!("首次显示窗口失败: {}", e);
             return Err(format!("显示截屏窗口失败: {}", e));
         }
-        println!("步骤1: 首次显示窗口 - 成功");
 
         // 确保窗口完全显示
-        println!("步骤2: 设置窗口置顶");
         if let Err(e) = screenshot_window.set_always_on_top(true) {
             println!("设置窗口置顶失败: {}", e);
             return Err(format!("设置窗口置顶失败: {}", e));
         }
-        println!("步骤2: 设置窗口置顶 - 成功");
 
         // 等待窗口创建完成后，再次精确设置位置和显示状态
-        println!("步骤3: 等待窗口创建完成");
         std::thread::sleep(std::time::Duration::from_millis(200));
-        println!("步骤3: 等待完成");
 
         // 使用 Tauri API 直接设置窗口位置，更可靠
-        println!("步骤4: 设置窗口位置");
         if let Err(e) =
             screenshot_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
                 x: min_x,
@@ -151,18 +144,14 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
             println!("设置窗口位置失败: {}", e);
             return Err(format!("设置窗口位置失败: {}", e));
         }
-        println!("步骤4: 设置窗口位置 - 成功");
 
         // 再次确保窗口显示
-        println!("步骤5: 再次显示窗口");
         if let Err(e) = screenshot_window.show() {
             println!("再次显示窗口失败: {}", e);
             return Err(format!("再次显示截屏窗口失败: {}", e));
         }
-        println!("步骤5: 再次显示窗口 - 成功");
 
         // 设置为工具窗口（不获取焦点且置顶）
-        println!("步骤6: 设置为工具窗口");
         #[cfg(windows)]
         {
             if let Err(e) = crate::window_management::set_super_topmost_window(&screenshot_window) {
@@ -170,7 +159,6 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
                 return Err(format!("设置截屏窗口为工具窗口失败: {}", e));
             }
         }
-        println!("步骤6: 设置为工具窗口 - 成功");
 
         println!(
             "截屏窗口已创建并显示: 位置=({}, {}), 尺寸=({}, {})",
@@ -220,7 +208,7 @@ pub async fn close_screenshot_window(app: tauri::AppHandle) -> Result<(), String
         {
             let _ = crate::window_management::set_super_topmost_window(&main_window);
             // 启用鼠标监听，这样点击外部可以隐藏窗口
-            crate::keyboard_hook::enable_mouse_monitoring();
+            crate::mouse_hook::enable_mouse_monitoring();
         }
     }
 

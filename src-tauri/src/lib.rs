@@ -6,13 +6,17 @@ mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
 mod commands;
+mod global_state;
 mod groups;
 mod image_manager;
-mod keyboard_hook;
+mod key_state_monitor;
+mod mouse_hook;
+mod paste_utils;
 mod preview_window;
 mod quick_texts;
 mod screenshot;
 mod settings;
+mod shortcut_interceptor;
 mod sound_manager;
 mod text_input_simulator;
 mod tray;
@@ -86,14 +90,8 @@ fn send_startup_notification_internal(app_handle: &tauri::AppHandle) -> Result<(
         .body(&notification_body)
         .show()
     {
-        Ok(_) => {
-            println!("启动通知发送成功");
-            Ok(())
-        }
-        Err(e) => {
-            println!("发送启动通知失败: {}", e);
-            Err(format!("发送通知失败: {}", e))
-        }
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("发送通知失败: {}", e)),
     }
 }
 
@@ -136,7 +134,7 @@ pub fn run() {
                         #[cfg(windows)]
                         {
                             let _ = window_management::set_tool_window(&window);
-                            keyboard_hook::enable_mouse_monitoring();
+                            mouse_hook::enable_mouse_monitoring();
                         }
 
                         println!("主窗口因设置菜单自动显示，已启用鼠标监听");
@@ -158,9 +156,10 @@ pub fn run() {
             let main_window = app.get_webview_window("main").unwrap();
             #[cfg(windows)]
             {
-                keyboard_hook::MAIN_WINDOW_HANDLE
-                    .set(main_window.clone())
-                    .ok();
+                mouse_hook::MAIN_WINDOW_HANDLE.set(main_window.clone()).ok();
+
+                // 初始化快捷键拦截器
+                shortcut_interceptor::initialize_shortcut_interceptor(main_window.clone());
             }
 
             // 开发模式下自动打开开发者工具
@@ -202,21 +201,16 @@ pub fn run() {
             }
 
             // 初始化分组系统
-            println!("正在初始化分组系统...");
             match groups::init_groups() {
-                Ok(_) => println!("分组系统初始化成功"),
-                Err(e) => {
-                    println!("初始化分组系统失败: {}", e);
+                Ok(_) => {}
+                Err(_e) => {
                     // 不要因为分组系统失败而阻止应用启动
                 }
             }
 
             // 初始化音效管理器
-            // println!("正在初始化音效管理器...");
-            if let Err(e) = sound_manager::initialize_sound_manager() {
-                eprintln!("音效管理器初始化失败: {}", e);
-            } else {
-                println!("音效管理器初始化成功");
+            if let Err(_e) = sound_manager::initialize_sound_manager() {
+                // 静默处理错误
             }
 
             // 初始化预览窗口
@@ -252,11 +246,23 @@ pub fn run() {
 
             // 应用数字快捷键设置
             #[cfg(windows)]
-            keyboard_hook::set_number_shortcuts_enabled(app_settings.number_shortcuts);
+            global_state::set_number_shortcuts_enabled(app_settings.number_shortcuts);
 
             // 应用预览窗口快捷键设置
             #[cfg(windows)]
-            keyboard_hook::update_preview_shortcut(&app_settings.preview_shortcut);
+            global_state::update_preview_shortcut_config(&app_settings.preview_shortcut);
+
+            // 配置快捷键拦截器并启用
+            #[cfg(windows)]
+            {
+                let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
+                    "Win+V".to_string()
+                } else {
+                    app_settings.toggle_shortcut.clone()
+                };
+                shortcut_interceptor::update_shortcut_to_intercept(&toggle_shortcut);
+                shortcut_interceptor::enable_shortcut_interception();
+            }
 
             // 应用音效设置
             let sound_settings = sound_manager::SoundSettings {
@@ -268,20 +274,14 @@ pub fn run() {
             };
             sound_manager::update_sound_settings(sound_settings);
 
-            println!("应用设置加载完成");
-
             // 启动剪贴板监听器
             clipboard_monitor::start_clipboard_monitor(app.handle().clone());
 
             // 初始化托盘图标
             match tray::setup_tray(&app.handle()) {
-                Ok(_) => println!("托盘图标初始化成功"),
-                Err(e) => {
-                    println!("初始化托盘图标失败: {}", e);
-                    #[cfg(debug_assertions)]
-                    println!(
-                        "注意: 开发模式下托盘图标可能不显示，这是正常现象。请尝试打包后的版本。"
-                    );
+                Ok(_) => {}
+                Err(_e) => {
+                    // 静默处理错误
                 }
             }
 
@@ -324,13 +324,17 @@ pub fn run() {
 
                 // println!("总共创建了 {} 个快捷键", all_shortcuts.len());
 
-                // 启动 Windows 键盘钩子（仅 Windows）
+                // 启动按键监控系统（仅 Windows）
                 #[cfg(windows)]
                 {
-                    keyboard_hook::start_keyboard_hook();
+                    // 启动新的按键状态监控系统
+                    key_state_monitor::start_keyboard_polling_system();
                     // 安装鼠标钩子但不启用监听
-                    keyboard_hook::enable_mouse_monitoring();
-                    keyboard_hook::disable_mouse_monitoring();
+                    mouse_hook::enable_mouse_monitoring();
+                    mouse_hook::disable_mouse_monitoring();
+
+                    // 安装快捷键拦截钩子
+                    shortcut_interceptor::install_shortcut_hook();
                 }
 
                 // 一次性注册所有快捷键（仅非Windows）
@@ -356,7 +360,7 @@ pub fn run() {
                                             println!("检测到 Alt+{} Pressed，10ms 后执行粘贴", num);
                                             let idx = num - 1;
                                             if let Some(window) =
-                                                keyboard_hook::MAIN_WINDOW_HANDLE.get().cloned()
+                                                mouse_hook::MAIN_WINDOW_HANDLE.get().cloned()
                                             {
                                                 std::thread::spawn(move || {
                                                     std::thread::sleep(
@@ -390,9 +394,7 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_millis(1000));
 
                 // 发送启动通知
-                if let Err(e) = send_startup_notification_internal(&app_handle) {
-                    println!("发送启动通知失败: {}", e);
-                }
+                let _ = send_startup_notification_internal(&app_handle);
             });
 
             // 标记后端初始化完成
