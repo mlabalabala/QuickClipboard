@@ -752,7 +752,7 @@ pub fn reload_settings() -> Result<serde_json::Value, String> {
 // 保存设置
 #[tauri::command]
 pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
-    println!("保存设置: {}", settings);
+    // println!("保存设置: {}", settings);
 
     // 更新全局设置
     crate::settings::update_global_settings_from_json(&settings)?;
@@ -1672,6 +1672,100 @@ pub fn is_currently_pasting() -> bool {
 pub fn check_ai_translation_config() -> Result<bool, String> {
     let settings = crate::settings::get_global_settings();
     Ok(crate::ai_translator::is_translation_config_valid(&settings))
+}
+
+// =================== 文件处理命令 ===================
+
+#[tauri::command]
+pub async fn copy_files_to_directory(
+    files: Vec<String>,
+    target_dir: String,
+) -> Result<Vec<String>, String> {
+    crate::file_handler::copy_files_to_target(&files, &target_dir)
+}
+
+#[tauri::command]
+pub async fn get_file_info(path: String) -> Result<crate::file_handler::FileInfo, String> {
+    crate::file_handler::get_file_info(&path)
+}
+
+#[tauri::command]
+pub async fn get_clipboard_files() -> Result<Vec<String>, String> {
+    crate::file_handler::get_clipboard_files()
+}
+
+#[tauri::command]
+pub async fn set_clipboard_files(files: Vec<String>) -> Result<(), String> {
+    crate::file_handler::set_clipboard_files(&files)
+}
+
+#[tauri::command]
+pub async fn paste_files(files_data: String, window: WebviewWindow) -> Result<(), String> {
+    // 解析文件数据
+    if !files_data.starts_with("files:") {
+        return Err("无效的文件数据格式".to_string());
+    }
+
+    let files_json = &files_data[6..]; // 去掉 "files:" 前缀
+    let files_data: serde_json::Value =
+        serde_json::from_str(files_json).map_err(|e| format!("解析文件数据失败: {}", e))?;
+
+    let files = files_data["files"].as_array().ok_or("文件数据格式错误")?;
+
+    let file_paths: Vec<String> = files
+        .iter()
+        .filter_map(|f| f["path"].as_str())
+        .map(|s| s.to_string())
+        .collect();
+
+    if file_paths.is_empty() {
+        return Err("没有找到有效的文件路径".to_string());
+    }
+
+    // 设置粘贴状态，防止触发复制音效
+    crate::clipboard_monitor::set_pasting_state(true);
+
+    // 将文件路径设置到剪贴板
+    crate::file_handler::set_clipboard_files(&file_paths)?;
+
+    let is_pinned = window_management::get_window_pinned();
+
+    if is_pinned {
+        // 固定模式：直接粘贴，不隐藏窗口
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(10));
+            #[cfg(windows)]
+            windows_paste();
+
+            // 播放粘贴音效
+            crate::sound_manager::play_paste_sound();
+
+            // 粘贴完成后重置粘贴状态
+            thread::sleep(Duration::from_millis(500));
+            crate::clipboard_monitor::set_pasting_state(false);
+        });
+    } else {
+        // 非固定模式：隐藏窗口后粘贴
+        window.hide().ok();
+        window_management::restore_last_focus().ok();
+        #[cfg(windows)]
+        disable_mouse_monitoring();
+
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(10));
+            #[cfg(windows)]
+            windows_paste();
+
+            // 播放粘贴音效
+            crate::sound_manager::play_paste_sound();
+
+            // 粘贴完成后重置粘贴状态
+            thread::sleep(Duration::from_millis(500));
+            crate::clipboard_monitor::set_pasting_state(false);
+        });
+    }
+
+    Ok(())
 }
 
 /// 获取可用的AI模型列表

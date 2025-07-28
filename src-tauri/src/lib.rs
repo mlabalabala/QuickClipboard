@@ -6,6 +6,7 @@ mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
 mod commands;
+mod file_handler;
 mod global_state;
 mod groups;
 mod image_manager;
@@ -480,7 +481,12 @@ pub fn run() {
             commands::test_ai_config,
             commands::cancel_translation,
             commands::enable_ai_translation_cancel_shortcut,
-            commands::disable_ai_translation_cancel_shortcut
+            commands::disable_ai_translation_cancel_shortcut,
+            commands::copy_files_to_directory,
+            commands::get_file_info,
+            commands::get_clipboard_files,
+            commands::set_clipboard_files,
+            commands::paste_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

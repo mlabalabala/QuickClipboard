@@ -99,16 +99,41 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
     println!("剪贴板监听循环结束");
 }
 
-// 获取剪贴板内容（文本或图片）
+// 获取剪贴板内容（文本、图片或文件）
 fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
-    // 首先尝试获取文本
+    // 首先尝试获取文件
+    if let Ok(file_paths) = crate::file_handler::get_clipboard_files() {
+        if !file_paths.is_empty() {
+            // 处理文件列表
+            let mut file_infos = Vec::new();
+            for path in &file_paths {
+                if let Ok(file_info) = crate::file_handler::get_file_info(path) {
+                    file_infos.push(file_info);
+                }
+            }
+
+            if !file_infos.is_empty() {
+                let file_data = crate::file_handler::FileClipboardData {
+                    files: file_infos,
+                    operation: "copy".to_string(),
+                };
+
+                // 序列化文件数据
+                if let Ok(json_str) = serde_json::to_string(&file_data) {
+                    return Some(format!("files:{}", json_str));
+                }
+            }
+        }
+    }
+
+    // 然后尝试获取文本
     if let Ok(text) = clipboard.get_text() {
         if !text.is_empty() {
             return Some(text);
         }
     }
 
-    // 如果没有文本，尝试获取图片
+    // 最后尝试获取图片
     if clipboard_history::is_save_images_enabled() {
         if let Ok(img) = clipboard.get_image() {
             // 将图片转换为 data URL

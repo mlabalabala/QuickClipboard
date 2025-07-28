@@ -507,6 +507,73 @@ body {
   image-rendering: crisp-edges;
 }
 
+/* 文件列表样式 */
+.clipboard-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.file-item:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.file-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-details {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-more {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  padding: 4px;
+  font-style: italic;
+}
+
+
+
 /* 剪贴板项操作按钮样式 */
 .clipboard-actions {
   position: absolute;

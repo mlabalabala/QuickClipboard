@@ -87,6 +87,11 @@ export function getContentType(text) {
     return 'image';
   }
 
+  // 文件类型 - 检测 files: 格式
+  if (text.startsWith('files:')) {
+    return 'files';
+  }
+
   // 链接类型 - 检测URL模式
   const urlPattern = /^(https?:\/\/|ftp:\/\/|www\.)[^\s]+$/i;
   const simpleUrlPattern = /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/;
@@ -121,7 +126,7 @@ async function openLink(url) {
   }
 }
 
-// 复制到剪贴板（文本或图片）
+// 复制到剪贴板（文本、图片或文件）
 export async function copyToClipboard(item) {
   try {
     const contentType = getContentType(item.text);
@@ -146,6 +151,9 @@ export async function copyToClipboard(item) {
         await writeClipboardText(item.text);
       }
       showNotification('已复制图片', 'success', 2000);
+    } else if (contentType === 'files') {
+      // 文件类型不支持双击复制，只能通过单击粘贴
+      showNotification('请单击文件项进行粘贴', 'info', 2000);
     } else {
       await writeClipboardText(item.text);
       showNotification('已复制文本', 'success', 2000);
@@ -278,6 +286,8 @@ export function renderClipboardItems() {
     // 创建内容
     if (isImage) {
       createImageElement(clipboardItem, item);
+    } else if (contentType === 'files') {
+      createFilesElement(clipboardItem, item);
     } else {
       const textElement = document.createElement('div');
       textElement.className = 'clipboard-text';
@@ -415,21 +425,30 @@ export function renderClipboardItems() {
           }
         } else {
           // 原始粘贴逻辑
-          // 如果是图片，显示加载状态
           const isImage = contentType === 'image';
-          if (isImage) {
+          const isFiles = contentType === 'files';
+
+          // 如果是图片或文件，显示加载状态
+          if (isImage || isFiles) {
             clipboardItem.classList.add('processing');
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'loading-indicator';
-            loadingIndicator.innerHTML = '<div class="spinner"></div><span>准备中...</span>';
+            const message = isFiles ? '准备粘贴文件...' : '准备中...';
+            loadingIndicator.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
             clipboardItem.appendChild(loadingIndicator);
           }
 
-          const params = {
-            index,
-            one_time: false // 剪贴板历史不支持一次性粘贴
-          };
-          await invoke('paste_history_item', { params });
+          if (isFiles) {
+            // 文件类型使用专门的粘贴命令
+            await invoke('paste_files', { filesData: item.text });
+          } else {
+            // 其他类型使用历史记录粘贴
+            const params = {
+              index,
+              one_time: false // 剪贴板历史不支持一次性粘贴
+            };
+            await invoke('paste_history_item', { params });
+          }
           setActiveItem(index);
           // 粘贴逻辑已在Rust端处理窗口显示/隐藏
         }
@@ -672,6 +691,92 @@ export async function loadImageById(imgElement, imageId, useThumbnail = true) {
     imgElement.style.backgroundColor = '#ffebee';
     imgElement.style.color = '#c62828';
     imgElement.textContent = '图片加载失败';
+  }
+}
+
+// 创建文件元素
+function createFilesElement(container, item) {
+  try {
+    // 解析文件数据
+    const filesData = JSON.parse(item.text.substring(6)); // 去掉 "files:" 前缀
+
+    const filesContainer = document.createElement('div');
+    filesContainer.className = 'clipboard-files';
+
+    // 创建文件列表
+    filesData.files.forEach((file, index) => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+
+      // 文件图标
+      const iconElement = document.createElement('img');
+      iconElement.className = 'file-icon';
+      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+      iconElement.alt = file.file_type;
+      iconElement.style.width = '16px';
+      iconElement.style.height = '16px';
+
+      // 文件信息
+      const infoElement = document.createElement('div');
+      infoElement.className = 'file-info';
+
+      const nameElement = document.createElement('div');
+      nameElement.className = 'file-name';
+      nameElement.textContent = file.name;
+      nameElement.title = file.path;
+
+      const detailsElement = document.createElement('div');
+      detailsElement.className = 'file-details';
+      detailsElement.textContent = `${file.file_type} • ${formatFileSize(file.size)}`;
+
+      infoElement.appendChild(nameElement);
+      infoElement.appendChild(detailsElement);
+
+      fileItem.appendChild(iconElement);
+      fileItem.appendChild(infoElement);
+
+      filesContainer.appendChild(fileItem);
+
+      // 限制显示的文件数量
+      if (index >= 4) {
+        const moreElement = document.createElement('div');
+        moreElement.className = 'file-more';
+        moreElement.textContent = `... 还有 ${filesData.files.length - 5} 个文件`;
+        filesContainer.appendChild(moreElement);
+        return false; // 跳出循环
+      }
+    });
+
+    // 文件容器不需要特殊的点击事件处理，让事件冒泡到父级 clipboard-item
+    container.appendChild(filesContainer);
+
+  } catch (error) {
+    console.error('解析文件数据失败:', error);
+    const errorElement = document.createElement('div');
+    errorElement.className = 'clipboard-text';
+    errorElement.textContent = '文件数据解析失败';
+    errorElement.style.color = '#c62828';
+    container.appendChild(errorElement);
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// 获取剪贴板中的文件列表
+export async function getClipboardFiles() {
+  try {
+    const files = await invoke('get_clipboard_files');
+    return files;
+  } catch (error) {
+    console.error('获取剪贴板文件失败:', error);
+    return [];
   }
 }
 
