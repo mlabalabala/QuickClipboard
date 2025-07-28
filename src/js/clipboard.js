@@ -557,12 +557,49 @@ async function clearClipboardHistory() {
 function showClipboardContextMenu(event, item, index) {
   const menuItems = [];
 
-  // 检查是否为文本类型（非图片）
+  // 检查内容类型
   const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
   const contentType = isImage ? 'image' : getContentType(item.text);
 
-  // 只对文本类型显示编辑选项
-  if (contentType === 'text' || contentType === 'link') {
+  // 根据内容类型添加特有菜单项
+  if (contentType === 'image') {
+    // 图片类型菜单
+    menuItems.push(
+      {
+        icon: 'ti-eye',
+        text: '查看原图',
+        onClick: () => {
+          viewOriginalImageFromClipboard(item);
+        }
+      },
+      {
+        icon: 'ti-download',
+        text: '另存为图片',
+        onClick: () => {
+          saveImageAsFromClipboard(item);
+        }
+      }
+    );
+  } else if (contentType === 'files') {
+    // 文件类型菜单
+    menuItems.push(
+      {
+        icon: 'ti-folder-open',
+        text: '打开文件位置',
+        onClick: () => {
+          openFileLocationFromClipboard(item);
+        }
+      },
+      {
+        icon: 'ti-copy',
+        text: '复制文件路径',
+        onClick: () => {
+          copyFilePathsFromClipboard(item);
+        }
+      }
+    );
+  } else if (contentType === 'text' || contentType === 'link') {
+    // 文本和链接类型菜单
     menuItems.push({
       icon: 'ti-edit',
       text: '编辑',
@@ -572,6 +609,7 @@ function showClipboardContextMenu(event, item, index) {
     });
   }
 
+  // 通用菜单项
   menuItems.push(
     {
       icon: 'ti-star',
@@ -821,4 +859,98 @@ function showErrorToast(message) {
       toast.remove();
     }
   }, 3000);
+}
+
+// 从剪贴板查看原图
+function viewOriginalImageFromClipboard(item) {
+  try {
+    if (item.text.startsWith('image:')) {
+      // 新格式：image:id，需要通过后端获取完整图片
+      const imageId = item.text.substring(6);
+      // 创建一个新窗口显示图片
+      const newWindow = window.open('', '_blank');
+      newWindow.document.write(`
+        <html>
+          <head><title>查看原图</title></head>
+          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
+            <img id="fullImage" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
+            <div id="loading" style="color:white;font-size:18px;">加载中...</div>
+          </body>
+        </html>
+      `);
+
+      // 加载完整图片
+      loadImageById(newWindow.document.getElementById('fullImage'), imageId, false);
+      newWindow.document.getElementById('loading').style.display = 'none';
+    } else if (item.text.startsWith('data:image/')) {
+      // 旧格式：完整的data URL
+      const newWindow = window.open('', '_blank');
+      newWindow.document.write(`
+        <html>
+          <head><title>查看原图</title></head>
+          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
+            <img src="${item.text}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
+          </body>
+        </html>
+      `);
+    }
+  } catch (error) {
+    console.error('查看原图失败:', error);
+    showNotification('查看原图失败', 'error');
+  }
+}
+
+// 从剪贴板另存为图片
+function saveImageAsFromClipboard(item) {
+  try {
+    if (item.text.startsWith('data:image/')) {
+      // 创建下载链接
+      const link = document.createElement('a');
+      link.href = item.text;
+      link.download = `image_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showNotification('图片已保存', 'success');
+    } else {
+      showNotification('此图片格式暂不支持直接保存', 'info');
+    }
+  } catch (error) {
+    console.error('保存图片失败:', error);
+    showNotification('保存图片失败', 'error');
+  }
+}
+
+// 从剪贴板打开文件位置
+async function openFileLocationFromClipboard(item) {
+  try {
+    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const firstFilePath = filesData.files[0].path;
+      await invoke('open_file_location', { filePath: firstFilePath });
+      showNotification('已打开文件位置', 'success');
+    }
+  } catch (error) {
+    console.error('打开文件位置失败:', error);
+    showNotification('打开文件位置失败', 'error');
+  }
+}
+
+// 从剪贴板复制文件路径
+async function copyFilePathsFromClipboard(item) {
+  try {
+    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const paths = filesData.files.map(file => file.path).join('\n');
+      await navigator.clipboard.writeText(paths);
+      showNotification(`已复制 ${filesData.files.length} 个文件路径`, 'success');
+    }
+  } catch (error) {
+    console.error('复制文件路径失败:', error);
+    showNotification('复制文件路径失败', 'error');
+  }
 }

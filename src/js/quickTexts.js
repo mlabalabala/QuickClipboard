@@ -506,23 +506,81 @@ export function renderQuickTexts() {
 
 // 显示常用文本右键菜单
 function showQuickTextContextMenu(event, text) {
-  const menuItems = [
-    {
-      icon: 'ti-edit',
-      text: '编辑',
-      onClick: () => {
-        editQuickText(text);
+  const contentType = getContentType(text.content);
+  let menuItems = [];
+
+  if (contentType === 'image') {
+    // 图片类型菜单
+    menuItems = [
+      {
+        icon: 'ti-eye',
+        text: '查看原图',
+        onClick: () => {
+          viewOriginalImage(text);
+        }
+      },
+      {
+        icon: 'ti-download',
+        text: '另存为图片',
+        onClick: () => {
+          saveImageAs(text);
+        }
+      },
+      {
+        icon: 'ti-trash',
+        text: '删除',
+        style: { color: '#ff4d4f' },
+        onClick: () => {
+          deleteQuickText(text.id);
+        }
       }
-    },
-    {
-      icon: 'ti-trash',
-      text: '删除',
-      style: { color: '#ff4d4f' },
-      onClick: () => {
-        deleteQuickText(text.id);
+    ];
+  } else if (contentType === 'files') {
+    // 文件类型菜单
+    menuItems = [
+      {
+        icon: 'ti-folder-open',
+        text: '打开文件位置',
+        onClick: () => {
+          openFileLocation(text);
+        }
+      },
+      {
+        icon: 'ti-copy',
+        text: '复制文件路径',
+        onClick: () => {
+          copyFilePaths(text);
+        }
+      },
+      {
+        icon: 'ti-trash',
+        text: '删除',
+        style: { color: '#ff4d4f' },
+        onClick: () => {
+          deleteQuickText(text.id);
+        }
       }
-    }
-  ];
+    ];
+  } else {
+    // 文本和链接类型菜单
+    menuItems = [
+      {
+        icon: 'ti-edit',
+        text: '编辑',
+        onClick: () => {
+          editQuickText(text);
+        }
+      },
+      {
+        icon: 'ti-trash',
+        text: '删除',
+        style: { color: '#ff4d4f' },
+        onClick: () => {
+          deleteQuickText(text.id);
+        }
+      }
+    ];
+  }
 
   showContextMenu(event, {
     content: text.content,
@@ -604,4 +662,98 @@ function formatFileSize(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// 查看原图
+function viewOriginalImage(text) {
+  try {
+    if (text.content.startsWith('image:')) {
+      // 新格式：image:id，需要通过后端获取完整图片
+      const imageId = text.content.substring(6);
+      // 创建一个新窗口显示图片
+      const newWindow = window.open('', '_blank');
+      newWindow.document.write(`
+        <html>
+          <head><title>查看原图</title></head>
+          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
+            <img id="fullImage" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
+            <div id="loading" style="color:white;font-size:18px;">加载中...</div>
+          </body>
+        </html>
+      `);
+
+      // 加载完整图片
+      loadImageById(newWindow.document.getElementById('fullImage'), imageId, false);
+      newWindow.document.getElementById('loading').style.display = 'none';
+    } else if (text.content.startsWith('data:image/')) {
+      // 旧格式：完整的data URL
+      const newWindow = window.open('', '_blank');
+      newWindow.document.write(`
+        <html>
+          <head><title>查看原图</title></head>
+          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
+            <img src="${text.content}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
+          </body>
+        </html>
+      `);
+    }
+  } catch (error) {
+    console.error('查看原图失败:', error);
+    showNotification('查看原图失败', 'error');
+  }
+}
+
+// 另存为图片
+function saveImageAs(text) {
+  try {
+    if (text.content.startsWith('data:image/')) {
+      // 创建下载链接
+      const link = document.createElement('a');
+      link.href = text.content;
+      link.download = `image_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showNotification('图片已保存', 'success');
+    } else {
+      showNotification('此图片格式暂不支持直接保存', 'info');
+    }
+  } catch (error) {
+    console.error('保存图片失败:', error);
+    showNotification('保存图片失败', 'error');
+  }
+}
+
+// 打开文件位置
+async function openFileLocation(text) {
+  try {
+    const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const firstFilePath = filesData.files[0].path;
+      await invoke('open_file_location', { filePath: firstFilePath });
+      showNotification('已打开文件位置', 'success');
+    }
+  } catch (error) {
+    console.error('打开文件位置失败:', error);
+    showNotification('打开文件位置失败', 'error');
+  }
+}
+
+// 复制文件路径
+async function copyFilePaths(text) {
+  try {
+    const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const paths = filesData.files.map(file => file.path).join('\n');
+      await navigator.clipboard.writeText(paths);
+      showNotification(`已复制 ${filesData.files.length} 个文件路径`, 'success');
+    }
+  } catch (error) {
+    console.error('复制文件路径失败:', error);
+    showNotification('复制文件路径失败', 'error');
+  }
 }

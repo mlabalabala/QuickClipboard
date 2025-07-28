@@ -1814,6 +1814,53 @@ pub async fn test_ai_config() -> Result<bool, String> {
     Ok(true)
 }
 
+// 打开文件位置
+#[tauri::command]
+pub async fn open_file_location(file_path: String) -> Result<(), String> {
+    use std::process::Command;
+
+    #[cfg(windows)]
+    {
+        // Windows: 使用 explorer 打开文件位置并选中文件
+        let result = Command::new("explorer")
+            .args(&["/select,", &file_path])
+            .spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件位置失败: {}", e)),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: 使用 Finder 打开文件位置
+        let result = Command::new("open").args(&["-R", &file_path]).spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件位置失败: {}", e)),
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: 尝试使用文件管理器打开
+        let result = Command::new("xdg-open")
+            .arg(
+                std::path::Path::new(&file_path)
+                    .parent()
+                    .unwrap_or(std::path::Path::new("/")),
+            )
+            .spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件位置失败: {}", e)),
+        }
+    }
+}
+
 // 生成文件类型的标题
 fn generate_files_title(files_content: &str) -> String {
     // 解析文件数据

@@ -486,7 +486,8 @@ pub fn run() {
             commands::get_file_info,
             commands::get_clipboard_files,
             commands::set_clipboard_files,
-            commands::paste_files
+            commands::paste_files,
+            commands::open_file_location
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
