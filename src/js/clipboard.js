@@ -60,7 +60,6 @@ export async function refreshClipboardHistory() {
 
   while (retries > 0) {
     try {
-      // 获取历史记录（不需要调用 refresh_clipboard，因为后台监听器已经处理了）
       const history = await invoke('get_clipboard_history');
 
       // 如果历史记录有变化，更新UI

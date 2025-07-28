@@ -52,7 +52,7 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
         // 获取所有屏幕信息，计算总的桌面区域
         let screens = Screen::all().map_err(|e| format!("获取屏幕信息失败: {}", e))?;
 
-        // 计算所有屏幕的边界
+        // 计算所有屏幕的边界（使用逻辑坐标）
         let mut min_x = i32::MAX;
         let mut min_y = i32::MAX;
         let mut max_x = i32::MIN;
@@ -60,10 +60,20 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
 
         for screen in &screens {
             let display = &screen.display_info;
-            min_x = min_x.min(display.x);
-            min_y = min_y.min(display.y);
-            max_x = max_x.max(display.x + display.width as i32);
-            max_y = max_y.max(display.y + display.height as i32);
+
+            // 获取DPI缩放因子并转换为逻辑坐标
+            let (logical_x, logical_y, logical_width, logical_height) =
+                convert_to_logical_coordinates(
+                    display.x,
+                    display.y,
+                    display.width,
+                    display.height,
+                )?;
+
+            min_x = min_x.min(logical_x);
+            min_y = min_y.min(logical_y);
+            max_x = max_x.max(logical_x + logical_width as i32);
+            max_y = max_y.max(logical_y + logical_height as i32);
         }
 
         let total_width = (max_x - min_x) as f64;
@@ -276,67 +286,102 @@ pub async fn take_fullscreen_screenshot(app: tauri::AppHandle) -> Result<(), Str
     result
 }
 
-/// 捕获指定区域的屏幕截图
+/// 捕获指定区域的屏幕截图（支持跨屏截图）
 async fn capture_screen_area(x: i32, y: i32, width: u32, height: u32) -> Result<(), String> {
+    use image::{ImageBuffer, Rgba};
+
     let screens = Screen::all().map_err(|e| format!("获取屏幕信息失败: {}", e))?;
 
-    // 找到包含指定区域的屏幕
-    let mut target_screen = None;
+    println!(
+        "开始跨屏截图: 目标区域 x={}, y={}, width={}, height={}",
+        x, y, width, height
+    );
+
+    // 创建目标图像缓冲区
+    let mut target_image: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(width, height);
+
+    // 截图区域的边界
+    let capture_left = x;
+    let capture_top = y;
+    let capture_right = x + width as i32;
+    let capture_bottom = y + height as i32;
+
+    // 遍历所有屏幕，找到与截图区域重叠的部分
     for screen in &screens {
         let display = &screen.display_info;
+        let screen_left = display.x;
+        let screen_top = display.y;
         let screen_right = display.x + display.width as i32;
         let screen_bottom = display.y + display.height as i32;
 
-        // 检查截屏区域是否与此屏幕重叠
-        if x < screen_right
-            && (x + width as i32) > display.x
-            && y < screen_bottom
-            && (y + height as i32) > display.y
-        {
-            target_screen = Some(screen);
-            break;
+        // 计算重叠区域
+        let overlap_left = capture_left.max(screen_left);
+        let overlap_top = capture_top.max(screen_top);
+        let overlap_right = capture_right.min(screen_right);
+        let overlap_bottom = capture_bottom.min(screen_bottom);
+
+        // 检查是否有重叠
+        if overlap_left < overlap_right && overlap_top < overlap_bottom {
+            let overlap_width = (overlap_right - overlap_left) as u32;
+            let overlap_height = (overlap_bottom - overlap_top) as u32;
+
+            println!(
+                "屏幕 {}x{} at ({}, {}) 重叠区域: ({}, {}) {}x{}",
+                display.width,
+                display.height,
+                screen_left,
+                screen_top,
+                overlap_left,
+                overlap_top,
+                overlap_width,
+                overlap_height
+            );
+
+            // 计算在当前屏幕上的相对坐标
+            let screen_relative_x = overlap_left - screen_left;
+            let screen_relative_y = overlap_top - screen_top;
+
+            // 截取当前屏幕的重叠部分
+            match screen.capture_area(
+                screen_relative_x,
+                screen_relative_y,
+                overlap_width,
+                overlap_height,
+            ) {
+                Ok(screen_image) => {
+                    // 计算在目标图像中的位置
+                    let target_x = (overlap_left - capture_left) as u32;
+                    let target_y = (overlap_top - capture_top) as u32;
+
+                    println!("将屏幕片段复制到目标图像位置: ({}, {})", target_x, target_y);
+
+                    // 将屏幕图像复制到目标图像的正确位置
+                    for (src_x, src_y, pixel) in screen_image.enumerate_pixels() {
+                        let dst_x = target_x + src_x;
+                        let dst_y = target_y + src_y;
+
+                        if dst_x < width && dst_y < height {
+                            target_image.put_pixel(dst_x, dst_y, *pixel);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("截取屏幕片段失败: {}", e);
+                    // 继续处理其他屏幕，不要因为一个屏幕失败就整体失败
+                }
+            }
         }
     }
 
-    let screen = target_screen.ok_or("未找到包含指定区域的屏幕")?;
-
-    // 将全局坐标转换为屏幕相对坐标
-    let relative_x = x - screen.display_info.x;
-    let relative_y = y - screen.display_info.y;
-
-    println!(
-        "屏幕信息: x={}, y={}, width={}, height={}",
-        screen.display_info.x,
-        screen.display_info.y,
-        screen.display_info.width,
-        screen.display_info.height
-    );
-    println!(
-        "相对坐标: x={}, y={}, width={}, height={}",
-        relative_x, relative_y, width, height
-    );
-
-    // 检查坐标是否有效
-    if relative_x < 0 || relative_y < 0 {
-        return Err(format!(
-            "无效的相对坐标: x={}, y={}",
-            relative_x, relative_y
-        ));
-    }
-
-    // 截取指定区域
-    let image = screen
-        .capture_area(relative_x, relative_y, width, height)
-        .map_err(|e| format!("截屏失败: {}", e))?;
-
     // 转换为PNG格式的base64数据URL
-    let dynamic_image = DynamicImage::ImageRgba8(image);
+    let dynamic_image = DynamicImage::ImageRgba8(target_image);
     let data_url = image_to_data_url(&dynamic_image)?;
 
     // 保存到剪贴板（不添加到历史记录，让监听器处理）
     set_clipboard_content_no_history(data_url)
         .map_err(|e| format!("保存截屏到剪贴板失败: {}", e))?;
 
+    println!("跨屏截图完成");
     Ok(())
 }
 
@@ -368,15 +413,8 @@ fn adjust_coordinates_for_dpi(
     width: u32,
     height: u32,
 ) -> Result<(i32, i32, u32, u32), String> {
-    // 暂时禁用DPI缩放调整，直接返回原始坐标
-    // 因为screenshots库通常已经处理了DPI缩放问题
-    println!(
-        "截屏坐标: x={}, y={}, width={}, height={}",
-        x, y, width, height
-    );
-
-    // 如果仍有偏移问题，可能需要在前端进行坐标调整
-    Ok((x, y, width, height))
+    // 使用新的坐标转换函数
+    convert_to_logical_coordinates(x, y, width, height)
 }
 
 /// 将图片转换为data URL格式
@@ -390,4 +428,51 @@ fn image_to_data_url(image: &DynamicImage) -> Result<String, String> {
 
     let base64_string = general_purpose::STANDARD.encode(&buffer);
     Ok(format!("data:image/png;base64,{}", base64_string))
+}
+
+/// 将物理坐标转换为逻辑坐标（处理DPI缩放）
+fn convert_to_logical_coordinates(
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(i32, i32, u32, u32), String> {
+    #[cfg(windows)]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::Graphics::Gdi::{GetDC, ReleaseDC};
+        use windows::Win32::UI::HiDpi::{GetDpiForWindow, GetSystemDpiForProcess};
+
+        unsafe {
+            // 获取系统DPI
+            use windows::Win32::System::Threading::GetCurrentProcess;
+            let current_process = GetCurrentProcess();
+            let system_dpi = GetSystemDpiForProcess(current_process);
+            let dpi_scale = system_dpi as f64 / 96.0; // 96 DPI是标准DPI
+
+            println!(
+                "DPI信息: system_dpi={}, scale_factor={:.2}",
+                system_dpi, dpi_scale
+            );
+
+            // 将物理坐标转换为逻辑坐标
+            let logical_x = (x as f64 / dpi_scale) as i32;
+            let logical_y = (y as f64 / dpi_scale) as i32;
+            let logical_width = (width as f64 / dpi_scale) as u32;
+            let logical_height = (height as f64 / dpi_scale) as u32;
+
+            println!(
+                "坐标转换: 物理({}, {}, {}, {}) -> 逻辑({}, {}, {}, {})",
+                x, y, width, height, logical_x, logical_y, logical_width, logical_height
+            );
+
+            Ok((logical_x, logical_y, logical_width, logical_height))
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        // 非Windows平台直接返回原始坐标
+        Ok((x, y, width, height))
+    }
 }
