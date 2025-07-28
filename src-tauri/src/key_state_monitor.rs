@@ -1,3 +1,4 @@
+use crate::global_state::{parse_shortcut, ParsedShortcut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -31,8 +32,31 @@ struct KeyState {
     num9: bool,
     // 字母键
     a: bool,
+    b: bool,
     c: bool,
+    d: bool,
+    e: bool,
+    f: bool,
+    g: bool,
+    h: bool,
+    i: bool,
+    j: bool,
+    k: bool,
+    l: bool,
+    m: bool,
+    n: bool,
+    o: bool,
+    p: bool,
+    q: bool,
+    r: bool,
+    s: bool,
+    t: bool,
+    u: bool,
     v: bool,
+    w: bool,
+    x: bool,
+    y: bool,
+    z: bool,
     // 功能键
     f1: bool,
     f2: bool,
@@ -69,8 +93,31 @@ impl Default for KeyState {
             num8: false,
             num9: false,
             a: false,
+            b: false,
             c: false,
+            d: false,
+            e: false,
+            f: false,
+            g: false,
+            h: false,
+            i: false,
+            j: false,
+            k: false,
+            l: false,
+            m: false,
+            n: false,
+            o: false,
+            p: false,
+            q: false,
+            r: false,
+            s: false,
+            t: false,
+            u: false,
             v: false,
+            w: false,
+            x: false,
+            y: false,
+            z: false,
             f1: false,
             f2: false,
             f3: false,
@@ -154,8 +201,31 @@ fn get_current_key_state() -> KeyState {
 
             // 字母键检测
             a: (GetAsyncKeyState(0x41) & 0x8000u16 as i16) != 0,
+            b: (GetAsyncKeyState(0x42) & 0x8000u16 as i16) != 0,
             c: (GetAsyncKeyState(0x43) & 0x8000u16 as i16) != 0,
+            d: (GetAsyncKeyState(0x44) & 0x8000u16 as i16) != 0,
+            e: (GetAsyncKeyState(0x45) & 0x8000u16 as i16) != 0,
+            f: (GetAsyncKeyState(0x46) & 0x8000u16 as i16) != 0,
+            g: (GetAsyncKeyState(0x47) & 0x8000u16 as i16) != 0,
+            h: (GetAsyncKeyState(0x48) & 0x8000u16 as i16) != 0,
+            i: (GetAsyncKeyState(0x49) & 0x8000u16 as i16) != 0,
+            j: (GetAsyncKeyState(0x4A) & 0x8000u16 as i16) != 0,
+            k: (GetAsyncKeyState(0x4B) & 0x8000u16 as i16) != 0,
+            l: (GetAsyncKeyState(0x4C) & 0x8000u16 as i16) != 0,
+            m: (GetAsyncKeyState(0x4D) & 0x8000u16 as i16) != 0,
+            n: (GetAsyncKeyState(0x4E) & 0x8000u16 as i16) != 0,
+            o: (GetAsyncKeyState(0x4F) & 0x8000u16 as i16) != 0,
+            p: (GetAsyncKeyState(0x50) & 0x8000u16 as i16) != 0,
+            q: (GetAsyncKeyState(0x51) & 0x8000u16 as i16) != 0,
+            r: (GetAsyncKeyState(0x52) & 0x8000u16 as i16) != 0,
+            s: (GetAsyncKeyState(0x53) & 0x8000u16 as i16) != 0,
+            t: (GetAsyncKeyState(0x54) & 0x8000u16 as i16) != 0,
+            u: (GetAsyncKeyState(0x55) & 0x8000u16 as i16) != 0,
             v: (GetAsyncKeyState(0x56) & 0x8000u16 as i16) != 0,
+            w: (GetAsyncKeyState(0x57) & 0x8000u16 as i16) != 0,
+            x: (GetAsyncKeyState(0x58) & 0x8000u16 as i16) != 0,
+            y: (GetAsyncKeyState(0x59) & 0x8000u16 as i16) != 0,
+            z: (GetAsyncKeyState(0x5A) & 0x8000u16 as i16) != 0,
 
             // 功能键检测
             f1: (GetAsyncKeyState(0x70) & 0x8000u16 as i16) != 0,
@@ -399,9 +469,9 @@ fn handle_number_shortcut_paste(index: usize) {
 }
 
 // 处理其他快捷键变化
-fn handle_other_shortcuts_change(_last_state: &KeyState, _current_state: &KeyState) {
-    // 这里可以添加其他快捷键的处理逻辑
-    // 比如窗口切换快捷键、截屏快捷键等
+fn handle_other_shortcuts_change(last_state: &KeyState, current_state: &KeyState) {
+    // 处理截屏快捷键
+    handle_screenshot_shortcut_change(last_state, current_state);
 }
 
 // 处理AI翻译取消快捷键变化
@@ -448,4 +518,115 @@ pub fn stop_keyboard_polling_system() {
 // 检查轮询系统是否活跃
 pub fn is_polling_system_active() -> bool {
     POLLING_ACTIVE.load(Ordering::SeqCst)
+}
+
+// 处理截屏快捷键变化
+fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyState) {
+    // 获取当前设置的截屏快捷键
+    let settings = crate::settings::get_global_settings();
+
+    // 检查截屏功能是否启用
+    if !settings.screenshot_enabled {
+        return;
+    }
+
+    let screenshot_shortcut = if settings.screenshot_shortcut.is_empty() {
+        "Ctrl+Shift+A".to_string()
+    } else {
+        settings.screenshot_shortcut.clone()
+    };
+
+    // 解析快捷键
+    if let Some(parsed_shortcut) = parse_shortcut(&screenshot_shortcut) {
+        let last_combo = check_screenshot_shortcut_combo(last_state, &parsed_shortcut);
+        let current_combo = check_screenshot_shortcut_combo(current_state, &parsed_shortcut);
+
+        // 检测快捷键按下（从未按下到按下）
+        if !last_combo && current_combo {
+            println!("截屏快捷键被按下: {}", screenshot_shortcut);
+
+            // 打开截屏窗口
+            if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
+                let app_handle = window.app_handle().clone();
+                std::thread::spawn(move || {
+                    let _ = tauri::async_runtime::block_on(
+                        crate::screenshot::open_screenshot_window(app_handle),
+                    );
+                });
+            }
+        }
+    }
+}
+
+// 检查截屏快捷键组合是否被按下
+fn check_screenshot_shortcut_combo(state: &KeyState, shortcut: &ParsedShortcut) -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::*;
+
+    // 检查修饰键
+    let ctrl_match = shortcut.ctrl == state.ctrl;
+    let shift_match = shortcut.shift == state.shift;
+    let alt_match = shortcut.alt == state.alt;
+    let win_match = shortcut.win == state.win;
+
+    // 检查主键 - 根据key_code映射到KeyState的具体字段
+    let key_match = match shortcut.key_code {
+        // 字母键
+        0x41 => state.a, // A键
+        0x42 => state.b, // B键
+        0x43 => state.c, // C键
+        0x44 => state.d, // D键
+        0x45 => state.e, // E键
+        0x46 => state.f, // F键
+        0x47 => state.g, // G键
+        0x48 => state.h, // H键
+        0x49 => state.i, // I键
+        0x4A => state.j, // J键
+        0x4B => state.k, // K键
+        0x4C => state.l, // L键
+        0x4D => state.m, // M键
+        0x4E => state.n, // N键
+        0x4F => state.o, // O键
+        0x50 => state.p, // P键
+        0x51 => state.q, // Q键
+        0x52 => state.r, // R键
+        0x53 => state.s, // S键
+        0x54 => state.t, // T键
+        0x55 => state.u, // U键
+        0x56 => state.v, // V键
+        0x57 => state.w, // W键
+        0x58 => state.x, // X键
+        0x59 => state.y, // Y键
+        0x5A => state.z, // Z键
+        // 数字键
+        0x31 => state.num1, // 1键
+        0x32 => state.num2, // 2键
+        0x33 => state.num3, // 3键
+        0x34 => state.num4, // 4键
+        0x35 => state.num5, // 5键
+        0x36 => state.num6, // 6键
+        0x37 => state.num7, // 7键
+        0x38 => state.num8, // 8键
+        0x39 => state.num9, // 9键
+        // 功能键
+        0x70 => state.f1,  // F1键
+        0x71 => state.f2,  // F2键
+        0x72 => state.f3,  // F3键
+        0x73 => state.f4,  // F4键
+        0x74 => state.f5,  // F5键
+        0x75 => state.f6,  // F6键
+        0x76 => state.f7,  // F7键
+        0x77 => state.f8,  // F8键
+        0x78 => state.f9,  // F9键
+        0x79 => state.f10, // F10键
+        0x7A => state.f11, // F11键
+        0x7B => state.f12, // F12键
+        // 特殊键
+        0xC0 => state.backtick, // 反引号键
+        _ => {
+            // 对于其他按键，使用GetAsyncKeyState直接检查
+            unsafe { GetAsyncKeyState(shortcut.key_code as i32) as u16 & 0x8000 != 0 }
+        }
+    };
+
+    ctrl_match && shift_match && alt_match && win_match && key_match
 }
