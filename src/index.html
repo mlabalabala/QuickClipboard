@@ -68,13 +68,7 @@
       <div class="tab-main-content">
         <div class="search-container">
           <input type="search" id="search-input" placeholder="搜索剪贴板内容..." autocomplete="off" />
-          <select id="content-filter" class="content-filter">
-            <option value="all">全部</option>
-            <option value="text">文本</option>
-            <option value="image">图片</option>
-            <option value="files">文件</option>
-            <option value="link">链接</option>
-          </select>
+          <div id="content-filter" class="content-filter-container"></div>
         </div>
 
         <div class="clipboard-list" id="clipboard-list">
@@ -105,13 +99,7 @@
         <div class="quick-texts-header">
           <div class="search-container">
             <input type="search" id="quick-texts-search" placeholder="搜索常用..." autocomplete="off" />
-            <select id="quick-texts-filter" class="content-filter">
-              <option value="all">全部</option>
-              <option value="text">文本</option>
-              <option value="image">图片</option>
-              <option value="files">文件</option>
-              <option value="link">链接</option>
-            </select>
+            <div id="quick-texts-filter" class="content-filter-container"></div>
           </div>
           <button class="add-button" id="add-quick-text-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"

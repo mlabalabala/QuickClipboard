@@ -23,12 +23,22 @@ import {
   setCurrentFilter,
   setCurrentQuickTextsFilter,
   setIsOneTimePaste,
+  setQuickTextsCustomFilter,
+  setContentCustomFilter,
   searchInput,
   contentFilter,
+  contentFilterContainer,
   quickTextsSearch,
   quickTextsFilter,
+  quickTextsFilterContainer,
   oneTimePasteSwitch
 } from './js/config.js';
+
+import { CustomSelect } from './js/customSelect.js';
+
+// 自定义组件实例
+let quickTextsCustomFilter;
+let contentCustomFilter;
 
 import {
   initAiTranslation
@@ -134,16 +144,38 @@ async function initApp() {
   searchInput.addEventListener('input', filterClipboardItems);
   quickTextsSearch.addEventListener('input', filterQuickTexts);
 
-  // 设置筛选功能
-  contentFilter.addEventListener('change', (e) => {
-    setCurrentFilter(e.target.value);
-    filterClipboardItems();
+  // 共享的筛选器选项配置
+  const filterOptions = [
+    { value: 'all', text: '全部' },
+    { value: 'text', text: '文本' },
+    { value: 'image', text: '图片' },
+    { value: 'files', text: '文件' },
+    { value: 'link', text: '链接' }
+  ];
+
+  // 初始化自定义剪贴板筛选器
+  contentCustomFilter = new CustomSelect(contentFilterContainer, {
+    options: filterOptions,
+    value: 'all',
+    onChange: (value) => {
+      setCurrentFilter(value);
+      filterClipboardItems();
+    }
   });
 
-  quickTextsFilter.addEventListener('change', (e) => {
-    setCurrentQuickTextsFilter(e.target.value);
-    filterQuickTexts();
+  // 初始化自定义常用文本筛选器
+  quickTextsCustomFilter = new CustomSelect(quickTextsFilterContainer, {
+    options: filterOptions,
+    value: 'all',
+    onChange: (value) => {
+      setCurrentQuickTextsFilter(value);
+      filterQuickTexts();
+    }
   });
+
+  // 将自定义组件实例设置到config中
+  setContentCustomFilter(contentCustomFilter);
+  setQuickTextsCustomFilter(quickTextsCustomFilter);
 
   // 设置一次性粘贴开关
   if (oneTimePasteSwitch) {

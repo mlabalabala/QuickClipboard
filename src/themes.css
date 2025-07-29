@@ -1199,9 +1199,31 @@ body.theme-dark {
   border: 0.1px solid #7c7c7c;
 }
 
-.theme-dark .file-item .file-info * {
+.file-item .file-info * {
   color: #ffffff !important;
 
+}
+
+.theme-dark .custom-select-dropdown,
+.theme-dark .custom-select-trigger {
+  background-color: #333 !important;
+  border-color: #444 !important;
+  color: #ccc !important;
+}
+
+.theme-dark .custom-select-dropdown .custom-select-option {
+  border: 1px solid #333;
+
+}
+
+.theme-dark .custom-select-dropdown .custom-select-option.selected {
+  background-color: #222 !important;
+  color: #487CC1 !important;
+}
+
+.theme-dark .custom-select-dropdown .custom-select-option:hover {
+  background-color: #555 !important;
+  color: #fff !important;
 }
 
 /* 设置页面的toggle-slider样式 - 暗色主题 */

@@ -23,12 +23,16 @@ export let quickTextsSortable = null;
 // DOM元素引用
 export let searchInput;
 export let contentFilter;
+export let contentFilterContainer;
 export let clipboardList;
 export let pinButton;
 export let oneTimePasteSwitch;
 export let aiTranslationSwitch;
 export let quickTextsSearch;
 export let quickTextsFilter;
+export let quickTextsFilterContainer;
+export let quickTextsCustomFilter;
+export let contentCustomFilter;
 export let quickTextsList;
 export let quickTextModal;
 export let modalTitle;
@@ -97,6 +101,14 @@ export function setIsOneTimePaste(oneTime) {
   isOneTimePaste = oneTime;
 }
 
+export function setQuickTextsCustomFilter(instance) {
+  quickTextsCustomFilter = instance;
+}
+
+export function setContentCustomFilter(instance) {
+  contentCustomFilter = instance;
+}
+
 export function setIsAiTranslationEnabled(enabled) {
   isAiTranslationEnabled = enabled;
 }
@@ -125,12 +137,14 @@ export function setCurrentSettings(settings) {
 export function initDOMReferences() {
   searchInput = document.querySelector('#search-input');
   contentFilter = document.querySelector('#content-filter');
+  contentFilterContainer = document.querySelector('#content-filter');
   clipboardList = document.querySelector('#clipboard-list');
   pinButton = document.querySelector('#pin-button');
   oneTimePasteSwitch = document.querySelector('#one-time-paste-switch');
   aiTranslationSwitch = document.querySelector('#ai-translation-switch');
   quickTextsSearch = document.querySelector('#quick-texts-search');
   quickTextsFilter = document.querySelector('#quick-texts-filter');
+  quickTextsFilterContainer = document.querySelector('#quick-texts-filter');
   quickTextsList = document.querySelector('#quick-texts-list');
   quickTextModal = document.querySelector('#quick-text-modal');
   modalTitle = document.querySelector('#modal-title');

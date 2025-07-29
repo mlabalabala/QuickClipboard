@@ -136,27 +136,27 @@ export function setupKeyboardShortcuts() {
 }
 
 // 设置窗口拖拽事件
-export function setupWindowDragEvents() {
-  const titleBar = document.querySelector('.title-bar');
-  let isDragging = false;
+// export function setupWindowDragEvents() {
+//   const titleBar = document.querySelector('.title-bar');
+//   let isDragging = false;
 
-  // 监听拖动开始/结束
-  titleBar.addEventListener('mousedown', () => {
-    isDragging = true;
-  });
+//   // 监听拖动开始/结束
+//   titleBar.addEventListener('mousedown', () => {
+//     isDragging = true;
+//   });
 
-  window.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
+//   window.addEventListener('mouseup', () => {
+//     isDragging = false;
+//   });
 
-  // 禁止双击标题栏最大化窗口
-  titleBar.addEventListener('dblclick', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
+//   // 禁止双击标题栏最大化窗口
+//   titleBar.addEventListener('dblclick', (e) => {
+//     e.preventDefault();
+//     e.stopPropagation();
+//   });
 
-  return { isDragging };
-}
+//   return { isDragging };
+// }
 
 // 设置右键菜单禁用
 export function setupContextMenuDisable() {
