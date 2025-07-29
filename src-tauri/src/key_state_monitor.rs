@@ -378,12 +378,29 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
         else if last_combo && !current_combo {
             PREVIEW_SHORTCUT_HELD.store(false, Ordering::SeqCst);
 
-            // 隐藏预览窗口并粘贴
-            std::thread::spawn(move || {
-                let _ = tauri::async_runtime::block_on(
-                    crate::preview_window::paste_current_preview_item(),
-                );
-            });
+            // 检查用户是否取消了预览
+            let user_cancelled =
+                crate::global_state::PREVIEW_CANCELLED_BY_USER.load(Ordering::SeqCst);
+
+            if user_cancelled {
+                // 用户已取消预览，重置取消标志，不执行粘贴
+                println!("检测到用户已取消预览，跳过粘贴操作");
+                crate::global_state::PREVIEW_CANCELLED_BY_USER.store(false, Ordering::SeqCst);
+
+                // 确保预览窗口已隐藏
+                std::thread::spawn(move || {
+                    let _ = tauri::async_runtime::block_on(
+                        crate::preview_window::hide_preview_window(),
+                    );
+                });
+            } else {
+                // 正常释放快捷键，执行粘贴
+                std::thread::spawn(move || {
+                    let _ = tauri::async_runtime::block_on(
+                        crate::preview_window::paste_current_preview_item(),
+                    );
+                });
+            }
         }
     }
 }

@@ -35,6 +35,26 @@ let currentDataSource = {
   groupId: 'clipboard'
 };
 
+// 设置取消按钮
+function setupCancelButton() {
+  const cancelBtn = document.getElementById('preview-cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      console.log('用户点击取消按钮');
+
+      try {
+        // 调用后端取消预览命令
+        await invoke('cancel_preview');
+      } catch (error) {
+        console.error('取消预览失败:', error);
+      }
+    });
+  }
+}
+
 // 加载预览设置
 async function loadPreviewSettings() {
   try {
@@ -66,6 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // console.log('预览列表元素找到:', previewList);
+
+  // 设置取消按钮事件
+  setupCancelButton();
 
   // 加载预览设置
   await loadPreviewSettings();

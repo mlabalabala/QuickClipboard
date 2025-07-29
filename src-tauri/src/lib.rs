@@ -466,6 +466,7 @@ pub fn run() {
             get_image_data_url,
             get_image_thumbnail_url,
             set_preview_index,
+            cancel_preview,
             delete_clipboard_item,
             update_clipboard_item,
             emit_clipboard_updated,

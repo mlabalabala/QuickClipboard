@@ -846,6 +846,12 @@ pub fn set_preview_index(index: usize) -> Result<(), String> {
     Ok(())
 }
 
+// 取消预览（不粘贴直接隐藏）
+#[tauri::command]
+pub async fn cancel_preview() -> Result<(), String> {
+    crate::preview_window::cancel_preview().await
+}
+
 // 删除剪贴板项目
 #[tauri::command]
 pub fn delete_clipboard_item(id: usize) -> Result<(), String> {

@@ -27,7 +27,7 @@ export class CustomSelect {
       <div class="custom-select">
         <div class="custom-select-trigger">
           <span class="custom-select-text">${this.placeholder}</span>
-          <span class="custom-select-arrow"><i class="ti ti-chevron-down"></i></span>
+          <span class="custom-select-arrow">▼</span>
         </div>
         <div class="custom-select-dropdown">
           ${this.options.map((option, index) => `

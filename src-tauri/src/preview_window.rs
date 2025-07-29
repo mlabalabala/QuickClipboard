@@ -106,6 +106,11 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         // 重置索引
         PREVIEW_CURRENT_INDEX.store(0, Ordering::SeqCst);
 
+        // 重置用户取消标志
+        #[cfg(windows)]
+        crate::global_state::PREVIEW_CANCELLED_BY_USER
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+
         // 通知前端索引已重置
         let _ = window.emit("preview-index-changed", serde_json::json!({ "index": 0 }));
 
@@ -541,6 +546,19 @@ pub fn get_main_window_state() -> Result<serde_json::Value, String> {
 // 检查预览窗口是否可见
 pub fn is_preview_window_visible() -> bool {
     PREVIEW_WINDOW_VISIBLE.load(Ordering::SeqCst)
+}
+
+// 取消预览（不粘贴直接隐藏）
+pub async fn cancel_preview() -> Result<(), String> {
+    println!("用户取消预览，设置取消标志并隐藏窗口");
+
+    // 设置用户取消标志，防止松开快捷键时自动粘贴
+    #[cfg(windows)]
+    crate::global_state::PREVIEW_CANCELLED_BY_USER.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    hide_preview_window().await?;
+
+    Ok(())
 }
 
 // 粘贴当前预览项

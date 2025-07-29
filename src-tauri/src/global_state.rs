@@ -27,6 +27,10 @@ pub static AI_TRANSLATION_CANCEL_ENABLED: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 pub static PREVIEW_SHORTCUT_HELD: AtomicBool = AtomicBool::new(false);
 
+// 预览窗口是否被用户取消（用于防止松开快捷键时自动粘贴）
+#[cfg(windows)]
+pub static PREVIEW_CANCELLED_BY_USER: AtomicBool = AtomicBool::new(false);
+
 // 预览窗口快捷键配置
 #[cfg(windows)]
 #[derive(Debug, Clone)]
