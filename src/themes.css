@@ -1199,7 +1199,7 @@ body.theme-dark {
   border: 0.1px solid #7c7c7c;
 }
 
-.file-item .file-info * {
+.theme-dark .file-item .file-info * {
   color: #ffffff !important;
 
 }
