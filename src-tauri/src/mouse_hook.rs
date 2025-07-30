@@ -33,47 +33,46 @@ unsafe extern "system" fn mouse_hook_proc(
     };
 
     if code == HC_ACTION as i32 {
-        // 快速检查：如果监听未启用或窗口已固定，直接返回
-        if !MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed)
-            || WINDOW_PINNED_STATE.load(Ordering::Relaxed)
-        {
+        // 快速检查：如果监听未启用，直接返回
+        if !MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed) {
             return CallNextHookEx(None, code, wparam, lparam);
         }
+
+        let is_window_pinned = WINDOW_PINNED_STATE.load(Ordering::Relaxed);
+        let preview_visible = crate::preview_window::is_preview_window_visible();
 
         // 处理鼠标事件
         match wparam.0 as u32 {
             WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN => {
-                // 获取鼠标点击位置
-                let mouse_data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
-                let click_point = POINT {
-                    x: mouse_data.pt.x,
-                    y: mouse_data.pt.y,
-                };
+                // 点击事件：只有在窗口未固定时才处理点击外部关闭
+                if !is_window_pinned {
+                    // 获取鼠标点击位置
+                    let mouse_data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
+                    let click_point = POINT {
+                        x: mouse_data.pt.x,
+                        y: mouse_data.pt.y,
+                    };
 
-                // 检查点击是否在窗口区域外
-                if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                    if is_click_outside_window(window, click_point) {
-                        // 在新线程中隐藏窗口，避免阻塞钩子
-                        let window_clone = window.clone();
-                        std::thread::spawn(move || {
-                            let _ = window_clone.hide();
-                        });
+                    // 检查点击是否在主窗口区域外
+                    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                        if is_click_outside_window(window, click_point) {
+                            // 在新线程中隐藏主窗口，避免阻塞钩子
+                            let window_clone = window.clone();
+                            std::thread::spawn(move || {
+                                let _ = window_clone.hide();
+                            });
+                        }
                     }
                 }
             }
             WM_MOUSEWHEEL => {
-                let preview_visible = crate::preview_window::is_preview_window_visible();
-                // println!("滚轮事件检测 - 预览窗口可见: {}", preview_visible);
-
-                // 只有在预览窗口显示时才处理滚轮事件
+                // 滚轮事件：只有在预览窗口显示时才处理，不受固定状态影响
                 if preview_visible {
                     let mouse_data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
                     let wheel_delta = ((mouse_data.mouseData >> 16) & 0xFFFF) as i16;
 
                     // 根据滚轮方向发送滚动事件
                     let direction = if wheel_delta > 0 { "up" } else { "down" };
-
-                    // println!("检测到滚轮事件: {} (delta: {})", direction, wheel_delta);
 
                     // 发送滚动事件到预览窗口
                     if let Err(e) = crate::preview_window::handle_preview_scroll(direction) {
@@ -83,9 +82,6 @@ unsafe extern "system" fn mouse_hook_proc(
                     // 拦截滚轮事件，防止传递给其他应用
                     return windows::Win32::Foundation::LRESULT(1);
                 }
-                // else {
-                //     println!("预览窗口不可见，忽略滚轮事件");
-                // }
             }
             _ => {}
         }

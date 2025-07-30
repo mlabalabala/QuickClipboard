@@ -148,11 +148,24 @@ pub async fn hide_preview_window() -> Result<(), String> {
             .map_err(|e| format!("隐藏预览窗口失败: {}", e))?;
         PREVIEW_WINDOW_VISIBLE.store(false, Ordering::SeqCst);
 
-        // 禁用鼠标监听
+        // 检查主窗口状态，决定是否需要重新启用鼠标监听
         #[cfg(windows)]
         {
-            crate::mouse_hook::disable_mouse_monitoring();
-            println!("已禁用鼠标监听");
+            // 检查主窗口是否仍然可见
+            if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
+                if main_window.is_visible().unwrap_or(false) {
+                    // 主窗口仍然可见，保持鼠标监听启用状态
+                    println!("主窗口仍然可见，保持鼠标监听启用");
+                } else {
+                    // 主窗口不可见，禁用鼠标监听
+                    crate::mouse_hook::disable_mouse_monitoring();
+                    println!("主窗口不可见，已禁用鼠标监听");
+                }
+            } else {
+                // 无法获取主窗口句柄，禁用鼠标监听
+                crate::mouse_hook::disable_mouse_monitoring();
+                println!("无法获取主窗口句柄，已禁用鼠标监听");
+            }
         }
 
         println!("预览窗口已隐藏");
