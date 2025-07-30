@@ -163,7 +163,7 @@ pub fn run() {
             }
 
             // 设置窗口效果
-            window_effects::set_window_blur(&main_window);
+            // window_effects::set_window_blur(&main_window);
 
             // 设置窗口圆角（Windows 11）
             #[cfg(windows)]
