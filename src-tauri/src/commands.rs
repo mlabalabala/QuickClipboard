@@ -1940,3 +1940,47 @@ fn is_target_file_manager() -> bool {
     // 非Windows系统暂时返回false，不延迟
     false
 }
+
+// 读取图片文件并返回base64数据
+#[tauri::command]
+pub fn read_image_file(file_path: String) -> Result<String, String> {
+    use std::fs;
+    use std::path::Path;
+
+    let path = Path::new(&file_path);
+
+    // 检查文件是否存在
+    if !path.exists() {
+        return Err("文件不存在".to_string());
+    }
+
+    // 检查文件大小（限制为10MB）
+    if let Ok(metadata) = fs::metadata(&path) {
+        const MAX_SIZE: u64 = 10 * 1024 * 1024; // 10MB
+        if metadata.len() > MAX_SIZE {
+            return Err("文件太大".to_string());
+        }
+    }
+
+    // 读取文件
+    let image_data = fs::read(&path)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+
+    // 根据文件扩展名确定MIME类型
+    let mime_type = match path.extension().and_then(|ext| ext.to_str()) {
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("png") => "image/png",
+        Some("gif") => "image/gif",
+        Some("bmp") => "image/bmp",
+        Some("webp") => "image/webp",
+        Some("tiff") | Some("tif") => "image/tiff",
+        Some("ico") => "image/x-icon",
+        Some("svg") => "image/svg+xml",
+        _ => "image/png", // 默认
+    };
+
+    // 编码为base64
+    use base64::{engine::general_purpose, Engine as _};
+    let base64_data = general_purpose::STANDARD.encode(&image_data);
+    Ok(format!("data:{};base64,{}", mime_type, base64_data))
+}

@@ -17,6 +17,7 @@ function printStartupBanner() {
 }
 
 import { initThemeManager } from './js/themeManager.js';
+import './js/fileIconUtils.js';
 
 import {
   initDOMReferences,

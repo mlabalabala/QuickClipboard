@@ -18,6 +18,7 @@ import {
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects } from './groups.js';
+import { createFileIconElement } from './fileIconUtils.js';
 import { showContextMenu } from './contextMenu.js';
 
 
@@ -607,13 +608,8 @@ function createQuickTextFilesElement(container, text) {
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
 
-      // 文件图标
-      const iconElement = document.createElement('img');
-      iconElement.className = 'file-icon';
-      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-      iconElement.alt = file.file_type;
-      iconElement.style.width = '20px';
-      iconElement.style.height = '20px';
+      // 文件图标 - 使用新的工具函数
+      const iconElement = createFileIconElement(file, 'medium');
 
       // 文件信息
       const infoElement = document.createElement('div');

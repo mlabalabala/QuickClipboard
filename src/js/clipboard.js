@@ -17,6 +17,11 @@ import {
   showTranslationIndicator,
   hideTranslationIndicator
 } from './aiTranslation.js';
+import {
+  setFileIcon,
+  isImageFile,
+  createFileIconElement
+} from './fileIconUtils.js';
 
 // 图片缓存
 const imageCache = new Map();
@@ -761,13 +766,8 @@ function createFilesElement(container, item) {
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
 
-      // 文件图标
-      const iconElement = document.createElement('img');
-      iconElement.className = 'file-icon';
-      iconElement.src = file.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-      iconElement.alt = file.file_type;
-      iconElement.style.width = '24px';
-      iconElement.style.height = '24px';
+      // 文件图标 - 使用新的工具函数
+      const iconElement = createFileIconElement(file, 'large');
 
       // 文件信息
       const infoElement = document.createElement('div');

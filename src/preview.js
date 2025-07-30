@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { createFileIconElement } from './js/fileIconUtils.js';
 
 // =================== 启动横幅 ===================
 function printPreviewBanner() {
@@ -388,13 +389,9 @@ function createPreviewItem(item, index, position = 'current') {
         const fileContainer = document.createElement('div');
         fileContainer.className = 'preview-file-container';
 
-        // 文件图标 - 使用真实的系统图标
-        const fileIcon = document.createElement('img');
+        // 文件图标 - 使用新的工具函数
+        const fileIcon = createFileIconElement(firstFile, 'medium');
         fileIcon.className = 'preview-file-icon';
-        fileIcon.src = firstFile.icon_data || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-        fileIcon.alt = firstFile.file_type || '文件';
-        fileIcon.style.width = '20px';
-        fileIcon.style.height = '20px';
 
         const fileInfo = document.createElement('div');
         fileInfo.className = 'preview-file-info';

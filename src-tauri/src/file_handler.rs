@@ -261,6 +261,18 @@ pub fn get_file_icon(path: &str) -> Result<String, String> {
 
     let path_obj = Path::new(path);
 
+    // 检查是否为图片文件，如果是则返回文件路径让前端直接访问
+    if path_obj.exists() && is_image_file(path) {
+        // 检查文件大小，如果太大则使用默认图标
+        if !is_file_size_suitable_for_direct_access(path) {
+            // 文件太大，使用默认图片图标
+            return Ok(get_default_image_icon());
+        }
+
+        // 返回特殊的文件路径格式，让前端知道这是一个图片文件
+        return Ok(format!("image_file://{}", path));
+    }
+
     // 如果文件不存在，使用扩展名获取图标
     let use_file_attributes = !path_obj.exists();
 
@@ -512,6 +524,40 @@ fn get_executable_file_icon() -> String {
 fn get_default_file_icon() -> String {
     "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=".to_string()
 }
+
+fn get_default_image_icon() -> String {
+    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjNDI4NWY0IiBzdHJva2U9IiM0Mjg1ZjQiIHN0cm9rZS13aWR0aD0iMiIgcng9IjIiLz4KPGNpcmNsZSBjeD0iOSIgY3k9IjkiIHI9IjIiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Im0yMSAxNS0zLjA4Ni0zLjA4NmEyIDIgMCAwIDAtMi44MjggMEwxMiAxNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+".to_string()
+}
+
+// 图片文件大小限制常量
+const MAX_IMAGE_SIZE_FOR_DIRECT_ACCESS: u64 = 10 * 1024 * 1024; // 10MB
+
+// 检查文件是否为图片类型
+fn is_image_file(path: &str) -> bool {
+    use std::path::Path;
+
+    let path_obj = Path::new(path);
+    if let Some(extension) = path_obj.extension() {
+        if let Some(ext_str) = extension.to_str() {
+            let ext_lower = ext_str.to_lowercase();
+            return matches!(ext_lower.as_str(),
+                "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "tif" | "ico" | "svg"
+            );
+        }
+    }
+    false
+}
+
+// 检查文件大小是否适合直接访问
+fn is_file_size_suitable_for_direct_access(path: &str) -> bool {
+    if let Ok(metadata) = fs::metadata(path) {
+        metadata.len() <= MAX_IMAGE_SIZE_FOR_DIRECT_ACCESS
+    } else {
+        false
+    }
+}
+
+
 
 // 复制文件到目标位置
 pub fn copy_files_to_target(files: &[String], target_dir: &str) -> Result<Vec<String>, String> {
