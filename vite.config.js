@@ -21,6 +21,7 @@ export default defineConfig({
         settings: resolve(__dirname, 'src/settings.html'),
         preview: resolve(__dirname, 'src/preview.html'),
         screenshot: resolve(__dirname, 'src/screenshot.html'),
+        textEditor: resolve(__dirname, 'src/textEditor.html'),
       },
     },
   },

@@ -470,14 +470,29 @@ fn handle_number_shortcut_paste(index: usize) {
             };
 
             if let Some(content) = content {
-                let params = crate::commands::PasteContentParams {
-                    content,
-                    quick_text_id: None,
-                    one_time: None,
-                };
                 let window_clone = window.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = crate::commands::paste_content(params, window_clone).await;
+                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
+                    if !content.starts_with("files:")
+                        && !content.starts_with("data:image/")
+                        && !content.starts_with("image:")
+                    {
+                        // 文本内容，使用带翻译支持的粘贴
+                        let _ = crate::commands::paste_text_with_translation_support(
+                            content,
+                            window_clone,
+                            "快捷键粘贴",
+                        )
+                        .await;
+                    } else {
+                        // 非文本内容，使用普通粘贴
+                        let params = crate::commands::PasteContentParams {
+                            content,
+                            quick_text_id: None,
+                            one_time: None,
+                        };
+                        let _ = crate::commands::paste_content(params, window_clone).await;
+                    }
                 });
             }
         });

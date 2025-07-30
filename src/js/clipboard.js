@@ -439,8 +439,17 @@ export function renderClipboardItems() {
               }
 
               // 翻译完成后隐藏窗口（如果需要）
-              if (!window.isPinned) {
-                await invoke('hide_main_window_if_auto_shown');
+              try {
+                const isPinned = await invoke('get_window_pinned');
+                if (!isPinned) {
+                  await invoke('hide_main_window_if_auto_shown');
+                }
+              } catch (error) {
+                console.error('检查窗口固定状态失败:', error);
+                // 如果检查失败，使用前端状态作为降级
+                if (!window.isPinned) {
+                  await invoke('hide_main_window_if_auto_shown');
+                }
               }
             } else {
               showNotification(`翻译和粘贴都失败了: ${result.error}`, 'error');

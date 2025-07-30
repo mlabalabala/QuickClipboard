@@ -387,16 +387,32 @@ pub fn run() {
                                                     };
 
                                                     if let Some(content) = content {
-                                                        let params = crate::commands::PasteContentParams {
-                                                            content,
-                                                            quick_text_id: None,
-                                                            one_time: None,
-                                                        };
                                                         let window_clone = window.clone();
                                                         tauri::async_runtime::spawn(async move {
-                                                            match crate::commands::paste_content(params, window_clone).await {
-                                                                Ok(_) => println!("粘贴历史记录成功"),
-                                                                Err(e) => println!("粘贴历史记录失败: {}", e),
+                                                            // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
+                                                            if !content.starts_with("files:")
+                                                                && !content.starts_with("data:image/")
+                                                                && !content.starts_with("image:") {
+                                                                // 文本内容，使用带翻译支持的粘贴
+                                                                match crate::commands::paste_text_with_translation_support(
+                                                                    content,
+                                                                    window_clone,
+                                                                    "Alt+数字快捷键",
+                                                                ).await {
+                                                                    Ok(_) => println!("Alt+数字快捷键粘贴成功"),
+                                                                    Err(e) => println!("Alt+数字快捷键粘贴失败: {}", e),
+                                                                }
+                                                            } else {
+                                                                // 非文本内容，使用普通粘贴
+                                                                let params = crate::commands::PasteContentParams {
+                                                                    content,
+                                                                    quick_text_id: None,
+                                                                    one_time: None,
+                                                                };
+                                                                match crate::commands::paste_content(params, window_clone).await {
+                                                                    Ok(_) => println!("粘贴历史记录成功"),
+                                                                    Err(e) => println!("粘贴历史记录失败: {}", e),
+                                                                }
                                                             }
                                                         });
                                                     }
@@ -436,6 +452,7 @@ pub fn run() {
             get_clipboard_history,
             refresh_clipboard,
             set_window_pinned,
+            get_window_pinned,
             toggle_window_visibility,
             set_clipboard_image,
             focus_clipboard_window,

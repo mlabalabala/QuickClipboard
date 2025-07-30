@@ -601,12 +601,27 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                 };
 
                 if let Some(content) = content {
-                    let params = crate::commands::PasteContentParams {
-                        content,
-                        quick_text_id: None,
-                        one_time: None,
-                    };
-                    crate::commands::paste_content(params, main_window.clone()).await?;
+                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
+                    if !content.starts_with("files:")
+                        && !content.starts_with("data:image/")
+                        && !content.starts_with("image:")
+                    {
+                        // 文本内容，使用带翻译支持的粘贴
+                        crate::commands::paste_text_with_translation_support(
+                            content,
+                            main_window.clone(),
+                            "预览窗口",
+                        )
+                        .await?;
+                    } else {
+                        // 非文本内容，使用普通粘贴
+                        let params = crate::commands::PasteContentParams {
+                            content,
+                            quick_text_id: None,
+                            one_time: None,
+                        };
+                        crate::commands::paste_content(params, main_window.clone()).await?;
+                    }
                 }
             }
         } else if state.tab == "quick-texts" {
@@ -620,12 +635,27 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
                 if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                    let params = crate::commands::PasteContentParams {
-                        content: quick_text.content.clone(),
-                        quick_text_id: Some(quick_text.id.clone()),
-                        one_time: Some(false),
-                    };
-                    crate::commands::paste_content(params, main_window.clone()).await?;
+                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
+                    if !quick_text.content.starts_with("files:")
+                        && !quick_text.content.starts_with("data:image/")
+                        && !quick_text.content.starts_with("image:")
+                    {
+                        // 文本内容，使用带翻译支持的粘贴
+                        crate::commands::paste_text_with_translation_support(
+                            quick_text.content.clone(),
+                            main_window.clone(),
+                            "预览窗口常用文本",
+                        )
+                        .await?;
+                    } else {
+                        // 非文本内容，使用普通粘贴
+                        let params = crate::commands::PasteContentParams {
+                            content: quick_text.content.clone(),
+                            quick_text_id: Some(quick_text.id.clone()),
+                            one_time: Some(false),
+                        };
+                        crate::commands::paste_content(params, main_window.clone()).await?;
+                    }
                 }
             }
         }

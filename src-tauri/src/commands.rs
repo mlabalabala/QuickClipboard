@@ -201,6 +201,11 @@ pub fn set_window_pinned(pinned: bool) -> Result<(), String> {
     window_management::set_window_pinned(pinned)
 }
 
+#[tauri::command]
+pub fn get_window_pinned() -> bool {
+    window_management::get_window_pinned()
+}
+
 // 如果主窗口是自动显示的，则隐藏它
 #[tauri::command]
 pub fn hide_main_window_if_auto_shown(app: tauri::AppHandle) -> Result<(), String> {
@@ -1831,8 +1836,135 @@ async fn paste_image_internal(image_content: String, window: WebviewWindow) -> R
     Ok(())
 }
 
-// 内部文本粘贴函数
-async fn paste_text_internal(text_content: String, window: WebviewWindow) -> Result<(), String> {
+// 通用翻译粘贴逻辑（智能选择输出方式，带通知支持）
+pub async fn paste_text_with_translation_support(
+    text_content: String,
+    window: WebviewWindow,
+    source_context: &str,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    // 检查是否需要翻译
+    let settings = crate::settings::get_global_settings();
+    let should_translate = crate::ai_translator::is_translation_config_valid(&settings)
+        && settings.ai_translate_on_paste;
+
+    if should_translate {
+        println!("{}需要翻译，使用智能翻译模式", source_context);
+
+        // 发送显示翻译指示器事件
+        if let Err(e) = window.emit(
+            "show-translation-indicator",
+            serde_json::json!({
+                "text": "正在翻译...",
+                "source": source_context
+            }),
+        ) {
+            eprintln!("发送显示翻译指示器事件失败: {}", e);
+        }
+
+        // 发送翻译开始通知
+        let start_message = format!("开始翻译 ({} 字符)", text_content.len());
+        if let Err(e) = window.emit(
+            "translation-start",
+            serde_json::json!({
+                "message": start_message,
+                "source": source_context,
+                "textLength": text_content.len()
+            }),
+        ) {
+            eprintln!("发送翻译开始通知失败: {}", e);
+        }
+
+        // 发送翻译状态通知
+        if let Err(e) = window.emit(
+            "translation-status",
+            serde_json::json!({
+                "status": "translating",
+                "message": "正在翻译...",
+                "source": source_context
+            }),
+        ) {
+            eprintln!("发送翻译状态通知失败: {}", e);
+        }
+
+        // 使用智能翻译命令，根据设置自动选择输出方式
+        match translate_text_smart(text_content.clone()).await {
+            Ok(_) => {
+                println!("{}智能翻译成功", source_context);
+
+                // 发送翻译成功通知
+                let success_message = format!("翻译完成 ({} 字符)", text_content.len());
+                if let Err(e) = window.emit(
+                    "translation-success",
+                    serde_json::json!({
+                        "message": success_message,
+                        "source": source_context,
+                        "originalLength": text_content.len()
+                    }),
+                ) {
+                    eprintln!("发送翻译成功通知失败: {}", e);
+                }
+
+                // 发送隐藏翻译指示器事件
+                if let Err(e) = window.emit(
+                    "hide-translation-indicator",
+                    serde_json::json!({
+                        "source": source_context
+                    }),
+                ) {
+                    eprintln!("发送隐藏翻译指示器事件失败: {}", e);
+                }
+
+                // 处理窗口显示/隐藏
+                let is_pinned = crate::window_management::get_window_pinned();
+                if !is_pinned {
+                    if let Err(e) = window.hide() {
+                        eprintln!("隐藏窗口失败: {}", e);
+                    }
+                }
+
+                return Ok(());
+            }
+            Err(e) => {
+                println!("{}智能翻译失败，降级到普通粘贴: {}", source_context, e);
+
+                // 发送翻译失败通知
+                if let Err(emit_err) = window.emit(
+                    "translation-error",
+                    serde_json::json!({
+                        "message": format!("翻译失败，使用普通粘贴: {}", e),
+                        "source": source_context,
+                        "error": e
+                    }),
+                ) {
+                    eprintln!("发送翻译失败通知失败: {}", emit_err);
+                }
+
+                // 发送隐藏翻译指示器事件
+                if let Err(emit_err) = window.emit(
+                    "hide-translation-indicator",
+                    serde_json::json!({
+                        "source": source_context
+                    }),
+                ) {
+                    eprintln!("发送隐藏翻译指示器事件失败: {}", emit_err);
+                }
+
+                // 翻译失败，继续执行普通粘贴
+            }
+        }
+    }
+
+    // 执行普通粘贴
+    paste_text_internal_without_translation(text_content, window).await
+}
+
+// 内部文本粘贴函数（不包含翻译逻辑）
+async fn paste_text_internal_without_translation(
+    text_content: String,
+    window: WebviewWindow,
+) -> Result<(), String> {
     // 设置粘贴状态，防止移动历史记录位置
     crate::clipboard_monitor::set_pasting_state(true);
 
@@ -1866,6 +1998,11 @@ async fn paste_text_internal(text_content: String, window: WebviewWindow) -> Res
     });
 
     Ok(())
+}
+
+// 内部文本粘贴函数（保持向后兼容）
+async fn paste_text_internal(text_content: String, window: WebviewWindow) -> Result<(), String> {
+    paste_text_with_translation_support(text_content, window, "统一粘贴命令").await
 }
 
 // 生成文件类型的标题
@@ -1963,8 +2100,7 @@ pub fn read_image_file(file_path: String) -> Result<String, String> {
     }
 
     // 读取文件
-    let image_data = fs::read(&path)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let image_data = fs::read(&path).map_err(|e| format!("读取文件失败: {}", e))?;
 
     // 根据文件扩展名确定MIME类型
     let mime_type = match path.extension().and_then(|ext| ext.to_str()) {

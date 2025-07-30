@@ -18,6 +18,7 @@ import {
 
 // AI翻译特定配置（非通用AI配置）
 let aiTranslationConfig = {
+  enabled: false, // 默认关闭，等待从后端加载真实设置
   targetLanguage: 'auto',
   translateOnCopy: false,
   translateOnPaste: false, // 默认关闭，等待从后端加载真实设置
@@ -72,6 +73,7 @@ async function loadAiTranslationSettings() {
     const aiConfig = await loadAIConfig();
 
     aiTranslationConfig = {
+      enabled: settings.aiTranslationEnabled === true, // AI翻译总开关
       targetLanguage: settings.aiTargetLanguage || 'auto',
       translateOnCopy: settings.aiTranslateOnCopy === true, // 明确使用布尔值，避免默认值覆盖
       translateOnPaste: settings.aiTranslateOnPaste === true, // 明确使用布尔值，避免默认值覆盖
@@ -163,6 +165,7 @@ async function setupAiTranslationEventListeners() {
       const newSettings = event.payload;
       if (newSettings) {
         aiTranslationConfig = {
+          enabled: newSettings.aiTranslationEnabled === true, // AI翻译总开关
           targetLanguage: newSettings.aiTargetLanguage || aiTranslationConfig.targetLanguage,
           translateOnCopy: newSettings.aiTranslateOnCopy === true, // 明确使用布尔值
           translateOnPaste: newSettings.aiTranslateOnPaste === true, // 明确使用布尔值
@@ -183,6 +186,90 @@ async function setupAiTranslationEventListeners() {
       console.log('收到后端AI翻译取消事件');
       hideTranslationIndicator();
       showTranslationNotification('翻译已取消', 'warning', 1500);
+    });
+
+    // 监听后端发送的翻译开始事件
+    await listen('translation-start', (event) => {
+      const { message, source, textLength } = event.payload;
+      console.log(`收到${source}翻译开始事件:`, message);
+
+      // 检查翻译功能是否启用
+      if (!aiTranslationConfig.enabled || !aiTranslationConfig.translateOnPaste) {
+        console.log('翻译功能未启用，跳过显示开始通知');
+        return;
+      }
+
+      showTranslationNotification(message, 'info', 1500);
+      showTranslationStatus('starting');
+    });
+
+    // 监听后端发送的翻译状态事件
+    await listen('translation-status', (event) => {
+      const { status, message, source } = event.payload;
+      console.log(`收到${source}翻译状态事件:`, message);
+
+      // 检查翻译功能是否启用
+      if (!aiTranslationConfig.enabled || !aiTranslationConfig.translateOnPaste) {
+        console.log('翻译功能未启用，跳过显示状态通知');
+        return;
+      }
+
+      showTranslationStatus(status, message);
+    });
+
+    // 监听后端发送的翻译成功事件
+    await listen('translation-success', (event) => {
+      const { message, source, originalLength } = event.payload;
+      console.log(`收到${source}翻译成功事件:`, message);
+
+      // 检查翻译功能是否启用
+      if (!aiTranslationConfig.enabled || !aiTranslationConfig.translateOnPaste) {
+        console.log('翻译功能未启用，跳过显示成功通知');
+        return;
+      }
+
+      showTranslationNotification(message, 'success', 2000);
+      showTranslationStatus('completed');
+    });
+
+    // 监听后端发送的翻译失败事件
+    await listen('translation-error', (event) => {
+      const { message, source, error } = event.payload;
+      console.log(`收到${source}翻译失败事件:`, message);
+
+      // 检查是否为"功能未启用"类型的错误，如果是则不显示通知
+      const errorStr = error.toLowerCase();
+      if (errorStr.includes('未启用') || errorStr.includes('disabled') || errorStr.includes('not enabled')) {
+        console.log('翻译功能未启用，跳过显示错误通知');
+        return;
+      }
+
+      // 只有真正的翻译错误才显示通知
+      showTranslationNotification(`翻译失败: ${error}`, 'warning', 3000);
+      showTranslationStatus('failed', error);
+    });
+
+    // 监听后端发送的显示翻译指示器事件
+    await listen('show-translation-indicator', (event) => {
+      const { text, source } = event.payload;
+      console.log(`收到${source}显示翻译指示器事件:`, text);
+
+      // 检查翻译功能是否启用
+      if (!aiTranslationConfig.enabled || !aiTranslationConfig.translateOnPaste) {
+        console.log('翻译功能未启用，跳过显示翻译指示器');
+        return;
+      }
+
+      showTranslationIndicator(text);
+    });
+
+    // 监听后端发送的隐藏翻译指示器事件
+    await listen('hide-translation-indicator', (event) => {
+      const { source } = event.payload;
+      console.log(`收到${source}隐藏翻译指示器事件`);
+
+      // 无论如何都要隐藏指示器，确保界面清洁
+      hideTranslationIndicator();
     });
 
   } catch (error) {

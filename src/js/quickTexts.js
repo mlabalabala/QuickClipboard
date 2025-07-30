@@ -18,6 +18,12 @@ import {
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects } from './groups.js';
+import {
+  safeTranslateAndInputText,
+  showTranslationIndicator,
+  hideTranslationIndicator,
+  shouldTranslateText
+} from './aiTranslation.js';
 import { createFileIconElement } from './fileIconUtils.js';
 import { showContextMenu } from './contextMenu.js';
 
@@ -455,6 +461,7 @@ export function renderQuickTexts() {
         const contentType = getContentType(text.content);
         const isImage = contentType === 'image';
         const isFiles = contentType === 'files';
+        const isText = contentType === 'text';
 
         if (isImage || isFiles) {
           quickTextItem.classList.add('processing');
@@ -465,16 +472,77 @@ export function renderQuickTexts() {
           quickTextItem.appendChild(loadingIndicator);
         }
 
-        // 使用统一的粘贴命令
-        await invoke('paste_content', {
-          params: {
-            content: text.content,
-            quick_text_id: text.id,
-            one_time: isOneTimePaste
-          }
-        });
+        // 对于文本内容，检查是否需要翻译并使用带通知的翻译逻辑
+        if (isText) {
+          // 检查是否需要AI翻译
+          const translationCheck = shouldTranslateText(text.content, 'paste');
+          const needsTranslation = translationCheck.should;
 
-        // 粘贴逻辑已在Rust端处理窗口显示/隐藏
+          if (needsTranslation) {
+            // 使用AI翻译并显示指示器
+            console.log('开始常用文本AI翻译:', text.content, '原因:', translationCheck.reason);
+            showTranslationIndicator('正在翻译...');
+
+            // 定义降级回调函数
+            const fallbackPaste = async () => {
+              await invoke('paste_content', {
+                params: {
+                  content: text.content,
+                  quick_text_id: text.id,
+                  one_time: isOneTimePaste
+                }
+              });
+            };
+
+            try {
+              const result = await safeTranslateAndInputText(text.content, fallbackPaste);
+
+              if (result.success) {
+                if (result.method === 'translation') {
+                  console.log('常用文本AI翻译成功完成');
+                } else if (result.method === 'fallback') {
+                  console.log('常用文本使用降级处理完成粘贴:', result.error);
+                }
+
+                // 翻译完成后隐藏窗口（如果需要）
+                try {
+                  const isPinned = await invoke('get_window_pinned');
+                  if (!isPinned) {
+                    await invoke('hide_main_window_if_auto_shown');
+                  }
+                } catch (error) {
+                  console.error('检查窗口固定状态失败:', error);
+                  // 如果检查失败，使用前端状态作为降级
+                  if (!window.isPinned) {
+                    await invoke('hide_main_window_if_auto_shown');
+                  }
+                }
+              } else {
+                showNotification(`翻译和粘贴都失败了: ${result.error}`, 'error');
+              }
+            } finally {
+              hideTranslationIndicator();
+            }
+          } else {
+            // 不需要翻译，使用普通粘贴
+            await invoke('paste_content', {
+              params: {
+                content: text.content,
+                quick_text_id: text.id,
+                one_time: isOneTimePaste
+              }
+            });
+          }
+        } else {
+          // 非文本内容或未启用翻译，使用普通粘贴
+          await invoke('paste_content', {
+            params: {
+              content: text.content,
+              quick_text_id: text.id,
+              one_time: isOneTimePaste
+            }
+          });
+        }
 
         // 如果是一次性粘贴，刷新常用文本列表
         if (isOneTimePaste) {
