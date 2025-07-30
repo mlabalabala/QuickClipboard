@@ -85,6 +85,10 @@ body {
   gap: 8px;
   -webkit-app-region: no-drag;
   /* 控制按钮不参与拖动 */
+  position: fixed;
+  right: 8px;
+  backdrop-filter: blur(10px);
+  z-index: 999;
 }
 
 .control-button {
@@ -422,14 +426,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 8px 12px !important;
   border: 1px solid #e8e9ea;
   border-radius: 6px;
   font-size: 13px;
   background-color: white;
   cursor: pointer;
   transition: all 0.2s ease;
-  height: 36px;
+  height: 32px;
   box-sizing: border-box;
   user-select: none;
 }
@@ -561,7 +565,6 @@ body {
   overflow-y: auto;
   padding-left: 4px;
   min-height: 0;
-  /* 确保可以收缩 */
   /* 将滚动条移到左侧 */
   direction: rtl;
 }
@@ -1374,7 +1377,7 @@ body {
     height: 32px;
     padding: 6px 10px;
     font-size: 12px;
-    min-width: 70px;
+    min-width: 50px;
   }
 
   .quick-text-item {
@@ -1424,11 +1427,11 @@ body {
 
 /* 分组侧边栏 */
 .groups-sidebar {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  bottom: 26px;
   right: 0;
-  width: 80px;
-  height: 100%;
+  width: 90px;
+  height: 76.5%;
   background: rgba(255, 255, 255, 0.95);
   border-left: 1px solid rgba(0, 0, 0, 0.1);
   transform: translateX(100%);
@@ -1437,18 +1440,19 @@ body {
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(10px);
+  box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
 }
 
 /* 侧边栏触发区域 */
 .sidebar-trigger {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 20px;
-  height: 100%;
+  position: fixed;
+  bottom: 25px;
+  right: 0px;
+  width: 30px;
+  height: 68%;
   z-index: 5;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  z-index: 99999;
 }
 
 .sidebar-trigger:hover {
@@ -1458,6 +1462,7 @@ body {
 .sidebar-trigger:hover+.groups-sidebar,
 .groups-sidebar:hover,
 .tab-content.dragging .groups-sidebar {
+  z-index: 9999999999;
   transform: translateX(0);
 }
 

@@ -108,7 +108,7 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
     // 首先尝试获取文件
     if let Ok(file_paths) = crate::file_handler::get_clipboard_files() {
         if !file_paths.is_empty() {
-            // 检查是否所有文件都来自我们的图片缓存目录
+            // 检查是否所有文件都来自图片缓存目录
             let all_from_cache = file_paths.iter().all(|path| is_from_image_cache(path));
 
             // 如果所有文件都来自图片缓存目录，检查是否与上次相同
