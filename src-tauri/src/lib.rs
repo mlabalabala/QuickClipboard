@@ -108,14 +108,7 @@ pub fn run() {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => {
                 if let Some(window) = app.get_webview_window("main") {
-                    if let Ok(is_visible) = window.is_visible() {
-                        if is_visible {
-                            let _ = window.hide();
-                        } else {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    let _ = commands::toggle_window_visibility(window);
                 }
             }
             "settings" => {
