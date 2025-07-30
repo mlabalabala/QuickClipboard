@@ -20,6 +20,10 @@ static LAST_CLIPBOARD_CONTENT: Lazy<Arc<Mutex<String>>> =
 // 粘贴状态标志 - 用于区分真正的复制和粘贴过程中的剪贴板设置
 static IS_PASTING: AtomicBool = AtomicBool::new(false);
 
+// 上次忽略的缓存文件路径 - 避免重复检测相同的缓存文件
+static LAST_IGNORED_CACHE_FILES: Lazy<Arc<Mutex<Vec<String>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
 // 启动剪贴板监听器
 pub fn start_clipboard_monitor(app_handle: AppHandle) {
     // 如果已经在运行，直接返回
@@ -104,6 +108,29 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
     // 首先尝试获取文件
     if let Ok(file_paths) = crate::file_handler::get_clipboard_files() {
         if !file_paths.is_empty() {
+            // 检查是否所有文件都来自我们的图片缓存目录
+            let all_from_cache = file_paths.iter().all(|path| is_from_image_cache(path));
+
+            // 如果所有文件都来自图片缓存目录，检查是否与上次相同
+            if all_from_cache {
+                let mut last_ignored = LAST_IGNORED_CACHE_FILES.lock().unwrap();
+
+                // 检查文件路径是否与上次相同
+                let paths_changed = last_ignored.len() != file_paths.len()
+                    || !file_paths.iter().all(|path| last_ignored.contains(path));
+
+                if paths_changed {
+                    // 文件路径发生了变化，更新记录
+                    *last_ignored = file_paths.clone();
+                }
+                // 无论是否变化，都忽略这次剪贴板变化
+                return None;
+            } else {
+                // 不是缓存文件，清空上次忽略的记录
+                let mut last_ignored = LAST_IGNORED_CACHE_FILES.lock().unwrap();
+                last_ignored.clear();
+            }
+
             // 处理文件列表
             let mut file_infos = Vec::new();
             for path in &file_paths {
@@ -181,4 +208,18 @@ fn is_pasting_internal() -> bool {
 // 检查是否正在粘贴（公开接口）
 pub fn is_currently_pasting() -> bool {
     IS_PASTING.load(Ordering::Relaxed)
+}
+
+// 检查文件路径是否来自图片缓存目录
+fn is_from_image_cache(file_path: &str) -> bool {
+    // 获取图片缓存目录路径
+    if let Some(app_data_dir) = dirs::data_local_dir() {
+        let cache_dir = app_data_dir.join("quickclipboard").join("clipboard_images");
+        if let Ok(cache_path) = cache_dir.canonicalize() {
+            if let Ok(file_path_buf) = std::path::Path::new(file_path).canonicalize() {
+                return file_path_buf.starts_with(cache_path);
+            }
+        }
+    }
+    false
 }

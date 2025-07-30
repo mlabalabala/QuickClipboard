@@ -112,7 +112,6 @@ export function updateSetting(key, value) {
 
 // 初始化主题（用于应用启动时）
 export function initializeTheme() {
-  // 使用主题管理器获取当前主题，不再从localStorage读取
   const currentTheme = getCurrentTheme();
 
   if (currentTheme) {

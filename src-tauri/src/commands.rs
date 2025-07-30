@@ -1720,23 +1720,63 @@ async fn paste_image_internal(image_content: String, window: WebviewWindow) -> R
     if image_content.starts_with("image:") {
         // 新格式：image:id，需要通过图片管理器获取完整数据
         let image_id = &image_content[6..];
+
         let image_manager = crate::image_manager::get_image_manager().map_err(|e| {
             crate::clipboard_monitor::set_pasting_state(false);
             format!("获取图片管理器失败: {}", e)
         })?;
-        let image_data = image_manager
-            .lock()
-            .unwrap()
-            .get_image_data_url(image_id)
-            .map_err(|e| {
+
+        let (image_data, image_info) = {
+            let manager = image_manager.lock().unwrap();
+            let image_data = manager.get_image_data_url(image_id).map_err(|e| {
                 crate::clipboard_monitor::set_pasting_state(false);
                 format!("获取图片数据失败: {}", e)
             })?;
 
-        // 将图片数据设置到剪贴板（不添加到历史记录，避免重复）
-        if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_data) {
-            crate::clipboard_monitor::set_pasting_state(false);
-            return Err(e);
+            let image_info = manager.get_image_info(image_id).map_err(|e| {
+                crate::clipboard_monitor::set_pasting_state(false);
+                format!("获取图片信息失败: {}", e)
+            })?;
+
+            (image_data, image_info)
+        }; // 锁在这里自动释放
+
+        // 直接设置剪贴板内容，包含图像数据和文件路径
+        #[cfg(windows)]
+        {
+            use crate::clipboard_content::{
+                data_url_to_bgra_and_png, set_windows_clipboard_image_with_file,
+            };
+            let (bgra, png_bytes, width, height) =
+                data_url_to_bgra_and_png(&image_data).map_err(|e| {
+                    crate::clipboard_monitor::set_pasting_state(false);
+                    e
+                })?;
+            if let Err(e) = set_windows_clipboard_image_with_file(
+                &bgra,
+                &png_bytes,
+                width,
+                height,
+                Some(&image_info.file_path),
+            ) {
+                crate::clipboard_monitor::set_pasting_state(false);
+                return Err(e);
+            }
+
+            // 检测目标应用是否为文件管理器，只对文件管理器延迟
+            let is_file_manager = is_target_file_manager();
+            if is_file_manager {
+                // 延迟重置粘贴状态，防止剪贴板监听器立即检测到CF_HDROP格式
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            // 非Windows系统，使用原有逻辑
+            if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_data) {
+                crate::clipboard_monitor::set_pasting_state(false);
+                return Err(e);
+            }
         }
     } else if image_content.starts_with("data:image/") {
         // 旧格式：完整的data URL
@@ -1841,4 +1881,48 @@ fn generate_files_title(files_content: &str) -> String {
 
     // 解析失败时的回退标题
     "文件".to_string()
+}
+
+// 检测当前活动窗口是否为文件管理器
+#[cfg(windows)]
+fn is_target_file_manager() -> bool {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    };
+
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd == HWND(0) {
+            return false;
+        }
+
+        // 获取窗口标题
+        let mut window_title = [0u16; 256];
+        let title_len = GetWindowTextW(hwnd, &mut window_title);
+        if title_len > 0 {
+            let title = String::from_utf16_lossy(&window_title[..title_len as usize]);
+
+            // 通过窗口标题判断是否为文件管理器
+            let title_lower = title.to_lowercase();
+            let is_file_manager_by_title = title_lower.contains("文件资源管理器")
+                || title_lower.contains("file explorer")
+                || title_lower.contains("total commander")
+                || title_lower.contains("freecommander")
+                || title_lower.contains("directory opus")
+                || title_lower.contains("q-dir")
+                || title_lower.ends_with(" - 文件夹")
+                || title_lower.ends_with(" - folder");
+
+            return is_file_manager_by_title;
+        }
+    }
+
+    false
+}
+
+#[cfg(not(windows))]
+fn is_target_file_manager() -> bool {
+    // 非Windows系统暂时返回false，不延迟
+    false
 }

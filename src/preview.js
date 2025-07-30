@@ -396,7 +396,6 @@ function createPreviewItem(item, index, position = 'current') {
         fileIcon.style.width = '20px';
         fileIcon.style.height = '20px';
 
-        // 文件名（不再显示数量，因为已经在类型指示器中显示）
         const fileInfo = document.createElement('div');
         fileInfo.className = 'preview-file-info';
 

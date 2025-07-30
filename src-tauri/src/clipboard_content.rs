@@ -53,6 +53,17 @@ pub fn set_windows_clipboard_image(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
+    set_windows_clipboard_image_with_file(bgra, png_bytes, width, height, None)
+}
+
+#[cfg(windows)]
+pub fn set_windows_clipboard_image_with_file(
+    bgra: &[u8],
+    png_bytes: &[u8],
+    width: u32,
+    height: u32,
+    file_path: Option<&str>,
+) -> Result<(), String> {
     use windows::core::w;
     use windows::Win32::Foundation::{HANDLE, HGLOBAL, HWND};
     use windows::Win32::System::DataExchange::{
@@ -64,7 +75,7 @@ pub fn set_windows_clipboard_image(
         if OpenClipboard(HWND(0)).is_err() {
             return Err("打开剪贴板失败".into());
         }
-        EmptyClipboard();
+        let _ = EmptyClipboard();
 
         // ---------- 写入 CF_DIB ----------
         let mut dib: Vec<u8> = Vec::with_capacity(40 + bgra.len());
@@ -87,8 +98,8 @@ pub fn set_windows_clipboard_image(
             let ptr = GlobalLock(hmem_dib) as *mut u8;
             if !ptr.is_null() {
                 std::ptr::copy_nonoverlapping(dib.as_ptr(), ptr, dib.len());
-                GlobalUnlock(hmem_dib);
-                SetClipboardData(CF_DIB, HANDLE(hmem_dib.0 as isize));
+                let _ = GlobalUnlock(hmem_dib);
+                let _ = SetClipboardData(CF_DIB, HANDLE(hmem_dib.0 as isize));
             }
         }
 
@@ -101,15 +112,92 @@ pub fn set_windows_clipboard_image(
                 let ptr = GlobalLock(hmem_png) as *mut u8;
                 if !ptr.is_null() {
                     std::ptr::copy_nonoverlapping(png_bytes.as_ptr(), ptr, png_bytes.len());
-                    GlobalUnlock(hmem_png);
-                    SetClipboardData(fmt_png, HANDLE(hmem_png.0 as isize));
+                    let _ = GlobalUnlock(hmem_png);
+                    let _ = SetClipboardData(fmt_png, HANDLE(hmem_png.0 as isize));
                 }
             }
         }
 
-        CloseClipboard();
+        // ---------- 如果提供了文件路径，写入 CF_HDROP 格式 ----------
+        if let Some(path) = file_path {
+            if let Err(_e) = set_clipboard_hdrop_internal(&[path.to_string()]) {
+                // 不返回错误，因为图像格式已经设置成功
+            }
+        }
+
+        let _ = CloseClipboard();
     }
     Ok(())
+}
+
+#[cfg(windows)]
+fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::DataExchange::SetClipboardData;
+    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    use windows::Win32::System::Ole::CF_HDROP;
+
+    unsafe {
+        // 计算所需内存大小
+        let mut total_size = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>();
+        for path in file_paths {
+            let wide_path: Vec<u16> = OsStr::new(path)
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect();
+            total_size += wide_path.len() * 2; // UTF-16 字符
+        }
+        total_size += 2; // 双重空终止符
+
+        // 分配全局内存
+        let hmem = GlobalAlloc(GMEM_MOVEABLE, total_size)
+            .map_err(|e| format!("GlobalAlloc失败: {}", e))?;
+
+        if hmem.is_invalid() {
+            return Err("无法分配内存".to_string());
+        }
+
+        let ptr = GlobalLock(hmem) as *mut u8;
+        if ptr.is_null() {
+            return Err("无法锁定内存".to_string());
+        }
+
+        // 设置 DROPFILES 结构
+        let dropfiles = ptr as *mut windows::Win32::UI::Shell::DROPFILES;
+        (*dropfiles).pFiles = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>() as u32;
+        (*dropfiles).pt.x = 0;
+        (*dropfiles).pt.y = 0;
+        (*dropfiles).fNC = windows::Win32::Foundation::BOOL(0);
+        (*dropfiles).fWide = windows::Win32::Foundation::BOOL(1); // Unicode
+
+        // 复制文件路径
+        let mut offset = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>();
+        for path in file_paths {
+            let wide_path: Vec<u16> = OsStr::new(path)
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect();
+
+            let dest_ptr = (ptr as *mut u8).add(offset) as *mut u16;
+            std::ptr::copy_nonoverlapping(wide_path.as_ptr(), dest_ptr, wide_path.len());
+            offset += wide_path.len() * 2;
+        }
+
+        // 添加双重空终止符
+        let final_ptr = (ptr as *mut u8).add(offset) as *mut u16;
+        *final_ptr = 0;
+
+        let _ = GlobalUnlock(hmem);
+
+        // 设置剪贴板数据
+        if SetClipboardData(CF_HDROP.0 as u32, HANDLE(hmem.0 as isize)).is_err() {
+            return Err("设置剪贴板数据失败".to_string());
+        }
+
+        Ok(())
+    }
 }
 
 pub fn data_url_to_image(data_url: &str) -> Result<arboard::ImageData<'static>, String> {
@@ -181,17 +269,44 @@ fn set_clipboard_content_internal(content: String, add_to_history: bool) -> Resu
         // 处理图片引用格式 "image:id"
         let image_id = content.strip_prefix("image:").unwrap_or("");
 
-        // 从图片管理器获取图片数据
+        // 从图片管理器获取图片数据和文件路径
         use crate::image_manager::get_image_manager;
         let image_manager = get_image_manager()?;
         let manager = image_manager
             .lock()
             .map_err(|e| format!("获取图片管理器锁失败: {}", e))?;
-        let data_url = manager.get_image_data_url(image_id)?;
 
-        // 递归调用处理data URL
+        let data_url = manager.get_image_data_url(image_id)?;
+        let image_info = manager.get_image_info(image_id)?;
         drop(manager); // 释放锁
-        return set_clipboard_content_internal(data_url, add_to_history);
+
+        // 设置剪贴板内容，同时包含图像数据和文件路径
+        #[cfg(windows)]
+        {
+            let (bgra, png_bytes, width, height) = data_url_to_bgra_and_png(&data_url)?;
+            set_windows_clipboard_image_with_file(
+                &bgra,
+                &png_bytes,
+                width,
+                height,
+                Some(&image_info.file_path),
+            )?;
+        }
+        #[cfg(not(windows))]
+        {
+            let image_data = data_url_to_image(&data_url)?;
+            match Clipboard::new() {
+                Ok(mut clipboard) => {
+                    clipboard
+                        .set_image(image_data)
+                        .map_err(|e| format!("设置剪贴板图片失败: {}", e))?;
+                }
+                Err(e) => return Err(format!("获取剪贴板失败: {}", e)),
+            }
+        }
+
+        // 不需要递归调用，直接返回
+        return Ok(());
     } else {
         match Clipboard::new() {
             Ok(mut clipboard) => {
