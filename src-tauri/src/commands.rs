@@ -1,9 +1,6 @@
 use arboard::Clipboard;
 use serde::Deserialize;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+// 原子操作和线程相关的导入已移动到服务层
 use tauri::Manager;
 use tauri::WebviewWindow;
 
@@ -11,19 +8,16 @@ use tauri::WebviewWindow;
 use auto_launch::AutoLaunch;
 
 use crate::admin_privileges;
-use crate::clipboard_content::{
-    image_to_data_url, set_clipboard_content, set_clipboard_content_no_history,
-};
+use crate::clipboard_content::{image_to_data_url, set_clipboard_content};
 use crate::clipboard_history::{self, ClipboardItem, CLIPBOARD_HISTORY};
 use crate::groups::{self, Group};
 use crate::image_manager::get_image_manager;
 use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring};
-use crate::paste_utils::windows_paste;
+// windows_paste 已移动到服务层使用
 use crate::quick_texts::{self, QuickText};
 use crate::window_management;
 
-// 全局翻译状态管理
-static TRANSLATION_CANCELLED: AtomicBool = AtomicBool::new(false);
+// 翻译状态管理已移动到 translation_service.rs
 
 #[derive(Deserialize)]
 pub struct GroupParams {
@@ -311,7 +305,7 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
         "图片".to_string()
     } else if final_content.starts_with("files:") {
         // 文件内容解析文件名作为标题
-        generate_files_title(&final_content)
+        crate::utils::content_utils::generate_files_title(&final_content)
     } else if final_content.len() > 30 {
         // 文本内容取前30个字符作为标题
         format!("{}...", &final_content[..30])
@@ -437,69 +431,7 @@ pub fn move_quick_text_to_group(id: String, group_id: String) -> Result<(), Stri
 // 打开设置窗口
 #[tauri::command]
 pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-
-    // 检查设置窗口是否已经存在
-    if let Some(settings_window) = app.get_webview_window("settings") {
-        // 如果窗口已存在，检查是否最小化并恢复
-        let is_minimized = settings_window.is_minimized().unwrap_or(false);
-
-        if is_minimized {
-            // 如果窗口被最小化，先取消最小化
-            settings_window
-                .unminimize()
-                .map_err(|e| format!("取消最小化设置窗口失败: {}", e))?;
-        }
-
-        // 显示并聚焦窗口
-        settings_window
-            .show()
-            .map_err(|e| format!("显示设置窗口失败: {}", e))?;
-        settings_window
-            .set_focus()
-            .map_err(|e| format!("聚焦设置窗口失败: {}", e))?;
-    } else {
-        // 如果窗口不存在，创建新窗口
-        let settings_window = tauri::WebviewWindowBuilder::new(
-            &app,
-            "settings",
-            tauri::WebviewUrl::App("settings.html".into()),
-        )
-        .title("设置 - 快速剪贴板")
-        .inner_size(900.0, 650.0)
-        .min_inner_size(800.0, 600.0)
-        .center()
-        .resizable(true)
-        .maximizable(true)
-        .decorations(false) // 去除标题栏
-        .build()
-        .map_err(|e| format!("创建设置窗口失败: {}", e))?;
-
-        // 设置窗口圆角（Windows 11）
-        #[cfg(windows)]
-        {
-            if let Err(e) = crate::window_effects::set_window_rounded(&settings_window) {
-                println!("设置设置窗口圆角失败: {}", e);
-            }
-        }
-
-        settings_window
-            .show()
-            .map_err(|e| format!("显示设置窗口失败: {}", e))?;
-
-        // 设置窗口关闭事件处理
-        let app_handle = app.clone();
-        settings_window.on_window_event(move |event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // 当设置窗口关闭时，隐藏主窗口（如果它是自动显示的）
-                if let Some(main_window) = app_handle.get_webview_window("main") {
-                    let _ = crate::window_management::hide_main_window_if_auto_shown(&main_window);
-                }
-            }
-        });
-    }
-
-    Ok(())
+    crate::services::window_service::open_settings_window(app).await
 }
 
 // =================== 文本编辑窗口命令 ===================
@@ -507,63 +439,7 @@ pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 // 打开文本编辑窗口
 #[tauri::command]
 pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-
-    // 检查文本编辑窗口是否已经存在
-    if let Some(editor_window) = app.get_webview_window("text-editor") {
-        // 如果窗口已存在，显示并聚焦
-        editor_window
-            .show()
-            .map_err(|e| format!("显示文本编辑窗口失败: {}", e))?;
-        editor_window
-            .set_focus()
-            .map_err(|e| format!("聚焦文本编辑窗口失败: {}", e))?;
-    } else {
-        // 如果窗口不存在，创建新窗口
-        let editor_window = tauri::WebviewWindowBuilder::new(
-            &app,
-            "text-editor",
-            tauri::WebviewUrl::App("textEditor.html".into()),
-        )
-        .title("文本编辑器 - 快速剪贴板")
-        .inner_size(800.0, 600.0)
-        .min_inner_size(400.0, 300.0)
-        .center()
-        .resizable(true)
-        .maximizable(true)
-        .decorations(false) // 去除标题栏
-        .build()
-        .map_err(|e| format!("创建文本编辑窗口失败: {}", e))?;
-
-        // 设置窗口圆角（Windows 11）
-        #[cfg(windows)]
-        {
-            if let Err(e) = crate::window_effects::set_window_rounded(&editor_window) {
-                println!("设置文本编辑窗口圆角失败: {}", e);
-            }
-        }
-
-        editor_window
-            .show()
-            .map_err(|e| format!("显示文本编辑窗口失败: {}", e))?;
-
-        // 设置窗口关闭事件处理
-        let app_handle = app.clone();
-        editor_window.on_window_event(move |event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // 当编辑窗口关闭时，可以执行一些清理操作
-                println!("文本编辑窗口已关闭");
-            }
-        });
-
-        // 在开发模式下打开开发者工具
-        #[cfg(debug_assertions)]
-        {
-            editor_window.open_devtools();
-        }
-    }
-
-    Ok(())
+    crate::services::window_service::open_text_editor_window(app).await
 }
 
 // 获取设置
@@ -800,7 +676,7 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
         "图片".to_string()
     } else if final_content.starts_with("files:") {
         // 文件内容解析文件名作为标题
-        generate_files_title(&final_content)
+        crate::utils::content_utils::generate_files_title(&final_content)
     } else {
         // 安全地截取字符串，避免在UTF-8字符中间截断
         let chars: Vec<char> = final_content.chars().collect();
@@ -1094,9 +970,7 @@ pub async fn test_ai_translation() -> Result<String, String> {
 /// 取消正在进行的翻译
 #[tauri::command]
 pub fn cancel_translation() -> Result<(), String> {
-    TRANSLATION_CANCELLED.store(true, Ordering::SeqCst);
-    println!("翻译已被用户取消");
-    Ok(())
+    crate::services::translation_service::cancel_translation()
 }
 
 /// 启用AI翻译取消快捷键
@@ -1118,409 +992,27 @@ pub fn disable_ai_translation_cancel_shortcut() -> Result<(), String> {
 /// 翻译文本并直接粘贴（非流式）
 #[tauri::command]
 pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
-    // 重置取消状态
-    TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
-
-    // 启用AI翻译取消快捷键
-    #[cfg(windows)]
-    crate::global_state::enable_ai_translation_cancel();
-
-    // 确保在函数结束时禁用快捷键
-    let _guard = TranslationGuard;
-
-    let settings = crate::settings::get_global_settings();
-
-    // 检查翻译是否启用
-    if !settings.ai_translation_enabled {
-        return Err("AI翻译功能未启用".to_string());
-    }
-
-    // 检查配置是否有效
-    if !crate::ai_translator::is_translation_config_valid(&settings) {
-        return Err("AI翻译配置不完整".to_string());
-    }
-
-    // 预处理输入文本
-    let processed_text = preprocess_translation_text(&text)?;
-
-    // 创建翻译配置
-    let translation_config = crate::ai_translator::config_from_settings(&settings);
-
-    // 创建翻译器
-    let translator = match crate::ai_translator::AITranslator::new(translation_config) {
-        Ok(t) => t,
-        Err(e) => return Err(format!("创建翻译器失败: {}", e)),
-    };
-
-    // 开始翻译（非流式）
-    match translator.translate(&processed_text).await {
-        Ok(translated_text) => {
-            // 检查是否被取消
-            if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
-                println!("翻译在粘贴前被用户取消");
-                return Err("翻译已被取消".to_string());
-            }
-
-            println!("翻译完成，结果长度: {} 字符", translated_text.len());
-
-            // 设置剪贴板内容并粘贴
-            crate::clipboard_monitor::set_pasting_state(true);
-
-            // 使用现有的剪贴板设置功能
-            set_clipboard_content_no_history(translated_text)?;
-
-            // 执行粘贴操作
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(10));
-                #[cfg(windows)]
-                windows_paste();
-
-                // 播放粘贴音效
-                crate::sound_manager::play_paste_sound();
-
-                // 粘贴完成后重置粘贴状态
-                thread::sleep(Duration::from_millis(500));
-                crate::clipboard_monitor::set_pasting_state(false);
-            });
-
-            Ok(())
-        }
-        Err(e) => Err(format!("翻译失败: {}", e)),
-    }
+    crate::services::translation_service::translate_and_paste_text(text).await
 }
 
-/// 翻译文本并流式输入（改进版本）
+/// 翻译文本并流式输入
 #[tauri::command]
 pub async fn translate_and_input_text(text: String) -> Result<(), String> {
-    // 重置取消状态
-    TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
-
-    // 启用AI翻译取消快捷键
-    #[cfg(windows)]
-    crate::global_state::enable_ai_translation_cancel();
-
-    // 确保在函数结束时禁用快捷键
-    let _guard = TranslationGuard;
-
-    let settings = crate::settings::get_global_settings();
-
-    // 检查翻译是否启用
-    if !settings.ai_translation_enabled {
-        return Err("AI翻译功能未启用".to_string());
-    }
-
-    // 检查配置是否有效
-    if !crate::ai_translator::is_translation_config_valid(&settings) {
-        return Err("AI翻译配置不完整".to_string());
-    }
-
-    // 预处理输入文本
-    let processed_text = preprocess_translation_text(&text)?;
-
-    // 创建翻译配置
-    let translation_config = crate::ai_translator::config_from_settings(&settings);
-    let input_config = crate::text_input_simulator::config_from_settings(&settings);
-
-    // 创建翻译器
-    let translator = match crate::ai_translator::AITranslator::new(translation_config) {
-        Ok(t) => t,
-        Err(e) => return Err(format!("创建翻译器失败: {}", e)),
-    };
-
-    // 更新输入模拟器配置
-    crate::text_input_simulator::update_global_input_simulator_config(input_config);
-
-    // 开始翻译
-    match translator.translate_stream(&processed_text).await {
-        Ok(mut receiver) => {
-            let mut accumulated_text = String::new();
-            let mut chunk_count = 0;
-
-            // 处理流式响应并实时输入
-            while let Some(translation_result) = receiver.recv().await {
-                // 检查是否被取消
-                if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
-                    println!("翻译被用户取消");
-                    return Err("翻译已被取消".to_string());
-                }
-
-                match translation_result {
-                    crate::ai_translator::TranslationResult::Chunk(chunk) => {
-                        // 再次检查是否被取消（在输入前）
-                        if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
-                            println!("翻译在输入前被用户取消");
-                            return Err("翻译已被取消".to_string());
-                        }
-
-                        // 详细的AI返回内容调试
-                        let newline_count = chunk.matches('\n').count();
-                        let has_digits = chunk.chars().any(|c| c.is_ascii_digit());
-                        let has_colon = chunk.contains(':') || chunk.contains('：');
-
-                        if newline_count > 0 || has_digits || has_colon || chunk.len() > 20 {
-                            println!(
-                                "AI片段{}: 长度={}, 换行符={}, 数字={}, 冒号={}, 内容: {:?}",
-                                chunk_count + 1,
-                                chunk.len(),
-                                newline_count,
-                                has_digits,
-                                has_colon,
-                                chunk
-                            );
-                        }
-
-                        // 累积文本用于错误恢复
-                        accumulated_text.push_str(&chunk);
-                        chunk_count += 1;
-
-                        // 使用改进的智能输入方法
-                        match crate::text_input_simulator::simulate_text_chunk_input_smart(&chunk)
-                            .await
-                        {
-                            Ok(()) => {
-                                // 成功时不输出信息，减少日志噪音
-                            }
-                            Err(e) => {
-                                println!("输入失败: {}", e);
-
-                                // 尝试使用降级输入方法
-                                match crate::text_input_simulator::simulate_text_chunk_input_precise(&chunk).await {
-                                    Ok(()) => {
-                                        println!("降级输入成功");
-                                    }
-                                    Err(fallback_error) => {
-                                        println!("降级输入也失败: {}", fallback_error);
-                                        // 继续处理下一个片段，而不是完全失败
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    crate::ai_translator::TranslationResult::Complete => {
-                        println!(
-                            "翻译完成，总共处理 {} 个片段，累积长度: {}",
-                            chunk_count,
-                            accumulated_text.len()
-                        );
-                        break;
-                    }
-                    crate::ai_translator::TranslationResult::Error(e) => {
-                        return Err(format!("翻译失败: {}", e));
-                    }
-                }
-            }
-
-            Ok(())
-        }
-        Err(e) => Err(format!("启动翻译失败: {}", e)),
-    }
+    crate::services::translation_service::translate_and_input_text(text).await
 }
 
-/// 翻译守护结构，确保在函数结束时清理资源
-struct TranslationGuard;
-
-impl Drop for TranslationGuard {
-    fn drop(&mut self) {
-        #[cfg(windows)]
-        crate::global_state::disable_ai_translation_cancel();
-    }
-}
-
-/// 预处理翻译文本
-fn preprocess_translation_text(text: &str) -> Result<String, String> {
-    // 检查文本长度
-    if text.is_empty() {
-        return Err("输入文本为空".to_string());
-    }
-
-    if text.len() > 50_000 {
-        return Err("输入文本过长，超过50KB限制".to_string());
-    }
-
-    // 规范化文本格式
-    let normalized = text
-        .replace("\r\n", "\n") // 统一换行符
-        .replace('\r', "\n"); // 处理Mac格式换行符
-
-    // 移除过多的连续空行（保留最多2个连续换行）
-    let cleaned = regex::Regex::new(r"\n{3,}")
-        .unwrap()
-        .replace_all(&normalized, "\n\n")
-        .to_string();
-
-    Ok(cleaned)
-}
+// 翻译相关的辅助结构和函数已移动到 translation_service.rs
 
 /// 智能翻译文本（根据设置选择流式输入或直接粘贴）
 #[tauri::command]
 pub async fn translate_text_smart(text: String) -> Result<(), String> {
-    let settings = crate::settings::get_global_settings();
-
-    // 根据输出模式设置选择翻译方式
-    match settings.ai_output_mode.as_str() {
-        "paste" => {
-            println!("使用直接粘贴模式进行翻译");
-            translate_and_paste_text(text).await
-        }
-        "stream" | _ => {
-            println!("使用流式输入模式进行翻译");
-            translate_and_input_text(text).await
-        }
-    }
+    crate::services::translation_service::translate_text_smart(text).await
 }
 
 /// 复制时翻译并直接输入到目标位置
 #[tauri::command]
 pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
-    // 重置取消状态
-    TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
-
-    // 启用AI翻译取消快捷键
-    #[cfg(windows)]
-    crate::global_state::enable_ai_translation_cancel();
-
-    // 确保在函数结束时禁用快捷键
-    let _guard = TranslationGuard;
-
-    let settings = crate::settings::get_global_settings();
-
-    // 检查翻译是否启用
-    if !settings.ai_translation_enabled {
-        return Err("AI翻译功能未启用".to_string());
-    }
-
-    // 检查配置是否有效
-    if !crate::ai_translator::is_translation_config_valid(&settings) {
-        return Err("AI翻译配置不完整".to_string());
-    }
-
-    // 预处理输入文本
-    let processed_text = preprocess_translation_text(&text)?;
-
-    // 创建翻译配置和输入配置
-    let translation_config = crate::ai_translator::config_from_settings(&settings);
-    let input_config = crate::text_input_simulator::config_from_settings(&settings);
-
-    // 创建翻译器
-    let translator = match crate::ai_translator::AITranslator::new(translation_config) {
-        Ok(t) => t,
-        Err(e) => return Err(format!("创建翻译器失败: {}", e)),
-    };
-
-    // 更新输入模拟器配置
-    crate::text_input_simulator::update_global_input_simulator_config(input_config);
-
-    println!("开始复制时翻译，原文长度: {} 字符", processed_text.len());
-
-    // 根据输出模式选择翻译方式
-    match settings.ai_output_mode.as_str() {
-        "paste" => {
-            // 直接粘贴模式：翻译后设置剪贴板并粘贴
-            println!("复制时翻译使用直接粘贴模式");
-            match translator.translate(&processed_text).await {
-                Ok(translated_text) => {
-                    // 检查是否被取消
-                    if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
-                        println!("翻译在粘贴前被用户取消");
-                        return Err("翻译已被取消".to_string());
-                    }
-
-                    println!("复制时翻译完成，结果长度: {} 字符", translated_text.len());
-
-                    // 设置粘贴状态，防止触发新的复制检测
-                    crate::clipboard_monitor::set_pasting_state(true);
-
-                    // 设置剪贴板内容并粘贴
-                    set_clipboard_content_no_history(translated_text)?;
-
-                    // 执行粘贴操作
-                    thread::spawn(move || {
-                        thread::sleep(Duration::from_millis(10));
-                        #[cfg(windows)]
-                        windows_paste();
-
-                        // 播放粘贴音效
-                        crate::sound_manager::play_paste_sound();
-
-                        // 粘贴完成后重置粘贴状态
-                        thread::sleep(Duration::from_millis(500));
-                        crate::clipboard_monitor::set_pasting_state(false);
-                    });
-
-                    Ok(())
-                }
-                Err(e) => Err(format!("复制时翻译失败: {}", e)),
-            }
-        }
-        "stream" | _ => {
-            // 流式输入模式：翻译后直接输入到目标位置
-            println!("复制时翻译使用流式输入模式");
-            match translator.translate_stream(&processed_text).await {
-                Ok(mut receiver) => {
-                    let mut accumulated_text = String::new();
-                    let mut chunk_count = 0;
-
-                    // 处理流式翻译结果
-                    loop {
-                        // 检查是否被取消
-                        if TRANSLATION_CANCELLED.load(Ordering::SeqCst) {
-                            println!("复制时翻译被用户取消");
-                            return Err("翻译已被取消".to_string());
-                        }
-
-                        match receiver.recv().await {
-                            Some(result) => match result {
-                                crate::ai_translator::TranslationResult::Chunk(chunk) => {
-                                    // 累积文本用于错误恢复
-                                    accumulated_text.push_str(&chunk);
-                                    chunk_count += 1;
-
-                                    // 使用改进的智能输入方法
-                                    match crate::text_input_simulator::simulate_text_chunk_input_smart(&chunk).await {
-                                        Ok(()) => {
-                                            // 成功时不输出信息，减少日志噪音
-                                        }
-                                        Err(e) => {
-                                            println!("输入失败: {}", e);
-
-                                            // 尝试使用降级输入方法
-                                            match crate::text_input_simulator::simulate_text_chunk_input_precise(&chunk).await {
-                                                Ok(()) => {
-                                                    println!("降级输入成功");
-                                                }
-                                                Err(fallback_error) => {
-                                                    println!("降级输入也失败: {}", fallback_error);
-                                                    // 继续处理下一个片段，而不是完全失败
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                crate::ai_translator::TranslationResult::Complete => {
-                                    println!(
-                                        "复制时翻译完成，总共处理 {} 个片段，累积长度: {}",
-                                        chunk_count,
-                                        accumulated_text.len()
-                                    );
-                                    break;
-                                }
-                                crate::ai_translator::TranslationResult::Error(e) => {
-                                    return Err(format!("复制时翻译失败: {}", e));
-                                }
-                            },
-                            None => {
-                                println!("翻译流意外结束");
-                                break;
-                            }
-                        }
-                    }
-
-                    Ok(())
-                }
-                Err(e) => Err(format!("启动复制时翻译失败: {}", e)),
-            }
-        }
-    }
+    crate::services::translation_service::translate_and_input_on_copy(text).await
 }
 
 /// 检查当前是否处于粘贴状态
@@ -1648,435 +1140,22 @@ pub async fn open_file_location(file_path: String) -> Result<(), String> {
     }
 }
 
-// 统一粘贴参数
-#[derive(serde::Deserialize)]
-pub struct PasteContentParams {
-    pub content: String,
-    pub quick_text_id: Option<String>, // 如果是常用文本，提供ID
-    pub one_time: Option<bool>,        // 是否一次性粘贴
-}
-
 // 统一粘贴命令 - 自动识别内容类型并执行相应的粘贴操作
 #[tauri::command]
 pub async fn paste_content(
-    params: PasteContentParams,
+    params: crate::services::paste_service::PasteContentParams,
     window: WebviewWindow,
 ) -> Result<(), String> {
-    println!("统一粘贴命令被调用，内容长度: {}", params.content.len());
-
-    // 判断内容类型并执行相应的粘贴操作
-    if params.content.starts_with("files:") {
-        // 文件类型粘贴
-        paste_files_internal(params.content, window).await
-    } else if params.content.starts_with("data:image/") || params.content.starts_with("image:") {
-        // 图片类型粘贴
-        paste_image_internal(params.content, window).await
-    } else {
-        // 文本类型粘贴
-        paste_text_internal(params.content, window).await
-    }?;
-
-    // 处理一次性粘贴逻辑
-    if let (Some(quick_text_id), Some(true)) = (params.quick_text_id, params.one_time) {
-        // 删除一次性常用文本
-        if let Err(e) = quick_texts::delete_quick_text(quick_text_id) {
-            eprintln!("删除一次性常用文本失败: {}", e);
-        }
-    }
-
-    Ok(())
+    crate::services::paste_service::paste_content(params, window).await
 }
 
-// 内部文件粘贴函数
-async fn paste_files_internal(files_data: String, window: WebviewWindow) -> Result<(), String> {
-    // 解析文件数据
-    if !files_data.starts_with("files:") {
-        return Err("无效的文件数据格式".to_string());
-    }
+// 内部粘贴函数已移动到 paste_service.rs
 
-    let files_json = &files_data[6..]; // 去掉 "files:" 前缀
-    let files_data: serde_json::Value =
-        serde_json::from_str(files_json).map_err(|e| format!("解析文件数据失败: {}", e))?;
+// 内部图片粘贴函数已移动到 paste_service.rs
 
-    let files = files_data["files"].as_array().ok_or("文件数据格式错误")?;
+// 粘贴相关的内部函数已移动到 paste_service.rs
 
-    let file_paths: Vec<String> = files
-        .iter()
-        .filter_map(|file| file["path"].as_str())
-        .map(|path| path.to_string())
-        .collect();
-
-    if file_paths.is_empty() {
-        return Err("没有找到有效的文件路径".to_string());
-    }
-
-    // 设置剪贴板文件
-    crate::file_handler::set_clipboard_files(&file_paths)?;
-
-    // 执行粘贴操作
-    if !crate::paste_utils::windows_paste() {
-        return Err("粘贴操作失败".to_string());
-    }
-
-    // 播放粘贴音效
-    crate::sound_manager::play_paste_sound();
-
-    // 处理窗口显示/隐藏
-    let is_pinned = crate::window_management::get_window_pinned();
-    if !is_pinned {
-        if let Err(e) = window.hide() {
-            eprintln!("隐藏窗口失败: {}", e);
-        }
-    }
-
-    Ok(())
-}
-
-// 内部图片粘贴函数
-async fn paste_image_internal(image_content: String, window: WebviewWindow) -> Result<(), String> {
-    // 设置粘贴状态，防止移动历史记录位置
-    crate::clipboard_monitor::set_pasting_state(true);
-
-    // 处理图片内容到剪贴板
-    if image_content.starts_with("image:") {
-        // 新格式：image:id，需要通过图片管理器获取完整数据
-        let image_id = &image_content[6..];
-
-        let image_manager = crate::image_manager::get_image_manager().map_err(|e| {
-            crate::clipboard_monitor::set_pasting_state(false);
-            format!("获取图片管理器失败: {}", e)
-        })?;
-
-        let (image_data, image_info) = {
-            let manager = image_manager.lock().unwrap();
-            let image_data = manager.get_image_data_url(image_id).map_err(|e| {
-                crate::clipboard_monitor::set_pasting_state(false);
-                format!("获取图片数据失败: {}", e)
-            })?;
-
-            let image_info = manager.get_image_info(image_id).map_err(|e| {
-                crate::clipboard_monitor::set_pasting_state(false);
-                format!("获取图片信息失败: {}", e)
-            })?;
-
-            (image_data, image_info)
-        }; // 锁在这里自动释放
-
-        // 直接设置剪贴板内容，包含图像数据和文件路径
-        #[cfg(windows)]
-        {
-            use crate::clipboard_content::{
-                data_url_to_bgra_and_png, set_windows_clipboard_image_with_file,
-            };
-            let (bgra, png_bytes, width, height) =
-                data_url_to_bgra_and_png(&image_data).map_err(|e| {
-                    crate::clipboard_monitor::set_pasting_state(false);
-                    e
-                })?;
-            if let Err(e) = set_windows_clipboard_image_with_file(
-                &bgra,
-                &png_bytes,
-                width,
-                height,
-                Some(&image_info.file_path),
-            ) {
-                crate::clipboard_monitor::set_pasting_state(false);
-                return Err(e);
-            }
-
-            // 检测目标应用是否为文件管理器，只对文件管理器延迟
-            let is_file_manager = is_target_file_manager();
-            if is_file_manager {
-                // 延迟重置粘贴状态，防止剪贴板监听器立即检测到CF_HDROP格式
-                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            // 非Windows系统，使用原有逻辑
-            if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_data) {
-                crate::clipboard_monitor::set_pasting_state(false);
-                return Err(e);
-            }
-        }
-    } else if image_content.starts_with("data:image/") {
-        // 旧格式：完整的data URL
-        if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_content) {
-            crate::clipboard_monitor::set_pasting_state(false);
-            return Err(e);
-        }
-    } else {
-        crate::clipboard_monitor::set_pasting_state(false);
-        return Err("不支持的图片格式".to_string());
-    }
-
-    // 执行粘贴操作
-    if !crate::paste_utils::windows_paste() {
-        crate::clipboard_monitor::set_pasting_state(false);
-        return Err("粘贴操作失败".to_string());
-    }
-
-    // 播放粘贴音效
-    crate::sound_manager::play_paste_sound();
-
-    // 处理窗口显示/隐藏
-    let is_pinned = crate::window_management::get_window_pinned();
-    if !is_pinned {
-        if let Err(e) = window.hide() {
-            eprintln!("隐藏窗口失败: {}", e);
-        }
-    }
-
-    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
-    std::thread::spawn(|| {
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        crate::clipboard_monitor::set_pasting_state(false);
-    });
-
-    Ok(())
-}
-
-// 通用翻译粘贴逻辑（智能选择输出方式，带通知支持）
-pub async fn paste_text_with_translation_support(
-    text_content: String,
-    window: WebviewWindow,
-    source_context: &str,
-) -> Result<(), String> {
-    use tauri::Emitter;
-
-    // 检查是否需要翻译
-    let settings = crate::settings::get_global_settings();
-    let should_translate = crate::ai_translator::is_translation_config_valid(&settings)
-        && settings.ai_translate_on_paste;
-
-    if should_translate {
-        println!("{}需要翻译，使用智能翻译模式", source_context);
-
-        // 发送显示翻译指示器事件
-        if let Err(e) = window.emit(
-            "show-translation-indicator",
-            serde_json::json!({
-                "text": "正在翻译...",
-                "source": source_context
-            }),
-        ) {
-            eprintln!("发送显示翻译指示器事件失败: {}", e);
-        }
-
-        // 发送翻译开始通知
-        let start_message = format!("开始翻译 ({} 字符)", text_content.len());
-        if let Err(e) = window.emit(
-            "translation-start",
-            serde_json::json!({
-                "message": start_message,
-                "source": source_context,
-                "textLength": text_content.len()
-            }),
-        ) {
-            eprintln!("发送翻译开始通知失败: {}", e);
-        }
-
-        // 发送翻译状态通知
-        if let Err(e) = window.emit(
-            "translation-status",
-            serde_json::json!({
-                "status": "translating",
-                "message": "正在翻译...",
-                "source": source_context
-            }),
-        ) {
-            eprintln!("发送翻译状态通知失败: {}", e);
-        }
-
-        // 使用智能翻译命令，根据设置自动选择输出方式
-        match translate_text_smart(text_content.clone()).await {
-            Ok(_) => {
-                println!("{}智能翻译成功", source_context);
-
-                // 发送翻译成功通知
-                let success_message = format!("翻译完成 ({} 字符)", text_content.len());
-                if let Err(e) = window.emit(
-                    "translation-success",
-                    serde_json::json!({
-                        "message": success_message,
-                        "source": source_context,
-                        "originalLength": text_content.len()
-                    }),
-                ) {
-                    eprintln!("发送翻译成功通知失败: {}", e);
-                }
-
-                // 发送隐藏翻译指示器事件
-                if let Err(e) = window.emit(
-                    "hide-translation-indicator",
-                    serde_json::json!({
-                        "source": source_context
-                    }),
-                ) {
-                    eprintln!("发送隐藏翻译指示器事件失败: {}", e);
-                }
-
-                // 处理窗口显示/隐藏
-                let is_pinned = crate::window_management::get_window_pinned();
-                if !is_pinned {
-                    if let Err(e) = window.hide() {
-                        eprintln!("隐藏窗口失败: {}", e);
-                    }
-                }
-
-                return Ok(());
-            }
-            Err(e) => {
-                println!("{}智能翻译失败，降级到普通粘贴: {}", source_context, e);
-
-                // 发送翻译失败通知
-                if let Err(emit_err) = window.emit(
-                    "translation-error",
-                    serde_json::json!({
-                        "message": format!("翻译失败，使用普通粘贴: {}", e),
-                        "source": source_context,
-                        "error": e
-                    }),
-                ) {
-                    eprintln!("发送翻译失败通知失败: {}", emit_err);
-                }
-
-                // 发送隐藏翻译指示器事件
-                if let Err(emit_err) = window.emit(
-                    "hide-translation-indicator",
-                    serde_json::json!({
-                        "source": source_context
-                    }),
-                ) {
-                    eprintln!("发送隐藏翻译指示器事件失败: {}", emit_err);
-                }
-
-                // 翻译失败，继续执行普通粘贴
-            }
-        }
-    }
-
-    // 执行普通粘贴
-    paste_text_internal_without_translation(text_content, window).await
-}
-
-// 内部文本粘贴函数（不包含翻译逻辑）
-async fn paste_text_internal_without_translation(
-    text_content: String,
-    window: WebviewWindow,
-) -> Result<(), String> {
-    // 设置粘贴状态，防止移动历史记录位置
-    crate::clipboard_monitor::set_pasting_state(true);
-
-    // 将文本设置到剪贴板（不添加到历史记录，避免重复）
-    if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(text_content) {
-        crate::clipboard_monitor::set_pasting_state(false);
-        return Err(e);
-    }
-
-    // 执行粘贴操作
-    if !crate::paste_utils::windows_paste() {
-        crate::clipboard_monitor::set_pasting_state(false);
-        return Err("粘贴操作失败".to_string());
-    }
-
-    // 播放粘贴音效
-    crate::sound_manager::play_paste_sound();
-
-    // 处理窗口显示/隐藏
-    let is_pinned = crate::window_management::get_window_pinned();
-    if !is_pinned {
-        if let Err(e) = window.hide() {
-            eprintln!("隐藏窗口失败: {}", e);
-        }
-    }
-
-    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
-    std::thread::spawn(|| {
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        crate::clipboard_monitor::set_pasting_state(false);
-    });
-
-    Ok(())
-}
-
-// 内部文本粘贴函数（保持向后兼容）
-async fn paste_text_internal(text_content: String, window: WebviewWindow) -> Result<(), String> {
-    paste_text_with_translation_support(text_content, window, "统一粘贴命令").await
-}
-
-// 生成文件类型的标题
-fn generate_files_title(files_content: &str) -> String {
-    // 解析文件数据
-    if let Some(files_json) = files_content.strip_prefix("files:") {
-        if let Ok(files_data) = serde_json::from_str::<serde_json::Value>(files_json) {
-            if let Some(files_array) = files_data["files"].as_array() {
-                let file_count = files_array.len();
-
-                if file_count == 0 {
-                    return "空文件列表".to_string();
-                } else if file_count == 1 {
-                    // 单个文件，显示文件名
-                    if let Some(file_name) = files_array[0]["name"].as_str() {
-                        return file_name.to_string();
-                    }
-                } else {
-                    // 多个文件，显示第一个文件名和数量
-                    if let Some(first_file_name) = files_array[0]["name"].as_str() {
-                        return format!("{} 等 {} 个文件", first_file_name, file_count);
-                    } else {
-                        return format!("{} 个文件", file_count);
-                    }
-                }
-            }
-        }
-    }
-
-    // 解析失败时的回退标题
-    "文件".to_string()
-}
-
-// 检测当前活动窗口是否为文件管理器
-#[cfg(windows)]
-fn is_target_file_manager() -> bool {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
-
-    unsafe {
-        let hwnd = GetForegroundWindow();
-        if hwnd == HWND(0) {
-            return false;
-        }
-
-        // 获取窗口标题
-        let mut window_title = [0u16; 256];
-        let title_len = GetWindowTextW(hwnd, &mut window_title);
-        if title_len > 0 {
-            let title = String::from_utf16_lossy(&window_title[..title_len as usize]);
-
-            // 通过窗口标题判断是否为文件管理器
-            let title_lower = title.to_lowercase();
-            let is_file_manager_by_title = title_lower.contains("文件资源管理器")
-                || title_lower.contains("file explorer")
-                || title_lower.contains("total commander")
-                || title_lower.contains("freecommander")
-                || title_lower.contains("directory opus")
-                || title_lower.contains("q-dir")
-                || title_lower.ends_with(" - 文件夹")
-                || title_lower.ends_with(" - folder");
-
-            return is_file_manager_by_title;
-        }
-    }
-
-    false
-}
-
-#[cfg(not(windows))]
-fn is_target_file_manager() -> bool {
-    // 非Windows系统暂时返回false，不延迟
-    false
-}
+// 工具函数已移动到 utils 模块
 
 // 读取图片文件并返回base64数据
 #[tauri::command]

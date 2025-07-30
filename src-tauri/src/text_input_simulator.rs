@@ -121,7 +121,7 @@ impl TextInputSimulator {
         Ok(())
     }
 
-    /// 发送Unicode字符（改进版本）
+    /// 发送Unicode字符
     #[cfg(windows)]
     fn send_unicode_char(&self, ch: char) -> Result<(), String> {
         self.send_unicode_char_with_retry(ch, 3)
@@ -310,7 +310,7 @@ impl TextInputSimulator {
         self.send_virtual_key(virtual_key.0 as u16)
     }
 
-    /// 发送原始Unicode字符（改进的代理对处理）
+    /// 发送原始Unicode字符
     #[cfg(windows)]
     fn send_unicode_char_raw(&self, ch: char, max_retries: u32) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -566,17 +566,17 @@ pub async fn simulate_text_input(text: &str) -> Result<(), String> {
     result
 }
 
-/// 流式输入文本片段（用于AI翻译的实时输出）- 改进版本
+/// 流式输入文本片段（用于AI翻译的实时输出）
 pub async fn simulate_text_chunk_input(chunk: &str) -> Result<(), String> {
     if chunk.is_empty() {
         return Ok(());
     }
 
-    // 使用改进的批量输入方法
+    // 批量输入方法
     simulate_text_chunk_input_batched(chunk).await
 }
 
-/// 批量流式输入文本片段（改进的缓冲机制）
+/// 批量流式输入文本片段
 pub async fn simulate_text_chunk_input_batched(chunk: &str) -> Result<(), String> {
     if chunk.is_empty() {
         return Ok(());

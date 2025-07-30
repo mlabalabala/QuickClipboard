@@ -16,11 +16,13 @@ mod paste_utils;
 mod preview_window;
 mod quick_texts;
 mod screenshot;
+mod services;
 mod settings;
 mod shortcut_interceptor;
 mod sound_manager;
 mod text_input_simulator;
 mod tray;
+mod utils;
 mod window_effects;
 mod window_management;
 
@@ -163,7 +165,7 @@ pub fn run() {
             }
 
             // 设置窗口效果
-            // window_effects::set_window_blur(&main_window);
+            window_effects::set_window_blur(&main_window);
 
             // 设置窗口圆角（Windows 11）
             #[cfg(windows)]
@@ -302,31 +304,6 @@ pub fn run() {
             // 注册全局快捷键
             #[cfg(desktop)]
             {
-                let app_handle = app.handle();
-                let main_window = app.get_webview_window("main").expect("找不到主窗口");
-
-                // println!("====== 开始注册快捷键 ======");
-
-                // 创建所有快捷键
-                let mut all_shortcuts: Vec<tauri_plugin_global_shortcut::Shortcut> = Vec::new();
-
-                #[cfg(not(windows))]
-                {
-                    // 添加Alt+1到Alt+9快捷键（非Windows仍用插件）
-                    for i in 1..=9 {
-                        let shortcut_str = format!("Alt+{}", i);
-                        match shortcut_str.parse::<tauri_plugin_global_shortcut::Shortcut>() {
-                            Ok(shortcut) => {
-                                println!("成功创建快捷键: {}", shortcut_str);
-                                all_shortcuts.push(shortcut);
-                            }
-                            Err(e) => println!("创建{}快捷键失败: {:?}", shortcut_str, e),
-                        }
-                    }
-                }
-
-                // println!("总共创建了 {} 个快捷键", all_shortcuts.len());
-
                 // 启动按键监控系统（仅 Windows）
                 #[cfg(windows)]
                 {
@@ -338,88 +315,6 @@ pub fn run() {
 
                     // 安装快捷键拦截钩子
                     shortcut_interceptor::install_shortcut_hook();
-                }
-
-                // 一次性注册所有快捷键（仅非Windows）
-                #[cfg(not(windows))]
-                {
-                    let toggle_window = main_window.clone();
-                    match app_handle.plugin(
-                        tauri_plugin_global_shortcut::Builder::new()
-                            .with_shortcuts(all_shortcuts.clone())?
-                            .with_handler(move |_app, shortcut, event| {
-                                use tauri_plugin_global_shortcut::ShortcutState;
-                                let shortcut_str = shortcut.to_string();
-                                let state = event.state();
-                                println!("快捷键事件: {} - {:?}", shortcut_str, state);
-
-                                // Alt+数字 : 在按下时记录索引并稍后粘贴，等待 Alt 物理抬起
-                                if shortcut_str.starts_with("alt+Digit")
-                                    && state == ShortcutState::Pressed
-                                {
-                                    let digit_str = shortcut_str.trim_start_matches("alt+Digit");
-                                    if let Ok(num) = digit_str.parse::<usize>() {
-                                        if (1..=9).contains(&num) {
-                                            println!("检测到 Alt+{} Pressed，10ms 后执行粘贴", num);
-                                            let idx = num - 1;
-                                            if let Some(window) =
-                                                mouse_hook::MAIN_WINDOW_HANDLE.get().cloned()
-                                            {
-                                                std::thread::spawn(move || {
-                                                    std::thread::sleep(
-                                                        std::time::Duration::from_millis(10),
-                                                    );
-                                                    // 获取历史记录内容
-                                                    let content = {
-                                                        let history = crate::clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
-                                                        if idx < history.len() {
-                                                            Some(history[idx].clone())
-                                                        } else {
-                                                            None
-                                                        }
-                                                    };
-
-                                                    if let Some(content) = content {
-                                                        let window_clone = window.clone();
-                                                        tauri::async_runtime::spawn(async move {
-                                                            // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
-                                                            if !content.starts_with("files:")
-                                                                && !content.starts_with("data:image/")
-                                                                && !content.starts_with("image:") {
-                                                                // 文本内容，使用带翻译支持的粘贴
-                                                                match crate::commands::paste_text_with_translation_support(
-                                                                    content,
-                                                                    window_clone,
-                                                                    "Alt+数字快捷键",
-                                                                ).await {
-                                                                    Ok(_) => println!("Alt+数字快捷键粘贴成功"),
-                                                                    Err(e) => println!("Alt+数字快捷键粘贴失败: {}", e),
-                                                                }
-                                                            } else {
-                                                                // 非文本内容，使用普通粘贴
-                                                                let params = crate::commands::PasteContentParams {
-                                                                    content,
-                                                                    quick_text_id: None,
-                                                                    one_time: None,
-                                                                };
-                                                                match crate::commands::paste_content(params, window_clone).await {
-                                                                    Ok(_) => println!("粘贴历史记录成功"),
-                                                                    Err(e) => println!("粘贴历史记录失败: {}", e),
-                                                                }
-                                                            }
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            })
-                            .build(),
-                    ) {
-                        Ok(_) => println!("成功注册所有快捷键"),
-                        Err(e) => println!("注册快捷键失败: {:?}", e),
-                    }
                 }
             }
 

@@ -478,15 +478,14 @@ fn handle_number_shortcut_paste(index: usize) {
                         && !content.starts_with("image:")
                     {
                         // 文本内容，使用带翻译支持的粘贴
-                        let _ = crate::commands::paste_text_with_translation_support(
+                        let _ = crate::services::paste_service::paste_text_with_translation(
                             content,
                             window_clone,
-                            "快捷键粘贴",
                         )
                         .await;
                     } else {
                         // 非文本内容，使用普通粘贴
-                        let params = crate::commands::PasteContentParams {
+                        let params = crate::services::paste_service::PasteContentParams {
                             content,
                             quick_text_id: None,
                             one_time: None,

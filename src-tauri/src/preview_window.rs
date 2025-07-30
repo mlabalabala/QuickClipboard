@@ -620,15 +620,14 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         && !content.starts_with("image:")
                     {
                         // 文本内容，使用带翻译支持的粘贴
-                        crate::commands::paste_text_with_translation_support(
+                        crate::services::paste_service::paste_text_with_translation(
                             content,
                             main_window.clone(),
-                            "预览窗口",
                         )
                         .await?;
                     } else {
                         // 非文本内容，使用普通粘贴
-                        let params = crate::commands::PasteContentParams {
+                        let params = crate::services::paste_service::PasteContentParams {
                             content,
                             quick_text_id: None,
                             one_time: None,
@@ -654,15 +653,14 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         && !quick_text.content.starts_with("image:")
                     {
                         // 文本内容，使用带翻译支持的粘贴
-                        crate::commands::paste_text_with_translation_support(
+                        crate::services::paste_service::paste_text_with_translation(
                             quick_text.content.clone(),
                             main_window.clone(),
-                            "预览窗口常用文本",
                         )
                         .await?;
                     } else {
                         // 非文本内容，使用普通粘贴
-                        let params = crate::commands::PasteContentParams {
+                        let params = crate::services::paste_service::PasteContentParams {
                             content: quick_text.content.clone(),
                             quick_text_id: Some(quick_text.id.clone()),
                             one_time: Some(false),
