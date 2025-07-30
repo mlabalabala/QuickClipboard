@@ -290,9 +290,7 @@ fn handle_main_window_shortcut_change(last_state: &KeyState, current_state: &Key
         let last_combo = check_main_window_shortcut_combo(last_state, &parsed_shortcut);
         let current_combo = check_main_window_shortcut_combo(current_state, &parsed_shortcut);
 
-        // 检测快捷键按下（从未按下到按下）
         if !last_combo && current_combo {
-            // 显示主窗口
             if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
@@ -313,7 +311,6 @@ fn handle_main_window_shortcut_change(last_state: &KeyState, current_state: &Key
     }
 }
 
-// 检查主窗口快捷键组合是否匹配
 fn check_main_window_shortcut_combo(
     state: &KeyState,
     config: &crate::global_state::ParsedShortcut,
@@ -323,7 +320,6 @@ fn check_main_window_shortcut_combo(
     let alt_match = state.alt == config.alt;
     let win_match = state.win == config.win;
 
-    // 检查主键
     let key_match = match config.key_code {
         0x56 => state.v,   // V 键
         0x41 => state.a,   // A 键
@@ -350,12 +346,10 @@ fn check_main_window_shortcut_combo(
 fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyState) {
     use crate::global_state::*;
 
-    // 检查预览快捷键配置
     if let Ok(config) = PREVIEW_SHORTCUT_CONFIG.lock() {
         let last_combo = check_shortcut_combo(last_state, &config);
         let current_combo = check_shortcut_combo(current_state, &config);
 
-        // 检测快捷键按下
         if !last_combo && current_combo {
             let settings = crate::settings::get_global_settings();
             if !settings.preview_enabled {
@@ -364,7 +358,6 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
 
             PREVIEW_SHORTCUT_HELD.store(true, Ordering::SeqCst);
 
-            // 显示预览窗口
             if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 let app_handle = window.app_handle().clone();
                 std::thread::spawn(move || {
@@ -373,28 +366,21 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
                     );
                 });
             }
-        }
-        // 检测快捷键释放
-        else if last_combo && !current_combo {
+        } else if last_combo && !current_combo {
             PREVIEW_SHORTCUT_HELD.store(false, Ordering::SeqCst);
 
-            // 检查用户是否取消了预览
             let user_cancelled =
                 crate::global_state::PREVIEW_CANCELLED_BY_USER.load(Ordering::SeqCst);
 
             if user_cancelled {
-                // 用户已取消预览，重置取消标志，不执行粘贴
-                println!("检测到用户已取消预览，跳过粘贴操作");
                 crate::global_state::PREVIEW_CANCELLED_BY_USER.store(false, Ordering::SeqCst);
 
-                // 确保预览窗口已隐藏
                 std::thread::spawn(move || {
                     let _ = tauri::async_runtime::block_on(
                         crate::preview_window::hide_preview_window(),
                     );
                 });
             } else {
-                // 正常释放快捷键，执行粘贴
                 std::thread::spawn(move || {
                     let _ = tauri::async_runtime::block_on(
                         crate::preview_window::paste_current_preview_item(),
@@ -405,13 +391,11 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
     }
 }
 
-// 检查快捷键组合是否匹配
 fn check_shortcut_combo(state: &KeyState, config: &crate::global_state::PreviewShortcut) -> bool {
     let ctrl_match = state.ctrl == config.ctrl;
     let shift_match = state.shift == config.shift;
     let alt_match = state.alt == config.alt;
 
-    // 检查主键
     let key_match = match config.key_code {
         0xC0 => state.backtick, // 反引号
         _ => false,             // 其他键暂时不支持
@@ -428,7 +412,6 @@ fn handle_number_shortcuts_change(last_state: &KeyState, current_state: &KeyStat
         return;
     }
 
-    // 检查数字键按下事件
     let numbers = [
         (last_state.num1, current_state.num1, 0),
         (last_state.num2, current_state.num2, 1),
@@ -558,7 +541,6 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
     // 获取当前设置的截屏快捷键
     let settings = crate::settings::get_global_settings();
 
-    // 检查截屏功能是否启用
     if !settings.screenshot_enabled {
         return;
     }
@@ -574,11 +556,7 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
         let last_combo = check_screenshot_shortcut_combo(last_state, &parsed_shortcut);
         let current_combo = check_screenshot_shortcut_combo(current_state, &parsed_shortcut);
 
-        // 检测快捷键按下（从未按下到按下）
         if !last_combo && current_combo {
-            println!("截屏快捷键被按下: {}", screenshot_shortcut);
-
-            // 打开截屏窗口
             if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 let app_handle = window.app_handle().clone();
                 std::thread::spawn(move || {
@@ -591,17 +569,14 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
     }
 }
 
-// 检查截屏快捷键组合是否被按下
 fn check_screenshot_shortcut_combo(state: &KeyState, shortcut: &ParsedShortcut) -> bool {
     use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
-    // 检查修饰键
     let ctrl_match = shortcut.ctrl == state.ctrl;
     let shift_match = shortcut.shift == state.shift;
     let alt_match = shortcut.alt == state.alt;
     let win_match = shortcut.win == state.win;
 
-    // 检查主键 - 根据key_code映射到KeyState的具体字段
     let key_match = match shortcut.key_code {
         // 字母键
         0x41 => state.a, // A键

@@ -584,8 +584,6 @@ pub fn reload_settings() -> Result<serde_json::Value, String> {
 // 保存设置
 #[tauri::command]
 pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
-    // println!("保存设置: {}", settings);
-
     // 更新全局设置
     crate::settings::update_global_settings_from_json(&settings)?;
 
@@ -638,7 +636,26 @@ pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
         updated_settings.screenshot_quality
     );
 
-    println!("设置保存成功");
+    // 8. 更新快捷键拦截器配置
+    #[cfg(windows)]
+    {
+        // 更新主窗口快捷键
+        let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
+            "Win+V".to_string()
+        } else {
+            app_settings.toggle_shortcut.clone()
+        };
+        crate::shortcut_interceptor::update_shortcut_to_intercept(&toggle_shortcut);
+
+        // 更新预览窗口快捷键
+        let preview_shortcut = if app_settings.preview_shortcut.is_empty() {
+            "Ctrl+`".to_string()
+        } else {
+            app_settings.preview_shortcut.clone()
+        };
+        crate::shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
+    }
+
     Ok(())
 }
 
@@ -801,7 +818,6 @@ pub fn set_super_topmost(app: tauri::AppHandle) -> Result<(), String> {
         {
             crate::window_management::set_super_topmost_window(&window)
                 .map_err(|e| format!("设置超级置顶失败: {}", e))?;
-            println!("主窗口已设置为超级置顶");
         }
         Ok(())
     } else {
@@ -1887,9 +1903,7 @@ fn generate_files_title(files_content: &str) -> String {
 #[cfg(windows)]
 fn is_target_file_manager() -> bool {
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
-    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
 
     unsafe {
         let hwnd = GetForegroundWindow();

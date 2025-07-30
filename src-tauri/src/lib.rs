@@ -262,6 +262,15 @@ pub fn run() {
                     app_settings.toggle_shortcut.clone()
                 };
                 shortcut_interceptor::update_shortcut_to_intercept(&toggle_shortcut);
+
+                // 配置预览快捷键拦截器
+                let preview_shortcut = if app_settings.preview_shortcut.is_empty() {
+                    "Ctrl+`".to_string()
+                } else {
+                    app_settings.preview_shortcut.clone()
+                };
+                shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
+
                 shortcut_interceptor::enable_shortcut_interception();
             }
 

@@ -3,6 +3,7 @@
 use once_cell::sync::OnceCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use tauri::Manager;
 
 // 全局状态
 #[cfg(windows)]
@@ -19,9 +20,17 @@ static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
 #[cfg(windows)]
 static CURRENT_SHORTCUT: Mutex<Option<crate::global_state::ParsedShortcut>> = Mutex::new(None);
 
+// 当前配置的预览窗口快捷键
+#[cfg(windows)]
+static PREVIEW_SHORTCUT: Mutex<Option<crate::global_state::ParsedShortcut>> = Mutex::new(None);
+
 // 快捷键拦截标志（防止重复触发）
 #[cfg(windows)]
 static SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
+
+// 预览快捷键拦截标志
+#[cfg(windows)]
+static PREVIEW_SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
 
 // =================== 键盘钩子函数 ===================
 
@@ -42,56 +51,120 @@ unsafe extern "system" fn shortcut_hook_proc(
         let kbd_data = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
         let vk_code = kbd_data.vkCode;
 
+        let ctrl_pressed = (GetAsyncKeyState(0x11) & 0x8000u16 as i16) != 0; // VK_CONTROL
+        let shift_pressed = (GetAsyncKeyState(0x10) & 0x8000u16 as i16) != 0; // VK_SHIFT
+        let alt_pressed = (GetAsyncKeyState(0x12) & 0x8000u16 as i16) != 0; // VK_MENU
+        let win_pressed = (GetAsyncKeyState(0x5B) & 0x8000u16 as i16) != 0 // VK_LWIN
+            || (GetAsyncKeyState(0x5C) & 0x8000u16 as i16) != 0; // VK_RWIN
+
+        let is_own_window = if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+            crate::window_management::is_current_window_own_app(window)
+        } else {
+            false
+        };
+
         if let Some(shortcut) = CURRENT_SHORTCUT.lock().unwrap().as_ref() {
-            // 检查是否是目标按键
             if vk_code == shortcut.key_code {
                 match wparam.0 as u32 {
                     WM_KEYDOWN | WM_SYSKEYDOWN => {
-                        // 检查修饰键状态
-                        let ctrl_pressed = (GetAsyncKeyState(0x11) & 0x8000u16 as i16) != 0; // VK_CONTROL
-                        let shift_pressed = (GetAsyncKeyState(0x10) & 0x8000u16 as i16) != 0; // VK_SHIFT
-                        let alt_pressed = (GetAsyncKeyState(0x12) & 0x8000u16 as i16) != 0; // VK_MENU
-                        let win_pressed = (GetAsyncKeyState(0x5B) & 0x8000u16 as i16) != 0 // VK_LWIN
-                            || (GetAsyncKeyState(0x5C) & 0x8000u16 as i16) != 0; // VK_RWIN
-
-                        // 检查是否匹配快捷键组合
                         if ctrl_pressed == shortcut.ctrl
                             && shift_pressed == shortcut.shift
                             && alt_pressed == shortcut.alt
                             && win_pressed == shortcut.win
                         {
-                            // 检查当前前台窗口是否是自己的窗口
-                            let is_own_window = if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                                crate::window_management::is_current_window_own_app(window)
-                            } else {
-                                false
-                            };
-
-                            // 只在其他应用窗口中拦截，在自己窗口中让轮询系统处理
                             if !is_own_window {
-                                // 防止重复触发
                                 if !SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
                                     SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
 
-                                    // 在新线程中显示主窗口
                                     if let Some(window) = MAIN_WINDOW_HANDLE.get() {
                                         let window_clone = window.clone();
                                         std::thread::spawn(move || {
                                             crate::window_management::toggle_webview_window_visibility(window_clone);
                                         });
                                     }
-
-                                    // 拦截事件，防止传递给系统
-                                    return LRESULT(1);
                                 }
+
+                                return LRESULT(1);
                             }
-                            // 在自己窗口中不拦截，让轮询系统处理
                         }
                     }
                     WM_KEYUP | WM_SYSKEYUP => {
-                        // 按键释放时重置触发标志
-                        if vk_code == shortcut.key_code {
+                        if vk_code == shortcut.key_code
+                            || (shortcut.ctrl && vk_code == 0x11)
+                            || (shortcut.shift && vk_code == 0x10)
+                            || (shortcut.alt && vk_code == 0x12)
+                            || (shortcut.win && (vk_code == 0x5B || vk_code == 0x5C))
+                        {
                             SHORTCUT_TRIGGERED.store(false, Ordering::Relaxed);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some(preview_shortcut) = PREVIEW_SHORTCUT.lock().unwrap().as_ref() {
+            if vk_code == preview_shortcut.key_code {
+                match wparam.0 as u32 {
+                    WM_KEYDOWN | WM_SYSKEYDOWN => {
+                        if ctrl_pressed == preview_shortcut.ctrl
+                            && shift_pressed == preview_shortcut.shift
+                            && alt_pressed == preview_shortcut.alt
+                            && win_pressed == preview_shortcut.win
+                        {
+                            if !is_own_window {
+                                if !PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
+                                    PREVIEW_SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
+
+                                    let settings = crate::settings::get_global_settings();
+                                    if settings.preview_enabled {
+                                        if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                                            let app_handle = window.app_handle().clone();
+                                            std::thread::spawn(move || {
+                                                let _ = tauri::async_runtime::block_on(
+                                                    crate::preview_window::show_preview_window(
+                                                        app_handle,
+                                                    ),
+                                                );
+                                            });
+                                        }
+                                    }
+                                }
+
+                                return LRESULT(1);
+                            }
+                        }
+                    }
+                    WM_KEYUP | WM_SYSKEYUP => {
+                        if vk_code == preview_shortcut.key_code
+                            || (preview_shortcut.ctrl && vk_code == 0x11)
+                            || (preview_shortcut.shift && vk_code == 0x10)
+                            || (preview_shortcut.alt && vk_code == 0x12)
+                            || (preview_shortcut.win && (vk_code == 0x5B || vk_code == 0x5C))
+                        {
+                            if !is_own_window && PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed)
+                            {
+                                let user_cancelled = crate::global_state::PREVIEW_CANCELLED_BY_USER
+                                    .load(std::sync::atomic::Ordering::SeqCst);
+
+                                if user_cancelled {
+                                    crate::global_state::PREVIEW_CANCELLED_BY_USER
+                                        .store(false, std::sync::atomic::Ordering::SeqCst);
+                                    std::thread::spawn(move || {
+                                        let _ = tauri::async_runtime::block_on(
+                                            crate::preview_window::hide_preview_window(),
+                                        );
+                                    });
+                                } else {
+                                    std::thread::spawn(move || {
+                                        let _ = tauri::async_runtime::block_on(
+                                            crate::preview_window::paste_current_preview_item(),
+                                        );
+                                    });
+                                }
+                            }
+
+                            PREVIEW_SHORTCUT_TRIGGERED.store(false, Ordering::Relaxed);
                         }
                     }
                     _ => {}
@@ -169,7 +242,15 @@ pub fn update_shortcut_to_intercept(shortcut: &str) {
     }
 }
 
-// 检查拦截是否启用
+// 更新要拦截的预览快捷键
+#[cfg(windows)]
+pub fn update_preview_shortcut_to_intercept(shortcut: &str) {
+    if let Some(parsed) = crate::global_state::parse_shortcut(shortcut) {
+        let mut preview_shortcut = PREVIEW_SHORTCUT.lock().unwrap();
+        *preview_shortcut = Some(parsed.clone());
+    }
+}
+
 #[cfg(windows)]
 pub fn is_interception_enabled() -> bool {
     SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::Relaxed)
@@ -193,6 +274,9 @@ pub fn disable_shortcut_interception() {}
 
 #[cfg(not(windows))]
 pub fn update_shortcut_to_intercept(_shortcut: &str) {}
+
+#[cfg(not(windows))]
+pub fn update_preview_shortcut_to_intercept(_shortcut: &str) {}
 
 #[cfg(not(windows))]
 pub fn is_interception_enabled() -> bool {
