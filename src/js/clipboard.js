@@ -521,6 +521,10 @@ export function renderClipboardItems() {
     emptyMessage.style.color = '#999';
     clipboardList.appendChild(emptyMessage);
   }
+
+  import('./navigation.js').then(module => {
+    module.onListUpdate();
+  }).catch(() => { });
 }
 
 

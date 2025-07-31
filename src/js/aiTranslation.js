@@ -964,6 +964,11 @@ export async function handleTranslationError(error, originalText) {
  */
 export async function handleTranslationStart(text) {
   try {
+    // 检查翻译功能是否启用
+    if (!getIsAiTranslationEnabled()) {
+      return;
+    }
+
     // 播放开始音效
     await playTranslationSound('start');
 
@@ -994,45 +999,7 @@ function setupCancelButton() {
 
 
 
-/**
- * 取消正在进行的翻译（内部函数）
- */
-function cancelTranslationInternal() {
-  hideTranslationIndicator();
-  showTranslationNotification('翻译已取消', 'warning', 1500);
-  console.log('[AI翻译] 用户取消翻译');
-}
 
-/**
- * 优化的翻译状态管理
- */
-let currentTranslationId = null;
-
-/**
- * 开始新的翻译任务
- */
-function startTranslationTask() {
-  currentTranslationId = Date.now().toString();
-  return currentTranslationId;
-}
-
-/**
- * 检查翻译任务是否仍然有效
- */
-function isTranslationTaskValid(taskId) {
-  return currentTranslationId === taskId;
-}
-
-/**
- * 完成翻译任务
- */
-function completeTranslationTask(taskId) {
-  if (isTranslationTaskValid(taskId)) {
-    currentTranslationId = null;
-    return true;
-  }
-  return false;
-}
 
 /**
  * 显示翻译进度指示器

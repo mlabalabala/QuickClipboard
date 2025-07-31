@@ -15,7 +15,11 @@ pub struct TranslationGuard;
 impl Drop for TranslationGuard {
     fn drop(&mut self) {
         #[cfg(windows)]
-        crate::global_state::disable_ai_translation_cancel();
+        {
+            crate::global_state::disable_ai_translation_cancel();
+            // 恢复导航按键
+            crate::shortcut_interceptor::set_translation_in_progress(false);
+        }
     }
 }
 
@@ -45,7 +49,11 @@ pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::enable_ai_translation_cancel();
 
-    // 确保在函数结束时禁用快捷键
+    // 禁用导航按键以防止翻译过程中的按键触发导航
+    #[cfg(windows)]
+    crate::shortcut_interceptor::set_translation_in_progress(true);
+
+    // 确保在函数结束时禁用快捷键和恢复导航按键
     let _guard = TranslationGuard;
 
     let settings = settings::get_global_settings();
@@ -116,7 +124,11 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::enable_ai_translation_cancel();
 
-    // 确保在函数结束时禁用快捷键
+    // 禁用导航按键以防止翻译过程中的回车键触发导航
+    #[cfg(windows)]
+    crate::shortcut_interceptor::set_translation_in_progress(true);
+
+    // 确保在函数结束时禁用快捷键和恢复导航按键
     let _guard = TranslationGuard;
 
     let settings = settings::get_global_settings();
@@ -230,7 +242,11 @@ pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::enable_ai_translation_cancel();
 
-    // 确保在函数结束时禁用快捷键
+    // 禁用导航按键以防止翻译过程中的按键触发导航
+    #[cfg(windows)]
+    crate::shortcut_interceptor::set_translation_in_progress(true);
+
+    // 确保在函数结束时禁用快捷键和恢复导航按键
     let _guard = TranslationGuard;
 
     let settings = settings::get_global_settings();

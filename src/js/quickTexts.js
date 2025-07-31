@@ -566,6 +566,10 @@ export function renderQuickTexts() {
     quickTextItem.appendChild(contentElement);
     quickTextsList.appendChild(quickTextItem);
   });
+
+  import('./navigation.js').then(module => {
+    module.onListUpdate();
+  }).catch(() => { });
 }
 
 

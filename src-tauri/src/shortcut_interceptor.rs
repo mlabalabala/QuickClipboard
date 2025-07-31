@@ -32,6 +32,14 @@ static SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 static PREVIEW_SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
 
+// 导航按键监听状态
+#[cfg(windows)]
+static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
+
+// 翻译进行状态（用于暂时禁用导航按键）
+#[cfg(windows)]
+static TRANSLATION_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+
 // =================== 键盘钩子函数 ===================
 
 #[cfg(windows)]
@@ -171,9 +179,66 @@ unsafe extern "system" fn shortcut_hook_proc(
                 }
             }
         }
+
+        // 处理导航按键（仅当启用且窗口应该接收按键且翻译未进行时）
+        if NAVIGATION_KEYS_ENABLED.load(Ordering::Relaxed)
+            && !TRANSLATION_IN_PROGRESS.load(Ordering::Relaxed)
+        {
+            if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                // 检查窗口是否应该接收导航按键
+                if crate::window_management::should_receive_navigation_keys(window) {
+                    match vk_code {
+                        0x26 => {
+                            // VK_UP
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                emit_navigation_event("ArrowUp");
+                                return LRESULT(1); // 阻止事件传播
+                            }
+                        }
+                        0x28 => {
+                            // VK_DOWN
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                emit_navigation_event("ArrowDown");
+                                return LRESULT(1);
+                            }
+                        }
+                        0x0D => {
+                            // VK_RETURN
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                emit_navigation_event("Enter");
+                                return LRESULT(1);
+                            }
+                        }
+                        0x1B => {
+                            // VK_ESCAPE
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                emit_navigation_event("Escape");
+                                return LRESULT(1);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
 
     CallNextHookEx(None, code, wparam, lparam)
+}
+
+// 发送导航事件到前端
+#[cfg(windows)]
+fn emit_navigation_event(key: &str) {
+    use tauri::Emitter;
+
+    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+        let _ = window.emit(
+            "navigation-key-pressed",
+            serde_json::json!({
+                "key": key
+            }),
+        );
+    }
 }
 
 // =================== 公共接口 ===================
@@ -256,6 +321,36 @@ pub fn is_interception_enabled() -> bool {
     SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::Relaxed)
 }
 
+// 启用导航按键监听
+#[cfg(windows)]
+pub fn enable_navigation_keys() {
+    NAVIGATION_KEYS_ENABLED.store(true, Ordering::SeqCst);
+}
+
+// 禁用导航按键监听
+#[cfg(windows)]
+pub fn disable_navigation_keys() {
+    NAVIGATION_KEYS_ENABLED.store(false, Ordering::SeqCst);
+}
+
+// 检查导航按键监听是否启用
+#[cfg(windows)]
+pub fn is_navigation_keys_enabled() -> bool {
+    NAVIGATION_KEYS_ENABLED.load(Ordering::Relaxed)
+}
+
+// 设置翻译进行状态（禁用导航按键）
+#[cfg(windows)]
+pub fn set_translation_in_progress(in_progress: bool) {
+    TRANSLATION_IN_PROGRESS.store(in_progress, Ordering::SeqCst);
+}
+
+// 检查翻译是否正在进行
+#[cfg(windows)]
+pub fn is_translation_in_progress() -> bool {
+    TRANSLATION_IN_PROGRESS.load(Ordering::Relaxed)
+}
+
 // 非Windows平台的空实现
 #[cfg(not(windows))]
 pub fn initialize_shortcut_interceptor(_window: tauri::WebviewWindow) {}
@@ -280,5 +375,24 @@ pub fn update_preview_shortcut_to_intercept(_shortcut: &str) {}
 
 #[cfg(not(windows))]
 pub fn is_interception_enabled() -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn enable_navigation_keys() {}
+
+#[cfg(not(windows))]
+pub fn disable_navigation_keys() {}
+
+#[cfg(not(windows))]
+pub fn is_navigation_keys_enabled() -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn set_translation_in_progress(_in_progress: bool) {}
+
+#[cfg(not(windows))]
+pub fn is_translation_in_progress() -> bool {
     false
 }

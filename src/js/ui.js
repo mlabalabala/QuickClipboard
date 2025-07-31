@@ -135,7 +135,10 @@ export function setupTabSwitching() {
 
       setCurrentTab(tabName);
 
-      // 通知预览窗口标签切换
+      import('./navigation.js').then(module => {
+        module.onTabSwitch();
+      });
+
       notifyPreviewWindowTabChange(tabName);
     });
   });

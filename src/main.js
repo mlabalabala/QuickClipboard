@@ -18,6 +18,7 @@ function printStartupBanner() {
 
 import { initThemeManager } from './js/themeManager.js';
 import './js/fileIconUtils.js';
+import { initNavigation } from './js/navigation.js';
 
 import {
   initDOMReferences,
@@ -217,6 +218,9 @@ async function initApp() {
 
   // 初始化输入框焦点管理
   initInputFocusManagement();
+
+  // 初始化导航系统
+  await initNavigation();
 
   // 初始化截屏功能
   initScreenshot();

@@ -616,6 +616,21 @@ body {
   background-color: #f0f7ff;
 }
 
+/* 键盘导航选中状态 */
+.clipboard-item.keyboard-selected {
+  background-color: rgba(16, 143, 235, 0.5) !important;
+  color: white;
+  border-color: #108FEB;
+  box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+.clipboard-item.keyboard-selected:hover {
+  background-color: #0d7bd6;
+  border-color: #0d7bd6;
+}
+
 .clipboard-text {
   white-space: pre-wrap;
   word-break: break-word;
@@ -937,6 +952,21 @@ body {
   border-color: #4a89dc;
   background-color: #f0f7ff;
   box-shadow: 0 2px 8px rgba(74, 137, 220, 0.2);
+}
+
+/* 键盘导航选中状态 */
+.quick-text-item.keyboard-selected {
+  background-color: rgba(16, 143, 235, 0.5) !important;
+  color: white;
+  border-color: #108FEB;
+  box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+.quick-text-item.keyboard-selected:hover {
+  background-color: #0d7bd6;
+  border-color: #0d7bd6;
 }
 
 .quick-text-title {

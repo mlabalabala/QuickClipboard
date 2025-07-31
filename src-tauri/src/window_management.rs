@@ -12,6 +12,9 @@ pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
         let _ = window.hide();
         #[cfg(windows)]
         disable_mouse_monitoring();
+        // 禁用导航按键监听
+        #[cfg(windows)]
+        crate::shortcut_interceptor::disable_navigation_keys();
     } else {
         // 智能定位窗口到光标位置
         #[cfg(windows)]
@@ -26,6 +29,10 @@ pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
         #[cfg(windows)]
         {
             let _ = set_tool_window(&window);
+            // 将窗口设置为前台但不抢夺焦点
+            bring_window_to_front_without_focus(&window);
+            // 启用导航按键监听
+            crate::shortcut_interceptor::enable_navigation_keys();
         }
         #[cfg(windows)]
         enable_mouse_monitoring();
@@ -127,6 +134,19 @@ pub fn is_current_window_own_app(_window: &tauri::WebviewWindow) -> bool {
     false
 }
 
+// 检查我们的窗口是否应该接收导航按键（简单检查：只要可见就接收）
+#[cfg(windows)]
+pub fn should_receive_navigation_keys(window: &tauri::WebviewWindow) -> bool {
+    // 简单策略：只要窗口可见就接收导航按键
+    // 这样可以确保用户在使用我们的窗口时能够进行键盘导航
+    window.is_visible().unwrap_or(false)
+}
+
+#[cfg(not(windows))]
+pub fn should_receive_navigation_keys(_window: &tauri::WebviewWindow) -> bool {
+    false
+}
+
 // 激活窗口，用于隐藏系统剪贴板
 #[cfg(windows)]
 pub fn simulate_click_on_window(window: &tauri::WebviewWindow) {
@@ -146,8 +166,42 @@ pub fn simulate_click_on_window(window: &tauri::WebviewWindow) {
     }
 }
 
+// 将窗口设置为前台但不抢夺焦点
+#[cfg(windows)]
+pub fn bring_window_to_front_without_focus(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        BringWindowToTop, SetWindowPos, HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+    };
+
+    if let Ok(hwnd_raw) = window.hwnd() {
+        let hwnd = HWND(hwnd_raw.0 as usize as isize);
+
+        unsafe {
+            // 使用 SetWindowPos 将窗口置于前台但不激活（不抢夺焦点）
+            let _ = SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+            );
+
+            // 备用方法：BringWindowToTop（某些情况下可能仍会抢夺焦点，但通常比 SetForegroundWindow 温和）
+            let _ = BringWindowToTop(hwnd);
+        }
+    }
+}
+
 #[cfg(not(windows))]
 pub fn simulate_click_on_window(_window: &tauri::WebviewWindow) {
+    // 非Windows平台暂不实现
+}
+
+#[cfg(not(windows))]
+pub fn bring_window_to_front_without_focus(_window: &tauri::WebviewWindow) {
     // 非Windows平台暂不实现
 }
 
