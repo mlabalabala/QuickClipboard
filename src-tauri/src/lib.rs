@@ -416,6 +416,7 @@ pub fn run() {
             commands::get_file_info,
             commands::get_clipboard_files,
             commands::set_clipboard_files,
+            commands::move_clipboard_item_to_front,
             commands::paste_content,
             commands::open_file_location,
             commands::read_image_file

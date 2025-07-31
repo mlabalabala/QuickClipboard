@@ -242,6 +242,27 @@ pub fn is_save_images_enabled() -> bool {
     SAVE_IMAGES.load(Ordering::Relaxed)
 }
 
+// 检查内容是否在历史记录中且需要移动到第一位
+pub fn move_to_front_if_exists(text: String) -> bool {
+    let mut history = CLIPBOARD_HISTORY.lock().unwrap();
+    
+    // 检查是否已存在相同内容
+    if let Some(pos) = history.iter().position(|item| item == &text) {
+        // 如果已经在第一位，不需要移动
+        if pos == 0 {
+            return false;
+        }
+        
+        // 移动到第一位
+        let existing_text = history.remove(pos).unwrap();
+        history.push_front(existing_text);
+        save_history(&history);
+        return true;
+    }
+    
+    false
+}
+
 // 根据索引删除剪贴板项目
 pub fn delete_item_by_index(index: usize) -> Result<(), String> {
     let mut history = CLIPBOARD_HISTORY.lock().unwrap();

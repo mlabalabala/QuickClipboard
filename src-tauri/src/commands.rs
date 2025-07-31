@@ -68,6 +68,13 @@ pub fn set_clipboard_image(data_url: String) -> Result<(), String> {
     Ok(())
 }
 
+// 移动剪贴板项目到第一位
+#[tauri::command]
+pub fn move_clipboard_item_to_front(text: String) -> Result<(), String> {
+    clipboard_history::move_to_front_if_exists(text);
+    Ok(())
+}
+
 // 获取剪贴板历史
 #[tauri::command]
 pub fn get_clipboard_history() -> Vec<ClipboardItem> {
