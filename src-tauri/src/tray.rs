@@ -45,18 +45,19 @@ fn load_app_icon() -> Result<Image<'static>, Box<dyn std::error::Error>> {
 }
 
 fn try_load_embedded_icon() -> Option<Image<'static>> {
-    // 尝试加载内嵌的图标
-    if let Ok(icon_bytes) = std::fs::read("icons/icon64.png") {
-        // 使用 image crate 来解析 PNG 文件
-        if let Ok(img) = image::load_from_memory(&icon_bytes) {
-            let rgba = img.to_rgba8();
-            let (width, height) = img.dimensions();
-            let rgba_data = rgba.into_raw();
+    // 使用编译时嵌入的图标数据
+    const ICON_DATA: &[u8] = include_bytes!("../icons/icon64.png");
 
-            let tauri_image = Image::new_owned(rgba_data, width, height);
-            return Some(tauri_image);
-        }
+    // 使用 image crate 来解析 PNG 文件
+    if let Ok(img) = image::load_from_memory(ICON_DATA) {
+        let rgba = img.to_rgba8();
+        let (width, height) = img.dimensions();
+        let rgba_data = rgba.into_raw();
+
+        let tauri_image = Image::new_owned(rgba_data, width, height);
+        return Some(tauri_image);
     }
+
     None
 }
 
