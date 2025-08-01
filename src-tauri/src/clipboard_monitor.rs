@@ -155,7 +155,8 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
 
     // 然后尝试获取文本
     if let Ok(text) = clipboard.get_text() {
-        if !text.is_empty() {
+        // 过滤空白内容：检查去除空白字符后是否为空
+        if !text.is_empty() && !text.trim().is_empty() {
             return Some(text);
         }
     }

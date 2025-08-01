@@ -30,6 +30,12 @@ pub fn add_to_history(text: String) {
         return;
     }
 
+    // 过滤空白内容：检查去除空白字符后是否为空
+    if text.trim().is_empty() {
+        println!("跳过空白内容，不添加到历史记录");
+        return;
+    }
+
     if let Err(e) = database::add_clipboard_item(text) {
         println!("添加剪贴板历史失败: {}", e);
     }
@@ -51,6 +57,12 @@ pub fn add_image_to_history(image_id: String) {
 pub fn add_to_history_with_check_and_move(text: String, move_duplicates: bool) -> bool {
     if !MONITORING_ENABLED.load(Ordering::Relaxed) {
         println!("剪贴板监听已禁用，跳过添加历史记录");
+        return false;
+    }
+
+    // 过滤空白内容：检查去除空白字符后是否为空
+    if text.trim().is_empty() {
+        println!("跳过空白内容，不添加到历史记录");
         return false;
     }
 
@@ -93,6 +105,12 @@ pub fn add_to_history_with_check_and_move(text: String, move_duplicates: bool) -
 
 // 检查内容是否在历史记录中且需要移动到第一位
 pub fn move_to_front_if_exists(text: String) -> bool {
+    // 过滤空白内容：检查去除空白字符后是否为空
+    if text.trim().is_empty() {
+        println!("跳过空白内容，不移动到前面");
+        return false;
+    }
+
     match database::clipboard_item_exists(&text) {
         Ok(Some(existing_id)) => {
             // 获取当前历史记录以检查是否已经在第一位
