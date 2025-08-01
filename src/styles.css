@@ -641,16 +641,56 @@ body {
   /* 为操作按钮留出空间 */
 }
 
-.clipboard-index {
+.clipboard-number {
   position: absolute;
   top: 4px;
   right: 8px;
-  font-size: 11px;
+  font-size: 10px;
+  color: #666;
+  background-color: rgba(74, 137, 220, 0.1);
+  border: 1px solid rgba(74, 137, 220, 0.3);
+  padding: 1px 4px;
+  border-radius: 8px;
+  pointer-events: none;
+  font-weight: 600;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.2;
+  z-index: 2;
+}
+
+/* 当没有快捷键时，序号居中显示 */
+.clipboard-item.no-shortcut .clipboard-number {
+  top: 50%;
+  transform: translateY(-50%);
+  right: 6px;
+}
+
+/* 活动状态下的序号样式 */
+.clipboard-item.active .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.2);
+  border-color: rgba(74, 137, 220, 0.5);
+  color: #4a89dc;
+}
+
+/* 键盘选中状态下的序号样式 */
+.clipboard-item.keyboard-selected .clipboard-number {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
+}
+
+.clipboard-index {
+  position: absolute;
+  top: 22px;
+  right: 8px;
+  font-size: 9px;
   color: #999;
   background-color: #f0f0f0;
-  padding: 1px 6px;
-  border-radius: 10px;
+  padding: 1px 3px;
+  border-radius: 6px;
   pointer-events: none;
+  font-weight: 500;
 }
 
 .clipboard-image {

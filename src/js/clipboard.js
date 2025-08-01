@@ -320,12 +320,21 @@ export function renderClipboardItems() {
       clipboardItem.appendChild(textElement);
     }
 
-    // 创建索引标签
+    // 创建序号小标（右上角）
+    const numberElement = document.createElement('div');
+    numberElement.className = 'clipboard-number';
+    numberElement.textContent = index + 1;
+    clipboardItem.appendChild(numberElement);
+
+    // 创建快捷键标签（右上角，在序号下方）
     if (index < 9) {
       const indexElement = document.createElement('div');
       indexElement.className = 'clipboard-index';
       indexElement.textContent = `Ctrl+${index + 1}`;
       clipboardItem.appendChild(indexElement);
+    } else {
+      // 没有快捷键时，添加特殊类名用于样式调整
+      clipboardItem.classList.add('no-shortcut');
     }
 
     // 创建操作按钮容器（所有内容都支持添加到常用）

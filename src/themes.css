@@ -112,6 +112,29 @@ body {
     background-color: rgba(74, 137, 220, 0.2);
   }
 
+  .clipboard-number {
+    background-color: rgba(74, 137, 220, 0.15);
+    border-color: rgba(74, 137, 220, 0.4);
+    color: #8bb3e8;
+  }
+
+  .clipboard-item.active .clipboard-number {
+    background-color: rgba(74, 137, 220, 0.25);
+    border-color: rgba(74, 137, 220, 0.6);
+    color: #4a89dc;
+  }
+
+  .clipboard-item.keyboard-selected .clipboard-number {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+  }
+
+  .clipboard-index {
+    background-color: rgba(68, 68, 68, 0.8);
+    color: #ccc;
+  }
+
   /* 模态框 */
   .modal-content {
     background: rgba(40, 40, 40, 0.95);
@@ -497,6 +520,29 @@ body.theme-light {
 .theme-light .quick-text-item.active {
   border-color: var(--primary-color);
   background-color: #f0f7ff;
+}
+
+.theme-light .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.08);
+  border-color: rgba(74, 137, 220, 0.25);
+  color: #4a89dc;
+}
+
+.theme-light .clipboard-item.active .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.15);
+  border-color: rgba(74, 137, 220, 0.4);
+  color: #2c5aa0;
+}
+
+.theme-light .clipboard-item.keyboard-selected .clipboard-number {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(74, 137, 220, 0.6);
+  color: #4a89dc;
+}
+
+.theme-light .clipboard-index {
+  background-color: #f0f0f0;
+  color: #999;
 }
 
 .theme-light #search-input,
@@ -993,6 +1039,24 @@ body.theme-dark {
   color: #e0e0e0;
 }
 
+.theme-dark .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.15);
+  border-color: rgba(74, 137, 220, 0.4);
+  color: #8bb3e8;
+}
+
+.theme-dark .clipboard-item.active .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.25);
+  border-color: rgba(74, 137, 220, 0.6);
+  color: #4a89dc;
+}
+
+.theme-dark .clipboard-item.keyboard-selected .clipboard-number {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
 .theme-dark .clipboard-index {
   background-color: rgba(68, 68, 68, 0.8);
   color: #ccc;
@@ -1396,6 +1460,33 @@ body.theme-transparent {
 .theme-transparent .quick-text-item:hover {
   background-color: rgba(255, 255, 255, 0.3);
   border-color: rgba(74, 137, 220, 0.5);
+}
+
+.theme-transparent .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.15);
+  border-color: rgba(74, 137, 220, 0.4);
+  color: #4a89dc;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.theme-transparent .clipboard-item.active .clipboard-number {
+  background-color: rgba(74, 137, 220, 0.25);
+  border-color: rgba(74, 137, 220, 0.6);
+  color: #2c5aa0;
+}
+
+.theme-transparent .clipboard-item.keyboard-selected .clipboard-number {
+  background-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #333;
+}
+
+.theme-transparent .clipboard-index {
+  background-color: rgba(240, 240, 240, 0.3);
+  color: #666;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .theme-transparent .quick-text-image {
