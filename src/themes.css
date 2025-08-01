@@ -7,7 +7,7 @@
   --primary-hover: #357abd;
 
   /* 窗口透明度 */
-  --window-opacity: 0.85;
+  --window-opacity: .9;
 
   /* 动画时长 */
   --transition-duration: 0.2s;
@@ -35,7 +35,7 @@ body {
 /* 系统暗色模式 */
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: rgba(30, 30, 30, var(--window-opacity));
+    background-color: transparent;
     color: #e0e0e0;
     border-color: rgba(255, 255, 255, 0.1);
   }
@@ -470,7 +470,7 @@ body {
 
 /* =================== 亮色主题 =================== */
 body.theme-light {
-  background-color: #ffffff;
+  /* background-color: #ffffff; */
   color: #222;
 }
 
@@ -877,7 +877,7 @@ body.theme-light {
 
 /* =================== 暗色主题 =================== */
 body.theme-dark {
-  background-color: rgba(30, 30, 30, var(--window-opacity));
+  /* background-color: rgba(30, 30, 30, var(--window-opacity)); */
   color: #e0e0e0;
   border-color: rgba(255, 255, 255, 0.1);
 }
@@ -890,6 +890,10 @@ body.theme-dark {
 
 .theme-dark .title {
   color: #e0e0e0;
+}
+
+.theme-dark .container {
+  background-color: rgba(30, 30, 30, var(--window-opacity));
 }
 
 .theme-dark .control-button {

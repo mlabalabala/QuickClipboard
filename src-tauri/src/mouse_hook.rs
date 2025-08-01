@@ -59,7 +59,10 @@ unsafe extern "system" fn mouse_hook_proc(
                             // 在新线程中隐藏主窗口，避免阻塞钩子
                             let window_clone = window.clone();
                             std::thread::spawn(move || {
-                                let _ = window_clone.hide();
+                                // 使用 toggle_window_visibility 而不是直接 hide，这样会有动画效果
+                                crate::window_management::toggle_webview_window_visibility(
+                                    window_clone,
+                                );
                             });
                         }
                     }

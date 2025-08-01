@@ -1,7 +1,7 @@
 use arboard::Clipboard;
 use serde::Deserialize;
-use tauri::Manager;
 use tauri::WebviewWindow;
+use tauri::{Emitter, Manager};
 
 #[cfg(not(debug_assertions))]
 use auto_launch::AutoLaunch;
@@ -137,6 +137,14 @@ pub fn toggle_window_visibility(window: WebviewWindow) -> Result<(), String> {
                 return Ok(());
             }
         }
+
+        // 发送隐藏动画事件给前端
+        let _ = window.emit("window-hide-animation", ());
+        println!("发送隐藏动画事件");
+
+        // 等待动画完成后再隐藏窗口
+        std::thread::sleep(std::time::Duration::from_millis(300));
+
         // 先 show 一下再 hide，强制刷新
         window.show().ok();
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -152,6 +160,11 @@ pub fn toggle_window_visibility(window: WebviewWindow) -> Result<(), String> {
         }
 
         window.show().map_err(|e| format!("显示窗口失败: {}", e))?;
+
+        // 发送显示动画事件给前端
+        let _ = window.emit("window-show-animation", ());
+        println!("发送显示动画事件");
+
         // 确保窗口设置为超级置顶工具窗口（不抢占焦点，且在开始菜单之上）
         #[cfg(windows)]
         {

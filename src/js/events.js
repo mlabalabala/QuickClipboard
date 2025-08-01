@@ -161,6 +161,9 @@ export function setupKeyboardShortcuts() {
 // 自定义窗口拖拽
 export async function setupCustomWindowDrag() {
   document.getElementById('titlebar')?.addEventListener('mousedown', async (e) => {
+    if (e.target !== titlebar) {
+      return; // 点击的是子元素，不执行拖拽
+    }
     try {
       await invoke('restore_last_focus');
       console.log('恢复工具窗口模式');
@@ -168,9 +171,7 @@ export async function setupCustomWindowDrag() {
       console.error('恢复工具窗口模式失败:', error);
     }
     if (e.buttons === 1) {
-      e.detail === 2
-        ? appWindow.toggleMaximize()
-        : appWindow.startDragging();
+      appWindow.startDragging();
     }
   });
 }
@@ -189,13 +190,13 @@ export function setupSearchEvents() {
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       restoreFocus();
-      // 可选：searchInput.blur();
+      searchInput.blur();
     }
   });
 }
 
 // 恢复焦点的辅助函数
-function restoreFocus() {
-  // 这个函数可以根据需要实现焦点恢复逻辑
+async function restoreFocus() {
   console.log('恢复焦点');
+  await invoke('restore_last_focus');
 }

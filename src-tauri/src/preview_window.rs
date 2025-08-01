@@ -221,63 +221,63 @@ async fn create_preview_window(app: AppHandle) -> Result<WebviewWindow, String> 
     .skip_taskbar(true)
     .focused(false)
     .visible(false)
-    .shadow(false) // 禁用阴影
+    // .shadow(false) // 禁用阴影
     .build()
     .map_err(|e| format!("创建预览窗口失败: {}", e))?;
 
     // Windows特定：移除窗口边框和阴影
-    #[cfg(windows)]
-    {
-        use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            SetWindowLongW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE,
-            SWP_NOSIZE, SWP_NOZORDER, WS_EX_LAYERED, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
-        };
+    // #[cfg(windows)]
+    // {
+    //     use windows::Win32::Foundation::HWND;
+    //     use windows::Win32::UI::WindowsAndMessaging::{
+    //         SetWindowLongW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE,
+    //         SWP_NOSIZE, SWP_NOZORDER, WS_EX_LAYERED, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
+    //     };
 
-        if let Ok(hwnd) = window.hwnd() {
-            let hwnd = HWND(hwnd.0 as isize);
-            unsafe {
-                // 设置为弹出窗口样式，移除所有边框
-                let style = WS_POPUP.0 | WS_VISIBLE.0;
-                SetWindowLongW(hwnd, GWL_STYLE, style as i32);
+    //     if let Ok(hwnd) = window.hwnd() {
+    //         let hwnd = HWND(hwnd.0 as isize);
+    //         unsafe {
+    //             // 设置为弹出窗口样式，移除所有边框
+    //             let style = WS_POPUP.0 | WS_VISIBLE.0;
+    //             SetWindowLongW(hwnd, GWL_STYLE, style as i32);
 
-                // 设置扩展样式为分层窗口，支持透明
-                let ex_style = WS_EX_LAYERED.0 | WS_EX_TOPMOST.0;
-                SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style as i32);
+    //             // 设置扩展样式为分层窗口，支持透明
+    //             let ex_style = WS_EX_LAYERED.0 | WS_EX_TOPMOST.0;
+    //             SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style as i32);
 
-                // 设置窗口区域，移除webview边框
-                use windows::Win32::Foundation::RECT;
-                use windows::Win32::Graphics::Gdi::{CreateRectRgn, SetWindowRgn};
-                use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+    //             // 设置窗口区域，移除webview边框
+    //             use windows::Win32::Foundation::RECT;
+    //             use windows::Win32::Graphics::Gdi::{CreateRectRgn, SetWindowRgn};
+    //             use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
-                let mut rect = RECT::default();
-                if GetWindowRect(hwnd, &mut rect).is_ok() {
-                    let width = rect.right - rect.left;
-                    let height = rect.bottom - rect.top;
+    //             let mut rect = RECT::default();
+    //             if GetWindowRect(hwnd, &mut rect).is_ok() {
+    //                 let width = rect.right - rect.left;
+    //                 let height = rect.bottom - rect.top;
 
-                    // 创建一个完全覆盖窗口的区域，移除默认边框
-                    let region = CreateRectRgn(0, 0, width, height);
-                    if !region.is_invalid() {
-                        SetWindowRgn(hwnd, region, true);
-                        println!("已设置自定义窗口区域，移除webview边框");
-                    }
-                }
+    //                 // 创建一个完全覆盖窗口的区域，移除默认边框
+    //                 let region = CreateRectRgn(0, 0, width, height);
+    //                 if !region.is_invalid() {
+    //                     SetWindowRgn(hwnd, region, true);
+    //                     println!("已设置自定义窗口区域，移除webview边框");
+    //                 }
+    //             }
 
-                // 应用更改
-                let _ = SetWindowPos(
-                    hwnd,
-                    HWND(0),
-                    0,
-                    0,
-                    0,
-                    0,
-                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
-                );
+    //             // 应用更改
+    //             let _ = SetWindowPos(
+    //                 hwnd,
+    //                 HWND(0),
+    //                 0,
+    //                 0,
+    //                 0,
+    //                 0,
+    //                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+    //             );
 
-                println!("已设置Windows弹出窗口样式，移除所有边框");
-            }
-        }
-    }
+    //             println!("已设置Windows弹出窗口样式，移除所有边框");
+    //         }
+    //     }
+    // }
     // #[cfg(windows)]
     // {
     //     use window_vibrancy::apply_acrylic;

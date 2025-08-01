@@ -240,6 +240,9 @@ async function initApp() {
 
   // 设置窗口可见性监听器
   setupWindowVisibilityListener();
+
+  // 设置窗口动画监听器
+  setupWindowAnimationListeners();
 }
 
 // 设置窗口可见性监听器
@@ -258,6 +261,60 @@ function setupWindowVisibilityListener() {
     // 窗口获得焦点时，更新快捷键显示
     updateShortcutDisplay();
   });
+}
+
+// 设置窗口动画监听器
+async function setupWindowAnimationListeners() {
+  try {
+    console.log('开始设置窗口动画监听器...');
+    const { listen } = await import('@tauri-apps/api/event');
+
+    // 监听窗口显示动画事件
+    await listen('window-show-animation', () => {
+      console.log('收到窗口显示动画事件');
+      playWindowShowAnimation();
+    });
+
+    // 监听窗口隐藏动画事件
+    await listen('window-hide-animation', () => {
+      console.log('收到窗口隐藏动画事件');
+      playWindowHideAnimation();
+    });
+
+    console.log('窗口动画监听器设置完成');
+  } catch (error) {
+    console.error('设置窗口动画监听器失败:', error);
+  }
+}
+
+// 播放窗口显示动画
+function playWindowShowAnimation() {
+  const container = document.querySelector('body');
+  if (!container) return;
+
+  // 重置动画状态
+  container.classList.remove('window-hide-animation', 'window-show-animation');
+
+  // 强制重绘
+  container.offsetHeight;
+
+  // 添加显示动画类
+  container.classList.add('window-show-animation');
+}
+
+// 播放窗口隐藏动画
+function playWindowHideAnimation() {
+  const container = document.querySelector('body');
+  if (!container) return;
+
+  // 重置动画状态
+  container.classList.remove('window-hide-animation', 'window-show-animation');
+
+  // 强制重绘
+  container.offsetHeight;
+
+  // 添加隐藏动画类
+  container.classList.add('window-hide-animation');
 }
 
 // 页面加载完成后初始化

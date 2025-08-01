@@ -7,6 +7,16 @@ static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
 
 pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(true) {
+        // 发送隐藏动画事件给前端
+        {
+            use tauri::Emitter;
+            let _ = window.emit("window-hide-animation", ());
+            println!("发送隐藏动画事件 (webview)");
+        }
+
+        // 等待动画完成后再隐藏窗口
+        std::thread::sleep(std::time::Duration::from_millis(300));
+
         // 隐藏窗口前恢复焦点并停止鼠标监听
         let _ = restore_last_focus();
         let _ = window.hide();
@@ -24,6 +34,13 @@ pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
 
         // 显示窗口但不抢占焦点
         let _ = window.show();
+
+        // 发送显示动画事件给前端
+        {
+            use tauri::Emitter;
+            let _ = window.emit("window-show-animation", ());
+            println!("发送显示动画事件 (webview)");
+        }
 
         // 确保窗口设置为工具窗口（不抢占焦点）
         #[cfg(windows)]
@@ -260,6 +277,9 @@ pub fn set_tool_window(window: &WebviewWindow) -> Result<(), String> {
             );
         }
 
+        // 禁用窗口阴影
+        disable_window_shadow(window)?;
+
         Ok(())
     } else {
         Err("获取窗口句柄失败".to_string())
@@ -316,9 +336,52 @@ pub fn set_super_topmost_window(window: &WebviewWindow) -> Result<(), String> {
         }
 
         println!("窗口已设置为超级置顶，应该能显示在开始菜单之上");
+
+        // 禁用窗口阴影
+        disable_window_shadow(window)?;
+
         Ok(())
     } else {
         Err("无法获取窗口句柄".to_string())
+    }
+}
+
+// 禁用窗口阴影
+#[cfg(windows)]
+pub fn disable_window_shadow(window: &WebviewWindow) -> Result<(), String> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_NCRENDERING_POLICY, DWMWA_WINDOW_CORNER_PREFERENCE,
+    };
+
+    if let Ok(hwnd_raw) = window.hwnd() {
+        let hwnd = HWND(hwnd_raw.0 as usize as isize);
+
+        unsafe {
+            // 禁用非客户区渲染（包括阴影）
+            let policy: u32 = 2; // DWMNCRP_DISABLED
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_NCRENDERING_POLICY,
+                &policy as *const u32 as *const std::ffi::c_void,
+                std::mem::size_of::<u32>() as u32,
+            );
+
+            // 设置窗口圆角为不圆角（这也有助于移除阴影）
+            let corner_preference: u32 = 1; // DWMWCP_DONOTROUND
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &corner_preference as *const u32 as *const std::ffi::c_void,
+                std::mem::size_of::<u32>() as u32,
+            );
+
+            println!("窗口阴影已禁用");
+        }
+
+        Ok(())
+    } else {
+        Err("获取窗口句柄失败".to_string())
     }
 }
 
