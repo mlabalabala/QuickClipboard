@@ -75,13 +75,13 @@ pub fn add_to_history_with_check_and_move(text: String, move_duplicates: bool) -
                 println!("添加剪贴板历史失败: {}", e);
                 return false;
             }
-            
+
             // 限制历史记录数量
             let limit = *HISTORY_LIMIT.read().unwrap();
             if let Err(e) = database::limit_clipboard_history(limit) {
                 println!("限制剪贴板历史数量失败: {}", e);
             }
-            
+
             true // 添加了新内容
         }
         Err(e) => {
@@ -102,7 +102,7 @@ pub fn move_to_front_if_exists(text: String) -> bool {
                     if !items.is_empty() && items[0].text == text {
                         return false;
                     }
-                    
+
                     // 移动到第一位
                     if let Err(e) = database::move_clipboard_item_to_front(existing_id) {
                         println!("移动剪贴板项目到前面失败: {}", e);
@@ -122,6 +122,11 @@ pub fn move_to_front_if_exists(text: String) -> bool {
             false
         }
     }
+}
+
+// 获取历史记录数量限制
+pub fn get_history_limit() -> usize {
+    *HISTORY_LIMIT.read().unwrap()
 }
 
 // 设置历史记录数量限制
@@ -182,13 +187,13 @@ pub fn is_save_images() -> bool {
 pub fn delete_item_by_index(index: usize) -> Result<(), String> {
     // 获取当前历史记录以找到对应的数据库ID
     let items = database::get_clipboard_history(None)?;
-    
+
     if index >= items.len() {
         return Err("索引超出范围".to_string());
     }
-    
+
     let item = &items[index];
-    
+
     // 如果是图片，删除对应的图片文件
     if item.is_image {
         if let Some(image_id) = &item.image_id {
@@ -206,10 +211,10 @@ pub fn delete_item_by_index(index: usize) -> Result<(), String> {
             }
         }
     }
-    
+
     // 从数据库删除
     database::delete_clipboard_item(item.id)?;
-    
+
     println!("已删除索引为 {} 的剪贴板项目", index);
     Ok(())
 }
@@ -218,7 +223,7 @@ pub fn delete_item_by_index(index: usize) -> Result<(), String> {
 pub fn clear_all() -> Result<(), String> {
     // 获取所有图片项目并删除对应的图片文件
     let items = database::get_clipboard_history(None)?;
-    
+
     for item in &items {
         if item.is_image {
             if let Some(image_id) = &item.image_id {
@@ -237,10 +242,10 @@ pub fn clear_all() -> Result<(), String> {
             }
         }
     }
-    
+
     // 清空数据库
     database::clear_clipboard_history()?;
-    
+
     println!("已清空所有剪贴板历史记录");
     Ok(())
 }
@@ -249,7 +254,7 @@ pub fn clear_all() -> Result<(), String> {
 pub fn update_item_content(index: usize, new_content: String) -> Result<(), String> {
     // 获取当前历史记录以找到对应的数据库ID
     let items = database::get_clipboard_history(None)?;
-    
+
     if index >= items.len() {
         return Err(format!(
             "索引 {} 超出范围，当前历史记录数量: {}",
@@ -257,12 +262,12 @@ pub fn update_item_content(index: usize, new_content: String) -> Result<(), Stri
             items.len()
         ));
     }
-    
+
     let item = &items[index];
-    
+
     // 更新数据库中的内容
     database::update_clipboard_item(item.id, new_content)?;
-    
+
     println!("已更新索引为 {} 的剪贴板项目内容", index);
     Ok(())
 }

@@ -74,8 +74,11 @@ pub fn move_clipboard_item_to_front(text: String) -> Result<(), String> {
 // 获取剪贴板历史
 #[tauri::command]
 pub fn get_clipboard_history() -> Vec<ClipboardItem> {
-    // 首先尝试从数据库获取
-    match crate::database::get_clipboard_history(None) {
+    // 获取当前的历史记录数量限制
+    let limit = clipboard_history::get_history_limit();
+
+    // 从数据库获取，使用当前的数量限制
+    match crate::database::get_clipboard_history(Some(limit)) {
         Ok(items) => {
             // 转换数据库ID为前端期望的索引
             items

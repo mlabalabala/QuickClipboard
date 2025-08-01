@@ -318,8 +318,9 @@ function bindSettingEvents() {
           settings[key] = element.checked;
         } else if (element.type === 'number' || id === 'screenshot-quality') {
           settings[key] = parseInt(element.value);
-        } else if (element.type === 'select-one' && (id === 'preview-items-count' || id === 'ai-input-speed')) {
+        } else if (element.type === 'select-one' && (id === 'preview-items-count' || id === 'ai-input-speed' || id === 'history-limit')) {
           settings[key] = parseInt(element.value);
+          console.log(`特殊处理整数设置: ${id} -> ${key} = ${settings[key]} (原始值: ${element.value})`);
         } else {
           settings[key] = element.value;
         }

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentTheme } from './themeManager.js';
+import { refreshClipboardHistory } from './clipboard.js';
 
 // 当前设置
 let currentSettings = {
@@ -66,8 +67,8 @@ function applySettings(settings) {
 
   // 应用其他设置
   if (settings.historyLimit) {
-    // 历史记录数量在后端已经处理
-    // console.log('历史记录数量已更新:', settings.historyLimit);
+    // 刷新剪贴板历史以应用新的数量限制
+    refreshClipboardHistory();
   }
 
   if (settings.clipboardMonitor !== undefined) {
