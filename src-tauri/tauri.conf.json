@@ -29,7 +29,8 @@
         "focus": false,
         "maximizable": false,
         "dragDropEnabled": false,
-        "shadow": false
+        "shadow": false,
+        "visibleOnAllWorkspaces": true
       },
       {
         "label": "settings",

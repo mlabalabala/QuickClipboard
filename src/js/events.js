@@ -158,6 +158,23 @@ export function setupKeyboardShortcuts() {
 //   return { isDragging };
 // }
 
+// 自定义窗口拖拽
+export async function setupCustomWindowDrag() {
+  document.getElementById('titlebar')?.addEventListener('mousedown', async (e) => {
+    try {
+      await invoke('restore_last_focus');
+      console.log('恢复工具窗口模式');
+    } catch (error) {
+      console.error('恢复工具窗口模式失败:', error);
+    }
+    if (e.buttons === 1) {
+      e.detail === 2
+        ? appWindow.toggleMaximize()
+        : appWindow.startDragging();
+    }
+  });
+}
+
 // 设置右键菜单禁用
 export function setupContextMenuDisable() {
   document.addEventListener('contextmenu', (e) => {

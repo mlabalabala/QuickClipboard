@@ -55,35 +55,25 @@ body {
   background-color: #f0f0f0;
   border-bottom: 1px solid #e0e0e0;
   /* border-radius: 8px 8px 0 0; */
-  -webkit-app-region: drag;
   cursor: grab;
 }
 
 .title {
-  /* 原基础样式调整 */
   font-weight: 600;
   font-size: 16px;
-  /* 手写体稍大更易识别 */
   color: #665;
-  /* 偏暖的灰色，增强复古感 */
   display: flex;
   align-items: center;
   gap: 2px;
-
-  /* 手写风核心 */
   font-family: "Comic Sans MS", "Marker Felt", cursive;
-  /* 手写风格字体 */
-  /* text-decoration: underline dotted #999; */
-  /* 点状下划线，增加复古细节 */
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  /* 下划线与文字间距 */
+  pointer-events: none;
 }
 
 .controls {
   display: flex;
   gap: 8px;
-  -webkit-app-region: no-drag;
   /* 控制按钮不参与拖动 */
   position: fixed;
   right: 8px;
@@ -119,7 +109,6 @@ body {
 .ai-translation-toggle {
   display: flex;
   align-items: center;
-  -webkit-app-region: no-drag;
 }
 
 /* 通用开关输入框样式 */

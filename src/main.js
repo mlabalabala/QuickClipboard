@@ -69,7 +69,8 @@ import {
   setupClipboardEventListener,
   setupTrayEventListeners,
   setupKeyboardShortcuts,
-  setupContextMenuDisable
+  setupContextMenuDisable,
+  setupCustomWindowDrag
 } from './js/events.js';
 
 import { initSortable } from './js/sortable.js';
@@ -109,6 +110,9 @@ async function waitForBackendInitialization() {
 
 // 初始化应用
 async function initApp() {
+
+  // 设置自定义窗口拖拽
+  setupCustomWindowDrag();
 
   // 等待后端初始化完成，然后获取数据
   await waitForBackendInitialization();
