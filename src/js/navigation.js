@@ -26,7 +26,7 @@ export async function initNavigation() {
       } else {
         // 立即执行非导航按键
         switch (key) {
-          case 'Enter':
+          case 'CtrlEnter':
             executeCurrentItem();
             break;
           case 'Escape':

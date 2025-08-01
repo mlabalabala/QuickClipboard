@@ -403,7 +403,7 @@ function setupKeyboardShortcuts() {
         break;
       case 'Enter':
         e.preventDefault();
-        if (isSelectionValid()) {
+        if (e.ctrlKey && isSelectionValid()) {
           confirmScreenshot();
         }
         break;

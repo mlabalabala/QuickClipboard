@@ -203,9 +203,9 @@ unsafe extern "system" fn shortcut_hook_proc(
                             }
                         }
                         0x0D => {
-                            // VK_RETURN
-                            if wparam.0 as u32 == WM_KEYDOWN {
-                                emit_navigation_event("Enter");
+                            // VK_RETURN - 需要Ctrl+回车才确定
+                            if wparam.0 as u32 == WM_KEYDOWN && ctrl_pressed {
+                                emit_navigation_event("CtrlEnter");
                                 return LRESULT(1);
                             }
                         }
