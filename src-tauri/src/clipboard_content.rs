@@ -1,4 +1,3 @@
-use crate::clipboard_history;
 use arboard::Clipboard;
 use base64::{engine::general_purpose as b64_engine, Engine as _};
 use image::{ImageBuffer, ImageOutputFormat, Rgba};
@@ -318,9 +317,10 @@ fn set_clipboard_content_internal(content: String, add_to_history: bool) -> Resu
         }
     }
 
-    // 只有在需要时才添加到历史记录
+    // 如果在这里添加，会导致重复记录
     if add_to_history {
-        clipboard_history::add_to_history(content);
+        // clipboard_history::add_to_history(content);
+        println!("剪贴板内容已设置，将由监听器自动添加到历史记录");
     }
 
     Ok(())

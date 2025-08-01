@@ -1482,7 +1482,7 @@ body {
   height: 68%;
   z-index: 5;
   cursor: pointer;
-  z-index: 99999;
+  z-index: 99;
 }
 
 .sidebar-trigger:hover {
@@ -1492,7 +1492,7 @@ body {
 .sidebar-trigger:hover+.groups-sidebar,
 .groups-sidebar:hover,
 .tab-content.dragging .groups-sidebar {
-  z-index: 9999999999;
+  z-index: 999;
   transform: translateX(0);
 }
 

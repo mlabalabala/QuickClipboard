@@ -461,11 +461,15 @@ fn handle_number_shortcut_paste(index: usize) {
 
             // 获取历史记录内容
             let content = {
-                let history = crate::clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
-                if index < history.len() {
-                    Some(history[index].clone())
-                } else {
-                    None
+                match crate::database::get_clipboard_history(None) {
+                    Ok(items) => {
+                        if index < items.len() {
+                            Some(items[index].text.clone())
+                        } else {
+                            None
+                        }
+                    }
+                    Err(_) => None,
                 }
             };
 

@@ -6,6 +6,7 @@ mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
 mod commands;
+mod database;
 mod file_handler;
 mod global_state;
 mod groups;
@@ -107,6 +108,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_sql::Builder::new().build())
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => {
                 if let Some(window) = app.get_webview_window("main") {
@@ -143,10 +145,24 @@ pub fn run() {
             _ => {}
         })
         .setup(|app| {
+            // 初始化数据库
+            if let Err(e) = database::initialize_database() {
+                println!("数据库初始化失败: {}", e);
+            } else {
+                // 执行数据迁移
+                if let Err(e) = database::migrate_from_json() {
+                    println!("数据迁移失败: {}", e);
+                }
+            }
+
             // 首先尝试加载历史记录
             clipboard_history::load_history();
             // 加载常用文本
             quick_texts::load_quick_texts();
+            // 初始化分组系统
+            if let Err(e) = groups::init_groups() {
+                println!("分组系统初始化失败: {}", e);
+            }
 
             // 获取主窗口
             let main_window = app.get_webview_window("main").unwrap();

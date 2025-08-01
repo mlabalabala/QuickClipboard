@@ -161,7 +161,7 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
     }
 
     // 最后尝试获取图片
-    if clipboard_history::is_save_images_enabled() {
+    if clipboard_history::is_save_images() {
         if let Ok(img) = clipboard.get_image() {
             // 将图片转换为 data URL
             let data_url = image_to_data_url(&img);

@@ -372,5 +372,3 @@ async fn send_translation_error_events(window: &WebviewWindow, error: &str, sour
         eprintln!("发送隐藏翻译指示器事件失败: {}", e);
     }
 }
-
-// 窗口检测函数已移动到 utils::window_utils

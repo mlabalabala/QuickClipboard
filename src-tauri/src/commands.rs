@@ -1,6 +1,5 @@
 use arboard::Clipboard;
 use serde::Deserialize;
-// 原子操作和线程相关的导入已移动到服务层
 use tauri::Manager;
 use tauri::WebviewWindow;
 
@@ -9,15 +8,12 @@ use auto_launch::AutoLaunch;
 
 use crate::admin_privileges;
 use crate::clipboard_content::{image_to_data_url, set_clipboard_content};
-use crate::clipboard_history::{self, ClipboardItem, CLIPBOARD_HISTORY};
+use crate::clipboard_history::{self, ClipboardItem};
 use crate::groups::{self, Group};
 use crate::image_manager::get_image_manager;
 use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring};
-// windows_paste 已移动到服务层使用
 use crate::quick_texts::{self, QuickText};
 use crate::window_management;
-
-// 翻译状态管理已移动到 translation_service.rs
 
 #[derive(Deserialize)]
 pub struct GroupParams {
@@ -45,7 +41,7 @@ pub fn get_clipboard_text() -> Result<String, String> {
     match Clipboard::new() {
         Ok(mut clipboard) => match clipboard.get_text() {
             Ok(text) => {
-                clipboard_history::add_to_history(text.clone());
+                // 不在这里添加到历史记录，因为剪贴板监听器已经处理了
                 Ok(text)
             }
             Err(_) => Err("剪贴板为空或不是文本格式".into()),
@@ -78,42 +74,26 @@ pub fn move_clipboard_item_to_front(text: String) -> Result<(), String> {
 // 获取剪贴板历史
 #[tauri::command]
 pub fn get_clipboard_history() -> Vec<ClipboardItem> {
-    let history = CLIPBOARD_HISTORY.lock().unwrap();
-    history
-        .iter()
-        .enumerate()
-        .map(|(id, text)| {
-            if text.starts_with("data:image/") {
-                // 旧格式
-                ClipboardItem {
-                    id,
-                    text: text.clone(),
-                    is_image: true,
-                    image_id: None,
-                    timestamp: 0,
-                }
-            } else if text.starts_with("image:") {
-                // 新格式的图片引用
-                let image_id = text.strip_prefix("image:").unwrap_or("").to_string();
-                ClipboardItem {
-                    id,
-                    text: text.clone(),
-                    is_image: true,
-                    image_id: Some(image_id),
-                    timestamp: 0,
-                }
-            } else {
-                // 文本数据
-                ClipboardItem {
-                    id,
-                    text: text.clone(),
-                    is_image: false,
-                    image_id: None,
-                    timestamp: 0,
-                }
-            }
-        })
-        .collect()
+    // 首先尝试从数据库获取
+    match crate::database::get_clipboard_history(None) {
+        Ok(items) => {
+            // 转换数据库ID为前端期望的索引
+            items
+                .into_iter()
+                .enumerate()
+                .map(|(index, mut item)| {
+                    // 将数据库ID转换为索引，保持前端兼容性
+                    item.id = index as i64;
+                    item
+                })
+                .collect()
+        }
+        Err(e) => {
+            println!("从数据库获取历史记录失败: {}", e);
+            // 数据库模式下没有后备方案，返回空列表
+            Vec::new()
+        }
+    }
 }
 
 // 刷新剪贴板监听函数，只添加新内容
@@ -259,14 +239,15 @@ pub fn delete_quick_text(id: String) -> Result<(), String> {
 // 将剪贴板历史项添加到常用文本
 #[tauri::command]
 pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
-    let history = clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
+    // 从数据库获取剪贴板历史
+    let items = crate::database::get_clipboard_history(None)
+        .map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
 
-    if index >= history.len() {
+    if index >= items.len() {
         return Err(format!("索引 {} 超出历史范围", index));
     }
 
-    let content = history[index].clone();
-    drop(history); // 释放锁
+    let content = items[index].text.clone();
 
     // 处理内容，如果是图片则创建副本
     let final_content = if content.starts_with("image:") {
@@ -630,14 +611,15 @@ pub fn get_active_sound_count() -> usize {
 // 从剪贴板历史添加到分组
 #[tauri::command]
 pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickText, String> {
-    let history = clipboard_history::CLIPBOARD_HISTORY.lock().unwrap();
+    // 从数据库获取剪贴板历史
+    let items = crate::database::get_clipboard_history(None)
+        .map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
 
-    if index >= history.len() {
+    if index >= items.len() {
         return Err(format!("索引 {} 超出历史范围", index));
     }
 
-    let content = history[index].clone();
-    drop(history); // 释放锁
+    let content = items[index].text.clone(); // 释放锁
 
     // 处理内容，如果是图片则创建副本
     let final_content = if content.starts_with("image:") {
@@ -759,7 +741,7 @@ pub async fn cancel_preview() -> Result<(), String> {
 // 删除剪贴板项目
 #[tauri::command]
 pub fn delete_clipboard_item(id: usize) -> Result<(), String> {
-    clipboard_history::delete_item_by_id(id)
+    clipboard_history::delete_item_by_index(id)
 }
 
 // 更新剪贴板项目内容
@@ -1008,8 +990,6 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     crate::services::translation_service::translate_and_input_text(text).await
 }
 
-// 翻译相关的辅助结构和函数已移动到 translation_service.rs
-
 /// 智能翻译文本（根据设置选择流式输入或直接粘贴）
 #[tauri::command]
 pub async fn translate_text_smart(text: String) -> Result<(), String> {
@@ -1155,14 +1135,6 @@ pub async fn paste_content(
 ) -> Result<(), String> {
     crate::services::paste_service::paste_content(params, window).await
 }
-
-// 内部粘贴函数已移动到 paste_service.rs
-
-// 内部图片粘贴函数已移动到 paste_service.rs
-
-// 粘贴相关的内部函数已移动到 paste_service.rs
-
-// 工具函数已移动到 utils 模块
 
 // 读取图片文件并返回base64数据
 #[tauri::command]
