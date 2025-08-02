@@ -37,7 +37,6 @@ body {
   body {
     background-color: transparent;
     color: #e0e0e0;
-    border-color: rgba(255, 255, 255, 0.1);
   }
 
   /* 标题栏 */
@@ -415,11 +414,13 @@ body {
     color: #ccc;
   }
 
-  .add-group-btn {
+  .add-group-btn,
+  .pin-group-btn {
     color: #ccc;
   }
 
-  .add-group-btn:hover {
+  .add-group-btn:hover,
+  .pin-group-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
   }
@@ -768,7 +769,7 @@ body.theme-light {
 }
 
 .theme-light .groups-sidebar {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.95);
   border-left-color: #e8e9ea;
 }
 
@@ -879,7 +880,7 @@ body.theme-light {
 body.theme-dark {
   /* background-color: rgba(30, 30, 30, var(--window-opacity)); */
   color: #e0e0e0;
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .theme-dark .title-bar {
@@ -1330,11 +1331,13 @@ body.theme-dark {
   color: #ccc;
 }
 
-.theme-dark .add-group-btn {
+.theme-dark .add-group-btn,
+.theme-dark .pin-group-btn {
   color: #ccc;
 }
 
-.theme-dark .add-group-btn:hover {
+.theme-dark .add-group-btn:hover,
+.theme-dark .pin-group-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }

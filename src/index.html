@@ -75,22 +75,6 @@
           <!-- 剪贴板项目将通过JavaScript动态添加 -->
         </div>
       </div>
-
-      <!-- 侧边栏触发区域 -->
-      <div class="sidebar-trigger"></div>
-
-      <!-- 分组侧边栏 -->
-      <div class="groups-sidebar" id="clipboard-groups-sidebar">
-        <div class="groups-header">
-          <h3>分组</h3>
-          <button class="add-group-btn" id="add-clipboard-group-btn" title="新增分组">
-            <i class="ti ti-plus"></i>
-          </button>
-        </div>
-        <div class="groups-list" id="clipboard-groups-list">
-          <!-- 分组列表将通过JavaScript动态添加 -->
-        </div>
-      </div>
     </div>
 
     <!-- 常用标签页 -->
@@ -100,34 +84,12 @@
           <div class="search-container">
             <input type="search" id="quick-texts-search" placeholder="搜索常用..." autocomplete="off" />
             <div id="quick-texts-filter" class="content-filter-container"></div>
-            <button class="add-button" id="add-quick-text-btn">
-              <!-- <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg> -->
-              添加
-            </button>
+            <button class="add-button" id="add-quick-text-btn">添加</button>
           </div>
         </div>
 
         <div class="quick-texts-list" id="quick-texts-list">
           <!-- 常用项目将通过JavaScript动态添加 -->
-        </div>
-      </div>
-
-      <!-- 侧边栏触发区域 -->
-      <div class="sidebar-trigger"></div>
-
-      <!-- 分组侧边栏 -->
-      <div class="groups-sidebar" id="quick-texts-groups-sidebar">
-        <div class="groups-header">
-          <h3>分组</h3>
-          <button class="add-group-btn" id="add-quick-texts-group-btn" title="新增分组">
-            <i class="ti ti-plus"></i>
-          </button>
-        </div>
-        <div class="groups-list" id="quick-texts-groups-list">
-          <!-- 分组列表将通过JavaScript动态添加 -->
         </div>
       </div>
     </div>
@@ -139,6 +101,24 @@
       </div>
     </div>
   </main>
+  <!-- 统一的分组侧边栏和触发区，直接放在body下 -->
+  <div class="sidebar-trigger" id="sidebar-trigger"></div>
+  <div class="groups-sidebar" id="groups-sidebar">
+    <div class="groups-header">
+      <h3>分组</h3>
+      <div class="groups-header-btns">
+        <button class="pin-group-btn" id="pin-group-btn" title="固定">
+          <i class="ti ti-pin"></i>
+        </button>
+        <button class="add-group-btn" id="add-group-btn" title="新增分组">
+          <i class="ti ti-plus"></i>
+        </button>
+      </div>
+    </div>
+    <div class="groups-list" id="groups-list">
+      <!-- 分组列表将通过JavaScript动态添加 -->
+    </div>
+  </div>
 
   <!-- 常用编辑模态框 -->
   <div class="modal-overlay" id="quick-text-modal">

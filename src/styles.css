@@ -36,14 +36,53 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  /* background-color: rgba(255, 255, 255, 0.5); */
-  background: transparent;
-  /* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); */
+  background: white;
+  /* border-radius: 8px; */
   height: 100vh;
   display: flex;
   flex-direction: column;
+  border-radius: 8px !important;
+  /* 初始状态 - 完全收起 */
+  transform: scaleY(0);
   transform-origin: top center;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  opacity: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 展开动画 */
+@keyframes scrollDown {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  30% {
+    transform: scaleY(0.3);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* 收起动画 */
+@keyframes scrollUp {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+.window-show-animation {
+  animation: scrollDown 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.window-hide-animation {
+  animation: scrollUp 0.2s cubic-bezier(0.755, 0.05, 0.855, 0.06) forwards;
 }
 
 /* 标题栏样式 */
@@ -80,7 +119,7 @@ body {
   gap: 8px;
   position: fixed;
   right: 8px;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter: blur(10px); */
   z-index: 999;
 }
 
@@ -229,7 +268,7 @@ body {
   padding: 16px 24px;
   border-radius: 12px;
   z-index: 1000;
-  backdrop-filter: blur(8px);
+  /* backdrop-filter: blur(8px); */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   min-width: 200px;
@@ -358,7 +397,6 @@ body {
   padding: 10px 12px 8px 12px;
   overflow: hidden;
   background-color: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
   border-radius: 0 0 8px 8px;
 }
@@ -1059,7 +1097,7 @@ body {
   color: #666;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .action-button:hover {
@@ -1495,17 +1533,20 @@ body {
 .groups-sidebar {
   position: fixed;
   bottom: 26px;
-  right: 0px;
+  right: -1px;
   width: 90px;
-  height: 76.5%;
+  height: 67.6%;
   background: rgba(255, 255, 255, 0.95);
-  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+  border-left: 2px solid rgba(0, 0, 0, 0.5);
   transform: translateX(100%);
   transition: transform 0.3s ease;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(10px);
+  border-radius: 8px 0 0 8px; 
+  backdrop-filter: blur(5px);
   box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
 }
 
@@ -1514,23 +1555,31 @@ body {
   position: fixed;
   bottom: 25px;
   right: 0px;
-  width: 30px;
+  width: 80px;
   height: 68%;
-  z-index: 5;
-  cursor: pointer;
   z-index: 99;
+  cursor: pointer;
 }
 
 .sidebar-trigger:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.sidebar-trigger:hover+.groups-sidebar,
-.groups-sidebar:hover,
-.tab-content.dragging .groups-sidebar {
+/* 默认状态下 hover 会展开 */
+.sidebar-trigger:hover + .groups-sidebar:not(.pinned),
+.groups-sidebar:not(.pinned):hover {
   z-index: 999;
   transform: translateX(0);
+  right: 0;
 }
+
+/* 如果是 pinned 就始终显示，且不被 hover 影响 */
+.groups-sidebar.pinned {
+  transform: translateX(0) !important;
+  right: 0 !important;
+  z-index: 999;
+}
+
 
 .groups-sidebar.show {
   transform: translateX(0);
@@ -1555,11 +1604,20 @@ body {
   font-weight: 600;
   color: #666;
   margin: 0;
+  flex: 2;
 }
 
-.add-group-btn {
-  width: 24px;
-  height: 24px;
+.groups-header-btns{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.add-group-btn,
+.pin-group-btn {
+  width: 20px;
+  height: 20px;
   border: none;
   background: transparent;
   color: #666;
@@ -1571,11 +1629,15 @@ body {
   transition: all 0.2s ease;
 }
 
-.add-group-btn:hover {
+.add-group-btn:hover,
+.pin-group-btn:hover {
   background: rgba(0, 0, 0, 0.1);
   color: #333;
 }
-
+.add-group-btn i,
+.pin-group-btn i{
+  font-size: 14px;
+}
 /* 分组列表 */
 .groups-list {
   flex: 1;
@@ -1592,15 +1654,15 @@ body {
 
 .group-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  padding: 8px 4px;
+  padding: 4px 4px;
   margin-bottom: 4px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  min-height: 60px;
+  min-height: 30px;
 }
 
 .group-item:hover {
@@ -1630,7 +1692,7 @@ body {
 
 .group-icon {
   font-size: 16px;
-  margin-bottom: 4px;
+  /* margin-bottom: 4px; */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1643,7 +1705,7 @@ body {
   text-align: center;
   line-height: 1.2;
   word-break: break-all;
-  max-width: 100%;
+  max-width: 50%;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1856,52 +1918,6 @@ body {
   100% {
     transform: rotate(360deg);
   }
-}
-
-/* 窗口动画 */
-@keyframes windowSlideDown {
-  0% {
-    transform: scale(0.95, 0) translateY(-50%);
-    opacity: 0;
-    transform-origin: top center;
-  }
-
-  70% {
-    transform: scale(1.02, 1.05) translateY(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(1, 1) translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes windowSlideUp {
-  0% {
-    transform: scale(1, 1) translateY(0);
-    opacity: 1;
-    transform-origin: top center;
-  }
-
-  30% {
-    transform: scale(1.02, 1.05) translateY(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(0.95, 0) translateY(-50%);
-    opacity: 0;
-  }
-}
-
-/* 窗口动画类 */
-.window-show-animation {
-  animation: windowSlideDown 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.window-hide-animation {
-  animation: windowSlideUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* 处理中状态 */

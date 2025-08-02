@@ -6,14 +6,14 @@ import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 let groups = [];
 let currentGroupId = 'all';
 let editingGroupId = null;
+let isGroupSidebarPinned = false; // 统一侧边栏固定状态
 
 // DOM元素引用
 let groupModal;
 let groupModalTitle;
 let groupNameInput;
 let quickTextGroupSelect;
-let clipboardGroupsList;
-let quickTextsGroupsList;
+let groupsList;
 
 // 初始化分组功能
 export async function initGroups() {
@@ -22,46 +22,37 @@ export async function initGroups() {
   groupModalTitle = document.querySelector('#group-modal-title');
   groupNameInput = document.querySelector('#group-name');
   quickTextGroupSelect = document.querySelector('#quick-text-group');
-  clipboardGroupsList = document.querySelector('#clipboard-groups-list');
-  quickTextsGroupsList = document.querySelector('#quick-texts-groups-list');
-
+  groupsList = document.querySelector('#groups-list');
   // 设置事件监听器
   setupGroupEventListeners();
-
   // 加载分组数据
   await loadGroups();
 }
 
 // 设置分组事件监听器
 function setupGroupEventListeners() {
-  // 新增分组按钮
-  document.getElementById('add-clipboard-group-btn').addEventListener('click', () => {
+  document.getElementById('pin-group-btn').addEventListener('click', () => {
+    pinGroupSidebar();
+  });
+  document.getElementById('add-group-btn').addEventListener('click', () => {
     showGroupModal();
   });
-
-  document.getElementById('add-quick-texts-group-btn').addEventListener('click', () => {
-    showGroupModal();
-  });
-
   // 分组模态框事件
   document.getElementById('group-modal-close-btn').addEventListener('click', hideGroupModal);
   document.getElementById('group-modal-cancel-btn').addEventListener('click', hideGroupModal);
   document.getElementById('group-modal-save-btn').addEventListener('click', saveGroup);
-
   // 点击遮罩关闭模态框
   groupModal.addEventListener('click', (e) => {
     if (e.target === groupModal) {
       hideGroupModal();
     }
   });
-
   // 键盘事件
   groupNameInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       saveGroup();
     }
   });
-
   // 图标网格选择事件
   setupIconGridEvents();
 }
@@ -111,8 +102,7 @@ async function loadGroups() {
 
 // 渲染分组列表
 function renderGroups() {
-  renderGroupsList(clipboardGroupsList);
-  renderGroupsList(quickTextsGroupsList);
+  renderGroupsList(groupsList);
 }
 
 // 渲染单个分组列表
@@ -170,18 +160,19 @@ function renderGroupsList(container) {
       groupItem.appendChild(actionsElement);
     }
 
-    // 点击事件 - 跳转到常用文本并显示对应分组
+    // 点击事件 - 根据当前tab切换分组
     groupItem.addEventListener('click', () => {
-      // 切换到常用文本标签页
-      setCurrentTab('quick-texts');
-      document.querySelector('[data-tab="quick-texts"]').click();
-
-      // 选择对应的分组
-      selectGroup(group.id);
-
-      // 显示切换提示
-      if (group.id !== 'all') {
-        showNotification(`已切换到 ${group.name}`, 'info', 2000);
+      const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+      if (activeTab === 'clipboard') {
+        // 剪贴板tab下切换分组时，自动切换到常用tab
+        document.querySelector('[data-tab="quick-texts"]').click();
+        setCurrentTab('quick-texts');
+        selectGroup(group.id);
+        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: group.id, tab: 'quick-texts' } }));
+      } else {
+        // 常用tab下切换分组
+        selectGroup(group.id);
+        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: group.id, tab: 'quick-texts' } }));
       }
     });
 
@@ -232,7 +223,7 @@ function setupGroupDropEvents(groupItem, groupId) {
         rawData = e.dataTransfer.getData('text/plain');
       }
 
-      console.log('拖拽原始数据:', rawData);
+      // console.log('拖拽原始数据:', rawData);
 
       if (!rawData) {
         console.warn('拖拽数据为空');
@@ -303,8 +294,26 @@ function updateGroupSelects() {
     const option = document.createElement('option');
     option.value = group.id;
     option.textContent = group.name;
-    quickTextGroupSelect.appendChild(option);
+    quickTextGroupSelect.appendChild(option); 
   });
+}
+
+// 固定分组侧边栏
+function pinGroupSidebar() {
+  const groupsSidebar = document.getElementById('groups-sidebar');
+  const pinGroupBtn = document.getElementById('pin-group-btn');
+  isGroupSidebarPinned = !isGroupSidebarPinned;
+  if (isGroupSidebarPinned) {
+    groupsSidebar.classList.add('pinned');
+    pinGroupBtn.style.backgroundColor = 'rgba(16, 143, 235, 0.3)';
+    pinGroupBtn.title = '取消固定侧边栏';
+    pinGroupBtn.innerHTML = '<i class="ti ti-pinned"></i>';
+  } else {
+    groupsSidebar.classList.remove('pinned');
+    pinGroupBtn.style.backgroundColor = '';
+    pinGroupBtn.title = '固定侧边栏';
+    pinGroupBtn.innerHTML = '<i class="ti ti-pin"></i>';
+  }
 }
 
 // 显示分组模态框

@@ -439,11 +439,21 @@ export function renderQuickTexts() {
 
       // 添加拖拽状态类
       document.querySelector('.tab-content.active').classList.add('dragging');
+      // 拖拽开始时显示分组侧边栏
+      const sidebar = document.getElementById('groups-sidebar');
+      if (sidebar && !sidebar.classList.contains('pinned')) {
+        sidebar.classList.add('show');
+      }
     });
 
     quickTextItem.addEventListener('dragend', () => {
       // 移除拖拽状态类
       document.querySelector('.tab-content.active').classList.remove('dragging');
+      // 拖拽结束时自动隐藏分组侧边栏（如果未固定）
+      const sidebar = document.getElementById('groups-sidebar');
+      if (sidebar && !sidebar.classList.contains('pinned')) {
+        sidebar.classList.remove('show');
+      }
     });
 
     // 添加点击事件（粘贴）
