@@ -40,6 +40,14 @@ static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 static TRANSLATION_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
+// Win+V 特殊处理状态
+#[cfg(windows)]
+static WIN_V_INTERCEPTED: AtomicBool = AtomicBool::new(false);
+
+// V键是否仍然按下
+#[cfg(windows)]
+static V_KEY_PRESSED: AtomicBool = AtomicBool::new(false);
+
 // =================== 键盘钩子函数 ===================
 
 #[cfg(windows)]
@@ -70,6 +78,45 @@ unsafe extern "system" fn shortcut_hook_proc(
         } else {
             false
         };
+
+        // 特殊处理Win+V组合键，防止触发系统Win菜单
+        match wparam.0 as u32 {
+            WM_KEYDOWN | WM_SYSKEYDOWN => {
+                if vk_code == 0x56 && win_pressed {
+                    // V键 + Win键
+                    V_KEY_PRESSED.store(true, Ordering::Relaxed);
+                    WIN_V_INTERCEPTED.store(true, Ordering::Relaxed);
+                } else if vk_code == 0x56 {
+                    // 单独的V键按下
+                    V_KEY_PRESSED.store(true, Ordering::Relaxed);
+                }
+            }
+            WM_KEYUP | WM_SYSKEYUP => {
+                if vk_code == 0x56 {
+                    // V键松开
+                    V_KEY_PRESSED.store(false, Ordering::Relaxed);
+
+                    // 如果之前拦截了Win+V，延迟1秒后发送Win键松开事件
+                    if WIN_V_INTERCEPTED.load(Ordering::Relaxed) {
+                        WIN_V_INTERCEPTED.store(false, Ordering::Relaxed);
+
+                        // 在新线程中延迟发送Win键松开事件
+                        std::thread::spawn(|| {
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                            send_win_key_up();
+                        });
+                    }
+                } else if (vk_code == 0x5B || vk_code == 0x5C)
+                    && WIN_V_INTERCEPTED.load(Ordering::Relaxed)
+                {
+                    // Win键松开，但如果V键还没松开，则阻止Win键松开事件
+                    if V_KEY_PRESSED.load(Ordering::Relaxed) {
+                        return LRESULT(1); // 阻止Win键松开事件
+                    }
+                }
+            }
+            _ => {}
+        }
 
         if let Some(shortcut) = CURRENT_SHORTCUT.lock().unwrap().as_ref() {
             if vk_code == shortcut.key_code {
@@ -241,6 +288,31 @@ fn emit_navigation_event(key: &str) {
     }
 }
 
+// 发送Win键松开事件
+#[cfg(windows)]
+fn send_win_key_up() {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_LWIN,
+    };
+
+    unsafe {
+        let mut input = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VK_LWIN,
+                    wScan: 0,
+                    dwFlags: KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+
+        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
 // =================== 公共接口 ===================
 
 // 初始化快捷键拦截器
@@ -296,6 +368,8 @@ pub fn enable_shortcut_interception() {
 pub fn disable_shortcut_interception() {
     SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
     SHORTCUT_TRIGGERED.store(false, Ordering::SeqCst);
+    WIN_V_INTERCEPTED.store(false, Ordering::SeqCst);
+    V_KEY_PRESSED.store(false, Ordering::SeqCst);
 }
 
 // 更新要拦截的快捷键

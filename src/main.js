@@ -266,22 +266,22 @@ function setupWindowVisibilityListener() {
 // 设置窗口动画监听器
 async function setupWindowAnimationListeners() {
   try {
-    console.log('开始设置窗口动画监听器...');
+    // console.log('开始设置窗口动画监听器...');
     const { listen } = await import('@tauri-apps/api/event');
 
     // 监听窗口显示动画事件
     await listen('window-show-animation', () => {
-      console.log('收到窗口显示动画事件');
+      // console.log('收到窗口显示动画事件');
       playWindowShowAnimation();
     });
 
     // 监听窗口隐藏动画事件
     await listen('window-hide-animation', () => {
-      console.log('收到窗口隐藏动画事件');
+      // console.log('收到窗口隐藏动画事件');
       playWindowHideAnimation();
     });
 
-    console.log('窗口动画监听器设置完成');
+    // console.log('窗口动画监听器设置完成');
   } catch (error) {
     console.error('设置窗口动画监听器失败:', error);
   }

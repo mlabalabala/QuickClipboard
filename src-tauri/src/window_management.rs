@@ -20,7 +20,7 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     {
         use tauri::Emitter;
         let _ = window.emit("window-show-animation", ());
-        println!("发送显示动画事件 (webview)");
+        // println!("发送显示动画事件 (webview)");
     }
 
     // 确保窗口设置为工具窗口（不抢占焦点）
@@ -42,7 +42,7 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     {
         use tauri::Emitter;
         let _ = window.emit("window-hide-animation", ());
-        println!("发送隐藏动画事件 (webview)");
+        // println!("发送隐藏动画事件 (webview)");
     }
 
     // 等待动画完成后再隐藏窗口
@@ -381,7 +381,7 @@ pub fn disable_window_shadow(window: &WebviewWindow) -> Result<(), String> {
                 std::mem::size_of::<u32>() as u32,
             );
 
-            println!("窗口阴影已禁用");
+            // println!("窗口阴影已禁用");
         }
 
         Ok(())
