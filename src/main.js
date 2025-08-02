@@ -114,6 +114,9 @@ async function initApp() {
   // 设置自定义窗口拖拽
   setupCustomWindowDrag();
 
+  // 设置窗口动画监听器
+  setupWindowAnimationListeners();
+
   // 等待后端初始化完成，然后获取数据
   await waitForBackendInitialization();
 
@@ -241,8 +244,6 @@ async function initApp() {
   // 设置窗口可见性监听器
   setupWindowVisibilityListener();
 
-  // 设置窗口动画监听器
-  setupWindowAnimationListeners();
 }
 
 // 设置窗口可见性监听器

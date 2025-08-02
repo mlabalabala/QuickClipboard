@@ -128,52 +128,17 @@ pub fn refresh_clipboard() -> Result<(), String> {
 // 切换窗口显示/隐藏状态
 #[tauri::command]
 pub fn toggle_window_visibility(window: WebviewWindow) -> Result<(), String> {
-    if window.is_visible().unwrap_or(true) {
-        // 先判断是否固定，如果是固定就取消隐藏
-        #[cfg(windows)]
-        {
-            if window_management::get_window_pinned() {
-                // 固定时不隐藏
-                return Ok(());
-            }
+    // 先判断是否固定，如果是固定且窗口可见就不隐藏
+    #[cfg(windows)]
+    {
+        if window.is_visible().unwrap_or(true) && window_management::get_window_pinned() {
+            // 固定时不隐藏
+            return Ok(());
         }
-
-        // 发送隐藏动画事件给前端
-        let _ = window.emit("window-hide-animation", ());
-        println!("发送隐藏动画事件");
-
-        // 等待动画完成后再隐藏窗口
-        std::thread::sleep(std::time::Duration::from_millis(300));
-
-        // 先 show 一下再 hide，强制刷新
-        window.show().ok();
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        window.hide().map_err(|e| format!("隐藏窗口失败: {}", e))?;
-        // 隐藏窗口时停止鼠标监听
-        #[cfg(windows)]
-        disable_mouse_monitoring();
-    } else {
-        // 智能定位窗口到光标位置
-        #[cfg(windows)]
-        {
-            let _ = window_management::position_window_at_cursor(&window);
-        }
-
-        window.show().map_err(|e| format!("显示窗口失败: {}", e))?;
-
-        // 发送显示动画事件给前端
-        let _ = window.emit("window-show-animation", ());
-        println!("发送显示动画事件");
-
-        // 确保窗口设置为超级置顶工具窗口（不抢占焦点，且在开始菜单之上）
-        #[cfg(windows)]
-        {
-            let _ = window_management::set_super_topmost_window(&window);
-        }
-        // 显示窗口时启用鼠标监听
-        #[cfg(windows)]
-        enable_mouse_monitoring();
     }
+
+    // 使用统一的窗口显示/隐藏逻辑
+    window_management::toggle_webview_window_visibility(window);
     Ok(())
 }
 

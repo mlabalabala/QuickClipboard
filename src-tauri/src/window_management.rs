@@ -228,14 +228,8 @@ pub fn hide_main_window_if_auto_shown(window: &WebviewWindow) -> Result<(), Stri
         // 重置自动显示状态
         MAIN_WINDOW_AUTO_SHOWN.store(false, Ordering::SeqCst);
 
-        // 隐藏主窗口并停止鼠标监听
-        let _ = restore_last_focus();
-        window
-            .hide()
-            .map_err(|e| format!("隐藏主窗口失败: {}", e))?;
-
-        #[cfg(windows)]
-        disable_mouse_monitoring();
+        // 使用统一的窗口隐藏逻辑
+        toggle_webview_window_visibility(window.clone());
 
         println!("主窗口已隐藏（因设置窗口关闭）");
     }

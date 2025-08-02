@@ -1,7 +1,6 @@
 // 粘贴服务模块
 //
 // 整合各种粘贴功能，提供统一的粘贴接口
-
 use serde::Deserialize;
 use tauri::WebviewWindow;
 
@@ -270,9 +269,8 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
 fn handle_window_after_paste(window: &WebviewWindow) -> Result<(), String> {
     let is_pinned = crate::window_management::get_window_pinned();
     if !is_pinned {
-        if let Err(e) = window.hide() {
-            eprintln!("隐藏窗口失败: {}", e);
-        }
+        // 使用统一的窗口隐藏逻辑
+        crate::window_management::toggle_webview_window_visibility(window.clone());
     }
     Ok(())
 }
