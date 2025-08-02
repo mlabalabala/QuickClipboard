@@ -5,54 +5,65 @@ use tauri::WebviewWindow;
 
 static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
 
+/// 显示窗口
+pub fn show_webview_window(window: tauri::WebviewWindow) {
+    // 智能定位窗口到光标位置
+    #[cfg(windows)]
+    {
+        let _ = position_window_at_cursor(&window);
+    }
+
+    // 显示窗口但不抢占焦点
+    let _ = window.show();
+
+    // 发送显示动画事件给前端
+    {
+        use tauri::Emitter;
+        let _ = window.emit("window-show-animation", ());
+        println!("发送显示动画事件 (webview)");
+    }
+
+    // 确保窗口设置为工具窗口（不抢占焦点）
+    #[cfg(windows)]
+    {
+        let _ = set_tool_window(&window);
+        // 将窗口设置为前台但不抢夺焦点
+        bring_window_to_front_without_focus(&window);
+        // 启用导航按键监听
+        crate::shortcut_interceptor::enable_navigation_keys();
+    }
+    #[cfg(windows)]
+    enable_mouse_monitoring();
+}
+
+/// 隐藏窗口
+pub fn hide_webview_window(window: tauri::WebviewWindow) {
+    // 发送隐藏动画事件给前端
+    {
+        use tauri::Emitter;
+        let _ = window.emit("window-hide-animation", ());
+        println!("发送隐藏动画事件 (webview)");
+    }
+
+    // 等待动画完成后再隐藏窗口
+    std::thread::sleep(std::time::Duration::from_millis(300));
+
+    // 隐藏窗口前恢复焦点并停止鼠标监听
+    let _ = restore_last_focus();
+    let _ = window.hide();
+    #[cfg(windows)]
+    disable_mouse_monitoring();
+    // 禁用导航按键监听
+    #[cfg(windows)]
+    crate::shortcut_interceptor::disable_navigation_keys();
+}
+
+/// 切换窗口显示/隐藏状态
 pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(true) {
-        // 发送隐藏动画事件给前端
-        {
-            use tauri::Emitter;
-            let _ = window.emit("window-hide-animation", ());
-            println!("发送隐藏动画事件 (webview)");
-        }
-
-        // 等待动画完成后再隐藏窗口
-        std::thread::sleep(std::time::Duration::from_millis(300));
-
-        // 隐藏窗口前恢复焦点并停止鼠标监听
-        let _ = restore_last_focus();
-        let _ = window.hide();
-        #[cfg(windows)]
-        disable_mouse_monitoring();
-        // 禁用导航按键监听
-        #[cfg(windows)]
-        crate::shortcut_interceptor::disable_navigation_keys();
+        hide_webview_window(window);
     } else {
-        // 智能定位窗口到光标位置
-        #[cfg(windows)]
-        {
-            let _ = position_window_at_cursor(&window);
-        }
-
-        // 显示窗口但不抢占焦点
-        let _ = window.show();
-
-        // 发送显示动画事件给前端
-        {
-            use tauri::Emitter;
-            let _ = window.emit("window-show-animation", ());
-            println!("发送显示动画事件 (webview)");
-        }
-
-        // 确保窗口设置为工具窗口（不抢占焦点）
-        #[cfg(windows)]
-        {
-            let _ = set_tool_window(&window);
-            // 将窗口设置为前台但不抢夺焦点
-            bring_window_to_front_without_focus(&window);
-            // 启用导航按键监听
-            crate::shortcut_interceptor::enable_navigation_keys();
-        }
-        #[cfg(windows)]
-        enable_mouse_monitoring();
+        show_webview_window(window);
     }
 }
 
@@ -228,8 +239,8 @@ pub fn hide_main_window_if_auto_shown(window: &WebviewWindow) -> Result<(), Stri
         // 重置自动显示状态
         MAIN_WINDOW_AUTO_SHOWN.store(false, Ordering::SeqCst);
 
-        // 使用统一的窗口隐藏逻辑
-        toggle_webview_window_visibility(window.clone());
+        // 使用专门的窗口隐藏逻辑
+        hide_webview_window(window.clone());
 
         println!("主窗口已隐藏（因设置窗口关闭）");
     }
