@@ -8,7 +8,7 @@ import {
   quickTextModal,
   confirmModal
 } from './config.js';
-import { refreshClipboardHistory, copyToClipboard, setActiveItem } from './clipboard.js';
+import { refreshClipboardHistory, setActiveItem } from './clipboard.js';
 import { hideAlertModal, hideConfirmModal } from './ui.js';
 import { hideQuickTextModal } from './quickTexts.js';
 
@@ -83,80 +83,6 @@ export async function setupTrayEventListeners() {
     console.error('设置托盘事件监听失败:', error);
   }
 }
-
-// 设置键盘快捷键
-export function setupKeyboardShortcuts() {
-  document.addEventListener('keydown', (e) => {
-    // ESC键处理
-    if (e.key === 'Escape') {
-      // 如果有模态框打开，先关闭模态框
-      if (alertModal.classList.contains('active')) {
-        hideAlertModal();
-        return;
-      }
-
-      if (quickTextModal.classList.contains('active')) {
-        hideQuickTextModal();
-        return;
-      }
-      if (confirmModal.classList.contains('active')) {
-        hideConfirmModal();
-        return;
-      }
-      // 否则关闭窗口
-      appWindow.hide();
-    }
-
-    // Enter键处理
-    if (e.key === 'Enter') {
-      if (alertModal.classList.contains('active')) {
-        hideAlertModal();
-        return;
-      }
-      if (confirmModal.classList.contains('active')) {
-        document.getElementById('confirm-ok-btn').click();
-        return;
-      }
-    }
-
-    // 数字键1-9选择剪贴板项目（只在没有模态框打开且没有输入框获得焦点时生效）
-    if (e.key >= '1' && e.key <= '9' &&
-      !alertModal.classList.contains('active') &&
-      !settingsModal.classList.contains('active') &&
-      !quickTextModal.classList.contains('active') &&
-      !confirmModal.classList.contains('active') &&
-      !isInputFocused()) {
-      const index = parseInt(e.key) - 1;
-      if (index < clipboardHistory.length) {
-        copyToClipboard(clipboardHistory[index]);
-        setActiveItem(index);
-      }
-    }
-  });
-}
-
-// 设置窗口拖拽事件
-// export function setupWindowDragEvents() {
-//   const titleBar = document.querySelector('.title-bar');
-//   let isDragging = false;
-
-//   // 监听拖动开始/结束
-//   titleBar.addEventListener('mousedown', () => {
-//     isDragging = true;
-//   });
-
-//   window.addEventListener('mouseup', () => {
-//     isDragging = false;
-//   });
-
-//   // 禁止双击标题栏最大化窗口
-//   titleBar.addEventListener('dblclick', (e) => {
-//     e.preventDefault();
-//     e.stopPropagation();
-//   });
-
-//   return { isDragging };
-// }
 
 // 自定义窗口拖拽
 export async function setupCustomWindowDrag() {

@@ -130,45 +130,6 @@ async function openLink(url) {
   }
 }
 
-// 复制到剪贴板（文本、图片或文件）
-export async function copyToClipboard(item) {
-  try {
-    const contentType = getContentType(item.text);
-    if (contentType === 'image') {
-      // 处理图片内容
-      if (item.text.startsWith('image:')) {
-        // 新格式：image:id，需要先获取完整的data URL
-        const imageId = item.text.substring(6); // 去掉 "image:" 前缀
-        try {
-          const dataUrl = await invoke('get_image_data_url', { imageId });
-          await writeClipboardImage(dataUrl);
-        } catch (error) {
-          console.error('获取图片数据失败:', error);
-          // 回退到直接使用引用格式
-          await writeClipboardText(item.text);
-        }
-      } else if (item.text.startsWith('data:image/')) {
-        // 旧格式：完整的data URL
-        await writeClipboardImage(item.text);
-      } else {
-        // 未知格式，当作文本处理
-        await writeClipboardText(item.text);
-      }
-      showNotification('已复制图片', 'success', 2000);
-    } else if (contentType === 'files') {
-      // 文件类型不支持双击复制，只能通过单击粘贴
-      showNotification('请单击文件项进行粘贴', 'info', 2000);
-    } else {
-      await writeClipboardText(item.text);
-      showNotification('已复制文本', 'success', 2000);
-    }
-    refreshClipboardHistory();
-  } catch (error) {
-    console.error('复制到剪贴板失败:', error);
-    showNotification('复制失败，请重试', 'error');
-  }
-}
-
 // 设置活动项目
 export function setActiveItem(index) {
   setActiveItemIndex(index);
@@ -503,12 +464,6 @@ export function renderClipboardItems() {
           loadingIndicator.remove();
         }
       }
-    });
-
-    // 添加双击事件
-    clipboardItem.addEventListener('dblclick', async () => {
-      copyToClipboard(item);
-      await invoke('toggle_window_visibility');
     });
 
     // 添加右键菜单（所有类型）

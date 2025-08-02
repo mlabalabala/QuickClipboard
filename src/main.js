@@ -68,7 +68,6 @@ import {
 import {
   setupClipboardEventListener,
   setupTrayEventListeners,
-  setupKeyboardShortcuts,
   setupContextMenuDisable,
   setupCustomWindowDrag
 } from './js/events.js';

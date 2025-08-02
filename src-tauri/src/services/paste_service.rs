@@ -83,31 +83,23 @@ pub async fn paste_text_with_translation(
     paste_text(text_content, &window).await
 }
 
-/// 粘贴文本内容（不包含翻译逻辑）- 兼容旧接口
-pub async fn paste_text_without_translation(
-    text_content: String,
-    window: WebviewWindow,
-) -> Result<(), String> {
-    paste_text_without_translation_internal(text_content, &window).await
-}
-
 /// 粘贴文本内容（不包含翻译逻辑）- 内部实现
 async fn paste_text_without_translation_internal(
     text_content: String,
     window: &WebviewWindow,
 ) -> Result<(), String> {
-    // 设置粘贴状态，防止移动历史记录位置
-    crate::clipboard_monitor::set_pasting_state(true);
+    // 开始粘贴操作，增加粘贴计数器
+    crate::clipboard_monitor::start_pasting_operation();
 
     // 将文本设置到剪贴板（不添加到历史记录，避免重复）
     if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(text_content) {
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
         return Err(e);
     }
 
     // 执行粘贴操作
     if !crate::paste_utils::windows_paste() {
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
         return Err("粘贴操作失败".to_string());
     }
 
@@ -117,10 +109,10 @@ async fn paste_text_without_translation_internal(
     // 处理窗口显示/隐藏
     handle_window_after_paste(window)?;
 
-    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
+    // 延迟结束粘贴操作，确保剪贴板监听器能正确识别
     std::thread::spawn(|| {
         std::thread::sleep(std::time::Duration::from_millis(500));
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
     });
 
     Ok(())
@@ -128,8 +120,8 @@ async fn paste_text_without_translation_internal(
 
 /// 粘贴图片内容
 pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Result<(), String> {
-    // 设置粘贴状态，防止移动历史记录位置
-    crate::clipboard_monitor::set_pasting_state(true);
+    // 开始粘贴操作，增加粘贴计数器
+    crate::clipboard_monitor::start_pasting_operation();
 
     // 处理图片内容到剪贴板
     if image_content.starts_with("image:") {
@@ -137,19 +129,19 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
         let image_id = &image_content[6..];
 
         let image_manager = crate::image_manager::get_image_manager().map_err(|e| {
-            crate::clipboard_monitor::set_pasting_state(false);
+            crate::clipboard_monitor::end_pasting_operation();
             format!("获取图片管理器失败: {}", e)
         })?;
 
         let (image_data, image_info) = {
             let manager = image_manager.lock().unwrap();
             let image_data = manager.get_image_data_url(image_id).map_err(|e| {
-                crate::clipboard_monitor::set_pasting_state(false);
+                crate::clipboard_monitor::end_pasting_operation();
                 format!("获取图片数据失败: {}", e)
             })?;
 
             let image_info = manager.get_image_info(image_id).map_err(|e| {
-                crate::clipboard_monitor::set_pasting_state(false);
+                crate::clipboard_monitor::end_pasting_operation();
                 format!("获取图片信息失败: {}", e)
             })?;
 
@@ -164,7 +156,7 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             };
             let (bgra, png_bytes, width, height) =
                 data_url_to_bgra_and_png(&image_data).map_err(|e| {
-                    crate::clipboard_monitor::set_pasting_state(false);
+                    crate::clipboard_monitor::end_pasting_operation();
                     e
                 })?;
             if let Err(e) = set_windows_clipboard_image_with_file(
@@ -174,7 +166,7 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
                 height,
                 Some(&image_info.file_path),
             ) {
-                crate::clipboard_monitor::set_pasting_state(false);
+                crate::clipboard_monitor::end_pasting_operation();
                 return Err(e);
             }
 
@@ -189,24 +181,24 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
         {
             // 非Windows系统，使用原有逻辑
             if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_data) {
-                crate::clipboard_monitor::set_pasting_state(false);
+                crate::clipboard_monitor::end_pasting_operation();
                 return Err(e);
             }
         }
     } else if image_content.starts_with("data:image/") {
         // 旧格式：完整的data URL
         if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(image_content) {
-            crate::clipboard_monitor::set_pasting_state(false);
+            crate::clipboard_monitor::end_pasting_operation();
             return Err(e);
         }
     } else {
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
         return Err("不支持的图片格式".to_string());
     }
 
     // 执行粘贴操作
     if !crate::paste_utils::windows_paste() {
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
         return Err("粘贴操作失败".to_string());
     }
 
@@ -216,10 +208,10 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
     // 处理窗口显示/隐藏
     handle_window_after_paste(window)?;
 
-    // 延迟重置粘贴状态，确保剪贴板监听器能正确识别
+    // 延迟结束粘贴操作，确保剪贴板监听器能正确识别
     std::thread::spawn(|| {
         std::thread::sleep(std::time::Duration::from_millis(500));
-        crate::clipboard_monitor::set_pasting_state(false);
+        crate::clipboard_monitor::end_pasting_operation();
     });
 
     Ok(())
@@ -248,11 +240,18 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
         return Err("没有找到有效的文件路径".to_string());
     }
 
+    // 开始粘贴操作，增加粘贴计数器
+    crate::clipboard_monitor::start_pasting_operation();
+
     // 设置剪贴板文件
-    crate::file_handler::set_clipboard_files(&file_paths)?;
+    if let Err(e) = crate::file_handler::set_clipboard_files(&file_paths) {
+        crate::clipboard_monitor::end_pasting_operation();
+        return Err(e);
+    }
 
     // 执行粘贴操作
     if !crate::paste_utils::windows_paste() {
+        crate::clipboard_monitor::end_pasting_operation();
         return Err("粘贴操作失败".to_string());
     }
 
@@ -261,6 +260,12 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
 
     // 处理窗口显示/隐藏
     handle_window_after_paste(window)?;
+
+    // 延迟结束粘贴操作，确保剪贴板监听器能正确识别
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        crate::clipboard_monitor::end_pasting_operation();
+    });
 
     Ok(())
 }

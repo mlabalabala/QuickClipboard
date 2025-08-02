@@ -1,7 +1,7 @@
 use arboard::Clipboard;
 use once_cell::sync::Lazy;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc, Mutex,
 };
 use std::thread;
@@ -17,8 +17,9 @@ static MONITOR_RUNNING: AtomicBool = AtomicBool::new(false);
 static LAST_CLIPBOARD_CONTENT: Lazy<Arc<Mutex<String>>> =
     Lazy::new(|| Arc::new(Mutex::new(String::new())));
 
-// 粘贴状态标志 - 用于区分真正的复制和粘贴过程中的剪贴板设置
-static IS_PASTING: AtomicBool = AtomicBool::new(false);
+// 粘贴状态计数器 - 用于区分真正的复制和粘贴过程中的剪贴板设置
+// 使用计数器而不是布尔值，避免并发粘贴操作的竞态条件
+static PASTING_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 // 上次忽略的缓存文件路径 - 避免重复检测相同的缓存文件
 static LAST_IGNORED_CACHE_FILES: Lazy<Arc<Mutex<Vec<String>>>> =
@@ -196,19 +197,49 @@ pub fn is_monitor_running() -> bool {
     MONITOR_RUNNING.load(Ordering::Relaxed)
 }
 
-// 设置粘贴状态 - 在粘贴操作开始前调用
-pub fn set_pasting_state(is_pasting: bool) {
-    IS_PASTING.store(is_pasting, Ordering::Relaxed);
+// 开始粘贴操作 - 增加粘贴计数器
+pub fn start_pasting_operation() {
+    PASTING_COUNT.fetch_add(1, Ordering::Relaxed);
+}
+
+// 结束粘贴操作 - 减少粘贴计数器
+pub fn end_pasting_operation() {
+    PASTING_COUNT.fetch_sub(1, Ordering::Relaxed);
 }
 
 // 检查是否正在粘贴（内部使用）
 fn is_pasting_internal() -> bool {
-    IS_PASTING.load(Ordering::Relaxed)
+    PASTING_COUNT.load(Ordering::Relaxed) > 0
 }
 
 // 检查是否正在粘贴（公开接口）
 pub fn is_currently_pasting() -> bool {
-    IS_PASTING.load(Ordering::Relaxed)
+    PASTING_COUNT.load(Ordering::Relaxed) > 0
+}
+
+// 初始化最后的剪贴板内容，避免启动时重复添加
+pub fn initialize_last_content(content: String) {
+    if let Ok(mut last_content) = LAST_CLIPBOARD_CONTENT.lock() {
+        *last_content = content;
+    }
+}
+
+// 初始化剪贴板状态 - 获取当前剪贴板内容并添加到历史记录，同时初始化监听器状态
+pub fn initialize_clipboard_state() {
+    if let Ok(mut clipboard) = Clipboard::new() {
+        // 使用与监听器相同的逻辑获取剪贴板内容
+        if let Some(content) = get_clipboard_content(&mut clipboard) {
+            // 过滤空白内容：检查去除空白字符后是否为空
+            if !content.trim().is_empty() {
+                // 使用与监听器相同的逻辑：检查重复并决定是否添加/移动
+                // 初始化时不移动重复内容，只是确保内容在历史记录中
+                let _was_added =
+                    clipboard_history::add_to_history_with_check_and_move(content.clone(), false);
+                // 初始化监听器的最后内容，避免重复添加
+                initialize_last_content(content);
+            }
+        }
+    }
 }
 
 // 检查文件路径是否来自图片缓存目录

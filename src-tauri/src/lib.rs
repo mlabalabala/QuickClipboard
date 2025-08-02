@@ -203,15 +203,8 @@ pub fn run() {
                 }
             }
 
-            // 初始化时获取剪贴板内容
-            if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                if let Ok(text) = clipboard.get_text() {
-                    // 过滤空白内容：检查去除空白字符后是否为空
-                    if !text.is_empty() && !text.trim().is_empty() {
-                        clipboard_history::add_to_history(text);
-                    }
-                }
-            }
+            // 初始化时获取剪贴板内容并初始化监听器状态
+            clipboard_monitor::initialize_clipboard_state();
 
             // 初始化分组系统
             match groups::init_groups() {

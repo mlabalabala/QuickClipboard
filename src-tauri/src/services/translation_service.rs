@@ -90,7 +90,7 @@ pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
             println!("翻译完成，结果长度: {} 字符", translated_text.len());
 
             // 设置剪贴板内容并粘贴
-            crate::clipboard_monitor::set_pasting_state(true);
+            crate::clipboard_monitor::start_pasting_operation();
 
             // 使用现有的剪贴板设置功能
             crate::clipboard_content::set_clipboard_content_no_history(translated_text)?;
@@ -104,9 +104,9 @@ pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
                 // 播放粘贴音效
                 crate::sound_manager::play_paste_sound();
 
-                // 粘贴完成后重置粘贴状态
+                // 粘贴完成后结束粘贴操作
                 std::thread::sleep(std::time::Duration::from_millis(500));
-                crate::clipboard_monitor::set_pasting_state(false);
+                crate::clipboard_monitor::end_pasting_operation();
             });
 
             Ok(())
@@ -293,7 +293,7 @@ pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
                     println!("复制时翻译完成，结果长度: {} 字符", translated_text.len());
 
                     // 设置粘贴状态，防止触发新的复制检测
-                    crate::clipboard_monitor::set_pasting_state(true);
+                    crate::clipboard_monitor::start_pasting_operation();
 
                     // 设置剪贴板内容并粘贴
                     crate::clipboard_content::set_clipboard_content_no_history(translated_text)?;
@@ -307,9 +307,9 @@ pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
                         // 播放粘贴音效
                         crate::sound_manager::play_paste_sound();
 
-                        // 粘贴完成后重置粘贴状态
+                        // 粘贴完成后结束粘贴操作
                         std::thread::sleep(std::time::Duration::from_millis(500));
-                        crate::clipboard_monitor::set_pasting_state(false);
+                        crate::clipboard_monitor::end_pasting_operation();
                     });
 
                     Ok(())
