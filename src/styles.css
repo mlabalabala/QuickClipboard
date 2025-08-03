@@ -658,6 +658,8 @@ body {
   box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
   transform: scale(0.98);
   transition: all 0.1s ease;
+  font-weight: bold;
+
 }
 
 .clipboard-item.keyboard-selected:hover {

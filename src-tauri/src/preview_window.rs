@@ -180,7 +180,7 @@ async fn create_preview_window(app: AppHandle) -> Result<WebviewWindow, String> 
     let settings = crate::settings::get_global_settings();
 
     // 根据项目数量动态计算窗口尺寸
-    let width = 350.0; // 固定宽度
+    let width = 360.0; // 固定宽度
     let item_height = 35.0; // 每个项目的实际高度（内边距16px + 文本17px + 边框2px）
     let item_gap = 4.0; // 项目间隔
     let container_padding = 16.0; // 容器上下内边距（8px * 2）
