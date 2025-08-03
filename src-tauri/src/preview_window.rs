@@ -38,6 +38,9 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
+    // 防止快速连续调用导致的竞态条件
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
     // 根据当前设置调整窗口尺寸
     let width = 350.0;
     let item_height = 35.0; // 每个项目的实际高度
@@ -117,8 +120,7 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         // 启用鼠标监听以捕获滚轮事件
         #[cfg(windows)]
         {
-            crate::mouse_hook::enable_mouse_monitoring();
-            println!("已启用鼠标监听");
+            crate::mouse_hook::request_mouse_monitoring("preview_window");
         }
 
         // 通知前端刷新数据
@@ -148,24 +150,10 @@ pub async fn hide_preview_window() -> Result<(), String> {
             .map_err(|e| format!("隐藏预览窗口失败: {}", e))?;
         PREVIEW_WINDOW_VISIBLE.store(false, Ordering::SeqCst);
 
-        // 检查主窗口状态，决定是否需要重新启用鼠标监听
+        // 释放预览窗口的鼠标监听请求
         #[cfg(windows)]
         {
-            // 检查主窗口是否仍然可见
-            if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                if main_window.is_visible().unwrap_or(false) {
-                    // 主窗口仍然可见，保持鼠标监听启用状态
-                    println!("主窗口仍然可见，保持鼠标监听启用");
-                } else {
-                    // 主窗口不可见，禁用鼠标监听
-                    crate::mouse_hook::disable_mouse_monitoring();
-                    println!("主窗口不可见，已禁用鼠标监听");
-                }
-            } else {
-                // 无法获取主窗口句柄，禁用鼠标监听
-                crate::mouse_hook::disable_mouse_monitoring();
-                println!("无法获取主窗口句柄，已禁用鼠标监听");
-            }
+            crate::mouse_hook::release_mouse_monitoring("preview_window");
         }
 
         println!("预览窗口已隐藏");
@@ -569,6 +557,7 @@ pub async fn cancel_preview() -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::PREVIEW_CANCELLED_BY_USER.store(true, std::sync::atomic::Ordering::SeqCst);
 
+    // 隐藏预览窗口
     hide_preview_window().await?;
 
     Ok(())

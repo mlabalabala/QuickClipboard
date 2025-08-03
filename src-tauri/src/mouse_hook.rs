@@ -18,6 +18,11 @@ pub static MOUSE_MONITORING_ENABLED: AtomicBool = AtomicBool::new(false);
 static MOUSE_HOOK_HANDLE: Mutex<Option<windows::Win32::UI::WindowsAndMessaging::HHOOK>> =
     Mutex::new(None);
 
+// 鼠标监听需求跟踪
+#[cfg(windows)]
+static MOUSE_MONITORING_REQUESTS: std::sync::LazyLock<Mutex<std::collections::HashSet<String>>> =
+    std::sync::LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
+
 // =================== 鼠标监听功能 ===================
 
 #[cfg(windows)]
@@ -59,9 +64,7 @@ unsafe extern "system" fn mouse_hook_proc(
                             // 在新线程中隐藏主窗口，避免阻塞钩子
                             let window_clone = window.clone();
                             std::thread::spawn(move || {
-                                crate::window_management::toggle_webview_window_visibility(
-                                    window_clone,
-                                );
+                                crate::window_management::hide_webview_window(window_clone);
                             });
                         }
                     }
@@ -120,11 +123,16 @@ fn is_click_outside_window(
     true // 如果无法获取窗口矩形，默认认为点击在外部
 }
 
-// 启用鼠标监听
+// 请求启用鼠标监听（带来源标识）
 #[cfg(windows)]
-pub fn enable_mouse_monitoring() {
+pub fn request_mouse_monitoring(source: &str) {
     use windows::Win32::Foundation::HINSTANCE;
     use windows::Win32::UI::WindowsAndMessaging::{SetWindowsHookExW, WH_MOUSE_LL};
+
+    // 添加监听请求
+    if let Ok(mut requests) = MOUSE_MONITORING_REQUESTS.lock() {
+        requests.insert(source.to_string());
+    }
 
     MOUSE_MONITORING_ENABLED.store(true, Ordering::Relaxed);
 
@@ -136,18 +144,38 @@ pub fn enable_mouse_monitoring() {
                 Ok(hook) => {
                     *hook_handle = Some(hook);
                 }
-                Err(_) => {
-                    // 静默处理错误
+                Err(e) => {
+                    println!("安装鼠标钩子失败: {:?}", e);
                 }
             }
         }
     }
 }
 
-// 禁用鼠标监听
+// 启用鼠标监听
+#[cfg(windows)]
+pub fn enable_mouse_monitoring() {
+    request_mouse_monitoring("legacy");
+}
+
+// 释放鼠标监听请求（带来源标识）
+#[cfg(windows)]
+pub fn release_mouse_monitoring(source: &str) {
+    // 移除监听请求
+    if let Ok(mut requests) = MOUSE_MONITORING_REQUESTS.lock() {
+        requests.remove(source);
+
+        // 只有当没有任何请求时才禁用监听
+        if requests.is_empty() {
+            MOUSE_MONITORING_ENABLED.store(false, Ordering::Relaxed);
+        }
+    }
+}
+
+// 禁用鼠标监听（保持向后兼容）
 #[cfg(windows)]
 pub fn disable_mouse_monitoring() {
-    MOUSE_MONITORING_ENABLED.store(false, Ordering::Relaxed);
+    release_mouse_monitoring("legacy");
 }
 
 // 检查鼠标监听是否启用

@@ -218,7 +218,7 @@ pub async fn close_screenshot_window(app: tauri::AppHandle) -> Result<(), String
         {
             let _ = crate::window_management::set_super_topmost_window(&main_window);
             // 启用鼠标监听，这样点击外部可以隐藏窗口
-            crate::mouse_hook::enable_mouse_monitoring();
+            crate::mouse_hook::request_mouse_monitoring("screenshot_main_window");
         }
     }
 

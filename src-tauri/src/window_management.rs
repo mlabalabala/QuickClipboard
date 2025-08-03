@@ -1,4 +1,4 @@
-use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring, WINDOW_PINNED_STATE};
+use crate::mouse_hook::WINDOW_PINNED_STATE;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::WebviewWindow;
@@ -33,7 +33,7 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
         crate::shortcut_interceptor::enable_navigation_keys();
     }
     #[cfg(windows)]
-    enable_mouse_monitoring();
+    crate::mouse_hook::request_mouse_monitoring("main_window");
 }
 
 /// 隐藏窗口
@@ -52,7 +52,7 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     let _ = restore_last_focus();
     let _ = window.hide();
     #[cfg(windows)]
-    disable_mouse_monitoring();
+    crate::mouse_hook::release_mouse_monitoring("main_window");
     // 禁用导航按键监听
     #[cfg(windows)]
     crate::shortcut_interceptor::disable_navigation_keys();
