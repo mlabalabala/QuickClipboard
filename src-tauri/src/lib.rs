@@ -28,7 +28,6 @@ mod window_effects;
 mod window_management;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Emitter;
 
 pub use commands::*;
 pub use window_effects::*;
@@ -116,28 +115,10 @@ pub fn run() {
                 }
             }
             "settings" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    // 检查主窗口是否已经可见
-                    let was_visible = window.is_visible().unwrap_or(false);
-
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    let _ = window.emit("open-settings", ());
-
-                    // 如果主窗口之前不可见，标记为自动显示并启用鼠标监听
-                    if !was_visible {
-                        window_management::set_main_window_auto_shown(true);
-
-                        // 确保窗口设置为工具窗口并启用鼠标监听
-                        #[cfg(windows)]
-                        {
-                            let _ = window_management::set_tool_window(&window);
-                            mouse_hook::enable_mouse_monitoring();
-                        }
-
-                        println!("主窗口因设置菜单自动显示，已启用鼠标监听");
-                    }
-                }
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::services::window_service::open_settings_window(app_handle).await;
+                });
             }
             "quit" => {
                 app.exit(0);
@@ -184,24 +165,24 @@ pub fn run() {
             // window_effects::set_window_blur(&main_window);
 
             // 设置窗口圆角（Windows 11）
-            #[cfg(windows)]
-            {
-                if let Err(e) = window_effects::set_window_rounded(&main_window) {
-                    println!("设置窗口圆角失败: {}", e);
-                }
-            }
+            // #[cfg(windows)]
+            // {
+            //     if let Err(e) = window_effects::set_window_rounded(&main_window) {
+            //         println!("设置窗口圆角失败: {}", e);
+            //     }
+            // }
 
-            // 设置为工具窗口，避免抢占焦点，并确保始终置顶
-            #[cfg(windows)]
-            {
-                if let Err(e) = window_management::set_tool_window(&main_window) {
-                    println!("设置工具窗口失败: {}", e);
-                }
-                // 确保窗口始终置顶
-                if let Err(e) = main_window.set_always_on_top(true) {
-                    println!("设置窗口置顶失败: {}", e);
-                }
-            }
+            // // 设置为工具窗口，避免抢占焦点，并确保始终置顶
+            // #[cfg(windows)]
+            // {
+            //     if let Err(e) = window_management::set_tool_window(&main_window) {
+            //         println!("设置工具窗口失败: {}", e);
+            //     }
+            //     // 确保窗口始终置顶
+            //     if let Err(e) = main_window.set_always_on_top(true) {
+            //         println!("设置窗口置顶失败: {}", e);
+            //     }
+            // }
 
             // 初始化时获取剪贴板内容并初始化监听器状态
             clipboard_monitor::initialize_clipboard_state();
@@ -292,13 +273,8 @@ pub fn run() {
             // 启动剪贴板监听器
             clipboard_monitor::start_clipboard_monitor(app.handle().clone());
 
-            // 初始化托盘图标
-            match tray::setup_tray(&app.handle()) {
-                Ok(_) => {}
-                Err(_e) => {
-                    // 静默处理错误
-                }
-            }
+            // 注册托盘图标和事件
+            tray::setup_tray(&app.app_handle())?;
 
             // 设置窗口关闭事件处理 - 隐藏到托盘而不是退出
             let main_window_clone = main_window.clone();
