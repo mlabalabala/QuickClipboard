@@ -55,10 +55,12 @@ body {
     transform: scaleY(0);
     opacity: 0;
   }
+
   30% {
     transform: scaleY(0.3);
     opacity: 0.3;
   }
+
   100% {
     transform: scaleY(1);
     opacity: 1;
@@ -71,6 +73,7 @@ body {
     transform: scaleY(1);
     opacity: 1;
   }
+
   100% {
     transform: scaleY(0);
     opacity: 0;
@@ -1547,7 +1550,7 @@ body {
   z-index: 10;
   display: flex;
   flex-direction: column;
-  border-radius: 8px 0 0 8px; 
+  border-radius: 8px 0 0 8px;
   backdrop-filter: blur(5px);
   box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
 }
@@ -1568,7 +1571,7 @@ body {
 }
 
 /* 默认状态下 hover 会展开 */
-.sidebar-trigger:hover + .groups-sidebar:not(.pinned),
+.sidebar-trigger:hover+.groups-sidebar:not(.pinned),
 .groups-sidebar:not(.pinned):hover {
   z-index: 999;
   transform: translateX(0);
@@ -1609,7 +1612,7 @@ body {
   flex: 2;
 }
 
-.groups-header-btns{
+.groups-header-btns {
   flex: 1;
   display: flex;
   align-items: center;
@@ -1636,10 +1639,12 @@ body {
   background: rgba(0, 0, 0, 0.1);
   color: #333;
 }
+
 .add-group-btn i,
-.pin-group-btn i{
+.pin-group-btn i {
   font-size: 14px;
 }
+
 /* 分组列表 */
 .groups-list {
   flex: 1;
