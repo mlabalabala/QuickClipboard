@@ -1160,3 +1160,48 @@ pub fn read_image_file(file_path: String) -> Result<String, String> {
     let base64_data = general_purpose::STANDARD.encode(&image_data);
     Ok(format!("data:{};base64,{}", mime_type, base64_data))
 }
+
+// =================== 数据管理命令 ===================
+
+// 导出数据
+#[tauri::command]
+pub async fn export_data(
+    export_path: String,
+    options: crate::data_manager::ExportOptions,
+) -> Result<(), String> {
+    crate::data_manager::export_data(&export_path, options).await
+}
+
+// 导入数据
+#[tauri::command]
+pub async fn import_data(
+    import_path: String,
+    options: crate::data_manager::ImportOptions,
+) -> Result<(), String> {
+    crate::data_manager::import_data(&import_path, options).await
+}
+
+// 重启应用程序
+#[tauri::command]
+pub async fn restart_app(app: tauri::AppHandle) -> Result<(), String> {
+    println!("正在重启应用程序...");
+    app.restart();
+}
+
+// 清空剪贴板历史（数据管理）
+#[tauri::command]
+pub async fn clear_clipboard_history_dm() -> Result<(), String> {
+    crate::data_manager::clear_clipboard_history().await
+}
+
+// 重置所有数据
+#[tauri::command]
+pub async fn reset_all_data() -> Result<(), String> {
+    crate::data_manager::reset_all_data().await
+}
+
+// 获取应用数据目录
+#[tauri::command]
+pub fn get_app_data_dir() -> Result<String, String> {
+    crate::data_manager::get_app_data_dir().map(|path| path.to_string_lossy().to_string())
+}

@@ -75,6 +75,10 @@
             <i class="ti ti-volume"></i>
             <span>音效设置</span>
           </a>
+          <a href="#data-management" class="nav-item" data-section="data-management">
+            <i class="ti ti-database"></i>
+            <span>数据管理</span>
+          </a>
           <a href="#support" class="nav-item" data-section="support">
             <i class="ti ti-heart"></i>
             <span>支持作者</span>
@@ -836,6 +840,156 @@
                 <button class="about-button open-github">
                   <i class="ti ti-brand-github"></i>
                   访问 GitHub 仓库
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据管理页面 -->
+        <div class="settings-section" id="data-management-section">
+          <div class="section-header">
+            <h2>数据管理</h2>
+            <p>导入导出应用数据，备份和恢复您的剪贴板历史和设置</p>
+          </div>
+
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>数据导出</h3>
+              <p>将您的数据打包为ZIP文件进行备份</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>导出所有数据</label>
+                <span class="setting-description">
+                  导出剪贴板历史、常用文本、分组、设置和图片数据
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="primary-button" id="export-all-data">
+                  <i class="ti ti-download"></i>
+                  导出数据
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>导出选项</label>
+                <span class="setting-description">
+                  选择要导出的数据类型
+                </span>
+              </div>
+              <div class="setting-control">
+                <div class="checkbox-group">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="export-clipboard-history" checked>
+                    <span class="checkmark"></span>
+                    剪贴板历史
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="export-quick-texts" checked>
+                    <span class="checkmark"></span>
+                    常用文本
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="export-groups" checked>
+                    <span class="checkmark"></span>
+                    分组数据
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="export-settings" checked>
+                    <span class="checkmark"></span>
+                    应用设置
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="export-images" checked>
+                    <span class="checkmark"></span>
+                    图片数据
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>数据导入</h3>
+              <p>从ZIP文件恢复您的数据</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>导入数据</label>
+                <span class="setting-description">
+                  选择之前导出的ZIP文件来恢复数据
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="secondary-button" id="import-data">
+                  <i class="ti ti-upload"></i>
+                  选择文件导入
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>导入模式</label>
+                <span class="setting-description">
+                  选择导入时的处理方式
+                </span>
+              </div>
+              <div class="setting-control">
+                <div class="radio-group">
+                  <label class="radio-item">
+                    <input type="radio" name="import-mode" value="replace" checked>
+                    <span class="radio-mark"></span>
+                    替换现有数据
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="import-mode" value="merge">
+                    <span class="radio-mark"></span>
+                    合并数据
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>数据清理</h3>
+              <p>清理和重置应用数据</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>清空剪贴板历史</label>
+                <span class="setting-description">
+                  删除所有剪贴板历史记录
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="danger-button" id="clear-clipboard-history">
+                  <i class="ti ti-trash"></i>
+                  清空历史
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>重置所有数据</label>
+                <span class="setting-description">
+                  删除所有数据并恢复默认设置
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="danger-button" id="reset-all-data">
+                  <i class="ti ti-refresh"></i>
+                  重置应用
                 </button>
               </div>
             </div>

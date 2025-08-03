@@ -6,6 +6,7 @@ mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
 mod commands;
+mod data_manager;
 mod database;
 mod file_handler;
 mod global_state;
@@ -107,6 +108,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => {
@@ -405,7 +407,13 @@ pub fn run() {
             commands::move_clipboard_item_to_front,
             commands::paste_content,
             commands::open_file_location,
-            commands::read_image_file
+            commands::read_image_file,
+            commands::export_data,
+            commands::import_data,
+            commands::restart_app,
+            commands::clear_clipboard_history_dm,
+            commands::reset_all_data,
+            commands::get_app_data_dir
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

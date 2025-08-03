@@ -177,6 +177,18 @@ pub fn get_connection() -> Result<Arc<Mutex<Option<Connection>>>, String> {
     Ok(DB_CONNECTION.clone())
 }
 
+// 关闭数据库连接
+pub fn close_database_connection() -> Result<(), String> {
+    let mut db_conn = DB_CONNECTION
+        .lock()
+        .map_err(|e| format!("获取数据库锁失败: {}", e))?;
+    if db_conn.is_some() {
+        *db_conn = None;
+        println!("数据库连接已关闭");
+    }
+    Ok(())
+}
+
 // 执行数据库操作的辅助函数
 pub fn with_connection<F, R>(f: F) -> Result<R, String>
 where
@@ -776,4 +788,64 @@ pub fn set_group_order(order: &[String]) -> Result<(), String> {
         tx.commit()?;
         Ok(())
     })
+}
+
+// 清空所有数据
+pub fn clear_all_data() -> Result<(), String> {
+    let conn_arc = DB_CONNECTION.clone();
+    let mut conn_guard = conn_arc
+        .lock()
+        .map_err(|e| format!("获取数据库锁失败: {}", e))?;
+
+    match conn_guard.as_mut() {
+        Some(conn) => {
+            let tx = conn
+                .transaction()
+                .map_err(|e| format!("创建事务失败: {}", e))?;
+
+            // 安全地清空所有表（如果表存在的话）
+            let tables = vec!["clipboard_history", "quick_texts", "groups", "group_order"];
+
+            for table in tables {
+                // 检查表是否存在
+                let table_exists: bool = tx
+                    .prepare(&format!(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{}'",
+                        table
+                    ))
+                    .and_then(|mut stmt| {
+                        stmt.query_row([], |row| {
+                            let count: i64 = row.get(0)?;
+                            Ok(count > 0)
+                        })
+                    })
+                    .unwrap_or(false);
+
+                if table_exists {
+                    tx.execute(&format!("DELETE FROM {}", table), [])
+                        .map_err(|e| format!("清空表 {} 失败: {}", table, e))?;
+                }
+            }
+
+            // 重置自增ID（如果sqlite_sequence表存在）
+            let sequence_exists: bool = tx
+                .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'")
+                .and_then(|mut stmt| {
+                    stmt.query_row([], |row| {
+                        let count: i64 = row.get(0)?;
+                        Ok(count > 0)
+                    })
+                })
+                .unwrap_or(false);
+
+            if sequence_exists {
+                tx.execute("DELETE FROM sqlite_sequence WHERE name IN ('clipboard_history', 'quick_texts', 'groups')", [])
+                    .map_err(|e| format!("重置自增ID失败: {}", e))?;
+            }
+
+            tx.commit().map_err(|e| format!("提交事务失败: {}", e))?;
+            Ok(())
+        }
+        None => Err("数据库未初始化".to_string()),
+    }
 }

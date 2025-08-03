@@ -294,7 +294,7 @@ function updateGroupSelects() {
     const option = document.createElement('option');
     option.value = group.id;
     option.textContent = group.name;
-    quickTextGroupSelect.appendChild(option); 
+    quickTextGroupSelect.appendChild(option);
   });
 }
 
@@ -474,7 +474,6 @@ export function getGroups() {
 
 // 导出函数供其他模块使用
 export {
-  loadGroups,
   updateGroupSelects,
   selectGroup
 };

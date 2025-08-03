@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit, listen } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { setTheme, getCurrentTheme, getAvailableThemes, addThemeChangeListener } from './themeManager.js';
 import { updateShortcutDisplay } from './settingsManager.js';
 import {
@@ -216,6 +217,9 @@ function initializeUI() {
 
   // 加载应用版本信息
   loadAppVersion();
+
+  // 初始化数据管理功能
+  initDataManagement();
 }
 
 // 绑定事件
@@ -1435,6 +1439,225 @@ function bindAiTranslationEvents() {
   });
 }
 
+// =================== 数据管理功能 ===================
 
+// 初始化数据管理功能
+function initDataManagement() {
+  // 导出数据按钮
+  const exportButton = document.getElementById('export-all-data');
+  if (exportButton) {
+    exportButton.addEventListener('click', handleExportData);
+  }
+
+  // 导入数据按钮
+  const importButton = document.getElementById('import-data');
+  if (importButton) {
+    importButton.addEventListener('click', handleImportData);
+  }
+
+  // 清空剪贴板历史按钮
+  const clearHistoryButton = document.getElementById('clear-clipboard-history');
+  if (clearHistoryButton) {
+    clearHistoryButton.addEventListener('click', handleClearClipboardHistory);
+  }
+
+  // 重置所有数据按钮
+  const resetAllButton = document.getElementById('reset-all-data');
+  if (resetAllButton) {
+    resetAllButton.addEventListener('click', handleResetAllData);
+  }
+}
+
+// 处理导出数据
+async function handleExportData() {
+  try {
+    // 获取导出选项
+    const options = {
+      clipboard_history: document.getElementById('export-clipboard-history')?.checked || false,
+      quick_texts: document.getElementById('export-quick-texts')?.checked || false,
+      groups: document.getElementById('export-groups')?.checked || false,
+      settings: document.getElementById('export-settings')?.checked || false,
+      images: document.getElementById('export-images')?.checked || false,
+    };
+
+    // 检查是否至少选择了一个选项
+    if (!Object.values(options).some(value => value)) {
+      showNotification('请至少选择一个导出选项', 'warning');
+      return;
+    }
+
+    // 使用文件对话框选择保存位置
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const filePath = await save({
+      title: '导出数据',
+      defaultPath: `quickclipboard_backup_${new Date().toISOString().slice(0, 10)}.zip`,
+      filters: [{
+        name: 'ZIP文件',
+        extensions: ['zip']
+      }]
+    });
+
+    if (!filePath) {
+      return; // 用户取消了操作
+    }
+
+    // 显示进度提示
+    showNotification('正在导出数据，请稍候...', 'info');
+
+    // 调用后端导出函数
+    await invoke('export_data', {
+      exportPath: filePath,
+      options: options
+    });
+
+    showNotification('数据导出成功！', 'success');
+  } catch (error) {
+    console.error('导出数据失败:', error);
+    showNotification(`导出数据失败: ${error}`, 'error');
+  }
+}
+
+// 处理导入数据
+async function handleImportData() {
+  try {
+    // 获取导入模式
+    const importModeRadios = document.querySelectorAll('input[name="import-mode"]');
+    let importMode = 'replace';
+    for (const radio of importModeRadios) {
+      if (radio.checked) {
+        importMode = radio.value;
+        break;
+      }
+    }
+
+    // 使用文件对话框选择导入文件
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const filePath = await open({
+      title: '选择要导入的数据文件',
+      filters: [{
+        name: 'ZIP文件',
+        extensions: ['zip']
+      }]
+    });
+
+    if (!filePath) {
+      return; // 用户取消了操作
+    }
+
+    // 确认导入操作
+    const confirmMessage = importMode === 'replace'
+      ? '导入将替换所有现有数据，此操作不可撤销。是否继续？'
+      : '导入将与现有数据合并。是否继续？';
+
+    const confirmed = await confirm(confirmMessage, {
+      title: '确认导入',
+      kind: 'warning'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // 显示进度提示
+    showNotification('正在导入数据，请稍候...', 'info');
+
+    // 调用后端导入函数
+    await invoke('import_data', {
+      importPath: filePath,
+      options: {
+        mode: importMode === 'replace' ? 'Replace' : 'Merge'
+      }
+    });
+
+    showNotification('数据导入成功！应用将重新启动以应用更改。', 'success');
+
+    // 延迟重启整个Tauri应用程序
+    setTimeout(async () => {
+      try {
+        await invoke('restart_app');
+      } catch (error) {
+        console.error('重启应用失败:', error);
+        // 如果重启失败，回退到页面重新加载
+        window.location.reload();
+      }
+    }, 2000);
+  } catch (error) {
+    console.error('导入数据失败:', error);
+    showNotification(`导入数据失败: ${error}`, 'error');
+  }
+}
+
+// 处理清空剪贴板历史
+async function handleClearClipboardHistory() {
+  const confirmed = await confirm('确定要清空所有剪贴板历史吗？此操作不可撤销。', {
+    title: '确认清空历史',
+    kind: 'warning'
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    showNotification('正在清空剪贴板历史...', 'info');
+    await invoke('clear_clipboard_history_dm');
+    showNotification('剪贴板历史已清空，应用将重新启动。', 'success');
+
+    // 延迟重启整个Tauri应用程序
+    setTimeout(async () => {
+      try {
+        await invoke('restart_app');
+      } catch (error) {
+        console.error('重启应用失败:', error);
+        // 如果重启失败，回退到页面重新加载
+        window.location.reload();
+      }
+    }, 2000);
+  } catch (error) {
+    console.error('清空剪贴板历史失败:', error);
+    showNotification(`清空剪贴板历史失败: ${error}`, 'error');
+  }
+}
+
+// 处理重置所有数据
+async function handleResetAllData() {
+  const firstConfirmed = await confirm('确定要重置所有数据吗？这将删除所有剪贴板历史、常用文本、分组和设置。此操作不可撤销！', {
+    title: '确认重置数据',
+    kind: 'warning'
+  });
+
+  if (!firstConfirmed) {
+    return;
+  }
+
+  const finalConfirmed = await confirm('最后确认：这将完全重置应用到初始状态，所有数据都将丢失。确定继续吗？', {
+    title: '最终确认',
+    kind: 'error'
+  });
+
+  if (!finalConfirmed) {
+    return;
+  }
+
+  try {
+    showNotification('正在重置所有数据...', 'info');
+    await invoke('reset_all_data');
+    showNotification('所有数据已重置，应用将重新启动。', 'success');
+
+    // 延迟重启整个Tauri应用程序
+    setTimeout(async () => {
+      try {
+        await invoke('restart_app');
+      } catch (error) {
+        console.error('重启应用失败:', error);
+        // 如果重启失败，回退到页面重新加载
+        window.location.reload();
+      }
+    }, 2000);
+  } catch (error) {
+    console.error('重置数据失败:', error);
+    showNotification(`重置数据失败: ${error}`, 'error');
+  }
+}
 
 

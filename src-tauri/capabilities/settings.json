@@ -17,6 +17,8 @@
     "core:window:allow-maximize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-destroy",
-    "opener:default"
+    "opener:default",
+    "dialog:allow-save",
+    "dialog:default"
   ]
 }

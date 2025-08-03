@@ -41,7 +41,7 @@ body {
 
 .header-left i {
   font-size: 24px;
-  color: var(--primary-color);
+  color: #666;
 }
 
 .header-left h1 {
@@ -157,6 +157,7 @@ body {
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 24px;
+  padding: 20px;
 }
 
 .setting-item {
@@ -812,7 +813,7 @@ input:checked+.toggle-slider:before {
 
 .confirm-dialog-header {
   padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #ccc;
 }
 
 .confirm-dialog-header h3 {
@@ -974,7 +975,7 @@ input:checked+.toggle-slider:before {
 .theme-dark .setting-input,
 .theme-dark .setting-textarea {
   background: var(--bg-secondary);
-  border-color: var(--border-color);
+  border-color: #ccc;
   color: var(--text-color);
 }
 
@@ -986,7 +987,7 @@ input:checked+.toggle-slider:before {
 
 .theme-dark .setting-button {
   background: var(--bg-secondary);
-  border-color: var(--border-color);
+  border-color: #ccc;
   color: var(--text-color);
 }
 
@@ -997,11 +998,178 @@ input:checked+.toggle-slider:before {
 
 .theme-dark .setting-button-small {
   background: var(--bg-secondary);
-  border-color: var(--border-color);
+  border-color: #ccc;
   color: var(--text-color);
 }
 
 .theme-dark .setting-button-small:hover {
   background: var(--bg-hover);
   border-color: var(--border-hover);
+}
+
+/* 数据管理样式 */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  position: relative;
+  background: var(--bg-secondary);
+  transition: all 0.2s ease;
+}
+
+.checkbox-item input[type="checkbox"]:checked+.checkmark {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-item input[type="checkbox"]:checked+.checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.radio-item input[type="radio"] {
+  display: none;
+}
+
+.radio-mark {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc !important;
+  border-radius: 50%;
+  position: relative;
+  background: var(--bg-secondary);
+  transition: all 0.2s ease;
+}
+
+.radio-item input[type="radio"]:checked+.radio-mark {
+  border-color: var(--primary-color);
+}
+
+.radio-item input[type="radio"]:checked+.radio-mark::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-color);
+}
+
+.primary-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.primary-button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  background: var(--bg-secondary);
+  color: var(--text-color);
+  border: 1px solid #ccc;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.secondary-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.danger-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.danger-button:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* 通知样式 */
+.notification {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
