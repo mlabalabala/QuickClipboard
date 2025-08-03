@@ -37,7 +37,7 @@
         "title": "设置 - 快速剪贴板",
         "url": "settings.html",
         "width": 900,
-        "height": 650,
+        "height": 700,
         "minWidth": 800,
         "minHeight": 600,
         "decorations": false,
@@ -46,9 +46,9 @@
         "skipTaskbar": false,
         "center": true,
         "visible": false,
-        "resizable": true,
+        "resizable": false,
         "focus": true,
-        "maximizable": true,
+        "maximizable": false,
         "dragDropEnabled": false
       },
       {
