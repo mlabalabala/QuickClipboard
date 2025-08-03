@@ -1540,7 +1540,7 @@ body {
   bottom: 26px;
   right: -1px;
   width: 90px;
-  height: 67.6%;
+  height: calc(100% - 163px);
   background: rgba(255, 255, 255, 0.95);
   border-top: 1px solid rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(0, 0, 0, 0.3);
@@ -1651,7 +1651,7 @@ body {
   overflow-y: auto;
   padding: 4px;
   /* 将滚动条移到左侧 */
-  direction: rtl;
+  /* direction: rtl; */
 }
 
 .groups-list>* {
@@ -1966,7 +1966,7 @@ body {
 
 /* 全局滚动条 */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
   height: 6px;
 }
 
