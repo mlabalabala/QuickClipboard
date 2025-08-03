@@ -170,6 +170,8 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-left: 24px;
+  margin-right: 40px;
 }
 
 /* 图片内容样式 */
@@ -179,6 +181,7 @@ body {
   border-radius: 3px;
   object-fit: contain;
   margin-right: 8px;
+  margin-left: 24px;
   flex-shrink: 0;
 }
 
@@ -186,6 +189,7 @@ body {
   flex: 1;
   color: #bbb;
   font-style: italic;
+  margin-right: 40px;
 }
 
 /* 链接内容样式 */
@@ -198,6 +202,22 @@ body {
   margin-right: 4px;
 }
 
+/* 序号指示器 */
+.item-index-indicator {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 10px;
+  color: rgb(255, 255, 255);
+  background: rgba(74, 137, 220, 0.3);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-weight: bold;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  min-width: 16px;
+  text-align: center;
+}
+
 /* 内容类型指示器 */
 .content-type-indicator {
   position: absolute;
@@ -208,7 +228,7 @@ body {
   background: rgb(255, 79, 79);
   padding: 1px 4px;
   border-radius: 2px;
-  font-weight: blod;
+  font-weight: bold;
   border: 1px solid rgba(255, 255, 255, 1);
 }
 
@@ -241,6 +261,8 @@ body {
   gap: 8px;
   padding: 4px 0;
   width: 100%;
+  margin-left: 24px;
+  margin-right: 40px;
 }
 
 .preview-file-icon {

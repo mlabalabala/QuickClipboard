@@ -341,6 +341,11 @@ function createPreviewItem(item, index, position = 'current') {
   const isQuickText = !!item.title; // 判断是否为常用文本
   const contentType = getContentType(itemText);
 
+  // 添加序号指示器
+  const indexIndicator = document.createElement('div');
+  indexIndicator.className = 'item-index-indicator';
+  indexIndicator.textContent = (index + 1).toString();
+
   // 添加内容类型指示器
   const typeIndicator = document.createElement('div');
   typeIndicator.className = 'content-type-indicator';
@@ -438,6 +443,7 @@ function createPreviewItem(item, index, position = 'current') {
   }
 
   previewItem.appendChild(typeIndicator);
+  previewItem.appendChild(indexIndicator);
 
   return previewItem;
 }
