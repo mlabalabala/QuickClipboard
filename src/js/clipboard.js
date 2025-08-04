@@ -22,10 +22,93 @@ import {
   isImageFile,
   createFileIconElement
 } from './fileIconUtils.js';
+import { ClipboardVirtualScroll } from './virtualScrollAdapter.js';
 
 // 图片缓存
 const imageCache = new Map();
 const thumbnailCache = new Map();
+
+// 虚拟滚动实例
+let clipboardVirtualScroll = null;
+
+// 初始化虚拟滚动
+export function initClipboardVirtualScroll() {
+  if (!clipboardList) {
+    console.error('剪贴板列表容器不存在');
+    return;
+  }
+
+  // 销毁现有实例
+  if (clipboardVirtualScroll) {
+    clipboardVirtualScroll.destroy();
+  }
+
+  // 创建新的虚拟滚动实例
+  clipboardVirtualScroll = new ClipboardVirtualScroll(clipboardList, {
+    estimatedItemHeight: 80,
+    overscan: 3,
+    onItemClick: handleClipboardItemClick,
+    onItemContextMenu: showClipboardContextMenu
+  });
+
+  // 设置初始数据
+  if (clipboardHistory.length > 0) {
+    clipboardVirtualScroll.setOriginalData(clipboardHistory);
+  }
+}
+
+// 处理剪贴板项目点击
+async function handleClipboardItemClick(item, index, event) {
+  if (isDragging) return;
+
+  try {
+    // 设置活动项目索引
+    setActiveItemIndex(index);
+
+    // 检查内容类型
+    const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
+    const contentType = isImage ? 'image' : getContentType(item.text);
+    const isFiles = contentType === 'files';
+    const isText = contentType === 'text';
+
+    // 对于文本内容，检查是否需要翻译
+    if (isText) {
+      const translationCheck = shouldTranslateText(item.text, 'paste');
+      const needsTranslation = translationCheck.should;
+
+      if (needsTranslation) {
+        console.log('开始剪贴板AI翻译:', item.text, '原因:', translationCheck.reason);
+        showTranslationIndicator('正在翻译...');
+
+        const fallbackPaste = async () => {
+          await invoke('paste_content', {
+            params: {
+              content: item.text,
+              content_type: 'text'
+            }
+          });
+        };
+
+        await safeTranslateAndInputText(item.text, fallbackPaste);
+        hideTranslationIndicator();
+        return;
+      }
+    }
+
+    // 直接粘贴内容
+    await invoke('paste_content', {
+      params: {
+        content: item.text,
+        content_type: contentType
+      }
+    });
+
+    showNotification('已粘贴到剪贴板', 'success');
+  } catch (error) {
+    console.error('粘贴失败:', error);
+    showNotification('粘贴失败', 'error');
+  }
+}
 
 // 读取剪贴板文本
 export async function readClipboardText() {
@@ -213,289 +296,24 @@ export async function updateClipboardOrder(oldIndex, newIndex) {
   }
 }
 
-// 渲染剪贴板项目
+// 渲染剪贴板项目（使用虚拟滚动）
 export function renderClipboardItems() {
-  // 清空列表
-  clipboardList.innerHTML = '';
-
-  // 获取搜索关键词和筛选类型
-  const searchTerm = searchInput.value.toLowerCase();
-  const filterType = currentFilter;
-
-  // 过滤并渲染项目
-  clipboardHistory.forEach((item, index) => {
-    // 使用新的数据结构判断类型
-    const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
-    const contentType = isImage ? 'image' : getContentType(item.text);
-
-    // 类型筛选
-    if (filterType !== 'all' && contentType !== filterType) {
-      return;
-    }
-
-    // 搜索过滤：支持文本、链接和文件类型
-    if (searchTerm) {
-      let shouldShow = false;
-
-      if (contentType === 'files') {
-        // 文件类型：搜索文件名和路径
-        try {
-          const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
-          const filesData = JSON.parse(filesJson);
-          const searchableText = filesData.files.map(file =>
-            `${file.name} ${file.path} ${file.file_type}`
-          ).join(' ').toLowerCase();
-          shouldShow = searchableText.includes(searchTerm);
-        } catch (error) {
-          shouldShow = false;
-        }
-      } else if (contentType === 'image') {
-        // 图片类型：暂不支持搜索
-        shouldShow = false;
-      } else {
-        // 文本和链接类型：搜索内容
-        shouldShow = item.text.toLowerCase().includes(searchTerm);
-      }
-
-      if (!shouldShow) {
-        return;
-      }
-    }
-
-    // 创建项目元素
-    const clipboardItem = document.createElement('div');
-    clipboardItem.className = 'clipboard-item';
-    if (index === activeItemIndex) {
-      clipboardItem.classList.add('active');
-    }
-
-    // 创建内容
-    if (isImage) {
-      createImageElement(clipboardItem, item);
-    } else if (contentType === 'files') {
-      createFilesElement(clipboardItem, item);
-    } else {
-      const textElement = document.createElement('div');
-      textElement.className = 'clipboard-text';
-      textElement.textContent = item.text;
-      clipboardItem.appendChild(textElement);
-    }
-
-    // 创建序号小标（右上角）
-    const numberElement = document.createElement('div');
-    numberElement.className = 'clipboard-number';
-    numberElement.textContent = index + 1;
-    clipboardItem.appendChild(numberElement);
-
-    // 创建快捷键标签（右上角，在序号下方）
-    if (index < 9) {
-      const indexElement = document.createElement('div');
-      indexElement.className = 'clipboard-index';
-      indexElement.textContent = `Ctrl+${index + 1}`;
-      clipboardItem.appendChild(indexElement);
-    } else {
-      // 没有快捷键时，添加特殊类名用于样式调整
-      clipboardItem.classList.add('no-shortcut');
-    }
-
-    // 创建操作按钮容器（所有内容都支持添加到常用）
-    const actionsElement = document.createElement('div');
-    actionsElement.className = 'clipboard-actions';
-
-    // 如果是链接类型，添加打开链接按钮
-    if (getContentType(item.text) === 'link') {
-      const openLinkButton = document.createElement('button');
-      openLinkButton.className = 'action-button open-link';
-      openLinkButton.innerHTML = '<i class="ti ti-external-link"></i>';
-      openLinkButton.title = '在浏览器中打开';
-      openLinkButton.style.display = 'none';
-      openLinkButton.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await openLink(item.text);
-      });
-      actionsElement.appendChild(openLinkButton);
-    }
-
-    // 添加到常用按钮
-    const addToFavoritesButton = document.createElement('button');
-    addToFavoritesButton.className = 'action-button add-to-favorites';
-    addToFavoritesButton.innerHTML = '<svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-star"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" /></svg>';
-    addToFavoritesButton.title = '添加到常用';
-    addToFavoritesButton.style.display = 'none';
-    // 阻止事件冒泡，避免触发剪贴板项的点击事件
-    addToFavoritesButton.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      try {
-        await addClipboardToFavorites(index);
-        // 通知外部刷新常用文本列表
-        window.dispatchEvent(new CustomEvent('refreshQuickTexts'));
-      } catch (error) {
-        console.error('添加到常用失败:', error);
-      }
-    });
-
-    actionsElement.appendChild(addToFavoritesButton);
-    clipboardItem.appendChild(actionsElement);
-
-    // 设置拖拽属性
-    clipboardItem.draggable = true;
-    clipboardItem.addEventListener('dragstart', (e) => {
-      const dragData = JSON.stringify({
-        type: 'clipboard',
-        index: index,
-        text: item.text
-      });
-
-      // 使用自定义MIME类型存储完整数据（用于内部拖拽）
-      e.dataTransfer.setData('application/x-quickclipboard', dragData);
-
-      // 对于外部拖拽，只设置纯文本内容（不包含快捷键提示等）
-      e.dataTransfer.setData('text/plain', item.text);
-
-      // 设置拖拽效果
-      e.dataTransfer.effectAllowed = 'move';
-
-      // 添加拖拽状态类
-      document.querySelector('.tab-content.active').classList.add('dragging');
-      // 拖拽开始时显示分组侧边栏
-      const sidebar = document.getElementById('groups-sidebar');
-      if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.add('show');
-      }
-    });
-
-    clipboardItem.addEventListener('dragend', () => {
-      // 移除拖拽状态类
-      document.querySelector('.tab-content.active').classList.remove('dragging');
-      // 拖拽结束时自动隐藏分组侧边栏（如果未固定）
-      const sidebar = document.getElementById('groups-sidebar');
-      if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.remove('show');
-      }
-    });
-
-    // 添加点击事件（单击即粘贴）
-    clipboardItem.addEventListener('click', async () => {
-      // 如果正在拖拽，不执行点击事件
-      if (isDragging) return;
-
-      // 检查是否正在处理中
-      if (clipboardItem.classList.contains('processing')) {
-        return;
-      }
-
-      try {
-        // 检查是否需要AI翻译
-        const contentType = getContentType(item.text);
-        const isTextContent = contentType === 'text';
-        const translationCheck = isTextContent ? shouldTranslateText(item.text, 'paste') : { should: false, reason: '非文本内容' };
-        const needsTranslation = translationCheck.should;
-
-        if (needsTranslation) {
-          // 使用AI翻译并流式输入
-          console.log('开始AI翻译:', item.text, '原因:', translationCheck.reason);
-          showTranslationIndicator('正在翻译...');
-
-          // 定义降级回调函数
-          const fallbackPaste = async () => {
-            const params = {
-              index,
-              one_time: false
-            };
-            await invoke('paste_history_item', { params });
-          };
-
-          try {
-            const result = await safeTranslateAndInputText(item.text, fallbackPaste);
-
-            setActiveItem(index);
-
-            if (result.success) {
-              if (result.method === 'translation') {
-                console.log('AI翻译成功完成');
-              } else if (result.method === 'fallback') {
-                // 降级处理的通知已在aiTranslation.js中处理
-                console.log('使用降级处理完成粘贴:', result.error);
-              }
-
-              // 翻译完成后隐藏窗口（如果需要）
-              try {
-                const isPinned = await invoke('get_window_pinned');
-                if (!isPinned) {
-                  await invoke('hide_main_window_if_auto_shown');
-                }
-              } catch (error) {
-                console.error('检查窗口固定状态失败:', error);
-                // 如果检查失败，使用前端状态作为降级
-                if (!window.isPinned) {
-                  await invoke('hide_main_window_if_auto_shown');
-                }
-              }
-            } else {
-              showNotification(`翻译和粘贴都失败了: ${result.error}`, 'error');
-            }
-          } finally {
-            hideTranslationIndicator();
-          }
-        } else {
-          // 统一粘贴逻辑
-          const isImage = contentType === 'image';
-          const isFiles = contentType === 'files';
-
-          // 如果是图片或文件，显示加载状态
-          if (isImage || isFiles) {
-            clipboardItem.classList.add('processing');
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'loading-indicator';
-            const message = isFiles ? '准备粘贴文件...' : '准备中...';
-            loadingIndicator.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
-            clipboardItem.appendChild(loadingIndicator);
-          }
-
-          // 使用统一的粘贴命令
-          await invoke('paste_content', {
-            params: {
-              content: item.text
-            }
-          });
-          setActiveItem(index);
-          // 粘贴逻辑已在Rust端处理窗口显示/隐藏
-        }
-      } catch (error) {
-        console.error('粘贴剪贴板内容失败:', error);
-        // 显示错误提示
-        showErrorToast('粘贴失败: ' + error);
-        hideTranslationIndicator();
-      } finally {
-        // 清理加载状态
-        clipboardItem.classList.remove('processing');
-        const loadingIndicator = clipboardItem.querySelector('.loading-indicator');
-        if (loadingIndicator) {
-          loadingIndicator.remove();
-        }
-      }
-    });
-
-    // 添加右键菜单（所有类型）
-    clipboardItem.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showClipboardContextMenu(e, item, index);
-    });
-
-    // 组装元素
-    clipboardList.appendChild(clipboardItem);
-  });
-
-  // 如果没有项目，显示提示
-  if (clipboardList.children.length === 0) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.textContent = searchTerm ? '没有匹配的剪贴板内容' : '剪贴板历史为空';
-    emptyMessage.style.padding = '20px';
-    emptyMessage.style.textAlign = 'center';
-    emptyMessage.style.color = '#999';
-    clipboardList.appendChild(emptyMessage);
+  // 如果虚拟滚动未初始化，先初始化
+  if (!clipboardVirtualScroll) {
+    initClipboardVirtualScroll();
   }
 
+  // 更新数据
+  if (clipboardVirtualScroll) {
+    clipboardVirtualScroll.setOriginalData(clipboardHistory);
+
+    // 应用当前的搜索和筛选
+    const searchTerm = searchInput.value.toLowerCase();
+    const filterType = currentFilter;
+    clipboardVirtualScroll.setFilter(searchTerm, filterType);
+  }
+
+  // 通知导航系统列表已更新
   import('./navigation.js').then(module => {
     module.onListUpdate();
   }).catch(() => { });

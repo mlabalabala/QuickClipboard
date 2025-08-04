@@ -26,8 +26,86 @@ import {
 } from './aiTranslation.js';
 import { createFileIconElement } from './fileIconUtils.js';
 import { showContextMenu } from './contextMenu.js';
+import { QuickTextsVirtualScroll } from './virtualScrollAdapter.js';
 
+// 虚拟滚动实例
+let quickTextsVirtualScroll = null;
 
+// 初始化常用文本虚拟滚动
+export function initQuickTextsVirtualScroll() {
+  if (!quickTextsList) {
+    console.error('常用文本列表容器不存在');
+    return;
+  }
+
+  // 销毁现有实例
+  if (quickTextsVirtualScroll) {
+    quickTextsVirtualScroll.destroy();
+  }
+
+  // 创建新的虚拟滚动实例
+  quickTextsVirtualScroll = new QuickTextsVirtualScroll(quickTextsList, {
+    estimatedItemHeight: 90,
+    overscan: 3,
+    onItemClick: handleQuickTextItemClick,
+    onItemContextMenu: showQuickTextContextMenu
+  });
+
+  // 设置初始数据
+  if (quickTexts.length > 0) {
+    quickTextsVirtualScroll.setOriginalData(quickTexts);
+  }
+}
+
+// 处理常用文本项目点击
+async function handleQuickTextItemClick(text, index, event) {
+  if (quickTextsVirtualScroll.isDragging) return;
+
+  try {
+    // 检查内容类型并显示加载状态
+    const contentType = getContentType(text.content);
+    const isImage = contentType === 'image';
+    const isFiles = contentType === 'files';
+    const isText = contentType === 'text';
+
+    // 对于文本内容，检查是否需要翻译
+    if (isText) {
+      const translationCheck = shouldTranslateText(text.content, 'paste');
+      const needsTranslation = translationCheck.should;
+
+      if (needsTranslation) {
+        console.log('开始常用文本AI翻译:', text.content, '原因:', translationCheck.reason);
+        showTranslationIndicator('正在翻译...');
+
+        const fallbackPaste = async () => {
+          await invoke('paste_content', {
+            params: {
+              content: text.content,
+              content_type: 'text'
+            }
+          });
+        };
+
+        await safeTranslateAndInputText(text.content, fallbackPaste);
+        hideTranslationIndicator();
+        return;
+      }
+    }
+
+    // 直接粘贴内容
+    await invoke('paste_content', {
+      params: {
+        content: text.content,
+        content_type: contentType
+      }
+    });
+
+    showNotification('已粘贴常用文本', 'success');
+  } catch (error) {
+    console.error('粘贴常用文本失败:', error);
+    showNotification('粘贴失败', 'error');
+  }
+}
 
 // 刷新常用文本列表
 export async function refreshQuickTexts() {
@@ -314,273 +392,29 @@ export function setupQuickTexts() {
   });
 }
 
-// 渲染常用文本列表
+// 渲染常用文本列表（使用虚拟滚动）
 export function renderQuickTexts() {
-  quickTextsList.innerHTML = '';
-
-  const searchTerm = quickTextsSearch.value.toLowerCase();
-  const filterType = currentQuickTextsFilter;
-
-  // 过滤常用文本
-  const filteredTexts = quickTexts.filter(text => {
-    const contentType = getContentType(text.content);
-    const isImage = contentType === 'image';
-
-    // 类型筛选
-    if (filterType !== 'all' && contentType !== filterType) {
-      return false;
-    }
-
-    // 搜索过滤：支持文本、链接和文件类型
-    if (searchTerm) {
-      if (contentType === 'files') {
-        // 文件类型：搜索标题和文件内容
-        try {
-          const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
-          const filesData = JSON.parse(filesJson);
-          const searchableText = filesData.files.map(file =>
-            `${file.name} ${file.path} ${file.file_type}`
-          ).join(' ').toLowerCase();
-          return text.title.toLowerCase().includes(searchTerm) ||
-            searchableText.includes(searchTerm);
-        } catch (error) {
-          return text.title.toLowerCase().includes(searchTerm);
-        }
-      } else if (contentType === 'image') {
-        // 图片类型：只搜索标题
-        return text.title.toLowerCase().includes(searchTerm);
-      } else {
-        // 文本和链接类型：搜索标题和内容
-        return text.title.toLowerCase().includes(searchTerm) ||
-          text.content.toLowerCase().includes(searchTerm);
-      }
-    }
-
-    return true;
-  });
-
-  if (filteredTexts.length === 0) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.className = 'empty-state';
-    emptyMessage.innerHTML = searchTerm ?
-      '<div class="empty-icon">🔍</div><div class="empty-text">没有匹配的常用文本</div>' :
-      '<div class="empty-icon">📝</div><div class="empty-text">暂无常用文本</div><div class="empty-hint">点击添加按钮创建第一个常用文本</div>';
-    quickTextsList.appendChild(emptyMessage);
-    return;
+  // 如果虚拟滚动未初始化，先初始化
+  if (!quickTextsVirtualScroll) {
+    initQuickTextsVirtualScroll();
   }
 
-  filteredTexts.forEach(text => {
-    const quickTextItem = document.createElement('div');
-    quickTextItem.className = 'quick-text-item';
+  // 更新数据
+  if (quickTextsVirtualScroll) {
+    quickTextsVirtualScroll.setOriginalData(quickTexts);
 
-    // 创建标题
-    const titleElement = document.createElement('div');
-    titleElement.className = 'quick-text-title';
-    titleElement.textContent = text.title;
+    // 应用当前的搜索和筛选
+    const searchTerm = quickTextsSearch.value.toLowerCase();
+    const filterType = currentQuickTextsFilter;
+    quickTextsVirtualScroll.setFilter(searchTerm, filterType);
+  }
 
-    // 创建内容
-    const contentElement = document.createElement('div');
-    contentElement.className = 'quick-text-content';
-
-    // 根据内容类型显示不同内容
-    const contentType = getContentType(text.content);
-    if (contentType === 'image') {
-      const imgElement = document.createElement('img');
-      imgElement.className = 'quick-text-image';
-
-      // 禁用图片元素的拖拽，避免与父容器拖拽冲突
-      imgElement.draggable = false;
-
-      // 处理不同格式的图片内容
-      if (text.content.startsWith('image:')) {
-        // 新格式：image:id，需要通过loadImageById加载
-        const imageId = text.content.substring(6); // 去掉 "image:" 前缀
-        loadImageById(imgElement, imageId, true); // 使用缩略图
-      } else if (text.content.startsWith('data:image/')) {
-        // 旧格式：完整的data URL
-        imgElement.src = text.content;
-      } else {
-        // 未知格式，显示占位符
-        imgElement.alt = '图片加载失败';
-        imgElement.style.backgroundColor = '#e0e0e0';
-        imgElement.textContent = '图片加载失败';
-      }
-
-      contentElement.appendChild(imgElement);
-    } else if (contentType === 'files') {
-      // 处理文件类型
-      createQuickTextFilesElement(contentElement, text);
-    } else {
-      contentElement.textContent = text.content;
-    }
-
-    // 添加右键菜单
-    quickTextItem.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showQuickTextContextMenu(e, text);
-    });
-
-    // 设置拖拽属性
-    quickTextItem.draggable = true;
-    quickTextItem.addEventListener('dragstart', (e) => {
-      const dragData = JSON.stringify({
-        type: 'quicktext',
-        id: text.id,
-        title: text.title,
-        content: text.content
-      });
-
-      // 使用自定义MIME类型避免与默认HTML拖拽冲突
-      e.dataTransfer.setData('application/x-quickclipboard', dragData);
-      e.dataTransfer.setData('text/plain', dragData);
-
-      // 设置拖拽效果
-      e.dataTransfer.effectAllowed = 'move';
-
-      // 添加拖拽状态类
-      document.querySelector('.tab-content.active').classList.add('dragging');
-      // 拖拽开始时显示分组侧边栏
-      const sidebar = document.getElementById('groups-sidebar');
-      if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.add('show');
-      }
-    });
-
-    quickTextItem.addEventListener('dragend', () => {
-      // 移除拖拽状态类
-      document.querySelector('.tab-content.active').classList.remove('dragging');
-      // 拖拽结束时自动隐藏分组侧边栏（如果未固定）
-      const sidebar = document.getElementById('groups-sidebar');
-      if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.remove('show');
-      }
-    });
-
-    // 添加点击事件（粘贴）
-    quickTextItem.addEventListener('click', async () => {
-      // 如果正在拖拽，不执行点击事件
-      if (isDragging) return;
-
-      // 检查是否正在处理中
-      if (quickTextItem.classList.contains('processing')) {
-        return;
-      }
-
-      try {
-        // 检查内容类型并显示加载状态
-        const contentType = getContentType(text.content);
-        const isImage = contentType === 'image';
-        const isFiles = contentType === 'files';
-        const isText = contentType === 'text';
-
-        if (isImage || isFiles) {
-          quickTextItem.classList.add('processing');
-          const loadingIndicator = document.createElement('div');
-          loadingIndicator.className = 'loading-indicator';
-          const message = isFiles ? '准备粘贴文件...' : '准备中...';
-          loadingIndicator.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
-          quickTextItem.appendChild(loadingIndicator);
-        }
-
-        // 对于文本内容，检查是否需要翻译并使用带通知的翻译逻辑
-        if (isText) {
-          // 检查是否需要AI翻译
-          const translationCheck = shouldTranslateText(text.content, 'paste');
-          const needsTranslation = translationCheck.should;
-
-          if (needsTranslation) {
-            // 使用AI翻译并显示指示器
-            console.log('开始常用文本AI翻译:', text.content, '原因:', translationCheck.reason);
-            showTranslationIndicator('正在翻译...');
-
-            // 定义降级回调函数
-            const fallbackPaste = async () => {
-              await invoke('paste_content', {
-                params: {
-                  content: text.content,
-                  quick_text_id: text.id,
-                  one_time: isOneTimePaste
-                }
-              });
-            };
-
-            try {
-              const result = await safeTranslateAndInputText(text.content, fallbackPaste);
-
-              if (result.success) {
-                if (result.method === 'translation') {
-                  console.log('常用文本AI翻译成功完成');
-                } else if (result.method === 'fallback') {
-                  console.log('常用文本使用降级处理完成粘贴:', result.error);
-                }
-
-                // 翻译完成后隐藏窗口（如果需要）
-                try {
-                  const isPinned = await invoke('get_window_pinned');
-                  if (!isPinned) {
-                    await invoke('hide_main_window_if_auto_shown');
-                  }
-                } catch (error) {
-                  console.error('检查窗口固定状态失败:', error);
-                  // 如果检查失败，使用前端状态作为降级
-                  if (!window.isPinned) {
-                    await invoke('hide_main_window_if_auto_shown');
-                  }
-                }
-              } else {
-                showNotification(`翻译和粘贴都失败了: ${result.error}`, 'error');
-              }
-            } finally {
-              hideTranslationIndicator();
-            }
-          } else {
-            // 不需要翻译，使用普通粘贴
-            await invoke('paste_content', {
-              params: {
-                content: text.content,
-                quick_text_id: text.id,
-                one_time: isOneTimePaste
-              }
-            });
-          }
-        } else {
-          // 非文本内容或未启用翻译，使用普通粘贴
-          await invoke('paste_content', {
-            params: {
-              content: text.content,
-              quick_text_id: text.id,
-              one_time: isOneTimePaste
-            }
-          });
-        }
-
-        // 如果是一次性粘贴，刷新常用文本列表
-        if (isOneTimePaste) {
-          await refreshQuickTexts();
-        }
-      } catch (error) {
-        console.error('粘贴常用文本失败:', error);
-        // 显示错误提示
-        showNotification('粘贴失败: ' + error, 'error');
-      } finally {
-        // 清理加载状态
-        quickTextItem.classList.remove('processing');
-        const loadingIndicator = quickTextItem.querySelector('.loading-indicator');
-        if (loadingIndicator) {
-          loadingIndicator.remove();
-        }
-      }
-    });
-
-    quickTextItem.appendChild(titleElement);
-    quickTextItem.appendChild(contentElement);
-    quickTextsList.appendChild(quickTextItem);
-  });
-
+  // 通知导航系统列表已更新
   import('./navigation.js').then(module => {
     module.onListUpdate();
   }).catch(() => { });
 }
+
 
 
 

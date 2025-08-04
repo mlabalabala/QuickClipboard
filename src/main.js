@@ -48,13 +48,15 @@ import {
 
 import {
   refreshClipboardHistory,
-  filterClipboardItems
+  filterClipboardItems,
+  initClipboardVirtualScroll
 } from './js/clipboard.js';
 
 import {
   refreshQuickTexts,
   filterQuickTexts,
-  setupQuickTexts
+  setupQuickTexts,
+  initQuickTextsVirtualScroll
 } from './js/quickTexts.js';
 
 
@@ -143,9 +145,12 @@ async function initApp() {
   // 初始化分组功能（必须在常用文本之前）
   await initGroups();
 
-  // 获取剪贴板历史
+  initClipboardVirtualScroll();
+  initQuickTextsVirtualScroll();
+
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   await refreshClipboardHistory();
-  // 获取常用文本
   await refreshQuickTexts();
 
   // 设置搜索功能
