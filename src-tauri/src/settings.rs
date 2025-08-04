@@ -18,6 +18,7 @@ pub struct AppSettings {
     pub clipboard_monitor: bool,
     pub ignore_duplicates: bool,
     pub save_images: bool,
+    pub show_image_preview: bool,
 
     // 音效设置
     pub sound_enabled: bool,
@@ -71,6 +72,7 @@ impl Default for AppSettings {
             clipboard_monitor: true,
             ignore_duplicates: true,
             save_images: true,
+            show_image_preview: false,
 
             // 音效设置默认值
             sound_enabled: true,
@@ -186,6 +188,7 @@ impl AppSettings {
             "clipboardMonitor": self.clipboard_monitor,
             "ignoreDuplicates": self.ignore_duplicates,
             "saveImages": self.save_images,
+            "showImagePreview": self.show_image_preview,
             "soundEnabled": self.sound_enabled,
             "soundVolume": self.sound_volume,
             "copySoundPath": self.copy_sound_path,
@@ -256,6 +259,9 @@ impl AppSettings {
         }
         if let Some(v) = json.get("saveImages").and_then(|v| v.as_bool()) {
             self.save_images = v;
+        }
+        if let Some(v) = json.get("showImagePreview").and_then(|v| v.as_bool()) {
+            self.show_image_preview = v;
         }
 
         // 音效设置

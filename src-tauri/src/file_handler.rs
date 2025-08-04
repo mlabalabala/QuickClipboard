@@ -255,22 +255,29 @@ pub fn get_file_icon(path: &str) -> Result<String, String> {
         SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
     };
     use windows::Win32::UI::Shell::{
-        SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_SMALLICON, SHGFI_USEFILEATTRIBUTES,
+        SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_USEFILEATTRIBUTES,
     };
     use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
 
     let path_obj = Path::new(path);
 
-    // 检查是否为图片文件，如果是则返回文件路径让前端直接访问
+    // 检查是否为图片文件，如果是则根据设置决定返回预览图还是图标
     if path_obj.exists() && is_image_file(path) {
-        // 检查文件大小，如果太大则使用默认图标
-        if !is_file_size_suitable_for_direct_access(path) {
-            // 文件太大，使用默认图片图标
-            return Ok(get_default_image_icon());
-        }
+        // 获取当前设置
+        let settings = crate::settings::get_global_settings();
 
-        // 返回特殊的文件路径格式，让前端知道这是一个图片文件
-        return Ok(format!("image_file://{}", path));
+        // 如果启用了图片预览
+        if settings.show_image_preview {
+            // 检查文件大小，如果太大则使用默认图标
+            if !is_file_size_suitable_for_direct_access(path) {
+                // 文件太大，使用默认图片图标
+                return Ok(get_default_image_icon());
+            }
+
+            // 返回特殊的文件路径格式，让前端知道这是一个图片文件
+            return Ok(format!("image_file://{}", path));
+        }
+        // 如果未启用图片预览，继续使用系统图标逻辑
     }
 
     // 如果文件不存在，使用扩展名获取图标
@@ -540,7 +547,8 @@ fn is_image_file(path: &str) -> bool {
     if let Some(extension) = path_obj.extension() {
         if let Some(ext_str) = extension.to_str() {
             let ext_lower = ext_str.to_lowercase();
-            return matches!(ext_lower.as_str(),
+            return matches!(
+                ext_lower.as_str(),
                 "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "tif" | "ico" | "svg"
             );
         }
@@ -556,8 +564,6 @@ fn is_file_size_suitable_for_direct_access(path: &str) -> bool {
         false
     }
 }
-
-
 
 // 复制文件到目标位置
 pub fn copy_files_to_target(files: &[String], target_dir: &str) -> Result<Vec<String>, String> {

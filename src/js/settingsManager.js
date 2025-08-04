@@ -17,6 +17,7 @@ let currentSettings = {
   clipboardMonitor: true,
   ignoreDuplicates: true,
   saveImages: true,
+  showImagePreview: false,
   // 音效设置
   soundEnabled: true,
   soundVolume: 50,

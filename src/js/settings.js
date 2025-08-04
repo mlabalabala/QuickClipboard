@@ -67,6 +67,7 @@ const defaultSettings = {
   clipboardMonitor: true,
   ignoreDuplicates: true,
   saveImages: true,
+  showImagePreview: false,
   soundEnabled: true,
   soundVolume: 50,
   copySoundPath: '',
@@ -162,6 +163,7 @@ function initializeUI() {
   document.getElementById('clipboard-monitor').checked = settings.clipboardMonitor;
   document.getElementById('ignore-duplicates').checked = settings.ignoreDuplicates;
   document.getElementById('save-images').checked = settings.saveImages;
+  document.getElementById('show-image-preview').checked = settings.showImagePreview;
 
   // 音效设置
   document.getElementById('sound-enabled').checked = settings.soundEnabled;
@@ -294,7 +296,7 @@ function bindSettingEvents() {
   const settingInputs = [
     'auto-start', 'start-hidden', 'show-startup-notification', 'history-limit',
     'number-shortcuts', 'clipboard-monitor',
-    'ignore-duplicates', 'save-images',
+    'ignore-duplicates', 'save-images', 'show-image-preview',
     'sound-enabled', 'copy-sound-path', 'paste-sound-path', 'sound-preset',
     'preview-enabled', 'preview-shortcut', 'preview-items-count', 'preview-auto-paste',
     'preview-scroll-sound', 'preview-scroll-sound-path',

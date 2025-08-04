@@ -507,6 +507,16 @@ pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
         crate::shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
     }
 
+    // 9. 检查是否需要刷新文件图标
+    if settings.get("showImagePreview").is_some() {
+        // 异步刷新文件图标，不阻塞设置保存
+        std::thread::spawn(|| {
+            if let Err(e) = refresh_file_icons() {
+                println!("刷新文件图标失败: {}", e);
+            }
+        });
+    }
+
     Ok(())
 }
 
@@ -1204,4 +1214,54 @@ pub async fn reset_all_data() -> Result<(), String> {
 #[tauri::command]
 pub fn get_app_data_dir() -> Result<String, String> {
     crate::data_manager::get_app_data_dir().map(|path| path.to_string_lossy().to_string())
+}
+
+// 刷新所有文件类型项目的图标
+fn refresh_file_icons() -> Result<(), String> {
+    use crate::database;
+    use crate::file_handler::FileClipboardData;
+
+    println!("开始刷新文件图标...");
+
+    // 获取所有剪贴板历史记录
+    let items = database::get_clipboard_history(None)?;
+
+    let mut updated_count = 0;
+
+    for item in items {
+        // 检查是否是文件类型的项目
+        if item.text.starts_with("files:") {
+            let json_str = item.text.strip_prefix("files:").unwrap_or("");
+
+            // 解析文件数据
+            if let Ok(mut file_data) = serde_json::from_str::<FileClipboardData>(json_str) {
+                let mut has_changes = false;
+
+                // 为每个文件重新生成图标
+                for file in &mut file_data.files {
+                    if let Ok(new_icon) = crate::file_handler::get_file_icon(&file.path) {
+                        if file.icon_data.as_ref() != Some(&new_icon) {
+                            file.icon_data = Some(new_icon);
+                            has_changes = true;
+                        }
+                    }
+                }
+
+                // 如果有变化，更新数据库
+                if has_changes {
+                    if let Ok(updated_json) = serde_json::to_string(&file_data) {
+                        let updated_text = format!("files:{}", updated_json);
+                        if let Err(e) = database::update_clipboard_item(item.id, updated_text) {
+                            println!("更新剪贴板项目 {} 失败: {}", item.id, e);
+                        } else {
+                            updated_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("文件图标刷新完成，更新了 {} 个项目", updated_count);
+    Ok(())
 }
