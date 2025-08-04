@@ -12,6 +12,18 @@ use crate::clipboard_content::image_to_data_url;
 use crate::clipboard_history;
 use crate::image_manager::get_image_manager;
 
+#[cfg(windows)]
+use windows::core::w;
+#[cfg(windows)]
+use windows::Win32::Foundation::HWND;
+#[cfg(windows)]
+use windows::Win32::System::DataExchange::{
+    CloseClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard,
+    RegisterClipboardFormatW,
+};
+#[cfg(windows)]
+use windows::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
+
 // 监听器控制状态
 static MONITOR_RUNNING: AtomicBool = AtomicBool::new(false);
 static LAST_CLIPBOARD_CONTENT: Lazy<Arc<Mutex<String>>> =
@@ -24,6 +36,196 @@ static PASTING_COUNT: AtomicUsize = AtomicUsize::new(0);
 // 上次忽略的缓存文件路径 - 避免重复检测相同的缓存文件
 static LAST_IGNORED_CACHE_FILES: Lazy<Arc<Mutex<Vec<String>>>> =
     Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
+#[cfg(windows)]
+// Windows特定的剪贴板图片获取函数，支持更多格式
+fn try_get_windows_clipboard_image() -> Option<arboard::ImageData<'static>> {
+    unsafe {
+        if OpenClipboard(HWND(0)).is_err() {
+            return None;
+        }
+
+        let mut result = None;
+
+        // 尝试多种图片格式
+        let formats_to_try = [
+            // PNG格式
+            RegisterClipboardFormatW(w!("PNG")),
+            // DIB格式 (Device Independent Bitmap)
+            8u32, // CF_DIB
+            // Bitmap格式
+            2u32, // CF_BITMAP
+        ];
+
+        for &format in &formats_to_try {
+            if format == 0 {
+                continue; // 跳过注册失败的格式
+            }
+
+            if IsClipboardFormatAvailable(format).is_ok() {
+                if let Ok(handle) = GetClipboardData(format) {
+                    if handle.0 != 0 {
+                        if let Some(image_data) = process_clipboard_format(handle, format) {
+                            result = Some(image_data);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let _ = CloseClipboard();
+        result
+    }
+}
+
+#[cfg(windows)]
+fn process_clipboard_format(
+    handle: windows::Win32::Foundation::HANDLE,
+    format: u32,
+) -> Option<arboard::ImageData<'static>> {
+    unsafe {
+        let hglobal = windows::Win32::Foundation::HGLOBAL(handle.0 as *mut std::ffi::c_void);
+        let size = GlobalSize(hglobal);
+        if size == 0 {
+            return None;
+        }
+
+        let ptr = GlobalLock(hglobal);
+        if ptr.is_null() {
+            return None;
+        }
+
+        let data_slice = std::slice::from_raw_parts(ptr as *const u8, size);
+
+        let result = match format {
+            // PNG格式
+            format if format == RegisterClipboardFormatW(w!("PNG")) => process_png_data(data_slice),
+            // DIB格式
+            8 => process_dib_data(data_slice),
+            // 其他格式暂时跳过
+            _ => None,
+        };
+
+        let _ = GlobalUnlock(hglobal);
+        result
+    }
+}
+
+#[cfg(windows)]
+fn process_png_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
+    use std::borrow::Cow;
+
+    match image::load_from_memory(data) {
+        Ok(img) => {
+            let rgba_img = img.to_rgba8();
+            let (width, height) = rgba_img.dimensions();
+
+            // 转换为BGRA格式（arboard期望的格式）
+            let mut bgra_data = Vec::with_capacity((width * height * 4) as usize);
+            for pixel in rgba_img.pixels() {
+                let [r, g, b, a] = pixel.0;
+                bgra_data.extend_from_slice(&[b, g, r, a]);
+            }
+
+            Some(arboard::ImageData {
+                width: width as usize,
+                height: height as usize,
+                bytes: Cow::Owned(bgra_data),
+            })
+        }
+        Err(e) => {
+            println!("解析PNG数据失败: {}", e);
+            None
+        }
+    }
+}
+
+#[cfg(windows)]
+fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
+    use std::borrow::Cow;
+
+    if data.len() < 40 {
+        return None; // DIB头至少40字节
+    }
+
+    // 解析BITMAPINFOHEADER
+    let width = i32::from_le_bytes([data[4], data[5], data[6], data[7]]) as u32;
+    let height = i32::from_le_bytes([data[8], data[9], data[10], data[11]]).abs() as u32;
+    let bit_count = u16::from_le_bytes([data[14], data[15]]);
+
+    println!("DIB图片信息: {}x{}, {}位", width, height, bit_count);
+
+    if bit_count != 32 && bit_count != 24 {
+        println!("不支持的位深度: {}", bit_count);
+        return None;
+    }
+
+    // 计算像素数据偏移
+    let header_size = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
+    let colors_used = u32::from_le_bytes([data[32], data[33], data[34], data[35]]) as usize;
+    let color_table_size = if colors_used == 0 && bit_count <= 8 {
+        (1 << bit_count) * 4
+    } else {
+        colors_used * 4
+    };
+
+    let pixel_offset = header_size + color_table_size;
+
+    if data.len() < pixel_offset {
+        return None;
+    }
+
+    let pixel_data = &data[pixel_offset..];
+    let bytes_per_pixel = (bit_count / 8) as usize;
+    let row_size = ((width as usize * bytes_per_pixel + 3) / 4) * 4; // 4字节对齐
+
+    if pixel_data.len() < row_size * height as usize {
+        println!(
+            "像素数据不足: 需要{}, 实际{}",
+            row_size * height as usize,
+            pixel_data.len()
+        );
+        return None;
+    }
+
+    // 转换为BGRA格式
+    let mut bgra_data = Vec::with_capacity((width * height * 4) as usize);
+
+    for y in 0..height {
+        let row_start = (y as usize) * row_size;
+        for x in 0..width {
+            let pixel_start = row_start + (x as usize) * bytes_per_pixel;
+
+            if pixel_start + bytes_per_pixel <= pixel_data.len() {
+                match bit_count {
+                    32 => {
+                        // BGRA格式，直接复制
+                        bgra_data.extend_from_slice(&pixel_data[pixel_start..pixel_start + 4]);
+                    }
+                    24 => {
+                        // BGR格式，添加alpha通道
+                        bgra_data.extend_from_slice(&pixel_data[pixel_start..pixel_start + 3]);
+                        bgra_data.push(255); // 完全不透明
+                    }
+                    _ => {
+                        // 不支持的格式，使用白色像素
+                        bgra_data.extend_from_slice(&[255, 255, 255, 255]);
+                    }
+                }
+            } else {
+                // 数据不足，使用白色像素
+                bgra_data.extend_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+    }
+
+    Some(arboard::ImageData {
+        width: width as usize,
+        height: height as usize,
+        bytes: Cow::Owned(bgra_data),
+    })
+}
 
 // 启动剪贴板监听器
 pub fn start_clipboard_monitor(app_handle: AppHandle) {
@@ -164,7 +366,34 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
 
     // 最后尝试获取图片
     if clipboard_history::is_save_images() {
+        // 首先尝试Windows特定的方法获取图片
+        #[cfg(windows)]
+        if let Some(img) = try_get_windows_clipboard_image() {
+            let data_url = image_to_data_url(&img);
+
+            // 尝试使用图片管理器保存图片
+            if let Ok(image_manager) = get_image_manager() {
+                if let Ok(manager) = image_manager.lock() {
+                    match manager.save_image(&data_url) {
+                        Ok(image_info) => {
+                            return Some(format!("image:{}", image_info.id));
+                        }
+                        Err(e) => {
+                            println!("保存图片失败: {}, 使用原始data URL", e);
+                            return Some(data_url);
+                        }
+                    }
+                }
+            }
+            return Some(data_url);
+        }
+
+        // 回退到arboard方法
         if let Ok(img) = clipboard.get_image() {
+            println!(
+                "通过arboard成功获取剪贴板图片: {}x{}",
+                img.width, img.height
+            );
             // 将图片转换为 data URL
             let data_url = image_to_data_url(&img);
 
