@@ -195,6 +195,9 @@ async function initApp() {
   // 初始化AI翻译功能
   await initAiTranslation();
 
+  // 设置文件图标刷新事件监听器
+  setupFileIconRefreshListener();
+
   // 设置标签页切换
   setupTabSwitching();
 
@@ -315,6 +318,22 @@ function playWindowHideAnimation() {
 
   // 添加隐藏动画类
   container.classList.add('window-hide-animation');
+}
+
+// 设置文件图标刷新事件监听器
+async function setupFileIconRefreshListener() {
+  const { listen } = await import('@tauri-apps/api/event');
+
+  // 监听文件图标刷新完成事件
+  await listen('file-icons-refreshed', async (event) => {
+    console.log(`文件图标刷新完成，更新了 ${event.payload} 个项目，正在重新加载数据...`);
+
+    // 重新加载剪贴板历史和常用文本
+    await refreshClipboardHistory();
+    await refreshQuickTexts();
+
+    console.log('数据重新加载完成');
+  });
 }
 
 // 页面加载完成后初始化

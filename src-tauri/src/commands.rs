@@ -434,7 +434,10 @@ pub fn reload_settings() -> Result<serde_json::Value, String> {
 
 // 保存设置
 #[tauri::command]
-pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
+pub fn save_settings(
+    app_handle: tauri::AppHandle,
+    settings: serde_json::Value,
+) -> Result<(), String> {
     // 更新全局设置
     crate::settings::update_global_settings_from_json(&settings)?;
 
@@ -510,8 +513,9 @@ pub fn save_settings(settings: serde_json::Value) -> Result<(), String> {
     // 9. 检查是否需要刷新文件图标
     if settings.get("showImagePreview").is_some() {
         // 异步刷新文件图标，不阻塞设置保存
-        std::thread::spawn(|| {
-            if let Err(e) = refresh_file_icons() {
+        let app_handle_clone = app_handle.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = refresh_file_icons(app_handle_clone) {
                 println!("刷新文件图标失败: {}", e);
             }
         });
@@ -1217,18 +1221,17 @@ pub fn get_app_data_dir() -> Result<String, String> {
 }
 
 // 刷新所有文件类型项目的图标
-fn refresh_file_icons() -> Result<(), String> {
+fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     use crate::database;
     use crate::file_handler::FileClipboardData;
 
     println!("开始刷新文件图标...");
 
-    // 获取所有剪贴板历史记录
-    let items = database::get_clipboard_history(None)?;
-
     let mut updated_count = 0;
 
-    for item in items {
+    // 1. 刷新剪贴板历史记录中的文件图标
+    let clipboard_items = database::get_clipboard_history(None)?;
+    for item in clipboard_items {
         // 检查是否是文件类型的项目
         if item.text.starts_with("files:") {
             let json_str = item.text.strip_prefix("files:").unwrap_or("");
@@ -1262,6 +1265,57 @@ fn refresh_file_icons() -> Result<(), String> {
         }
     }
 
+    // 2. 刷新常用文本列表中的文件图标
+    let quick_texts = database::get_all_quick_texts()?;
+    for text in quick_texts {
+        // 检查是否是文件类型的常用文本
+        if text.content.starts_with("files:") {
+            let json_str = text.content.strip_prefix("files:").unwrap_or("");
+
+            // 解析文件数据
+            if let Ok(mut file_data) = serde_json::from_str::<FileClipboardData>(json_str) {
+                let mut has_changes = false;
+
+                // 为每个文件重新生成图标
+                for file in &mut file_data.files {
+                    if let Ok(new_icon) = crate::file_handler::get_file_icon(&file.path) {
+                        if file.icon_data.as_ref() != Some(&new_icon) {
+                            file.icon_data = Some(new_icon);
+                            has_changes = true;
+                        }
+                    }
+                }
+
+                // 如果有变化，更新数据库
+                if has_changes {
+                    if let Ok(updated_json) = serde_json::to_string(&file_data) {
+                        let updated_content = format!("files:{}", updated_json);
+
+                        // 创建更新后的常用文本对象
+                        let mut updated_text = text.clone();
+                        updated_text.content = updated_content;
+                        updated_text.updated_at = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64;
+
+                        if let Err(e) = database::update_quick_text(&updated_text) {
+                            println!("更新常用文本 {} 失败: {}", text.id, e);
+                        } else {
+                            updated_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     println!("文件图标刷新完成，更新了 {} 个项目", updated_count);
+
+    // 发送事件通知前端刷新数据
+    if let Err(e) = app_handle.emit("file-icons-refreshed", updated_count) {
+        println!("发送文件图标刷新事件失败: {}", e);
+    }
+
     Ok(())
 }
