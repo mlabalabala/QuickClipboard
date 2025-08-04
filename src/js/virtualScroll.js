@@ -37,6 +37,7 @@ export class VirtualScroll {
     // 性能优化
     this.isScrolling = false;
     this.scrollTimer = null;
+    this.resizeTimer = null;
     this.resizeObserver = null;
 
     this.init();
@@ -112,8 +113,16 @@ export class VirtualScroll {
     // 监听容器大小变化
     if (window.ResizeObserver) {
       this.resizeObserver = new ResizeObserver(() => {
-        this.updateContainerHeight();
-        this.updateVisibleRange();
+        // 使用防抖机制，避免频繁触发
+        if (this.resizeTimer) {
+          clearTimeout(this.resizeTimer);
+        }
+        this.resizeTimer = setTimeout(() => {
+          this.updateContainerHeight();
+          if (this.data.length > 0) {
+            this.updateVisibleRange();
+          }
+        }, 100);
       });
       this.resizeObserver.observe(this.container);
     }
@@ -150,6 +159,12 @@ export class VirtualScroll {
 
     const wasZero = this.containerHeight === 0;
     const heightChanged = Math.abs(this.containerHeight - newHeight) > 10;
+
+    // 防止容器高度被意外设置为0（除非是初始状态）
+    if (newHeight === 0 && this.containerHeight > 0) {
+      // 容器可能被隐藏了，不更新高度，保持之前的值
+      return;
+    }
 
     this.containerHeight = newHeight;
 
@@ -223,6 +238,13 @@ export class VirtualScroll {
   updateVisibleRange() {
     if (!this.data.length) {
       this.renderItems();
+      return;
+    }
+
+    // 检查容器是否可见
+    const rect = this.container.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      // 容器不可见，不进行渲染
       return;
     }
 
@@ -357,6 +379,9 @@ export class VirtualScroll {
     }
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
+    }
+    if (this.resizeTimer) {
+      clearTimeout(this.resizeTimer);
     }
     this.container.innerHTML = '';
   }
