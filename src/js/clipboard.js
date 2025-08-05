@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import {
   clipboardHistory,
   setClipboardHistory,
@@ -6,8 +7,7 @@ import {
   setActiveItemIndex,
   isDragging,
   currentFilter,
-  searchInput,
-  clipboardList
+  searchInput
 } from './config.js';
 import { showNotification } from './ui.js';
 import { showContextMenu } from './contextMenu.js';
@@ -17,110 +17,162 @@ import {
   showTranslationIndicator,
   hideTranslationIndicator
 } from './aiTranslation.js';
-import {
-  setFileIcon,
-  isImageFile,
-  createFileIconElement
-} from './fileIconUtils.js';
-import { ClipboardVirtualScroll } from './virtualScrollAdapter.js';
+
+import { VirtualList } from './virtualList.js';
 
 // 图片缓存
 const imageCache = new Map();
 const thumbnailCache = new Map();
 
-// 虚拟滚动实例
-let clipboardVirtualScroll = null;
+// 虚拟列表实例
+let clipboardVirtualList = null;
 
-// 导出虚拟滚动实例的访问器
-export function getClipboardVirtualScroll() {
-  return clipboardVirtualScroll;
+// 生成剪贴板项目HTML字符串
+function generateClipboardItemHTML(item, index) {
+  const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
+  const contentType = isImage ? 'image' : getContentType(item.text);
+
+  let contentHTML = '';
+
+  // 生成内容HTML
+  if (isImage) {
+    contentHTML = generateImageHTML(item);
+  } else if (contentType === 'files') {
+    contentHTML = generateFilesHTML(item);
+  } else {
+    contentHTML = `<div class="clipboard-text">${escapeHtml(item.text)}</div>`;
+  }
+
+  // 生成序号和快捷键
+  const numberHTML = `<div class="clipboard-number">${index + 1}</div>`;
+  const shortcutHTML = index < 9 ?
+    `<div class="clipboard-index">Ctrl+${index + 1}</div>` : '';
+
+  // 生成操作按钮
+  let actionsHTML = '<div class="clipboard-actions">';
+
+  // 链接打开按钮
+  if (contentType === 'link') {
+    actionsHTML += `
+      <button class="action-button open-link" title="在浏览器中打开" style="display: none;">
+        <i class="ti ti-external-link"></i>
+      </button>
+    `;
+  }
+
+  // 添加到常用按钮
+  actionsHTML += `
+    <button class="action-button add-to-favorites" title="添加到常用" style="display: none;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-star">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" />
+      </svg>
+    </button>
+  `;
+
+  actionsHTML += '</div>';
+
+  // 组合完整的HTML
+  const activeClass = index === activeItemIndex ? ' active' : '';
+  const noShortcutClass = index >= 9 ? ' no-shortcut' : '';
+
+  return `
+    <div class="clipboard-item${activeClass}${noShortcutClass}" draggable="true" data-index="${index}">
+      ${contentHTML}
+      ${numberHTML}
+      ${shortcutHTML}
+      ${actionsHTML}
+    </div>
+  `;
 }
 
-// 初始化虚拟滚动
-export function initClipboardVirtualScroll() {
-  if (!clipboardList) {
-    console.error('剪贴板列表容器不存在');
-    return;
-  }
-
-  // 销毁现有实例
-  if (clipboardVirtualScroll) {
-    clipboardVirtualScroll.destroy();
-  }
-
-  // 创建新的虚拟滚动实例
-  clipboardVirtualScroll = new ClipboardVirtualScroll(clipboardList, {
-    estimatedItemHeight: 80,
-    overscan: 3,
-    onItemClick: handleClipboardItemClick,
-    onItemContextMenu: showClipboardContextMenu
-  });
-
-  // 设置初始数据
-  if (clipboardHistory.length > 0) {
-    clipboardVirtualScroll.setOriginalData(clipboardHistory);
-  }
-
-  // 虚拟滚动初始化完成后，初始化拖拽排序
-  setTimeout(() => {
-    import('./sortable.js').then(module => {
-      module.initClipboardSortable();
-    }).catch(err => {
-      console.error('Failed to initialize sortable:', err);
-    });
-  }, 200);
+// HTML转义函数
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
-// 处理剪贴板项目点击
-async function handleClipboardItemClick(item, index, event) {
-  if (isDragging) return;
+// 生成图片HTML
+function generateImageHTML(item) {
+  // 为图片元素生成唯一ID，用于后续异步加载
+  const imgId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  try {
-    // 设置活动项目索引
-    setActiveItemIndex(index);
+  if (item.image_id) {
+    // 新格式：使用image_id字段
+    return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${item.image_id}" data-needs-load="true" loading="lazy">`;
+  } else if (item.text.startsWith('image:')) {
+    // 从text中提取image_id
+    const imageId = item.text.substring(6);
+    return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">`;
+  } else if (item.text.startsWith('data:image/')) {
+    // 旧格式的完整图片数据
+    return `<img class="clipboard-image" src="${item.text}" alt="剪贴板图片" loading="lazy">`;
+  } else {
+    // 未知格式，显示占位符
+    return `<div class="clipboard-image" style="background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #666;">图片加载失败</div>`;
+  }
+}
 
-    // 检查内容类型
-    const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
-    const contentType = isImage ? 'image' : getContentType(item.text);
-    const isFiles = contentType === 'files';
-    const isText = contentType === 'text';
+// 生成文件图标HTML字符串
+function generateFileIconHTML(file, size = 'medium') {
+  const sizeMap = {
+    small: '16px',
+    medium: '20px',
+    large: '24px'
+  };
 
-    // 对于文本内容，检查是否需要翻译
-    if (isText) {
-      const translationCheck = shouldTranslateText(item.text, 'paste');
-      const needsTranslation = translationCheck.should;
+  const iconSize = sizeMap[size] || sizeMap.medium;
+  const alt = file.file_type || '文件';
 
-      if (needsTranslation) {
-        console.log('开始剪贴板AI翻译:', item.text, '原因:', translationCheck.reason);
-        showTranslationIndicator('正在翻译...');
+  // 获取图标数据
+  let iconSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+  let needsAsyncLoad = false;
+  let filePath = '';
 
-        const fallbackPaste = async () => {
-          await invoke('paste_content', {
-            params: {
-              content: item.text,
-              content_type: 'text'
-            }
-          });
-        };
-
-        await safeTranslateAndInputText(item.text, fallbackPaste);
-        hideTranslationIndicator();
-        return;
-      }
+  if (file.icon_data) {
+    if (file.icon_data.startsWith('image_file://')) {
+      // 这是一个图片文件路径，需要异步加载
+      filePath = file.icon_data.substring(13);
+      needsAsyncLoad = true;
+    } else {
+      // 使用原有的base64数据
+      iconSrc = file.icon_data;
     }
+  }
 
-    // 直接粘贴内容
-    await invoke('paste_content', {
-      params: {
-        content: item.text,
-        content_type: contentType
-      }
+  const dataAttributes = needsAsyncLoad ?
+    `data-file-path="${escapeHtml(filePath)}" data-needs-load="true"` : '';
+
+  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; object-fit: cover; border-radius: 2px;" ${dataAttributes}>`;
+}
+
+// 生成文件HTML
+function generateFilesHTML(item) {
+  try {
+    const filesJson = item.text.substring(6);
+    const filesData = JSON.parse(filesJson);
+
+    let filesHTML = `<div class="file-count">${filesData.files.length} 个文件</div>`;
+    filesHTML += '<div class="clipboard-files">';
+
+    filesData.files.forEach(file => {
+      const iconHTML = generateFileIconHTML(file, 'medium');
+      filesHTML += `
+        <div class="file-item">
+          ${iconHTML}
+          <div class="file-info">
+            <div class="file-name">${escapeHtml(file.name)}</div>
+            <div class="file-path">${escapeHtml(file.path)}</div>
+          </div>
+        </div>
+      `;
     });
 
-    showNotification('已粘贴到剪贴板', 'success');
+    filesHTML += '</div>';
+    return filesHTML;
   } catch (error) {
-    console.error('粘贴失败:', error);
-    showNotification('粘贴失败', 'error');
+    return `<div class="clipboard-text">文件数据解析错误</div>`;
   }
 }
 
@@ -167,6 +219,10 @@ export async function refreshClipboardHistory() {
       // 如果历史记录有变化，更新UI
       if (JSON.stringify(history) !== JSON.stringify(clipboardHistory)) {
         setClipboardHistory(history);
+
+        // 将剪贴板历史设置到全局作用域，供虚拟列表拖拽使用
+        window.clipboardHistory = history;
+
         renderClipboardItems();
       }
       return; // 成功获取，退出重试循环
@@ -259,111 +315,293 @@ export async function addClipboardToFavorites(index) {
 // 更新剪贴板历史顺序
 export async function updateClipboardOrder(oldIndex, newIndex) {
   try {
-    // 检查是否有搜索或过滤，如果有，则需要映射到原始数据索引
-    let actualOldIndex = oldIndex;
-    let actualNewIndex = newIndex;
+    const filteredData = getFilteredClipboardData();
 
-    if (clipboardVirtualScroll) {
-      const currentData = clipboardVirtualScroll.getCurrentDisplayData();
-      const originalData = clipboardVirtualScroll.originalData || clipboardHistory;
-
-      // 如果当前显示的数据和原始数据不同（有过滤），需要映射索引
-      if (currentData.length !== originalData.length) {
-        // 获取被移动的项目
-        const movedItem = currentData[oldIndex];
-        const targetItem = currentData[newIndex];
-
-        if (!movedItem) {
-          return;
-        }
-
-        // 在原始数据中找到对应的索引
-        actualOldIndex = originalData.findIndex(item =>
-          item.text === movedItem.text && item.timestamp === movedItem.timestamp
-        );
-        actualNewIndex = originalData.findIndex(item =>
-          item.text === targetItem.text && item.timestamp === targetItem.timestamp
-        );
-
-        if (actualOldIndex === -1 || actualNewIndex === -1) {
-          return;
-        }
-      }
-    }
-
-    // 验证映射后的索引是否在有效范围内
-    const maxValidIndex = clipboardHistory.length - 1;
-    if (actualOldIndex < 0 || actualNewIndex < 0 || actualOldIndex > maxValidIndex || actualNewIndex > maxValidIndex) {
+    if (oldIndex >= filteredData.length || newIndex >= filteredData.length) {
       return;
     }
 
-    // 根据DOM的当前顺序重建数组
-    const clipboardContainer = document.querySelector('.clipboard-list');
-    const domItems = clipboardContainer.querySelectorAll('.clipboard-item');
+    const movedItem = filteredData[oldIndex];
+    const targetItem = filteredData[newIndex];
 
-    // 根据DOM顺序重建数组
-    const newClipboardHistory = [];
-    domItems.forEach((domItem) => {
-      const domText = domItem.querySelector('.clipboard-text')?.textContent || '';
+    const originalOldIndex = clipboardHistory.findIndex(item =>
+      item.text === movedItem.text && item.timestamp === movedItem.timestamp
+    );
+    const originalNewIndex = clipboardHistory.findIndex(item =>
+      item.text === targetItem.text && item.timestamp === targetItem.timestamp
+    );
 
-      // 在原数组中找到对应的完整数据对象
-      const matchingItem = clipboardHistory.find(item =>
-        (item?.text || '') === domText
-      );
-
-      if (matchingItem) {
-        newClipboardHistory.push(matchingItem);
-      }
-    });
-
-    // 替换原数组
-    clipboardHistory.length = 0;
-    clipboardHistory.push(...newClipboardHistory);
-
-    // 更新剪贴板历史
-    setClipboardHistory([...clipboardHistory]);
-
-    // 调用后端更新顺序 - 传递完整的排序后的历史记录
-    // 确保传递的是完整的历史记录，而不仅仅是可见项目
-    const completeOrderedHistory = clipboardHistory.filter(item => item && typeof item.text === 'string');
-
-    try {
-      await invoke('reorder_clipboard_history', {
-        items: completeOrderedHistory.map(item => item.text)
-      });
-    } catch (error) {
-      throw error;
+    if (originalOldIndex === -1 || originalNewIndex === -1) {
+      return;
     }
 
-    // 重新渲染列表（使用当前的前端排序）
-    renderClipboardItems();
+    await invoke('move_clipboard_item', {
+      fromIndex: originalOldIndex,
+      toIndex: originalNewIndex
+    });
+
+    await refreshClipboardHistory();
+
   } catch (error) {
-    // 如果更新失败，重新获取历史记录
+    console.error('更新剪贴板顺序失败:', error);
     await refreshClipboardHistory();
   }
 }
 
-// 渲染剪贴板项目（使用虚拟滚动）
+// 初始化虚拟列表
+function initClipboardVirtualList() {
+
+  if (clipboardVirtualList) {
+    clipboardVirtualList.destroy();
+  }
+
+  clipboardVirtualList = new VirtualList({
+    scrollId: 'clipboard-list',
+    contentId: 'clipboard-content',
+    data: getFilteredClipboardData(),
+    renderItem: generateClipboardItemHTML,
+    onSort: updateClipboardOrder,
+    onItemClick: handleClipboardItemClick,
+    onItemContextMenu: handleClipboardItemContextMenu,
+    sortableOptions: {
+      onStart: () => {
+        document.querySelector('.tab-content.active').classList.add('dragging');
+        const sidebar = document.getElementById('groups-sidebar');
+        if (sidebar && !sidebar.classList.contains('pinned')) {
+          sidebar.classList.add('show');
+        }
+      },
+      onEnd: () => {
+        document.querySelector('.tab-content.active').classList.remove('dragging');
+        const sidebar = document.getElementById('groups-sidebar');
+        if (sidebar && !sidebar.classList.contains('pinned')) {
+          sidebar.classList.remove('show');
+        }
+      }
+    }
+  });
+}
+
+// 获取过滤后的剪贴板数据
+function getFilteredClipboardData() {
+  const searchTerm = searchInput.value.toLowerCase();
+  const filterType = currentFilter;
+
+  return clipboardHistory.filter((item) => {
+    // 使用新的数据结构判断类型
+    const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
+    const contentType = isImage ? 'image' : getContentType(item.text);
+
+    // 类型筛选
+    if (filterType !== 'all' && contentType !== filterType) {
+      return false;
+    }
+
+    // 搜索过滤：支持文本、链接和文件类型
+    if (searchTerm) {
+      let shouldShow = false;
+
+      if (contentType === 'files') {
+        // 文件类型：搜索文件名和路径
+        try {
+          const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+          const filesData = JSON.parse(filesJson);
+          const searchableText = filesData.files.map(file =>
+            `${file.name} ${file.path} ${file.file_type}`
+          ).join(' ').toLowerCase();
+          shouldShow = searchableText.includes(searchTerm);
+        } catch (error) {
+          shouldShow = false;
+        }
+      } else if (contentType === 'image') {
+        // 图片类型：暂不支持搜索
+        shouldShow = false;
+      } else {
+        // 文本和链接类型：搜索内容
+        shouldShow = item.text.toLowerCase().includes(searchTerm);
+      }
+
+      return shouldShow;
+    }
+
+    return true;
+  });
+}
+
+// 渲染剪贴板项目
+// 异步加载文件图标和图片
+async function loadFileIcons() {
+  // 加载文件图标
+  const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
+
+  for (const icon of fileIcons) {
+    const filePath = icon.getAttribute('data-file-path');
+    if (filePath) {
+      try {
+        const dataUrl = await invoke('read_image_file', { filePath });
+        icon.src = dataUrl;
+        icon.style.objectFit = 'cover';
+        icon.style.borderRadius = '2px';
+        icon.removeAttribute('data-needs-load');
+        icon.removeAttribute('data-file-path');
+      } catch (error) {
+        console.warn('加载文件图标失败:', error);
+        // 保持默认图标
+      }
+    }
+  }
+
+  // 加载剪贴板图片
+  const clipboardImages = document.querySelectorAll('.clipboard-image[data-needs-load="true"]');
+
+  for (const img of clipboardImages) {
+    const imageId = img.getAttribute('data-image-id');
+    if (imageId) {
+      try {
+        await loadImageById(img, imageId, true); // 先加载缩略图
+        img.removeAttribute('data-needs-load');
+        img.removeAttribute('data-image-id');
+      } catch (error) {
+        console.warn('加载剪贴板图片失败:', error);
+        img.alt = '图片加载失败';
+        img.style.backgroundColor = '#e0e0e0';
+      }
+    }
+  }
+}
+
 export function renderClipboardItems() {
-  // 如果虚拟滚动未初始化，先初始化
-  if (!clipboardVirtualScroll) {
-    initClipboardVirtualScroll();
+  if (!clipboardVirtualList) {
+    initClipboardVirtualList();
+  } else {
+    const filteredData = getFilteredClipboardData();
+    clipboardVirtualList.updateData(filteredData);
   }
 
-  // 更新数据
-  if (clipboardVirtualScroll) {
-    clipboardVirtualScroll.setOriginalData(clipboardHistory);
+  // 异步加载文件图标
+  setTimeout(() => {
+    loadFileIcons();
+  }, 0);
 
-    // 应用当前的搜索和筛选
-    const searchTerm = searchInput.value.toLowerCase();
-    const filterType = currentFilter;
-    clipboardVirtualScroll.setFilter(searchTerm, filterType);
-  }
-
-  // 通知导航系统列表已更新
+  // 通知导航模块列表已更新
   import('./navigation.js').then(module => {
     module.onListUpdate();
   }).catch(() => { });
+}
+
+// 处理剪贴板项目点击事件
+function handleClipboardItemClick(index, event) {
+  if (isDragging) return;
+
+  // 获取过滤后的数据，因为虚拟列表使用的是过滤后的数据
+  const filteredData = getFilteredClipboardData();
+  const item = filteredData[index];
+  if (!item) return;
+
+  // 找到在原始数组中的索引
+  const originalIndex = clipboardHistory.findIndex(originalItem => originalItem === item);
+  if (originalIndex === -1) return;
+
+  // 检查是否点击了操作按钮
+  if (event.target.closest('.action-button')) {
+    const button = event.target.closest('.action-button');
+
+    if (button.classList.contains('open-link')) {
+      event.stopPropagation();
+      openLink(item.text);
+      return;
+    }
+
+    if (button.classList.contains('add-to-favorites')) {
+      event.stopPropagation();
+      addClipboardToFavorites(originalIndex).then(() => {
+        window.dispatchEvent(new CustomEvent('refreshQuickTexts'));
+      }).catch(error => {
+        console.error('添加到常用失败:', error);
+      });
+      return;
+    }
+  }
+
+  // 处理主要的点击事件（粘贴）
+  handleClipboardItemPaste(item, originalIndex);
+}
+
+// 处理剪贴板项目右键菜单
+function handleClipboardItemContextMenu(index, event) {
+  event.preventDefault();
+
+  // 获取过滤后的数据，因为虚拟列表使用的是过滤后的数据
+  const filteredData = getFilteredClipboardData();
+  const item = filteredData[index];
+  if (!item) return;
+
+  // 找到在原始数组中的索引
+  const originalIndex = clipboardHistory.findIndex(originalItem => originalItem === item);
+  if (originalIndex === -1) return;
+
+  showClipboardContextMenu(event, item, originalIndex);
+}
+
+// 处理剪贴板项目粘贴
+async function handleClipboardItemPaste(item, index) {
+  try {
+    // 检查是否需要AI翻译
+    const contentType = getContentType(item.text);
+    const isTextContent = contentType === 'text';
+    const translationCheck = isTextContent ? shouldTranslateText(item.text, 'paste') : { should: false, reason: '非文本内容' };
+    const needsTranslation = translationCheck.should;
+
+    if (needsTranslation) {
+      // 使用AI翻译并流式输入
+      console.log('开始AI翻译:', item.text, '原因:', translationCheck.reason);
+      showTranslationIndicator('正在翻译...');
+
+      // 定义降级回调函数
+      const fallbackPaste = async () => {
+        const params = {
+          content: item.text,
+          one_time: false
+        };
+        await invoke('paste_content', { params });
+      };
+
+      try {
+        const result = await safeTranslateAndInputText(item.text, fallbackPaste);
+
+        setActiveItem(index);
+
+        if (result.success) {
+          if (result.method === 'translation') {
+            console.log('AI翻译成功完成');
+          } else if (result.method === 'fallback') {
+            console.log('使用降级处理完成粘贴:', result.error);
+          }
+
+          hideTranslationIndicator();
+        } else {
+          console.error('AI翻译失败:', result.error);
+          hideTranslationIndicator();
+          showNotification('翻译失败，请重试', 'error');
+        }
+      } catch (error) {
+        console.error('AI翻译过程中发生错误:', error);
+        hideTranslationIndicator();
+        showNotification('翻译过程中发生错误', 'error');
+      }
+    } else {
+      // 不需要翻译，直接粘贴
+      const params = {
+        content: item.text,
+        one_time: false
+      };
+      await invoke('paste_content', { params });
+      setActiveItem(index);
+    }
+  } catch (error) {
+    console.error('粘贴失败:', error);
+    showNotification('粘贴失败', 'error');
+  }
 }
 
 
@@ -532,37 +770,7 @@ async function openTextEditor(item, index) {
   }
 }
 
-// 创建图片元素（支持延迟加载）
-function createImageElement(container, item) {
-  const imgElement = document.createElement('img');
-  imgElement.className = 'clipboard-image';
 
-  // 添加加载状态
-  imgElement.style.pointerEvents = 'none';
-  imgElement.style.backgroundColor = '#f0f0f0';
-  imgElement.style.minHeight = '100px';
-  imgElement.style.display = 'flex';
-  imgElement.style.alignItems = 'center';
-  imgElement.style.justifyContent = 'center';
-
-  // 如果是新格式的图片引用
-  if (item.image_id) {
-    loadImageById(imgElement, item.image_id, true); // 先加载缩略图
-  } else if (item.text.startsWith('image:')) {
-    // 从text中提取image_id
-    const imageId = item.text.substring(6); // 去掉 "image:" 前缀
-    loadImageById(imgElement, imageId, true);
-  } else if (item.text.startsWith('data:image/')) {
-    // 旧格式的完整图片数据
-    imgElement.src = item.text;
-  } else {
-    // 未知格式，显示占位符
-    imgElement.alt = '图片加载失败';
-    imgElement.style.backgroundColor = '#e0e0e0';
-  }
-
-  container.appendChild(imgElement);
-}
 
 // 根据图片ID加载图片
 export async function loadImageById(imgElement, imageId, useThumbnail = true) {
@@ -604,66 +812,7 @@ export async function loadImageById(imgElement, imageId, useThumbnail = true) {
   }
 }
 
-// 创建文件元素
-function createFilesElement(container, item) {
-  try {
-    // 解析文件数据
-    const filesData = JSON.parse(item.text.substring(6)); // 去掉 "files:" 前缀
 
-    const filesContainer = document.createElement('div');
-    filesContainer.className = 'clipboard-files';
-
-    // 创建文件列表
-    filesData.files.forEach((file) => {
-      const fileItem = document.createElement('div');
-      fileItem.className = 'file-item';
-
-      // 文件图标 - 使用新的工具函数
-      const iconElement = createFileIconElement(file, 'large');
-
-      // 文件信息
-      const infoElement = document.createElement('div');
-      infoElement.className = 'file-info';
-
-      const nameElement = document.createElement('div');
-      nameElement.className = 'file-name';
-      nameElement.textContent = file.name;
-      nameElement.title = file.path;
-
-      const detailsElement = document.createElement('div');
-      detailsElement.className = 'file-details';
-      detailsElement.textContent = `${file.file_type} • ${formatFileSize(file.size)}`;
-
-      infoElement.appendChild(nameElement);
-      infoElement.appendChild(detailsElement);
-
-      fileItem.appendChild(iconElement);
-      fileItem.appendChild(infoElement);
-
-      filesContainer.appendChild(fileItem);
-    });
-
-    // 文件容器不需要特殊的点击事件处理，让事件冒泡到父级 clipboard-item
-    container.appendChild(filesContainer);
-
-  } catch (error) {
-    console.error('解析文件数据失败:', error);
-    const errorElement = document.createElement('div');
-    errorElement.className = 'clipboard-text';
-    errorElement.textContent = '文件数据解析失败';
-    errorElement.style.color = '#c62828';
-    container.appendChild(errorElement);
-  }
-}
-
-// 格式化文件大小
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
 
 // 获取剪贴板中的文件列表
 export async function getClipboardFiles() {
@@ -674,28 +823,6 @@ export async function getClipboardFiles() {
     console.error('获取剪贴板文件失败:', error);
     return [];
   }
-}
-
-// 显示错误提示
-function showErrorToast(message) {
-  // 移除现有的错误提示
-  const existingToast = document.querySelector('.error-toast');
-  if (existingToast) {
-    existingToast.remove();
-  }
-
-  // 创建新的错误提示
-  const toast = document.createElement('div');
-  toast.className = 'error-toast';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  // 3秒后自动移除
-  setTimeout(() => {
-    if (toast.parentNode) {
-      toast.remove();
-    }
-  }, 3000);
 }
 
 // 从剪贴板查看原图

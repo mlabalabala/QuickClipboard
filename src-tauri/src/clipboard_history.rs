@@ -160,6 +160,38 @@ pub fn set_history_limit(limit: usize) {
     }
 }
 
+// 移动单个项目到指定位置
+pub fn move_item(from_index: usize, to_index: usize) -> Result<(), String> {
+    let items =
+        database::get_clipboard_history(None).map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
+
+    if from_index >= items.len() {
+        return Err(format!("源索引 {} 超出范围", from_index));
+    }
+
+    if to_index >= items.len() {
+        return Err(format!("目标索引 {} 超出范围", to_index));
+    }
+
+    if from_index == to_index {
+        return Ok(());
+    }
+
+    let mut reordered_items = items;
+    let moved_item = reordered_items.remove(from_index);
+    reordered_items.insert(to_index, moved_item);
+
+    let item_texts: Vec<String> = reordered_items
+        .iter()
+        .map(|item| item.text.clone())
+        .collect();
+
+    database::reorder_clipboard_items(&item_texts)
+        .map_err(|e| format!("数据库重新排序失败: {}", e))?;
+
+    Ok(())
+}
+
 // 重新排序历史记录
 pub fn reorder_history(items: Vec<String>) {
     if let Err(e) = database::reorder_clipboard_items(&items) {

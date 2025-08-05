@@ -1,3 +1,27 @@
+.clusterize-scroll {
+  overflow: auto;
+}
+
+.clusterize-extra-row {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.clusterize-extra-row.clusterize-keep-parity {
+  display: none;
+}
+
+.clusterize-content {
+  outline: 0;
+  counter-reset: clusterize-counter;
+}
+
+.clusterize-no-data {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
 .logo.vanilla:hover {
   filter: drop-shadow(0 0 2em #ffe21c);
 }
@@ -797,7 +821,8 @@ body {
   text-overflow: ellipsis;
 }
 
-.file-details {
+.file-details,
+.file-path {
   font-size: 10px;
   color: #666;
   white-space: nowrap;
@@ -1585,12 +1610,6 @@ body {
   z-index: 999;
 }
 
-/* 拖拽时强制显示侧边栏 */
-.groups-sidebar.dragging-active {
-  transform: translateX(0) !important;
-  right: 0 !important;
-  z-index: 999 !important;
-}
 
 .groups-sidebar.show {
   transform: translateX(0);

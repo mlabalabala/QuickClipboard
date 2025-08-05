@@ -60,11 +60,7 @@ pub fn add_quick_text_with_group(
 }
 
 // 更新常用文本
-pub fn update_quick_text(
-    id: String,
-    title: String,
-    content: String,
-) -> Result<QuickText, String> {
+pub fn update_quick_text(id: String, title: String, content: String) -> Result<QuickText, String> {
     update_quick_text_with_group(id, title, content, None)
 }
 
@@ -77,7 +73,7 @@ pub fn update_quick_text_with_group(
 ) -> Result<QuickText, String> {
     let now = chrono::Utc::now().timestamp();
     let group_id = group_id.unwrap_or_else(|| "all".to_string());
-    
+
     let updated_text = QuickText {
         id: id.clone(),
         title,
@@ -101,6 +97,57 @@ pub fn delete_quick_text(id: String) -> Result<(), String> {
     Ok(())
 }
 
+// 移动单个常用文本到指定位置
+pub fn move_item(item_id: String, to_index: usize) -> Result<(), String> {
+    // 获取所有常用文本
+    let all_texts =
+        database::get_all_quick_texts().map_err(|e| format!("获取常用文本失败: {}", e))?;
+
+    // 找到要移动的项目
+    let item_index = all_texts
+        .iter()
+        .position(|t| t.id == item_id)
+        .ok_or_else(|| format!("常用文本 {} 不存在", item_id))?;
+
+    if to_index >= all_texts.len() {
+        return Err(format!("目标索引 {} 超出范围", to_index));
+    }
+
+    if item_index == to_index {
+        return Ok(()); // 没有移动，直接返回
+    }
+
+    // 获取要移动的项目的分组ID
+    let item_group_id = &all_texts[item_index].group_id;
+
+    // 获取同一分组的所有项目
+    let mut group_texts: Vec<QuickText> = all_texts
+        .iter()
+        .filter(|t| &t.group_id == item_group_id)
+        .cloned()
+        .collect();
+
+    // 找到在分组内的索引
+    let group_item_index = group_texts
+        .iter()
+        .position(|t| t.id == item_id)
+        .ok_or_else(|| format!("在分组中找不到常用文本 {}", item_id))?;
+
+    if to_index >= group_texts.len() {
+        return Err(format!("目标索引 {} 超出分组范围", to_index));
+    }
+
+    // 在分组内重新排列
+    let moved_item = group_texts.remove(group_item_index);
+    group_texts.insert(to_index, moved_item);
+
+    // 调用数据库重新排序
+    database::reorder_quick_texts(&group_texts)
+        .map_err(|e| format!("数据库重新排序失败: {}", e))?;
+
+    Ok(())
+}
+
 // 重新排序常用文本
 pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
     // 验证传入的项目，确保它们都存在且 group_id 一致
@@ -110,7 +157,7 @@ pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
             if !exists {
                 return Err(format!("常用文本 {} 不存在", item.id));
             }
-            
+
             // 获取现有的分组ID进行验证
             if let Ok(existing_texts) = database::get_all_quick_texts() {
                 if let Some(existing) = existing_texts.iter().find(|t| t.id == item.id) {
@@ -128,7 +175,7 @@ pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
 
     // 在数据库中重新排序
     database::reorder_quick_texts(&items)?;
-    
+
     let group_name = group_id_check.unwrap_or_else(|| "未知".to_string());
     println!(
         "已在数据库中重新排序分组 {} 中的 {} 个常用文本",
@@ -143,11 +190,13 @@ pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
 pub fn move_quick_text_to_group(id: String, group_id: String) -> Result<(), String> {
     // 获取现有的常用文本
     let texts = database::get_all_quick_texts()?;
-    let existing_text = texts.iter().find(|t| t.id == id)
+    let existing_text = texts
+        .iter()
+        .find(|t| t.id == id)
         .ok_or_else(|| format!("常用文本 {} 不存在", id))?;
 
     let old_group_id = existing_text.group_id.clone();
-    
+
     // 创建更新后的文本
     let mut updated_text = existing_text.clone();
     updated_text.group_id = group_id.clone();
@@ -171,7 +220,7 @@ pub fn move_group_texts_to_all(group_id: &str) -> Result<(), String> {
     for mut text in texts {
         text.group_id = "all".to_string();
         text.updated_at = chrono::Utc::now().timestamp();
-        
+
         if let Err(e) = database::update_quick_text(&text) {
             println!("移动常用文本 {} 失败: {}", text.id, e);
         } else {
@@ -199,14 +248,13 @@ pub fn quick_text_exists(id: &str) -> Result<bool, String> {
 // 根据内容搜索常用文本
 pub fn search_quick_texts(query: &str) -> Vec<QuickText> {
     match database::get_all_quick_texts() {
-        Ok(texts) => {
-            texts.into_iter()
-                .filter(|text| {
-                    text.title.to_lowercase().contains(&query.to_lowercase()) ||
-                    text.content.to_lowercase().contains(&query.to_lowercase())
-                })
-                .collect()
-        }
+        Ok(texts) => texts
+            .into_iter()
+            .filter(|text| {
+                text.title.to_lowercase().contains(&query.to_lowercase())
+                    || text.content.to_lowercase().contains(&query.to_lowercase())
+            })
+            .collect(),
         Err(e) => {
             println!("搜索常用文本失败: {}", e);
             Vec::new()
@@ -227,7 +275,8 @@ pub fn get_quick_texts_stats() -> (usize, usize) {
     match database::get_all_quick_texts() {
         Ok(texts) => {
             let total_count = texts.len();
-            let groups_count = texts.iter()
+            let groups_count = texts
+                .iter()
                 .map(|t| &t.group_id)
                 .collect::<std::collections::HashSet<_>>()
                 .len();

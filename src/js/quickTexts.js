@@ -18,97 +18,136 @@ import {
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects } from './groups.js';
-import {
-  safeTranslateAndInputText,
-  showTranslationIndicator,
-  hideTranslationIndicator,
-  shouldTranslateText
-} from './aiTranslation.js';
-import { createFileIconElement } from './fileIconUtils.js';
+import { VirtualList } from './virtualList.js';
+import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
-import { QuickTextsVirtualScroll } from './virtualScrollAdapter.js';
 
-// 虚拟滚动实例
-let quickTextsVirtualScroll = null;
 
-// 初始化常用文本虚拟滚动
-export function initQuickTextsVirtualScroll() {
-  if (!quickTextsList) {
-    console.error('常用文本列表容器不存在');
-    return;
+// 虚拟列表实例
+let quickTextsVirtualList = null;
+
+// 生成常用文本项目HTML字符串
+function generateQuickTextItemHTML(text, index) {
+  const contentType = getContentType(text.content);
+
+  let contentHTML = '';
+
+  // 生成内容HTML
+  if (contentType === 'image') {
+    contentHTML = generateQuickTextImageHTML(text);
+  } else if (contentType === 'files') {
+    contentHTML = generateQuickTextFilesHTML(text);
+  } else {
+    contentHTML = `
+      <div class="quick-text-title">${escapeHtml(text.title)}</div>
+      <div class="quick-text-content">${escapeHtml(text.content)}</div>
+    `;
   }
 
-  // 销毁现有实例
-  if (quickTextsVirtualScroll) {
-    quickTextsVirtualScroll.destroy();
-  }
-
-  // 创建新的虚拟滚动实例
-  quickTextsVirtualScroll = new QuickTextsVirtualScroll(quickTextsList, {
-    estimatedItemHeight: 90,
-    overscan: 3,
-    onItemClick: handleQuickTextItemClick,
-    onItemContextMenu: showQuickTextContextMenu
-  });
-
-  // 设置初始数据
-  if (quickTexts.length > 0) {
-    quickTextsVirtualScroll.setOriginalData(quickTexts);
-  }
-
-  // 初始化拖拽排序
-  import('./sortable.js').then(module => {
-    module.initQuickTextsSortable();
-  }).catch(() => { });
+  return `
+    <div class="quick-text-item" draggable="true" data-index="${index}">
+      ${contentHTML}
+    </div>
+  `;
 }
 
-// 处理常用文本项目点击
-async function handleQuickTextItemClick(text, index, event) {
-  if (quickTextsVirtualScroll.isDragging) return;
+// HTML转义函数
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
-  try {
-    // 检查内容类型并显示加载状态
-    const contentType = getContentType(text.content);
-    const isImage = contentType === 'image';
-    const isFiles = contentType === 'files';
-    const isText = contentType === 'text';
+// 生成常用文本图片HTML
+function generateQuickTextImageHTML(text) {
+  // 为图片元素生成唯一ID，用于后续异步加载
+  const imgId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // 对于文本内容，检查是否需要翻译
-    if (isText) {
-      const translationCheck = shouldTranslateText(text.content, 'paste');
-      const needsTranslation = translationCheck.should;
+  if (text.content.startsWith('image:')) {
+    // 从content中提取image_id
+    const imageId = text.content.substring(6);
+    return `
+      <div class="quick-text-title">${escapeHtml(text.title)}</div>
+      <img id="${imgId}" class="quick-text-image" src="" alt="常用图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">
+    `;
+  } else if (text.content.startsWith('data:image/')) {
+    // 旧格式的完整图片数据
+    return `
+      <div class="quick-text-title">${escapeHtml(text.title)}</div>
+      <img class="quick-text-image" src="${text.content}" alt="常用图片" loading="lazy">
+    `;
+  } else {
+    // 未知格式，显示占位符
+    return `
+      <div class="quick-text-title">${escapeHtml(text.title)}</div>
+      <div class="quick-text-image" style="background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #666;">图片加载失败</div>
+    `;
+  }
+}
 
-      if (needsTranslation) {
-        console.log('开始常用文本AI翻译:', text.content, '原因:', translationCheck.reason);
-        showTranslationIndicator('正在翻译...');
+// 生成文件图标HTML字符串（复用clipboard.js中的逻辑）
+function generateFileIconHTML(file, size = 'medium') {
+  const sizeMap = {
+    small: '16px',
+    medium: '20px',
+    large: '24px'
+  };
 
-        const fallbackPaste = async () => {
-          await invoke('paste_content', {
-            params: {
-              content: text.content,
-              content_type: 'text'
-            }
-          });
-        };
+  const iconSize = sizeMap[size] || sizeMap.medium;
+  const alt = file.file_type || '文件';
 
-        await safeTranslateAndInputText(text.content, fallbackPaste);
-        hideTranslationIndicator();
-        return;
-      }
+  // 获取图标数据
+  let iconSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
+  let needsAsyncLoad = false;
+  let filePath = '';
+
+  if (file.icon_data) {
+    if (file.icon_data.startsWith('image_file://')) {
+      // 这是一个图片文件路径，需要异步加载
+      filePath = file.icon_data.substring(13);
+      needsAsyncLoad = true;
+    } else {
+      // 使用原有的base64数据
+      iconSrc = file.icon_data;
     }
+  }
 
-    // 直接粘贴内容
-    await invoke('paste_content', {
-      params: {
-        content: text.content,
-        content_type: contentType
-      }
+  const dataAttributes = needsAsyncLoad ?
+    `data-file-path="${escapeHtml(filePath)}" data-needs-load="true"` : '';
+
+  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; object-fit: cover; border-radius: 2px;" ${dataAttributes}>`;
+}
+
+// 生成常用文本文件HTML
+function generateQuickTextFilesHTML(text) {
+  try {
+    const filesJson = text.content.substring(6);
+    const filesData = JSON.parse(filesJson);
+
+    let filesHTML = `<div class="quick-text-title">${escapeHtml(text.title)}</div>`;
+    filesHTML += `<div class="file-count">${filesData.files.length} 个文件</div>`;
+    filesHTML += '<div class="files-container">';
+
+    filesData.files.forEach(file => {
+      const iconHTML = generateFileIconHTML(file, 'medium');
+      filesHTML += `
+        <div class="file-item">
+          ${iconHTML}
+          <div class="file-info">
+            <div class="file-name">${escapeHtml(file.name)}</div>
+            <div class="file-path">${escapeHtml(file.path)}</div>
+          </div>
+        </div>
+      `;
     });
 
-    showNotification('已粘贴常用文本', 'success');
+    filesHTML += '</div>';
+    return filesHTML;
   } catch (error) {
-    console.error('粘贴常用文本失败:', error);
-    showNotification('粘贴失败', 'error');
+    return `
+      <div class="quick-text-title">${escapeHtml(text.title)}</div>
+      <div class="quick-text-content">文件数据解析错误</div>
+    `;
   }
 }
 
@@ -304,48 +343,27 @@ export async function deleteQuickText(id) {
 // 更新常用文本顺序
 export async function updateQuickTextsOrder(oldIndex, newIndex) {
   try {
-    // 根据DOM的当前顺序重建数组
-    const quickTextsContainer = document.querySelector('.quick-texts-list');
-    const domItems = quickTextsContainer.querySelectorAll('.quick-text-item');
+    const filteredData = getFilteredQuickTextsData();
 
-    // 根据DOM顺序重建数组
-    const newQuickTexts = [];
-    domItems.forEach((domItem) => {
-      const domTitle = domItem.querySelector('.quick-text-title')?.textContent || '';
-
-      // 在原数组中找到对应的完整数据对象
-      const matchingItem = quickTexts.find(item =>
-        (item?.title || '') === domTitle
-      );
-
-      if (matchingItem) {
-        newQuickTexts.push(matchingItem);
-      }
-    });
-
-    // 替换原数组
-    quickTexts.length = 0;
-    quickTexts.push(...newQuickTexts);
-
-    try {
-      await invoke('reorder_quick_texts', {
-        items: quickTexts.map(text => ({
-          id: text.id,
-          title: text.title,
-          content: text.content,
-          created_at: text.created_at,
-          updated_at: text.updated_at,
-          group_id: text.group_id || 'all'
-        }))
-      });
-    } catch (error) {
-      throw error;
+    if (oldIndex >= filteredData.length || newIndex >= filteredData.length) {
+      return;
     }
 
-    // 重新渲染列表
-    renderQuickTexts();
+    const movedItem = filteredData[oldIndex];
+
+    if (!movedItem || !movedItem.id) {
+      return;
+    }
+
+    await invoke('move_quick_text_item', {
+      itemId: movedItem.id,
+      toIndex: newIndex
+    });
+
+    await refreshQuickTexts();
+
   } catch (error) {
-    // 如果更新失败，重新获取常用文本
+    console.error('更新常用文本顺序失败:', error);
     await refreshQuickTexts();
   }
 }
@@ -385,29 +403,231 @@ export function setupQuickTexts() {
   });
 }
 
-// 渲染常用文本列表（使用虚拟滚动）
+// 初始化常用文本虚拟列表
+function initQuickTextsVirtualList() {
+  if (quickTextsVirtualList) {
+    quickTextsVirtualList.destroy();
+  }
+
+  quickTextsVirtualList = new VirtualList({
+    scrollId: 'quick-texts-list',
+    contentId: 'quick-texts-content',
+    data: getFilteredQuickTextsData(),
+    renderItem: generateQuickTextItemHTML,
+    onSort: updateQuickTextsOrder,
+    onItemClick: handleQuickTextItemClick,
+    onItemContextMenu: handleQuickTextItemContextMenu,
+    sortableOptions: {
+      onStart: () => {
+        document.querySelector('.tab-content.active').classList.add('dragging');
+        const sidebar = document.getElementById('groups-sidebar');
+        if (sidebar && !sidebar.classList.contains('pinned')) {
+          sidebar.classList.add('show');
+        }
+      },
+      onEnd: () => {
+        document.querySelector('.tab-content.active').classList.remove('dragging');
+        const sidebar = document.getElementById('groups-sidebar');
+        if (sidebar && !sidebar.classList.contains('pinned')) {
+          sidebar.classList.remove('show');
+        }
+      }
+    }
+  });
+}
+
+// 获取过滤后的常用文本数据
+function getFilteredQuickTextsData() {
+  const searchTerm = quickTextsSearch.value.toLowerCase();
+  const filterType = currentQuickTextsFilter;
+
+  return quickTexts.filter(text => {
+    const contentType = getContentType(text.content);
+
+    // 类型筛选
+    if (filterType !== 'all' && contentType !== filterType) {
+      return false;
+    }
+
+    // 搜索过滤：支持文本、链接和文件类型
+    if (searchTerm) {
+      if (contentType === 'files') {
+        // 文件类型：搜索标题和文件内容
+        try {
+          const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
+          const filesData = JSON.parse(filesJson);
+          const searchableText = filesData.files.map(file =>
+            `${file.name} ${file.path} ${file.file_type}`
+          ).join(' ').toLowerCase();
+          return text.title.toLowerCase().includes(searchTerm) ||
+            searchableText.includes(searchTerm);
+        } catch (error) {
+          return text.title.toLowerCase().includes(searchTerm);
+        }
+      } else if (contentType === 'image') {
+        // 图片类型：只搜索标题
+        return text.title.toLowerCase().includes(searchTerm);
+      } else {
+        // 文本和链接类型：搜索标题和内容
+        return text.title.toLowerCase().includes(searchTerm) ||
+          text.content.toLowerCase().includes(searchTerm);
+      }
+    }
+
+    return true;
+  });
+}
+
+// 渲染常用文本列表
+// 异步加载文件图标和图片
+async function loadFileIcons() {
+  // 加载文件图标
+  const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
+
+  for (const icon of fileIcons) {
+    const filePath = icon.getAttribute('data-file-path');
+    if (filePath) {
+      try {
+        const dataUrl = await invoke('read_image_file', { filePath });
+        icon.src = dataUrl;
+        icon.style.objectFit = 'cover';
+        icon.style.borderRadius = '2px';
+        icon.removeAttribute('data-needs-load');
+        icon.removeAttribute('data-file-path');
+      } catch (error) {
+        console.warn('加载文件图标失败:', error);
+        // 保持默认图标
+      }
+    }
+  }
+
+  // 加载常用文本图片
+  const quickTextImages = document.querySelectorAll('.quick-text-image[data-needs-load="true"]');
+
+  for (const img of quickTextImages) {
+    const imageId = img.getAttribute('data-image-id');
+    if (imageId) {
+      try {
+        await loadImageById(img, imageId, true); // 先加载缩略图
+        img.removeAttribute('data-needs-load');
+        img.removeAttribute('data-image-id');
+      } catch (error) {
+        console.warn('加载常用文本图片失败:', error);
+        img.alt = '图片加载失败';
+        img.style.backgroundColor = '#e0e0e0';
+      }
+    }
+  }
+}
+
 export function renderQuickTexts() {
-  // 如果虚拟滚动未初始化，先初始化
-  if (!quickTextsVirtualScroll) {
-    initQuickTextsVirtualScroll();
+  if (!quickTextsVirtualList) {
+    initQuickTextsVirtualList();
+  } else {
+    const filteredData = getFilteredQuickTextsData();
+    quickTextsVirtualList.updateData(filteredData);
   }
 
-  // 更新数据
-  if (quickTextsVirtualScroll) {
-    quickTextsVirtualScroll.setOriginalData(quickTexts);
+  // 异步加载文件图标
+  setTimeout(() => {
+    loadFileIcons();
+  }, 0);
 
-    // 应用当前的搜索和筛选
-    const searchTerm = quickTextsSearch.value.toLowerCase();
-    const filterType = currentQuickTextsFilter;
-    quickTextsVirtualScroll.setFilter(searchTerm, filterType);
-  }
-
-  // 通知导航系统列表已更新
+  // 通知导航模块列表已更新
   import('./navigation.js').then(module => {
     module.onListUpdate();
   }).catch(() => { });
 }
 
+// 处理常用文本项目点击事件
+function handleQuickTextItemClick(index) {
+  if (isDragging) return;
+
+  // 获取过滤后的数据，因为虚拟列表使用的是过滤后的数据
+  const filteredData = getFilteredQuickTextsData();
+  const text = filteredData[index];
+  if (!text) return;
+
+  // 处理主要的点击事件（粘贴）
+  handleQuickTextItemPaste(text);
+}
+
+// 处理常用文本项目右键菜单
+function handleQuickTextItemContextMenu(index, event) {
+  event.preventDefault();
+
+  // 获取过滤后的数据，因为虚拟列表使用的是过滤后的数据
+  const filteredData = getFilteredQuickTextsData();
+  const text = filteredData[index];
+  if (text) {
+    showQuickTextContextMenu(event, text);
+  }
+}
+
+
+
+// 处理常用文本项目粘贴
+async function handleQuickTextItemPaste(text) {
+  try {
+    // 检查是否需要AI翻译
+    const contentType = getContentType(text.content);
+    const isTextContent = contentType === 'text';
+    const translationCheck = isTextContent ? shouldTranslateText(text.content, 'paste') : { should: false, reason: '非文本内容' };
+    const needsTranslation = translationCheck.should;
+
+    if (needsTranslation) {
+      // 使用AI翻译并流式输入
+      console.log('开始AI翻译:', text.content, '原因:', translationCheck.reason);
+      showTranslationIndicator('正在翻译...');
+
+      // 定义降级回调函数
+      const fallbackPaste = async () => {
+        await invoke('paste_content', {
+          params: {
+            content: text.content,
+            one_time: text.one_time || false,
+            quick_text_id: text.id
+          }
+        });
+      };
+
+      try {
+        const result = await safeTranslateAndInputText(text.content, fallbackPaste);
+
+        if (result.success) {
+          if (result.method === 'translation') {
+            console.log('AI翻译成功完成');
+          } else if (result.method === 'fallback') {
+            console.log('使用降级处理完成粘贴:', result.error);
+          }
+
+          hideTranslationIndicator();
+        } else {
+          console.error('AI翻译失败:', result.error);
+          hideTranslationIndicator();
+          showNotification('翻译失败，请重试', 'error');
+        }
+      } catch (error) {
+        console.error('AI翻译过程中发生错误:', error);
+        hideTranslationIndicator();
+        showNotification('翻译过程中发生错误', 'error');
+      }
+    } else {
+      // 使用统一的粘贴命令
+      await invoke('paste_content', {
+        params: {
+          content: text.content,
+          one_time: text.one_time || false,
+          quick_text_id: text.id
+        }
+      });
+    }
+  } catch (error) {
+    console.error('粘贴常用文本失败:', error);
+    showNotification('粘贴失败', 'error');
+    hideTranslationIndicator();
+  }
+}
 
 
 
@@ -495,67 +715,7 @@ function showQuickTextContextMenu(event, text) {
   });
 }
 
-// 创建常用文本文件元素
-function createQuickTextFilesElement(container, text) {
-  try {
-    // 解析文件数据
-    const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
-    const filesData = JSON.parse(filesJson);
 
-    // 创建文件容器
-    const filesContainer = document.createElement('div');
-    filesContainer.className = 'files-container';
-
-    // 添加文件数量标识
-    const fileCountElement = document.createElement('div');
-    fileCountElement.className = 'file-count';
-    fileCountElement.textContent = `${filesData.files.length} 个文件`;
-    filesContainer.appendChild(fileCountElement);
-
-    // 创建文件列表（显示所有文件）
-    filesData.files.forEach((file) => {
-      const fileItem = document.createElement('div');
-      fileItem.className = 'file-item';
-
-      // 文件图标 - 使用新的工具函数
-      const iconElement = createFileIconElement(file, 'medium');
-
-      // 文件信息
-      const infoElement = document.createElement('div');
-      infoElement.className = 'file-info';
-
-      const nameElement = document.createElement('div');
-      nameElement.className = 'file-name';
-      nameElement.textContent = file.name;
-      nameElement.title = file.path;
-
-      const detailsElement = document.createElement('div');
-      detailsElement.className = 'file-details';
-      detailsElement.textContent = `${formatFileSize(file.size)} • ${file.file_type}`;
-
-      infoElement.appendChild(nameElement);
-      infoElement.appendChild(detailsElement);
-
-      fileItem.appendChild(iconElement);
-      fileItem.appendChild(infoElement);
-      filesContainer.appendChild(fileItem);
-    });
-
-    container.appendChild(filesContainer);
-  } catch (error) {
-    console.error('解析文件数据失败:', error);
-    container.textContent = '文件数据解析失败';
-  }
-}
-
-// 格式化文件大小
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
 
 // 查看原图
 function viewOriginalImage(text) {
