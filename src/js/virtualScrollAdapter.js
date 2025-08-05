@@ -29,6 +29,26 @@ export class ClipboardVirtualScroll extends VirtualScroll {
     this.applyFilter();
   }
 
+  // 将DOM索引映射到实际数据索引
+  getDataIndexFromDOMIndex(domIndex) {
+    // 获取当前可见项目
+    const visibleItems = this.visibleItems || [];
+
+    if (domIndex < 0 || domIndex >= visibleItems.length) {
+      console.warn('DOM index out of range:', domIndex, 'visible items:', visibleItems.length);
+      return -1;
+    }
+
+    // 返回可见项目对应的实际数据索引
+    const visibleItem = visibleItems[domIndex];
+    return visibleItem ? visibleItem.index : -1;
+  }
+
+  // 获取当前显示的数据（用于拖拽排序）
+  getCurrentDisplayData() {
+    return this.data || [];
+  }
+
   applyFilter() {
     if (!this.originalData) {
       this.originalData = [...this.data];

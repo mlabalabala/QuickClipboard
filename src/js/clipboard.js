@@ -31,6 +31,11 @@ const thumbnailCache = new Map();
 // 虚拟滚动实例
 let clipboardVirtualScroll = null;
 
+// 导出虚拟滚动实例的访问器
+export function getClipboardVirtualScroll() {
+  return clipboardVirtualScroll;
+}
+
 // 初始化虚拟滚动
 export function initClipboardVirtualScroll() {
   if (!clipboardList) {
@@ -55,6 +60,15 @@ export function initClipboardVirtualScroll() {
   if (clipboardHistory.length > 0) {
     clipboardVirtualScroll.setOriginalData(clipboardHistory);
   }
+
+  // 虚拟滚动初始化完成后，初始化拖拽排序
+  setTimeout(() => {
+    import('./sortable.js').then(module => {
+      module.initClipboardSortable();
+    }).catch(err => {
+      console.error('Failed to initialize sortable:', err);
+    });
+  }, 200);
 }
 
 // 处理剪贴板项目点击
@@ -245,52 +259,85 @@ export async function addClipboardToFavorites(index) {
 // 更新剪贴板历史顺序
 export async function updateClipboardOrder(oldIndex, newIndex) {
   try {
-    // 获取当前显示的项目（考虑搜索过滤）
-    const searchTerm = searchInput.value.toLowerCase();
-    let visibleItems = [];
+    // 检查是否有搜索或过滤，如果有，则需要映射到原始数据索引
+    let actualOldIndex = oldIndex;
+    let actualNewIndex = newIndex;
 
-    if (searchTerm) {
-      // 如果有搜索，只处理可见的项目
-      visibleItems = clipboardHistory.filter(item => {
-        const isImage = item.text.startsWith('data:image/');
-        if (isImage) return false;
-        return item.text.toLowerCase().includes(searchTerm);
-      });
-    } else {
-      // 没有搜索，处理所有项目
-      visibleItems = [...clipboardHistory];
-    }
+    if (clipboardVirtualScroll) {
+      const currentData = clipboardVirtualScroll.getCurrentDisplayData();
+      const originalData = clipboardVirtualScroll.originalData || clipboardHistory;
 
-    // 重新排列可见项目
-    const [movedItem] = visibleItems.splice(oldIndex, 1);
-    visibleItems.splice(newIndex, 0, movedItem);
+      // 如果当前显示的数据和原始数据不同（有过滤），需要映射索引
+      if (currentData.length !== originalData.length) {
+        // 获取被移动的项目
+        const movedItem = currentData[oldIndex];
+        const targetItem = currentData[newIndex];
 
-    if (searchTerm) {
-      // 如果有搜索过滤，需要将重新排序的结果合并回完整列表
-      let filteredIndex = 0;
-      const newHistory = clipboardHistory.map(item => {
-        const isImage = item.text.startsWith('data:image/');
-        if (isImage || !item.text.toLowerCase().includes(searchTerm)) {
-          return item;
-        } else {
-          return visibleItems[filteredIndex++];
+        if (!movedItem) {
+          return;
         }
-      });
-      setClipboardHistory(newHistory);
-    } else {
-      // 没有搜索过滤，直接使用重新排序的结果
-      setClipboardHistory(visibleItems);
+
+        // 在原始数据中找到对应的索引
+        actualOldIndex = originalData.findIndex(item =>
+          item.text === movedItem.text && item.timestamp === movedItem.timestamp
+        );
+        actualNewIndex = originalData.findIndex(item =>
+          item.text === targetItem.text && item.timestamp === targetItem.timestamp
+        );
+
+        if (actualOldIndex === -1 || actualNewIndex === -1) {
+          return;
+        }
+      }
     }
 
-    // 调用后端更新顺序
-    await invoke('reorder_clipboard_history', {
-      items: clipboardHistory.map(item => item.text)
+    // 验证映射后的索引是否在有效范围内
+    const maxValidIndex = clipboardHistory.length - 1;
+    if (actualOldIndex < 0 || actualNewIndex < 0 || actualOldIndex > maxValidIndex || actualNewIndex > maxValidIndex) {
+      return;
+    }
+
+    // 根据DOM的当前顺序重建数组
+    const clipboardContainer = document.querySelector('.clipboard-list');
+    const domItems = clipboardContainer.querySelectorAll('.clipboard-item');
+
+    // 根据DOM顺序重建数组
+    const newClipboardHistory = [];
+    domItems.forEach((domItem) => {
+      const domText = domItem.querySelector('.clipboard-text')?.textContent || '';
+
+      // 在原数组中找到对应的完整数据对象
+      const matchingItem = clipboardHistory.find(item =>
+        (item?.text || '') === domText
+      );
+
+      if (matchingItem) {
+        newClipboardHistory.push(matchingItem);
+      }
     });
 
-    // 重新渲染列表
+    // 替换原数组
+    clipboardHistory.length = 0;
+    clipboardHistory.push(...newClipboardHistory);
+
+    // 更新剪贴板历史
+    setClipboardHistory([...clipboardHistory]);
+
+    // 调用后端更新顺序 - 传递完整的排序后的历史记录
+    // 确保传递的是完整的历史记录，而不仅仅是可见项目
+    const completeOrderedHistory = clipboardHistory.filter(item => item && typeof item.text === 'string');
+
+    try {
+      await invoke('reorder_clipboard_history', {
+        items: completeOrderedHistory.map(item => item.text)
+      });
+    } catch (error) {
+      throw error;
+    }
+
+    // 重新渲染列表（使用当前的前端排序）
     renderClipboardItems();
   } catch (error) {
-    console.error('更新剪贴板顺序失败:', error);
     // 如果更新失败，重新获取历史记录
     await refreshClipboardHistory();
   }
