@@ -55,6 +55,11 @@ export function initQuickTextsVirtualScroll() {
   if (quickTexts.length > 0) {
     quickTextsVirtualScroll.setOriginalData(quickTexts);
   }
+
+  // 初始化拖拽排序
+  import('./sortable.js').then(module => {
+    module.initQuickTextsSortable();
+  }).catch(() => { });
 }
 
 // 处理常用文本项目点击
@@ -299,59 +304,47 @@ export async function deleteQuickText(id) {
 // 更新常用文本顺序
 export async function updateQuickTextsOrder(oldIndex, newIndex) {
   try {
-    // 获取当前显示的项目（考虑搜索过滤）
-    const searchTerm = quickTextsSearch.value.toLowerCase();
-    let visibleItems = [];
+    // 根据DOM的当前顺序重建数组
+    const quickTextsContainer = document.querySelector('.quick-texts-list');
+    const domItems = quickTextsContainer.querySelectorAll('.quick-text-item');
 
-    if (searchTerm) {
-      // 如果有搜索，只处理可见的项目
-      visibleItems = quickTexts.filter(text => {
-        return text.title.toLowerCase().includes(searchTerm) ||
-          text.content.toLowerCase().includes(searchTerm);
-      });
-    } else {
-      // 没有搜索，处理所有项目
-      visibleItems = [...quickTexts];
-    }
+    // 根据DOM顺序重建数组
+    const newQuickTexts = [];
+    domItems.forEach((domItem) => {
+      const domTitle = domItem.querySelector('.quick-text-title')?.textContent || '';
 
-    // 重新排列可见项目
-    const [movedItem] = visibleItems.splice(oldIndex, 1);
-    visibleItems.splice(newIndex, 0, movedItem);
+      // 在原数组中找到对应的完整数据对象
+      const matchingItem = quickTexts.find(item =>
+        (item?.title || '') === domTitle
+      );
 
-    if (searchTerm) {
-      // 如果有搜索过滤，需要将重新排序的结果合并回完整列表
-      let filteredIndex = 0;
-      const newTexts = quickTexts.map(text => {
-        const matches = text.title.toLowerCase().includes(searchTerm) ||
-          text.content.toLowerCase().includes(searchTerm);
-        if (!matches) {
-          return text;
-        } else {
-          return visibleItems[filteredIndex++];
-        }
-      });
-      setQuickTexts(newTexts);
-    } else {
-      // 没有搜索过滤，直接使用重新排序的结果
-      setQuickTexts(visibleItems);
-    }
-
-    // 调用后端更新顺序
-    await invoke('reorder_quick_texts', {
-      items: quickTexts.map(text => ({
-        id: text.id,
-        title: text.title,
-        content: text.content,
-        created_at: text.created_at,
-        updated_at: text.updated_at,
-        group_id: text.group_id || 'all'  // 确保包含 group_id
-      }))
+      if (matchingItem) {
+        newQuickTexts.push(matchingItem);
+      }
     });
+
+    // 替换原数组
+    quickTexts.length = 0;
+    quickTexts.push(...newQuickTexts);
+
+    try {
+      await invoke('reorder_quick_texts', {
+        items: quickTexts.map(text => ({
+          id: text.id,
+          title: text.title,
+          content: text.content,
+          created_at: text.created_at,
+          updated_at: text.updated_at,
+          group_id: text.group_id || 'all'
+        }))
+      });
+    } catch (error) {
+      throw error;
+    }
 
     // 重新渲染列表
     renderQuickTexts();
   } catch (error) {
-    console.error('更新常用文本顺序失败:', error);
     // 如果更新失败，重新获取常用文本
     await refreshQuickTexts();
   }

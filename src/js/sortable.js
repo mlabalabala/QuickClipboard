@@ -7,7 +7,6 @@ import {
   setQuickTextsSortable
 } from './config.js';
 import { updateClipboardOrder } from './clipboard.js';
-import { updateQuickTextsOrder } from './quickTexts.js';
 
 // 初始化剪贴板拖拽排序
 export function initClipboardSortable() {
@@ -81,29 +80,71 @@ export function initClipboardSortable() {
   }
 }
 
-// 初始化拖拽排序
-export function initSortable() {
-  // 初始化常用文本列表拖拽排序
-  if (quickTextsList) {
-    const quickTextsSortable = Sortable.create(quickTextsList, {
+// 初始化常用文本拖拽排序
+export function initQuickTextsSortable() {
+  if (!quickTextsList) {
+    return;
+  }
+
+  // 对于虚拟滚动列表，需要找到实际包含quick-text-item的容器
+  const scrollContainer = quickTextsList.querySelector('div');
+  const viewport = scrollContainer ? scrollContainer.querySelector('div') : null;
+
+  if (viewport) {
+    const quickTextsSortable = Sortable.create(viewport, {
       animation: 150,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
-      onStart: function (evt) {
+      // 只允许拖拽quick-text-item元素
+      draggable: '.quick-text-item',
+      onStart: function () {
+        // 拖拽开始时禁用点击事件
         setIsDragging(true);
       },
-      onEnd: function (evt) {
-        setTimeout(() => {
-          setIsDragging(false);
-        }, 100);
+      onEnd: async function (evt) {
+        setIsDragging(false);
 
-        // 如果位置发生变化，更新常用文本顺序
-        if (evt.oldIndex !== evt.newIndex) {
-          updateQuickTextsOrder(evt.oldIndex, evt.newIndex);
+        let oldIndex = evt.oldIndex;
+        let newIndex = evt.newIndex;
+
+        // 获取当前可见的常用文本项目
+        const quickTextItems = Array.from(viewport.querySelectorAll('.quick-text-item'));
+
+        // 获取拖拽的元素信息并修正索引
+        const draggedElement = evt.item;
+        const draggedTitle = draggedElement.querySelector('.quick-text-title')?.textContent || '';
+
+        // 根据拖拽元素的标题内容找到正确的索引
+        const correctOldIndex = Array.from(quickTextItems).findIndex(item => {
+          const itemTitle = item.querySelector('.quick-text-title')?.textContent || '';
+          return itemTitle === draggedTitle;
+        });
+
+        if (correctOldIndex !== -1) {
+          oldIndex = correctOldIndex;
         }
+
+        // 修正newIndex越界问题
+        if (newIndex >= quickTextItems.length) {
+          newIndex = quickTextItems.length - 1;
+        }
+
+        // 如果位置没有变化，跳过重新排序
+        if (oldIndex === newIndex) {
+          return;
+        }
+
+        // 调用重新排序函数
+        const { updateQuickTextsOrder } = await import('./quickTexts.js');
+        await updateQuickTextsOrder(oldIndex, newIndex);
       }
     });
     setQuickTextsSortable(quickTextsSortable);
   }
+}
+
+// 初始化拖拽排序
+export function initSortable() {
+  // 常用文本拖拽排序现在由虚拟滚动初始化后调用
 }
