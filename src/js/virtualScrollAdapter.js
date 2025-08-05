@@ -19,6 +19,7 @@ export class ClipboardVirtualScroll extends VirtualScroll {
     this.filterType = 'all';
     this.onItemContextMenu = options.onItemContextMenu || (() => { });
     this.onItemDelete = options.onItemDelete || (() => { });
+    this.isDragging = false;
 
     this.renderItem = this.renderClipboardItem.bind(this);
   }
@@ -130,6 +131,9 @@ export class ClipboardVirtualScroll extends VirtualScroll {
       this.onItemContextMenu(e, item, index);
     });
 
+    // 设置拖拽到分组功能
+    this.setupClipboardDragAndDrop(clipboardItem, item, index);
+
     return clipboardItem;
   }
 
@@ -227,6 +231,42 @@ export class ClipboardVirtualScroll extends VirtualScroll {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  setupClipboardDragAndDrop(element, item, index) {
+    element.draggable = true;
+
+    element.addEventListener('dragstart', (e) => {
+      this.isDragging = true;
+      const dragData = JSON.stringify({
+        type: 'clipboard',
+        index: index,
+        text: item.text,
+        timestamp: item.timestamp
+      });
+
+      e.dataTransfer.setData('application/x-quickclipboard', dragData);
+      e.dataTransfer.setData('text/plain', dragData);
+      e.dataTransfer.effectAllowed = 'move';
+
+      document.querySelector('.tab-content.active').classList.add('dragging');
+      const sidebar = document.getElementById('groups-sidebar');
+      if (sidebar && !sidebar.classList.contains('pinned')) {
+        sidebar.classList.add('show', 'dragging-active');
+      }
+    });
+
+    element.addEventListener('dragend', () => {
+      this.isDragging = false;
+      document.querySelector('.tab-content.active').classList.remove('dragging');
+      const sidebar = document.getElementById('groups-sidebar');
+      if (sidebar && !sidebar.classList.contains('pinned')) {
+        // 延迟隐藏侧边栏，确保drop事件能够完成
+        setTimeout(() => {
+          sidebar.classList.remove('show', 'dragging-active');
+        }, 300);
+      }
+    });
   }
 }
 
@@ -451,7 +491,7 @@ export class QuickTextsVirtualScroll extends VirtualScroll {
       document.querySelector('.tab-content.active').classList.add('dragging');
       const sidebar = document.getElementById('groups-sidebar');
       if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.add('show');
+        sidebar.classList.add('show', 'dragging-active');
       }
     });
 
@@ -460,7 +500,10 @@ export class QuickTextsVirtualScroll extends VirtualScroll {
       document.querySelector('.tab-content.active').classList.remove('dragging');
       const sidebar = document.getElementById('groups-sidebar');
       if (sidebar && !sidebar.classList.contains('pinned')) {
-        sidebar.classList.remove('show');
+        // 延迟隐藏侧边栏，确保drop事件能够完成
+        setTimeout(() => {
+          sidebar.classList.remove('show', 'dragging-active');
+        }, 300);
       }
     });
   }

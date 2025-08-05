@@ -1585,9 +1585,16 @@ body {
   z-index: 999;
 }
 
+/* 拖拽时强制显示侧边栏 */
+.groups-sidebar.dragging-active {
+  transform: translateX(0) !important;
+  right: 0 !important;
+  z-index: 999 !important;
+}
 
 .groups-sidebar.show {
   transform: translateX(0);
+  z-index: 999;
 }
 
 .tab-main-content.with-sidebar {
