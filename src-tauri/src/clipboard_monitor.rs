@@ -151,10 +151,10 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
 
     // 解析BITMAPINFOHEADER
     let width = i32::from_le_bytes([data[4], data[5], data[6], data[7]]) as u32;
-    let height = i32::from_le_bytes([data[8], data[9], data[10], data[11]]).abs() as u32;
+    let height_raw = i32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+    let height = height_raw.abs() as u32;
+    let is_bottom_up = height_raw > 0; // 正数表示bottom-up，负数表示top-down
     let bit_count = u16::from_le_bytes([data[14], data[15]]);
-
-    println!("DIB图片信息: {}x{}, {}位", width, height, bit_count);
 
     if bit_count != 32 && bit_count != 24 {
         println!("不支持的位深度: {}", bit_count);
@@ -193,7 +193,16 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
     let mut bgra_data = Vec::with_capacity((width * height * 4) as usize);
 
     for y in 0..height {
-        let row_start = (y as usize) * row_size;
+        // 根据DIB格式确定实际的行索引
+        let actual_y = if is_bottom_up {
+            // bottom-up: 第0行对应DIB数据的最后一行
+            height - 1 - y
+        } else {
+            // top-down: 第0行对应DIB数据的第一行
+            y
+        };
+
+        let row_start = (actual_y as usize) * row_size;
         for x in 0..width {
             let pixel_start = row_start + (x as usize) * bytes_per_pixel;
 
