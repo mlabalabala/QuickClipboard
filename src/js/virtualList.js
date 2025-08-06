@@ -41,6 +41,9 @@ export class VirtualList {
 
     // 绑定事件
     this.bindEvents();
+
+    // 初始化时触发图片加载
+    this.triggerImageLoad();
   }
 
   initSortable() {
@@ -188,6 +191,19 @@ export class VirtualList {
         this.setDragDataForElement(e, index);
       }
     });
+
+    // 监听滚动事件，触发图片加载
+    const scrollElement = document.getElementById(this.scrollId);
+    if (scrollElement) {
+      let scrollTimeout;
+      scrollElement.addEventListener('scroll', () => {
+        // 防抖处理，避免频繁触发
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          this.triggerImageLoad();
+        }, 100);
+      });
+    }
   }
 
   generateRows() {
@@ -206,6 +222,9 @@ export class VirtualList {
     this.data = newData;
     const rows = this.generateRows();
     this.clusterize.update(rows);
+
+    // 更新数据后触发图片加载
+    this.triggerImageLoad();
   }
 
   appendData(newItems) {
@@ -254,5 +273,112 @@ export class VirtualList {
 
   getScrollProgress() {
     return this.clusterize ? this.clusterize.getScrollProgress() : 0;
+  }
+
+  // 触发图片加载
+  triggerImageLoad() {
+    // 延迟执行，确保DOM已更新
+    setTimeout(() => {
+      // 根据列表类型触发相应的图片加载
+      if (this.scrollId === 'clipboard-list') {
+        // 触发剪贴板图片加载
+        this.loadClipboardImages();
+      } else if (this.scrollId === 'quick-texts-list') {
+        // 触发常用文本图片加载
+        this.loadQuickTextImages();
+      }
+    }, 50);
+  }
+
+  // 加载剪贴板图片
+  async loadClipboardImages() {
+    try {
+      // 动态导入clipboard模块以避免循环依赖
+      const clipboardModule = await import('./clipboard.js');
+
+      // 加载文件图标
+      const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
+      for (const icon of fileIcons) {
+        const filePath = icon.getAttribute('data-file-path');
+        if (filePath) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const dataUrl = await invoke('read_image_file', { filePath });
+            icon.src = dataUrl;
+            icon.style.objectFit = 'cover';
+            icon.style.borderRadius = '2px';
+            icon.removeAttribute('data-needs-load');
+            icon.removeAttribute('data-file-path');
+          } catch (error) {
+            console.warn('加载文件图标失败:', error);
+          }
+        }
+      }
+
+      // 加载剪贴板图片
+      const clipboardImages = document.querySelectorAll('.clipboard-image[data-needs-load="true"]');
+      for (const img of clipboardImages) {
+        const imageId = img.getAttribute('data-image-id');
+        if (imageId) {
+          try {
+            await clipboardModule.loadImageById(img, imageId, true);
+            img.removeAttribute('data-needs-load');
+            img.removeAttribute('data-image-id');
+          } catch (error) {
+            console.warn('加载剪贴板图片失败:', error);
+            img.alt = '图片加载失败';
+            img.style.backgroundColor = '#e0e0e0';
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('加载剪贴板图片模块失败:', error);
+    }
+  }
+
+  // 加载常用文本图片
+  async loadQuickTextImages() {
+    try {
+      // 动态导入quickTexts模块以避免循环依赖
+      const quickTextsModule = await import('./quickTexts.js');
+
+      // 加载常用文本中的图片
+      const quickTextImages = document.querySelectorAll('.quick-text-image[data-needs-load="true"]');
+      for (const img of quickTextImages) {
+        const imageId = img.getAttribute('data-image-id');
+        if (imageId) {
+          try {
+            await quickTextsModule.loadImageById(img, imageId, true);
+            img.removeAttribute('data-needs-load');
+            img.removeAttribute('data-image-id');
+          } catch (error) {
+            console.warn('加载常用文本图片失败:', error);
+            img.alt = '图片加载失败';
+            img.style.backgroundColor = '#e0e0e0';
+          }
+        }
+      }
+
+      // 加载常用文本中的文件图标
+      const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
+      for (const icon of fileIcons) {
+        const filePath = icon.getAttribute('data-file-path');
+        if (filePath) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const dataUrl = await invoke('read_image_file', { filePath });
+            icon.src = dataUrl;
+            icon.style.objectFit = 'cover';
+            icon.style.borderRadius = '2px';
+            icon.removeAttribute('data-needs-load');
+            icon.removeAttribute('data-file-path');
+          } catch (error) {
+            console.warn('加载文件图标失败:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('加载常用文本图片模块失败:', error);
+    }
   }
 }
