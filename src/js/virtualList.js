@@ -213,8 +213,8 @@ export class VirtualList {
 
     return this.data.map((item, index) => {
       const html = this.renderItem(item, index);
-      // 确保每个项目都有 data-index 属性用于事件委托
-      return html.replace(/^<([^>]+)/, `<$1 data-index="${index}"`);
+      // renderItem应该已经包含了正确的data-index属性，不需要重复添加
+      return html;
     });
   }
 
@@ -232,7 +232,7 @@ export class VirtualList {
     const newRows = newItems.map((item, index) => {
       const actualIndex = this.data.length - newItems.length + index;
       const html = this.renderItem(item, actualIndex);
-      return html.replace(/^<([^>]+)/, `<$1 data-index="${actualIndex}"`);
+      return html;
     });
     this.clusterize.append(newRows);
   }
@@ -241,7 +241,7 @@ export class VirtualList {
     this.data = [...newItems, ...this.data];
     const newRows = newItems.map((item, index) => {
       const html = this.renderItem(item, index);
-      return html.replace(/^<([^>]+)/, `<$1 data-index="${index}"`);
+      return html;
     });
     this.clusterize.prepend(newRows);
 
@@ -273,6 +273,87 @@ export class VirtualList {
 
   getScrollProgress() {
     return this.clusterize ? this.clusterize.getScrollProgress() : 0;
+  }
+
+  // 滚动到指定索引
+  scrollToIndex(index) {
+    if (!this.clusterize || index < 0 || index >= this.data.length) {
+      return false; // 返回是否成功滚动
+    }
+
+    const scrollElement = document.getElementById(this.scrollId);
+    if (!scrollElement) return false;
+
+    // 估算每个项目的高度
+    const contentElement = document.getElementById(this.contentId);
+    let itemHeight = 120; // 默认高度
+
+    // 尝试从已渲染的项目中获取实际高度
+    const renderedItems = contentElement ? contentElement.querySelectorAll('[data-index]') : [];
+    if (renderedItems.length > 0) {
+      // 计算平均高度，以处理高度不一致的情况
+      let totalHeight = 0;
+      let count = 0;
+      for (let item of renderedItems) {
+        const height = item.offsetHeight;
+        if (height > 0) { // 只计算有效高度
+          totalHeight += height;
+          count++;
+        }
+      }
+      if (count > 0) {
+        itemHeight = totalHeight / count;
+      }
+    }
+
+    // 计算目标滚动位置
+    const targetScrollTop = index * itemHeight;
+
+    // 获取容器高度
+    const containerHeight = scrollElement.clientHeight;
+    const currentScrollTop = scrollElement.scrollTop;
+
+    // 计算可视区域
+    const viewTop = currentScrollTop;
+    const viewBottom = currentScrollTop + containerHeight;
+    const itemTop = targetScrollTop;
+    const itemBottom = targetScrollTop + itemHeight;
+
+    // 减少缓冲区，让滚动更精确
+    const buffer = itemHeight * 0.2;
+
+    // 检查是否需要滚动
+    let needScroll = false;
+    let newScrollTop = currentScrollTop;
+
+    if (itemTop < viewTop + buffer) {
+      // 项目在视口上方，向上滚动
+      newScrollTop = Math.max(0, itemTop - buffer);
+      needScroll = true;
+    } else if (itemBottom > viewBottom - buffer) {
+      // 项目在视口下方，向下滚动
+      newScrollTop = Math.min(
+        scrollElement.scrollHeight - containerHeight,
+        itemBottom - containerHeight + buffer
+      );
+      needScroll = true;
+    }
+
+    if (needScroll) {
+      // 使用instant行为，确保立即滚动
+      scrollElement.scrollTo({
+        top: newScrollTop,
+        behavior: 'instant'
+      });
+      return true;
+    }
+
+    return false; // 不需要滚动
+  }
+
+  // 获取当前数据长度
+  getDataLength() {
+    return this.data ? this.data.length : 0;
   }
 
   // 触发图片加载

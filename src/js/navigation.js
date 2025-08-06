@@ -12,6 +12,7 @@ let navigationThrottleDelay = 16;
 let pendingNavigationUpdate = null;
 let isUpdating = false;
 let clickSyncSetup = false;
+let preserveNavigationOnUpdate = false;
 
 // 初始化导航系统
 export async function initNavigation() {
@@ -79,7 +80,7 @@ function executeNavigation(key) {
   }
 }
 
-// 获取当前标签页的项目列表
+// 获取当前标签页的项目列表（DOM元素）
 function getCurrentTabItems() {
   const activeTab = document.querySelector('.tab-content.active');
   if (!activeTab) return [];
@@ -93,17 +94,55 @@ function getCurrentTabItems() {
   return [];
 }
 
+// 获取当前标签页的数据长度
+function getCurrentTabDataLength() {
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab) return 0;
+
+  if (activeTab.id === 'clipboard-tab') {
+    // 获取剪贴板虚拟列表实例
+    const clipboardModule = window.clipboardModule;
+    if (clipboardModule && clipboardModule.clipboardVirtualList) {
+      return clipboardModule.clipboardVirtualList.getDataLength();
+    }
+  } else if (activeTab.id === 'quick-texts-tab') {
+    // 获取常用文本虚拟列表实例
+    const quickTextsModule = window.quickTextsModule;
+    if (quickTextsModule && quickTextsModule.quickTextsVirtualList) {
+      return quickTextsModule.quickTextsVirtualList.getDataLength();
+    }
+  }
+
+  return 0;
+}
+
+// 获取当前标签页的虚拟列表实例
+function getCurrentVirtualList() {
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab) return null;
+
+  if (activeTab.id === 'clipboard-tab') {
+    const clipboardModule = window.clipboardModule;
+    return clipboardModule && clipboardModule.clipboardVirtualList ? clipboardModule.clipboardVirtualList : null;
+  } else if (activeTab.id === 'quick-texts-tab') {
+    const quickTextsModule = window.quickTextsModule;
+    return quickTextsModule && quickTextsModule.quickTextsVirtualList ? quickTextsModule.quickTextsVirtualList : null;
+  }
+
+  return null;
+}
+
 // 向上导航
 function navigateUp() {
-  const items = getCurrentTabItems();
-  if (items.length === 0) return;
+  const dataLength = getCurrentTabDataLength();
+  if (dataLength === 0) return;
 
   const oldIndex = currentSelectedIndex;
 
   if (currentSelectedIndex === -1) {
-    currentSelectedIndex = items.length - 1;
+    currentSelectedIndex = dataLength - 1;
   } else if (currentSelectedIndex <= 0) {
-    currentSelectedIndex = items.length - 1;
+    currentSelectedIndex = dataLength - 1;
   } else {
     currentSelectedIndex--;
   }
@@ -116,14 +155,14 @@ function navigateUp() {
 
 // 向下导航
 function navigateDown() {
-  const items = getCurrentTabItems();
-  if (items.length === 0) return;
+  const dataLength = getCurrentTabDataLength();
+  if (dataLength === 0) return;
 
   const oldIndex = currentSelectedIndex;
 
   if (currentSelectedIndex === -1) {
     currentSelectedIndex = 0;
-  } else if (currentSelectedIndex >= items.length - 1) {
+  } else if (currentSelectedIndex >= dataLength - 1) {
     currentSelectedIndex = 0;
   } else {
     currentSelectedIndex++;
@@ -140,31 +179,72 @@ function updateSelection() {
   if (isUpdating) return;
   isUpdating = true;
 
-  const items = getCurrentTabItems();
+  const virtualList = getCurrentVirtualList();
+  const dataLength = getCurrentTabDataLength();
+
+  // 确保索引在有效范围内
+  if (currentSelectedIndex < 0 || currentSelectedIndex >= dataLength) {
+    isUpdating = false;
+    return;
+  }
 
   requestAnimationFrame(() => {
-    let selectedItem = null;
+    // 首先检查目标元素是否已经在DOM中
+    const items = getCurrentTabItems();
+    let targetElementExists = false;
 
-    items.forEach((item, index) => {
-      if (index === currentSelectedIndex) {
-        if (!item.classList.contains('keyboard-selected')) {
-          item.classList.add('keyboard-selected');
-          selectedItem = item;
-        }
-      } else {
-        item.classList.remove('keyboard-selected');
+    items.forEach((item) => {
+      const dataIndex = parseInt(item.getAttribute('data-index'));
+      if (dataIndex === currentSelectedIndex) {
+        targetElementExists = true;
       }
     });
 
-    if (selectedItem && !isElementInViewport(selectedItem)) {
-      selectedItem.scrollIntoView({
-        behavior: 'instant',
-        block: 'nearest',
-        inline: 'nearest'
-      });
+    // 只有当目标元素不存在时才滚动
+    let didScroll = false;
+    if (!targetElementExists && virtualList) {
+      didScroll = virtualList.scrollToIndex(currentSelectedIndex);
     }
 
-    isUpdating = false;
+    // 定义更新选择状态的函数
+    const updateSelectionState = () => {
+      const items = getCurrentTabItems();
+      let selectedItem = null;
+
+      // 清除所有选择状态并查找目标项
+      items.forEach((item) => {
+        const dataIndex = parseInt(item.getAttribute('data-index'));
+        if (dataIndex === currentSelectedIndex) {
+          item.classList.add('keyboard-selected');
+          selectedItem = item;
+        } else {
+          item.classList.remove('keyboard-selected');
+        }
+      });
+
+      // 如果找到了选中的元素但不在视口内，进行微调滚动
+      if (selectedItem && !isElementInViewport(selectedItem)) {
+        selectedItem.scrollIntoView({
+          behavior: 'instant',
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      }
+
+      isUpdating = false;
+    };
+
+    // 根据目标元素是否存在决定处理方式
+    if (targetElementExists) {
+      // 目标元素已存在，立即更新选择状态
+      updateSelectionState();
+    } else if (didScroll) {
+      // 发生了滚动，给虚拟列表时间渲染
+      setTimeout(() => updateSelectionState(), 16);
+    } else {
+      // 没有滚动但目标元素不存在，可能需要等待渲染
+      setTimeout(() => updateSelectionState(), 8);
+    }
   });
 }
 
@@ -186,21 +266,45 @@ function isElementInViewport(element) {
 
 // 执行当前选中项
 async function executeCurrentItem() {
-  const items = getCurrentTabItems();
-  if (currentSelectedIndex < 0 || currentSelectedIndex >= items.length) return;
+  const dataLength = getCurrentTabDataLength();
+  if (currentSelectedIndex < 0 || currentSelectedIndex >= dataLength) return;
 
-  const selectedItem = items[currentSelectedIndex];
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab) return;
 
   try {
-    const clickEvent = new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
+    // 设置标志以保持导航状态
+    preserveNavigationOnUpdate = true;
 
-    selectedItem.dispatchEvent(clickEvent);
+    if (activeTab.id === 'clipboard-tab') {
+      // 对于剪贴板，调用虚拟列表的点击处理函数
+      const clipboardModule = window.clipboardModule;
+      if (clipboardModule && clipboardModule.clipboardVirtualList && clipboardModule.clipboardVirtualList.onItemClick) {
+        // 创建一个模拟的事件对象
+        const mockEvent = {
+          target: { closest: () => null },
+          stopPropagation: () => { },
+          preventDefault: () => { }
+        };
+        clipboardModule.clipboardVirtualList.onItemClick(currentSelectedIndex, mockEvent);
+      }
+    } else if (activeTab.id === 'quick-texts-tab') {
+      // 对于常用文本，调用虚拟列表的点击处理函数
+      const quickTextsModule = window.quickTextsModule;
+      if (quickTextsModule && quickTextsModule.quickTextsVirtualList && quickTextsModule.quickTextsVirtualList.onItemClick) {
+        // 创建一个模拟的事件对象
+        const mockEvent = {
+          target: { closest: () => null },
+          stopPropagation: () => { },
+          preventDefault: () => { }
+        };
+        quickTextsModule.quickTextsVirtualList.onItemClick(currentSelectedIndex, mockEvent);
+      }
+    }
   } catch (error) {
     console.error('执行选中项失败:', error);
+    // 如果出错，重置标志
+    preserveNavigationOnUpdate = false;
   }
 }
 
@@ -232,12 +336,21 @@ export function onTabSwitch() {
 
 // 当列表内容更新时重置导航
 export function onListUpdate() {
-  const items = getCurrentTabItems();
-  if (currentSelectedIndex >= items.length) {
-    currentSelectedIndex = Math.max(-1, items.length - 1);
+  // 如果设置了保持导航状态，跳过重置逻辑
+  if (preserveNavigationOnUpdate) {
+    preserveNavigationOnUpdate = false;
+    if (navigationMode && currentSelectedIndex >= 0) {
+      updateSelection();
+    }
+    return;
   }
 
-  if (navigationMode && items.length > 0 && currentSelectedIndex >= 0) {
+  const dataLength = getCurrentTabDataLength();
+  if (currentSelectedIndex >= dataLength) {
+    currentSelectedIndex = Math.max(-1, dataLength - 1);
+  }
+
+  if (navigationMode && dataLength > 0 && currentSelectedIndex >= 0) {
     updateSelection();
   }
 }
@@ -254,12 +367,12 @@ export function getCurrentSelectedIndex() {
 
 // 同步点击的项目到导航状态
 export function syncClickedItem(clickedElement) {
-  const items = getCurrentTabItems();
-  const clickedIndex = items.indexOf(clickedElement);
+  // 从data-index属性获取真实的数据索引
+  const dataIndex = parseInt(clickedElement.getAttribute('data-index'));
 
-  if (clickedIndex !== -1) {
+  if (!isNaN(dataIndex) && dataIndex >= 0) {
     resetNavigation();
-    currentSelectedIndex = clickedIndex;
+    currentSelectedIndex = dataIndex;
     navigationMode = true;
     updateSelection();
   }

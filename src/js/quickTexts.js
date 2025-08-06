@@ -525,6 +525,12 @@ function initQuickTextsVirtualList() {
       }
     }
   });
+
+  // 将虚拟列表实例暴露到全局，供导航系统使用
+  if (!window.quickTextsModule) {
+    window.quickTextsModule = {};
+  }
+  window.quickTextsModule.quickTextsVirtualList = quickTextsVirtualList;
 }
 
 // 获取过滤后的常用文本数据

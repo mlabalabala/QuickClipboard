@@ -473,6 +473,12 @@ function initClipboardVirtualList() {
       }
     }
   });
+
+  // 将虚拟列表实例暴露到全局，供导航系统使用
+  if (!window.clipboardModule) {
+    window.clipboardModule = {};
+  }
+  window.clipboardModule.clipboardVirtualList = clipboardVirtualList;
 }
 
 // 获取过滤后的剪贴板数据
