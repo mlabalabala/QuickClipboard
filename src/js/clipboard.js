@@ -17,6 +17,7 @@ import {
   showTranslationIndicator,
   hideTranslationIndicator
 } from './aiTranslation.js';
+import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -72,12 +73,17 @@ function generateClipboardItemHTML(item, index) {
 
   actionsHTML += '</div>';
 
+  // 生成日期时间HTML - 优先使用created_at，如果为空则使用timestamp
+  const timeValue = item.created_at || item.timestamp;
+  const timestampHTML = `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
+
   // 组合完整的HTML
   const activeClass = index === activeItemIndex ? ' active' : '';
   const noShortcutClass = index >= 9 ? ' no-shortcut' : '';
 
   return `
     <div class="clipboard-item${activeClass}${noShortcutClass}" draggable="true" data-index="${index}">
+      ${timestampHTML}
       ${contentHTML}
       ${numberHTML}
       ${shortcutHTML}
@@ -86,12 +92,7 @@ function generateClipboardItemHTML(item, index) {
   `;
 }
 
-// HTML转义函数
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+
 
 // 生成图片HTML
 function generateImageHTML(item) {

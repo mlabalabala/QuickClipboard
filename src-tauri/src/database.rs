@@ -25,6 +25,7 @@ pub struct ClipboardItem {
     pub is_image: bool,
     pub image_id: Option<String>,
     pub timestamp: u64,
+    pub created_at: Option<String>, // DATETIME字段，可能为空（兼容旧数据）
 }
 
 impl ClipboardItem {
@@ -38,6 +39,7 @@ impl ClipboardItem {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
+            created_at: None, // 将由数据库填充
         }
     }
 
@@ -51,6 +53,7 @@ impl ClipboardItem {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
+            created_at: None, // 将由数据库填充
         }
     }
 }
@@ -427,9 +430,9 @@ pub fn add_clipboard_image_item(image_id: String) -> Result<i64, String> {
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, text, is_image, image_id, timestamp FROM clipboard_items ORDER BY timestamp DESC LIMIT {}", limit)
+            format!("SELECT id, text, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC LIMIT {}", limit)
         } else {
-            "SELECT id, text, is_image, image_id, timestamp FROM clipboard_items ORDER BY timestamp DESC".to_string()
+            "SELECT id, text, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC".to_string()
         };
 
         let mut stmt = conn.prepare(&sql)?;
@@ -440,6 +443,7 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
                 is_image: row.get(2)?,
                 image_id: row.get(3)?,
                 timestamp: row.get(4)?,
+                created_at: row.get(5).ok(), // 使用 .ok() 处理可能的 NULL 值
             })
         })?;
 

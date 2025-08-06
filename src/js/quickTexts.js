@@ -18,6 +18,7 @@ import {
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects } from './groups.js';
+import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
@@ -44,19 +45,18 @@ function generateQuickTextItemHTML(text, index) {
     `;
   }
 
+  // 生成日期时间HTML
+  const timestampHTML = `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
+
   return `
     <div class="quick-text-item" draggable="true" data-index="${index}">
+      ${timestampHTML}
       ${contentHTML}
     </div>
   `;
 }
 
-// HTML转义函数
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+
 
 // 生成常用文本图片HTML
 function generateQuickTextImageHTML(text) {
