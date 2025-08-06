@@ -618,27 +618,10 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                     if target_x >= work_left && target_y >= work_top {
                         position_strategy = "left_top";
                     } else {
-                        // 策略5：智能调整到最佳可用位置
-
-                        // 水平方向：优先右侧，不够则左侧，再不够则居中
-                        if caret_pos.x + margin + window_width <= work_left + work_width {
-                            target_x = caret_pos.x + margin;
-                        } else if caret_pos.x - window_width - margin >= work_left {
-                            target_x = caret_pos.x - window_width - margin;
-                        } else {
-                            target_x = work_left + (work_width - window_width) / 2;
-                        }
-
-                        // 垂直方向：优先下方，不够则上方，再不够则居中
-                        if caret_pos.y + margin + window_height <= work_top + work_height {
-                            target_y = caret_pos.y + margin;
-                        } else if caret_pos.y - window_height - margin >= work_top {
-                            target_y = caret_pos.y - window_height - margin;
-                        } else {
-                            target_y = work_top + (work_height - window_height) / 2;
-                        }
-
-                        position_strategy = "adaptive";
+                        // 策略5：上下空间都不足时，直接显示在屏幕右下角
+                        target_x = work_left + work_width - window_width - margin;
+                        target_y = work_top + work_height - window_height - margin;
+                        position_strategy = "fallback_bottom_right";
                     }
                 }
             }
