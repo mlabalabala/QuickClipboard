@@ -46,7 +46,8 @@ function generateQuickTextItemHTML(text, index) {
   }
 
   // 生成日期时间HTML
-  const timestampHTML = `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
+  // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
+  const timestampHTML = contentType === 'files' ? '' : `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
 
   return `
     <div class="quick-text-item" draggable="true" data-index="${index}">
@@ -67,7 +68,6 @@ function generateQuickTextImageHTML(text) {
     // 从content中提取image_id
     const imageId = text.content.substring(6);
     return `
-      <div class="quick-text-title">${escapeHtml(text.title)}</div>
       <img id="${imgId}" class="quick-text-image" src="" alt="常用图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">
     `;
   } else if (text.content.startsWith('data:image/')) {
@@ -124,17 +124,22 @@ function generateQuickTextFilesHTML(text) {
     const filesJson = text.content.substring(6);
     const filesData = JSON.parse(filesJson);
 
+    // 格式化时间
+    const timeStr = formatTimestamp(text.created_at);
+
     let filesHTML = `<div class="quick-text-title">${escapeHtml(text.title)}</div>`;
-    filesHTML += `<div class="file-count">${filesData.files.length} 个文件</div>`;
+    // 顶部显示：时间和文件数量
+    filesHTML += `<div class="file-summary">${timeStr} • ${filesData.files.length} 个文件</div>`;
     filesHTML += '<div class="files-container">';
 
     filesData.files.forEach(file => {
       const iconHTML = generateFileIconHTML(file, 'medium');
+      const fileSize = formatFileSize(file.size || 0);
       filesHTML += `
         <div class="file-item">
           ${iconHTML}
           <div class="file-info">
-            <div class="file-name">${escapeHtml(file.name)}</div>
+            <div class="file-name">${escapeHtml(file.name)} <span class="file-size">${fileSize}</span></div>
             <div class="file-path">${escapeHtml(file.path)}</div>
           </div>
         </div>
@@ -148,6 +153,92 @@ function generateQuickTextFilesHTML(text) {
       <div class="quick-text-title">${escapeHtml(text.title)}</div>
       <div class="quick-text-content">文件数据解析错误</div>
     `;
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// =================== 粘贴加载状态管理 ===================
+
+// 显示粘贴加载状态
+function showPasteLoading(element, message = '正在粘贴...') {
+  // 给元素添加加载状态
+  if (element) {
+    element.classList.add('paste-loading');
+  }
+
+  // 显示全局加载指示器
+  showPasteIndicator(message);
+}
+
+// 隐藏粘贴加载状态
+function hidePasteLoading(element, success = true, message = null) {
+  // 移除元素的加载状态
+  if (element) {
+    element.classList.remove('paste-loading');
+  }
+
+  // 显示结果状态
+  if (success) {
+    showPasteIndicator(message || '粘贴成功', 'success', 1500);
+  } else {
+    showPasteIndicator(message || '粘贴失败', 'error', 2000);
+  }
+}
+
+// 显示粘贴指示器
+function showPasteIndicator(message, type = 'loading', duration = 0) {
+  // 移除现有的指示器
+  const existingIndicator = document.querySelector('.paste-loading-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  // 创建新的指示器
+  const indicator = document.createElement('div');
+  indicator.className = `paste-loading-indicator ${type}`;
+
+  if (type === 'loading') {
+    indicator.innerHTML = `
+      <div class="loading-spinner"></div>
+      <span>${message}</span>
+    `;
+  } else {
+    indicator.innerHTML = `<span>${message}</span>`;
+  }
+
+  document.body.appendChild(indicator);
+
+  // 显示动画
+  setTimeout(() => {
+    indicator.classList.add('show');
+  }, 10);
+
+  // 自动隐藏
+  if (duration > 0) {
+    setTimeout(() => {
+      hidePasteIndicator();
+    }, duration);
+  }
+}
+
+// 隐藏粘贴指示器
+function hidePasteIndicator() {
+  const indicator = document.querySelector('.paste-loading-indicator');
+  if (indicator) {
+    indicator.classList.remove('show');
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.remove();
+      }
+    }, 300);
   }
 }
 
@@ -540,7 +631,7 @@ export function renderQuickTexts() {
 }
 
 // 处理常用文本项目点击事件
-function handleQuickTextItemClick(index) {
+function handleQuickTextItemClick(index, event) {
   if (isDragging) return;
 
   // 获取过滤后的数据，因为虚拟列表使用的是过滤后的数据
@@ -549,7 +640,8 @@ function handleQuickTextItemClick(index) {
   if (!text) return;
 
   // 处理主要的点击事件（粘贴）
-  handleQuickTextItemPaste(text);
+  const quickTextItem = event.target.closest('.quick-text-item');
+  handleQuickTextItemPaste(text, quickTextItem);
 }
 
 // 处理常用文本项目右键菜单
@@ -567,13 +659,26 @@ function handleQuickTextItemContextMenu(index, event) {
 
 
 // 处理常用文本项目粘贴
-async function handleQuickTextItemPaste(text) {
+async function handleQuickTextItemPaste(text, element = null) {
   try {
     // 检查是否需要AI翻译
     const contentType = getContentType(text.content);
     const isTextContent = contentType === 'text';
     const translationCheck = isTextContent ? shouldTranslateText(text.content, 'paste') : { should: false, reason: '非文本内容' };
     const needsTranslation = translationCheck.should;
+
+    // 根据内容类型确定加载消息
+    let loadingMessage = '正在粘贴...';
+    if (contentType === 'files') {
+      loadingMessage = '正在粘贴文件...';
+    } else if (contentType === 'image') {
+      loadingMessage = '正在粘贴图片...';
+    } else if (needsTranslation) {
+      loadingMessage = '正在翻译...';
+    }
+
+    // 显示加载状态
+    showPasteLoading(element, loadingMessage);
 
     if (needsTranslation) {
       // 使用AI翻译并流式输入
@@ -602,14 +707,17 @@ async function handleQuickTextItemPaste(text) {
           }
 
           hideTranslationIndicator();
+          hidePasteLoading(element, true, '翻译粘贴成功');
         } else {
           console.error('AI翻译失败:', result.error);
           hideTranslationIndicator();
+          hidePasteLoading(element, false, '翻译失败');
           showNotification('翻译失败，请重试', 'error');
         }
       } catch (error) {
         console.error('AI翻译过程中发生错误:', error);
         hideTranslationIndicator();
+        hidePasteLoading(element, false, '翻译过程中发生错误');
         showNotification('翻译过程中发生错误', 'error');
       }
     } else {
@@ -621,9 +729,20 @@ async function handleQuickTextItemPaste(text) {
           quick_text_id: text.id
         }
       });
+
+      // 根据内容类型显示成功消息
+      let successMessage = '粘贴成功';
+      if (contentType === 'files') {
+        successMessage = '文件粘贴成功';
+      } else if (contentType === 'image') {
+        successMessage = '图片粘贴成功';
+      }
+
+      hidePasteLoading(element, true, successMessage);
     }
   } catch (error) {
     console.error('粘贴常用文本失败:', error);
+    hidePasteLoading(element, false, '粘贴失败');
     showNotification('粘贴失败', 'error');
     hideTranslationIndicator();
   }

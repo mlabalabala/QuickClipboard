@@ -33,7 +33,7 @@ function formatTimestamp(createdAt) {
 
   // 如果是今天
   if (diffDays === 0) {
-    return date.toLocaleTimeString('zh-CN', {
+    return '今天 ' + date.toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false

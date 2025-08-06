@@ -74,8 +74,9 @@ function generateClipboardItemHTML(item, index) {
   actionsHTML += '</div>';
 
   // 生成日期时间HTML - 优先使用created_at，如果为空则使用timestamp
+  // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
   const timeValue = item.created_at || item.timestamp;
-  const timestampHTML = `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
+  const timestampHTML = contentType === 'files' ? '' : `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
 
   // 组合完整的HTML
   const activeClass = index === activeItemIndex ? ' active' : '';
@@ -154,16 +155,21 @@ function generateFilesHTML(item) {
     const filesJson = item.text.substring(6);
     const filesData = JSON.parse(filesJson);
 
-    let filesHTML = `<div class="file-count">${filesData.files.length} 个文件</div>`;
+    // 格式化时间
+    const timeStr = formatTimestamp(item.timestamp);
+
+    // 顶部显示：时间和文件数量
+    let filesHTML = `<div class="file-summary">${timeStr} • ${filesData.files.length} 个文件</div>`;
     filesHTML += '<div class="clipboard-files">';
 
     filesData.files.forEach(file => {
       const iconHTML = generateFileIconHTML(file, 'medium');
+      const fileSize = formatFileSize(file.size || 0);
       filesHTML += `
         <div class="file-item">
           ${iconHTML}
           <div class="file-info">
-            <div class="file-name">${escapeHtml(file.name)}</div>
+            <div class="file-name">${escapeHtml(file.name)} <span class="file-size">${fileSize}</span></div>
             <div class="file-path">${escapeHtml(file.path)}</div>
           </div>
         </div>
@@ -174,6 +180,92 @@ function generateFilesHTML(item) {
     return filesHTML;
   } catch (error) {
     return `<div class="clipboard-text">文件数据解析错误</div>`;
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// =================== 粘贴加载状态管理 ===================
+
+// 显示粘贴加载状态
+function showPasteLoading(element, message = '正在粘贴...') {
+  // 给元素添加加载状态
+  if (element) {
+    element.classList.add('paste-loading');
+  }
+
+  // 显示全局加载指示器
+  showPasteIndicator(message);
+}
+
+// 隐藏粘贴加载状态
+function hidePasteLoading(element, success = true, message = null) {
+  // 移除元素的加载状态
+  if (element) {
+    element.classList.remove('paste-loading');
+  }
+
+  // 显示结果状态
+  if (success) {
+    showPasteIndicator(message || '粘贴成功', 'success', 1500);
+  } else {
+    showPasteIndicator(message || '粘贴失败', 'error', 2000);
+  }
+}
+
+// 显示粘贴指示器
+function showPasteIndicator(message, type = 'loading', duration = 0) {
+  // 移除现有的指示器
+  const existingIndicator = document.querySelector('.paste-loading-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  // 创建新的指示器
+  const indicator = document.createElement('div');
+  indicator.className = `paste-loading-indicator ${type}`;
+
+  if (type === 'loading') {
+    indicator.innerHTML = `
+      <div class="loading-spinner"></div>
+      <span>${message}</span>
+    `;
+  } else {
+    indicator.innerHTML = `<span>${message}</span>`;
+  }
+
+  document.body.appendChild(indicator);
+
+  // 显示动画
+  setTimeout(() => {
+    indicator.classList.add('show');
+  }, 10);
+
+  // 自动隐藏
+  if (duration > 0) {
+    setTimeout(() => {
+      hidePasteIndicator();
+    }, duration);
+  }
+}
+
+// 隐藏粘贴指示器
+function hidePasteIndicator() {
+  const indicator = document.querySelector('.paste-loading-indicator');
+  if (indicator) {
+    indicator.classList.remove('show');
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.remove();
+      }
+    }, 300);
   }
 }
 
@@ -525,7 +617,8 @@ function handleClipboardItemClick(index, event) {
   }
 
   // 处理主要的点击事件（粘贴）
-  handleClipboardItemPaste(item, originalIndex);
+  const clipboardItem = event.target.closest('.clipboard-item');
+  handleClipboardItemPaste(item, originalIndex, clipboardItem);
 }
 
 // 处理剪贴板项目右键菜单
@@ -545,13 +638,26 @@ function handleClipboardItemContextMenu(index, event) {
 }
 
 // 处理剪贴板项目粘贴
-async function handleClipboardItemPaste(item, index) {
+async function handleClipboardItemPaste(item, index, element = null) {
   try {
     // 检查是否需要AI翻译
     const contentType = getContentType(item.text);
     const isTextContent = contentType === 'text';
     const translationCheck = isTextContent ? shouldTranslateText(item.text, 'paste') : { should: false, reason: '非文本内容' };
     const needsTranslation = translationCheck.should;
+
+    // 根据内容类型确定加载消息
+    let loadingMessage = '正在粘贴...';
+    if (contentType === 'files') {
+      loadingMessage = '正在粘贴文件...';
+    } else if (contentType === 'image') {
+      loadingMessage = '正在粘贴图片...';
+    } else if (needsTranslation) {
+      loadingMessage = '正在翻译...';
+    }
+
+    // 显示加载状态
+    showPasteLoading(element, loadingMessage);
 
     if (needsTranslation) {
       // 使用AI翻译并流式输入
@@ -580,14 +686,17 @@ async function handleClipboardItemPaste(item, index) {
           }
 
           hideTranslationIndicator();
+          hidePasteLoading(element, true, '翻译粘贴成功');
         } else {
           console.error('AI翻译失败:', result.error);
           hideTranslationIndicator();
+          hidePasteLoading(element, false, '翻译失败');
           showNotification('翻译失败，请重试', 'error');
         }
       } catch (error) {
         console.error('AI翻译过程中发生错误:', error);
         hideTranslationIndicator();
+        hidePasteLoading(element, false, '翻译过程中发生错误');
         showNotification('翻译过程中发生错误', 'error');
       }
     } else {
@@ -598,9 +707,20 @@ async function handleClipboardItemPaste(item, index) {
       };
       await invoke('paste_content', { params });
       setActiveItem(index);
+
+      // 根据内容类型显示成功消息
+      let successMessage = '粘贴成功';
+      if (contentType === 'files') {
+        successMessage = '文件粘贴成功';
+      } else if (contentType === 'image') {
+        successMessage = '图片粘贴成功';
+      }
+
+      hidePasteLoading(element, true, successMessage);
     }
   } catch (error) {
     console.error('粘贴失败:', error);
+    hidePasteLoading(element, false, '粘贴失败');
     showNotification('粘贴失败', 'error');
   }
 }
