@@ -121,17 +121,12 @@ fn process_png_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
             let rgba_img = img.to_rgba8();
             let (width, height) = rgba_img.dimensions();
 
-            // 转换为BGRA格式（arboard期望的格式）
-            let mut bgra_data = Vec::with_capacity((width * height * 4) as usize);
-            for pixel in rgba_img.pixels() {
-                let [r, g, b, a] = pixel.0;
-                bgra_data.extend_from_slice(&[b, g, r, a]);
-            }
+            let rgba_data = rgba_img.into_raw();
 
             Some(arboard::ImageData {
                 width: width as usize,
                 height: height as usize,
-                bytes: Cow::Owned(bgra_data),
+                bytes: Cow::Owned(rgba_data),
             })
         }
         Err(e) => {
@@ -189,8 +184,7 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
         return None;
     }
 
-    // 转换为BGRA格式
-    let mut bgra_data = Vec::with_capacity((width * height * 4) as usize);
+    let mut rgba_data = Vec::with_capacity((width * height * 4) as usize);
 
     for y in 0..height {
         // 根据DIB格式确定实际的行索引
@@ -209,22 +203,28 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
             if pixel_start + bytes_per_pixel <= pixel_data.len() {
                 match bit_count {
                     32 => {
-                        // BGRA格式，直接复制
-                        bgra_data.extend_from_slice(&pixel_data[pixel_start..pixel_start + 4]);
+                        // DIB中的BGRA格式，转换为RGBA
+                        let b = pixel_data[pixel_start];
+                        let g = pixel_data[pixel_start + 1];
+                        let r = pixel_data[pixel_start + 2];
+                        let a = pixel_data[pixel_start + 3];
+                        rgba_data.extend_from_slice(&[r, g, b, a]);
                     }
                     24 => {
-                        // BGR格式，添加alpha通道
-                        bgra_data.extend_from_slice(&pixel_data[pixel_start..pixel_start + 3]);
-                        bgra_data.push(255); // 完全不透明
+                        // DIB中的BGR格式，转换为RGBA并添加alpha通道
+                        let b = pixel_data[pixel_start];
+                        let g = pixel_data[pixel_start + 1];
+                        let r = pixel_data[pixel_start + 2];
+                        rgba_data.extend_from_slice(&[r, g, b, 255]); // 完全不透明
                     }
                     _ => {
                         // 不支持的格式，使用白色像素
-                        bgra_data.extend_from_slice(&[255, 255, 255, 255]);
+                        rgba_data.extend_from_slice(&[255, 255, 255, 255]);
                     }
                 }
             } else {
                 // 数据不足，使用白色像素
-                bgra_data.extend_from_slice(&[255, 255, 255, 255]);
+                rgba_data.extend_from_slice(&[255, 255, 255, 255]);
             }
         }
     }
@@ -232,7 +232,7 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
     Some(arboard::ImageData {
         width: width as usize,
         height: height as usize,
-        bytes: Cow::Owned(bgra_data),
+        bytes: Cow::Owned(rgba_data),
     })
 }
 
