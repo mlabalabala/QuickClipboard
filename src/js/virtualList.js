@@ -29,8 +29,8 @@ export class VirtualList {
       rows: this.generateRows(),
       scrollId: this.scrollId,
       contentId: this.contentId,
-      rows_in_block: 20, // 每个块的行数 - 减少以提高平滑度
-      blocks_in_cluster: 6, // 每个集群的块数 - 增加缓冲区
+      rows_in_block: 30, // 每个块的行数 - 减少以提高平滑度
+      blocks_in_cluster: 4, // 每个集群的块数 - 增加缓冲区
       show_no_data_row: true,
       no_data_text: '暂无数据',
       no_data_class: 'clusterize-no-data'

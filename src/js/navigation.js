@@ -158,7 +158,7 @@ function updateSelection() {
 
     if (selectedItem && !isElementInViewport(selectedItem)) {
       selectedItem.scrollIntoView({
-        behavior: 'auto',
+        behavior: 'instant',
         block: 'nearest',
         inline: 'nearest'
       });
@@ -176,12 +176,11 @@ function isElementInViewport(element) {
   if (!container) return false;
 
   const containerRect = container.getBoundingClientRect();
+  const buffer = 20; // 20像素的缓冲区域
 
   return (
-    rect.top >= containerRect.top &&
-    rect.bottom <= containerRect.bottom &&
-    rect.left >= containerRect.left &&
-    rect.right <= containerRect.right
+    rect.top >= (containerRect.top - buffer) &&
+    rect.bottom <= (containerRect.bottom + buffer)
   );
 }
 
