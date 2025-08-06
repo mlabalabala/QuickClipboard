@@ -1,5 +1,8 @@
 .clusterize-scroll {
   overflow: auto;
+  /* 优化滚动性能和稳定性 */
+  will-change: scroll-position;
+  scroll-behavior: smooth;
 }
 
 .clusterize-extra-row {
@@ -14,6 +17,8 @@
 .clusterize-content {
   outline: 0;
   counter-reset: clusterize-counter;
+  /* 稳定布局，避免抖动 */
+  contain: layout style;
 }
 
 .clusterize-no-data {
@@ -2013,7 +2018,6 @@ body {
 /* 滑块悬停状态 */
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
-  transform: scaleX(1.2);
 }
 
 /* 滑块激活状态（点击拖动时） */
