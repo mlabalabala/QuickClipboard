@@ -645,6 +645,7 @@ body {
   opacity: 0.4;
   background-color: #f0f7ff !important;
   border-color: #4a89dc !important;
+  animation: shake 0.5s ease-in-out 1 !important;
 }
 
 .sortable-chosen {
@@ -653,7 +654,31 @@ body {
 
 .sortable-drag {
   opacity: 0.8;
-  transform: rotate(5deg);
+}
+
+/* 抖动动画 */
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-3px);
+  }
+
+  40% {
+    transform: translateX(3px);
+  }
+
+  60% {
+    transform: translateX(-2px);
+  }
+
+  80% {
+    transform: translateX(2px);
+  }
 }
 
 .clipboard-item {

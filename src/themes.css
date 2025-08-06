@@ -394,12 +394,6 @@ body {
     color: #888;
   }
 
-  /* 拖拽样式 */
-  .sortable-ghost {
-    background-color: #2a3a4a !important;
-    border-color: var(--primary-color) !important;
-  }
-
   /* 分组侧边栏 */
   .groups-sidebar {
     background: rgba(40, 40, 40, 0.95);
