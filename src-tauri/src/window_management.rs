@@ -457,8 +457,8 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                     if GetGUIThreadInfo(thread_id, &mut gui_info).is_ok() {
                         // 检查是否有有效的插入符信息
                         if gui_info.hwndCaret.0 != 0 {
-                            // 使用插入符矩形的左下角作为基准点
-                            caret_pos.x = gui_info.rcCaret.left;
+                            // 使用插入符矩形的右下角作为基准点
+                            caret_pos.x = gui_info.rcCaret.right;
                             caret_pos.y = gui_info.rcCaret.bottom;
 
                             // 将客户端坐标转换为屏幕坐标
@@ -475,7 +475,7 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                                 bottom: 0,
                             };
                             if GetWindowRect(gui_info.hwndFocus, &mut focus_rect).is_ok() {
-                                // 获取鼠标位置，如果在焦点窗口内则使用鼠标位置，否则使用窗口中心
+                                // 获取鼠标位置，如果在焦点窗口内则使用鼠标位置，否则使用窗口中心偏右下的位置
                                 let mut mouse_pos = POINT { x: 0, y: 0 };
                                 if GetCursorPos(&mut mouse_pos).is_ok()
                                     && mouse_pos.x >= focus_rect.left
@@ -486,11 +486,11 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
                                     caret_pos = mouse_pos;
                                     caret_source = "focus_window_mouse";
                                 } else {
-                                    // 使用窗口中心偏左上的位置
-                                    caret_pos.x =
-                                        focus_rect.left + (focus_rect.right - focus_rect.left) / 3;
-                                    caret_pos.y =
-                                        focus_rect.top + (focus_rect.bottom - focus_rect.top) / 3;
+                                    // 使用窗口中心偏右下的位置
+                                    caret_pos.x = focus_rect.left
+                                        + (focus_rect.right - focus_rect.left) * 2 / 3;
+                                    caret_pos.y = focus_rect.top
+                                        + (focus_rect.bottom - focus_rect.top) * 2 / 3;
                                     caret_source = "focus_window_center";
                                 }
                                 use_caret = true;
@@ -581,57 +581,50 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
         let window_width = window_size.width as i32;
         let window_height = window_size.height as i32;
 
-        // 智能定位算法：优先在插入符/鼠标的左下角显示（使用工作区域）
+        // 智能定位算法：优先在插入符/鼠标的右下角和右上角显示（使用工作区域）
         let margin = 12; // 边距
         let mut target_x;
         let mut target_y;
         let mut position_strategy = "unknown";
 
-        // 策略1：尝试在左下角显示（优先策略）
-        target_x = caret_pos.x - window_width - margin;
+        // 策略1：尝试在右下角显示（优先策略）
+        target_x = caret_pos.x + margin;
         target_y = caret_pos.y + margin;
 
-        // 检查左下角是否在工作区域内有足够空间
-        if target_x >= work_left
+        // 检查右下角是否在工作区域内有足够空间
+        if target_x + window_width <= work_left + work_width
             && target_y + window_height <= work_top + work_height
-            && target_x + window_width <= work_left + work_width
         {
-            position_strategy = "left_bottom";
+            position_strategy = "right_bottom";
         } else {
-            // 策略2：尝试在右下角显示
+            // 策略2：尝试在右上角显示
             target_x = caret_pos.x + margin;
-            target_y = caret_pos.y + margin;
+            target_y = caret_pos.y - window_height - margin;
 
-            if target_x >= work_left
-                && target_x + window_width <= work_left + work_width
-                && target_y + window_height <= work_top + work_height
-            {
-                position_strategy = "right_bottom";
+            if target_x + window_width <= work_left + work_width && target_y >= work_top {
+                position_strategy = "right_top";
             } else {
-                // 策略3：尝试在左上角显示
+                // 策略3：尝试在左下角显示
                 target_x = caret_pos.x - window_width - margin;
-                target_y = caret_pos.y - window_height - margin;
+                target_y = caret_pos.y + margin;
 
-                if target_x >= work_left
-                    && target_y >= work_top
-                    && target_x + window_width <= work_left + work_width
-                {
-                    position_strategy = "left_top";
+                if target_x >= work_left && target_y + window_height <= work_top + work_height {
+                    position_strategy = "left_bottom";
                 } else {
-                    // 策略4：尝试在右上角显示
-                    target_x = caret_pos.x + margin;
+                    // 策略4：尝试在左上角显示
+                    target_x = caret_pos.x - window_width - margin;
                     target_y = caret_pos.y - window_height - margin;
 
-                    if target_x + window_width <= work_left + work_width && target_y >= work_top {
-                        position_strategy = "right_top";
+                    if target_x >= work_left && target_y >= work_top {
+                        position_strategy = "left_top";
                     } else {
                         // 策略5：智能调整到最佳可用位置
 
-                        // 水平方向：优先左侧，不够则右侧，再不够则居中
-                        if caret_pos.x - window_width - margin >= work_left {
-                            target_x = caret_pos.x - window_width - margin;
-                        } else if caret_pos.x + margin + window_width <= work_left + work_width {
+                        // 水平方向：优先右侧，不够则左侧，再不够则居中
+                        if caret_pos.x + margin + window_width <= work_left + work_width {
                             target_x = caret_pos.x + margin;
+                        } else if caret_pos.x - window_width - margin >= work_left {
+                            target_x = caret_pos.x - window_width - margin;
                         } else {
                             target_x = work_left + (work_width - window_width) / 2;
                         }
