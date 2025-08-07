@@ -52,25 +52,6 @@ function generateClipboardItemHTML(item, index) {
   // 生成操作按钮
   let actionsHTML = '<div class="clipboard-actions">';
 
-  // 链接打开按钮
-  if (contentType === 'link') {
-    actionsHTML += `
-      <button class="action-button open-link" title="在浏览器中打开" style="display: none;">
-        <i class="ti ti-external-link"></i>
-      </button>
-    `;
-  }
-
-  // 添加到常用按钮
-  actionsHTML += `
-    <button class="action-button add-to-favorites" title="添加到常用" style="display: none;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-star">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" />
-      </svg>
-    </button>
-  `;
-
   actionsHTML += '</div>';
 
   // 生成日期时间HTML - 优先使用created_at，如果为空则使用timestamp
@@ -601,27 +582,6 @@ function handleClipboardItemClick(index, event) {
   const originalIndex = clipboardHistory.findIndex(originalItem => originalItem === item);
   if (originalIndex === -1) return;
 
-  // 检查是否点击了操作按钮
-  if (event.target.closest('.action-button')) {
-    const button = event.target.closest('.action-button');
-
-    if (button.classList.contains('open-link')) {
-      event.stopPropagation();
-      openLink(item.text);
-      return;
-    }
-
-    if (button.classList.contains('add-to-favorites')) {
-      event.stopPropagation();
-      addClipboardToFavorites(originalIndex).then(() => {
-        window.dispatchEvent(new CustomEvent('refreshQuickTexts'));
-      }).catch(error => {
-        console.error('添加到常用失败:', error);
-      });
-      return;
-    }
-  }
-
   // 处理主要的点击事件（粘贴）
   const clipboardItem = event.target.closest('.clipboard-item');
   handleClipboardItemPaste(item, originalIndex, clipboardItem);
@@ -834,6 +794,9 @@ function showClipboardContextMenu(event, item, index) {
         try {
           await invoke('add_clipboard_to_favorites', { index });
           showNotification('已添加到常用文本', 'success');
+
+          // 触发常用文本列表刷新
+          await invoke('emit_quick_texts_updated');
         } catch (error) {
           console.error('添加到常用文本失败:', error);
           showNotification('添加失败', 'error');

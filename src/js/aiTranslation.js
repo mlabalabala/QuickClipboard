@@ -30,8 +30,6 @@ let aiTranslationConfig = {
  * 初始化AI翻译功能
  */
 export async function initAiTranslation() {
-  console.log('初始化AI翻译功能...');
-
   // 初始化AI配置管理器
   await initAIConfig();
 
@@ -49,8 +47,6 @@ export async function initAiTranslation() {
 
   // 监听AI配置变化
   addConfigChangeListener(onAIConfigChanged);
-
-  console.log('AI翻译功能初始化完成');
 }
 
 /**
@@ -81,17 +77,11 @@ async function loadAiTranslationSettings() {
       inputSpeed: settings.aiInputSpeed || 50
     };
 
-    console.log('AI翻译配置加载完成:', aiTranslationConfig);
-    console.log('后端设置值 - aiTranslateOnPaste:', settings.aiTranslateOnPaste, '类型:', typeof settings.aiTranslateOnPaste);
-
     // 更新UI状态
     setIsAiTranslationEnabled(settings.aiTranslationEnabled);
     if (aiTranslationSwitch) {
       aiTranslationSwitch.checked = settings.aiTranslationEnabled;
     }
-
-    console.log('AI翻译设置已加载:', aiTranslationConfig);
-    console.log('AI配置已加载:', aiConfig);
   } catch (error) {
     console.error('加载AI翻译设置失败:', error);
   }

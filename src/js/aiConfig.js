@@ -56,7 +56,6 @@ export async function initAIConfig() {
   try {
     await loadAIConfig();
     setupEventListeners();
-    console.log('AI配置管理器初始化成功');
   } catch (error) {
     console.error('AI配置管理器初始化失败:', error);
     throw error;
@@ -80,8 +79,6 @@ export async function loadAIConfig() {
       temperature: DEFAULT_AI_CONFIG.temperature,
       maxTokens: DEFAULT_AI_CONFIG.maxTokens
     };
-
-    console.log('AI配置加载成功:', currentAIConfig);
     return { ...currentAIConfig };
   } catch (error) {
     console.error('加载AI配置失败:', error);
@@ -121,8 +118,6 @@ export async function saveAIConfig(config) {
 
     // 通知配置变更
     notifyConfigChange(currentAIConfig);
-
-    console.log('AI配置保存成功:', config);
   } catch (error) {
     console.error('保存AI配置失败:', error);
     throw error;
@@ -164,7 +159,6 @@ export function isAIConfigValid(config = currentAIConfig) {
 export async function getAvailableAIModels() {
   try {
     const models = await invoke('get_available_ai_models');
-    console.log('获取到可用AI模型:', models);
     return models || [];
   } catch (error) {
     console.error('获取AI模型列表失败:', error);
@@ -185,7 +179,6 @@ export async function testAIConfig(config = null) {
     }
 
     const result = await invoke('test_ai_config');
-    console.log('AI配置测试结果:', result);
     return result;
   } catch (error) {
     console.error('AI配置测试失败:', error);
@@ -298,8 +291,6 @@ function setupEventListeners() {
   // 监听AI配置变更事件
   listen('ai-config-changed', (event) => {
     const config = event.payload;
-    console.log('收到AI配置变更事件:', config);
-
     // 更新当前配置
     Object.assign(currentAIConfig, config);
   });
@@ -312,7 +303,6 @@ function setupEventListeners() {
 export async function resetAIConfig() {
   try {
     await saveAIConfig(DEFAULT_AI_CONFIG);
-    console.log('AI配置已重置为默认值');
   } catch (error) {
     console.error('重置AI配置失败:', error);
     throw error;
@@ -339,7 +329,6 @@ export async function importAIConfig(config) {
     }
 
     await saveAIConfig(config);
-    console.log('AI配置导入成功');
   } catch (error) {
     console.error('导入AI配置失败:', error);
     throw error;
