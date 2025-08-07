@@ -75,7 +75,35 @@ export class VirtualList {
         }
 
         if (evt.oldIndex !== evt.newIndex && this.onSort) {
-          this.onSort(evt.oldIndex, evt.newIndex);
+          const realOldIndex = parseInt(evt.item.getAttribute('data-index'));
+          let realNewIndex = realOldIndex;
+
+          // 找到新位置的非拖拽元素来确定真实索引
+          const elements = Array.from(evt.to.children);
+          const isForward = evt.newIndex < evt.oldIndex;
+
+          // 根据拖拽方向查找参考元素
+          const searchStart = isForward ? evt.newIndex : evt.newIndex + 1;
+          const searchEnd = isForward ? elements.length : 0;
+          const searchStep = isForward ? 1 : -1;
+
+          for (let i = searchStart; isForward ? i < searchEnd : i >= searchEnd; i += searchStep) {
+            if (elements[i] && elements[i] !== evt.item) {
+              const refIndex = parseInt(elements[i].getAttribute('data-index'));
+              realNewIndex = isForward ? refIndex : refIndex + 1;
+              break;
+            }
+          }
+
+          if (realOldIndex !== realNewIndex) {
+            console.log('oldIndex:', realOldIndex, 'newIndex:', realNewIndex);
+            this.onSort(realOldIndex, realNewIndex);
+
+            // 拖拽完成后设置该项为激活状态
+            setTimeout(() => {
+              this.setDraggedItemActive(evt.item, realNewIndex);
+            }, 50); // 延迟一点时间确保DOM更新完成
+          }
         }
       }
     };
@@ -156,6 +184,26 @@ export class VirtualList {
     }
     return -1;
   }
+
+  // 设置拖拽项为激活状态
+  setDraggedItemActive(draggedElement, newIndex) {
+    try {
+      // 动态导入navigation模块以避免循环依赖
+      import('./navigation.js').then(navigationModule => {
+        // 更新拖拽元素的data-index属性为新索引
+        draggedElement.setAttribute('data-index', newIndex.toString());
+
+        // 调用navigation模块的syncClickedItem函数设置激活状态
+        navigationModule.syncClickedItem(draggedElement);
+      }).catch(error => {
+        console.warn('设置拖拽项激活状态失败:', error);
+      });
+    } catch (error) {
+      console.warn('设置拖拽项激活状态失败:', error);
+    }
+  }
+
+
 
   bindEvents() {
     const contentElement = document.getElementById(this.contentId);

@@ -74,7 +74,7 @@ import {
   setupCustomWindowDrag
 } from './js/events.js';
 
-import { initSortable } from './js/sortable.js';
+
 import { initInputFocusManagement } from './js/focus.js';
 import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
@@ -227,8 +227,7 @@ async function initApp() {
   // 设置键盘快捷键
   // setupKeyboardShortcuts();
 
-  // 初始化拖拽排序
-  initSortable();
+
 
   // 初始化输入框焦点管理
   initInputFocusManagement();

@@ -16,9 +16,7 @@ export let currentQuickTextsFilter = 'all'; // 当前常用文本筛选类型：
 export let isOneTimePaste = false; // 一次性粘贴开关状态
 export let isAiTranslationEnabled = false; // AI翻译开关状态
 
-// Sortable实例
-export let clipboardSortable = null;
-export let quickTextsSortable = null;
+
 
 // DOM元素引用
 export let searchInput;
@@ -117,13 +115,7 @@ export function getIsAiTranslationEnabled() {
   return isAiTranslationEnabled;
 }
 
-export function setClipboardSortable(sortable) {
-  clipboardSortable = sortable;
-}
 
-export function setQuickTextsSortable(sortable) {
-  quickTextsSortable = sortable;
-}
 
 export function setConfirmCallback(callback) {
   confirmCallback = callback;
