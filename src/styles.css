@@ -1830,7 +1830,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 4px 4px;
+  padding: 7px 4px;
   margin-bottom: 4px;
   border-radius: 6px;
   cursor: pointer;
@@ -2275,4 +2275,174 @@ body {
   content: '✗';
   font-size: 16px;
   font-weight: bold;
+}
+
+/* Footer 快捷键帮助样式 */
+.footer {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.footer:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.shortcuts-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+}
+
+.shortcuts-help-icon {
+  font-size: 16px;
+  color: red;
+  transition: all 0.2s ease;
+  cursor: help;
+}
+
+.footer:hover .shortcuts-help-icon {
+  color: #007acc;
+}
+
+.shortcuts-help-content {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #bdbdbd;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  max-height: 400px;
+  overflow: hidden;
+}
+
+.footer:hover .shortcuts-help-content,
+.shortcuts-help-content:hover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 隐藏状态优先级更高 */
+.shortcuts-help-content.hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateY(10px) !important;
+}
+
+.shortcuts-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #bdbdbd;
+}
+
+.shortcuts-help-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #007acc;
+}
+
+.shortcuts-help-close {
+  background: none;
+  border: none;
+  color: rgb(249, 75, 75);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shortcuts-help-close:hover {
+  background: rgba(249, 75, 75, 0.1);
+  color: rgb(249, 75, 75);
+}
+
+.shortcuts-help-body {
+  padding: 16px 20px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.shortcuts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shortcuts-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #007acc;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.shortcut-item kbd {
+  background: #2f2f2f;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 0 2px;
+  font-weight: bold;
+
+}
+
+.shortcut-item span {
+  color: #333;
+  flex: 1;
+  margin-left: 12px;
+  text-align: right;
+}
+
+/* 首次显示动画 */
+.shortcuts-help-content.first-show {
+  animation: firstShowAnimation 0.5s ease-out;
+}
+
+@keyframes firstShowAnimation {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translateY(-5px);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

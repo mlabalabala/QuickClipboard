@@ -87,15 +87,20 @@ pub fn focus_clipboard_window(window: WebviewWindow) -> Result<(), String> {
         use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SetForegroundWindow};
         let _lock = LAST_FOCUS_MUTEX.lock().unwrap();
         unsafe {
-            // 记录当前前台窗口
-            let hwnd = GetForegroundWindow();
-            if hwnd.0 != 0 {
-                LAST_FOCUS_HWND = Some(hwnd.0);
-            }
-            // 让剪贴板窗口获得焦点
+            // 获取当前前台窗口
+            let current_hwnd = GetForegroundWindow();
+
+            // 获取剪贴板窗口句柄
             if let Ok(hwnd_raw) = window.hwnd() {
-                let hwnd_clip = HWND(hwnd_raw.0 as usize as isize);
-                let _ = SetForegroundWindow(hwnd_clip);
+                let clipboard_hwnd = HWND(hwnd_raw.0 as usize as isize);
+
+                // 只有当前台窗口不是剪贴板窗口时，才记录当前前台窗口
+                if current_hwnd.0 != 0 && current_hwnd.0 != clipboard_hwnd.0 {
+                    LAST_FOCUS_HWND = Some(current_hwnd.0);
+                }
+
+                // 让剪贴板窗口获得焦点
+                let _ = SetForegroundWindow(clipboard_hwnd);
             }
         }
     }

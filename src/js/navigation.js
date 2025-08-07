@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { togglePin } from './window.js';
 
 // 导航状态
 let currentSelectedIndex = -1;
@@ -14,6 +15,16 @@ let isUpdating = false;
 let clickSyncSetup = false;
 let preserveNavigationOnUpdate = false;
 
+// 分组侧边栏状态
+let isGroupSidebarVisible = false;
+let ctrlPressed = false;
+
+// 快捷键帮助面板状态
+let footer = null;
+let shortcutsHelpContent = null;
+let shortcutsHelpClose = null;
+let isFirstLaunch = false;
+
 // 初始化导航系统
 export async function initNavigation() {
   try {
@@ -21,17 +32,26 @@ export async function initNavigation() {
     await listen('navigation-key-pressed', (event) => {
       const { key } = event.payload;
 
+      // 处理Ctrl组合键
+      if (key.startsWith('Ctrl')) {
+        handleCtrlCombination(key);
+        return;
+      }
+
       // 对于方向键使用节流，其他按键立即执行
       if (key === 'ArrowUp' || key === 'ArrowDown') {
         handleThrottledNavigation(key);
+      } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        // 左右方向键用于切换标签页，立即执行
+        handleTabSwitch(key);
       } else {
         // 立即执行非导航按键
         switch (key) {
-          case 'CtrlEnter':
-            executeCurrentItem();
-            break;
           case 'Escape':
             hideWindow();
+            break;
+          case 'Tab':
+            focusSearchBox();
             break;
         }
       }
@@ -39,6 +59,9 @@ export async function initNavigation() {
 
     // 设置点击同步
     setupClickSync();
+
+    // 设置搜索框键盘事件监听
+    setupSearchBoxKeyboardEvents();
   } catch (error) {
     console.error('初始化导航系统失败:', error);
   }
@@ -46,6 +69,7 @@ export async function initNavigation() {
 
 // 节流处理导航按键
 function handleThrottledNavigation(key) {
+  console.log('导航键被按下:', key);
   const now = Date.now();
 
   // 如果距离上次导航时间太短，则延迟执行
@@ -77,6 +101,173 @@ function executeNavigation(key) {
     case 'ArrowDown':
       navigateDown();
       break;
+  }
+}
+
+// 处理Ctrl组合键
+function handleCtrlCombination(key) {
+  switch (key) {
+    case 'CtrlEnter':
+      // Ctrl+Enter：执行当前选中项目
+      executeCurrentItem();
+      break;
+    case 'CtrlArrowUp':
+      // Ctrl+上方向键：切换到上一个分组并临时显示分组列表
+      switchToPreviousGroup();
+      showGroupSidebarTemporarily();
+      break;
+    case 'CtrlArrowDown':
+      // Ctrl+下方向键：切换到下一个分组并临时显示分组列表
+      switchToNextGroup();
+      showGroupSidebarTemporarily();
+      break;
+    case 'CtrlP':
+      // Ctrl+P：切换窗口固定状态
+      togglePin();
+      break;
+    case 'CtrlArrowLeft':
+    case 'CtrlArrowRight':
+      // Ctrl+左右方向键：暂时不处理，避免与标签页切换冲突
+      break;
+  }
+}
+
+// 临时显示分组侧边栏1秒
+let groupSidebarTimer = null;
+
+function showGroupSidebarTemporarily() {
+  const sidebar = document.getElementById('groups-sidebar');
+  if (!sidebar) return;
+
+  // 如果侧边栏已经固定，不需要临时显示
+  if (sidebar.classList.contains('pinned')) return;
+
+  // 显示侧边栏
+  sidebar.classList.add('show');
+  isGroupSidebarVisible = true;
+
+  // 清除之前的定时器
+  if (groupSidebarTimer) {
+    clearTimeout(groupSidebarTimer);
+  }
+
+  // 设置0.5秒后自动隐藏
+  groupSidebarTimer = setTimeout(() => {
+    if (sidebar && !sidebar.classList.contains('pinned')) {
+      sidebar.classList.remove('show');
+      isGroupSidebarVisible = false;
+    }
+    groupSidebarTimer = null;
+  }, 500);
+}
+
+// 切换到上一个分组
+function switchToPreviousGroup() {
+  // 确保在常用文本标签页
+  const activeTab = document.querySelector('.tab-button.active');
+  if (!activeTab || activeTab.dataset.tab !== 'quick-texts') {
+    // 切换到常用文本标签页
+    const quickTextsTab = document.querySelector('[data-tab="quick-texts"]');
+    if (quickTextsTab) {
+      quickTextsTab.click();
+    }
+  }
+
+  // 获取分组列表
+  const groupItems = document.querySelectorAll('.group-item');
+  if (groupItems.length === 0) return;
+
+  // 找到当前激活的分组
+  let currentGroupIndex = -1;
+  groupItems.forEach((item, index) => {
+    if (item.classList.contains('active')) {
+      currentGroupIndex = index;
+    }
+  });
+
+  // 切换到上一个分组
+  let previousGroupIndex;
+  if (currentGroupIndex <= 0) {
+    previousGroupIndex = groupItems.length - 1; // 循环到最后一个
+  } else {
+    previousGroupIndex = currentGroupIndex - 1;
+  }
+
+  // 点击目标分组
+  if (groupItems[previousGroupIndex]) {
+    groupItems[previousGroupIndex].click();
+  }
+}
+
+// 切换到下一个分组
+function switchToNextGroup() {
+  // 确保在常用文本标签页
+  const activeTab = document.querySelector('.tab-button.active');
+  if (!activeTab || activeTab.dataset.tab !== 'quick-texts') {
+    // 切换到常用文本标签页
+    const quickTextsTab = document.querySelector('[data-tab="quick-texts"]');
+    if (quickTextsTab) {
+      quickTextsTab.click();
+    }
+  }
+
+  // 获取分组列表
+  const groupItems = document.querySelectorAll('.group-item');
+  if (groupItems.length === 0) return;
+
+  // 找到当前激活的分组
+  let currentGroupIndex = -1;
+  groupItems.forEach((item, index) => {
+    if (item.classList.contains('active')) {
+      currentGroupIndex = index;
+    }
+  });
+
+  // 切换到下一个分组
+  let nextGroupIndex;
+  if (currentGroupIndex >= groupItems.length - 1) {
+    nextGroupIndex = 0; // 循环到第一个
+  } else {
+    nextGroupIndex = currentGroupIndex + 1;
+  }
+
+  // 点击目标分组
+  if (groupItems[nextGroupIndex]) {
+    groupItems[nextGroupIndex].click();
+  }
+}
+
+
+
+// 处理标签页切换
+function handleTabSwitch(key) {
+  const tabs = document.querySelectorAll('.tab-button');
+  if (tabs.length === 0) return;
+
+  // 找到当前激活的标签页
+  let currentTabIndex = -1;
+  tabs.forEach((tab, index) => {
+    if (tab.classList.contains('active')) {
+      currentTabIndex = index;
+    }
+  });
+
+  if (currentTabIndex === -1) return;
+
+  let nextTabIndex;
+  if (key === 'ArrowLeft') {
+    // 向左切换，循环到最后一个
+    nextTabIndex = currentTabIndex === 0 ? tabs.length - 1 : currentTabIndex - 1;
+  } else if (key === 'ArrowRight') {
+    // 向右切换，循环到第一个
+    nextTabIndex = currentTabIndex === tabs.length - 1 ? 0 : currentTabIndex + 1;
+  }
+
+  // 点击目标标签页来切换
+  if (nextTabIndex !== undefined && tabs[nextTabIndex]) {
+    tabs[nextTabIndex].click();
+    // 重置导航状态，因为切换了标签页
+    resetNavigation();
   }
 }
 
@@ -308,6 +499,31 @@ async function executeCurrentItem() {
   }
 }
 
+// 聚焦搜索框
+async function focusSearchBox() {
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab) return;
+
+  let searchInput = null;
+
+  if (activeTab.id === 'clipboard-tab') {
+    searchInput = document.querySelector('#search-input');
+  } else if (activeTab.id === 'quick-texts-tab') {
+    searchInput = document.querySelector('#quick-texts-search');
+  }
+
+  if (searchInput) {
+    // 先确保窗口获得焦点，现在后端会正确处理焦点记录
+    await invoke('focus_clipboard_window');
+
+    // 然后聚焦输入框
+    searchInput.focus();
+
+    // 选中搜索框中的所有文本，方便用户直接输入新的搜索内容
+    searchInput.select();
+  }
+}
+
 // 隐藏窗口
 async function hideWindow() {
   try {
@@ -406,4 +622,114 @@ export function setupClickSync() {
   clickSyncSetup = true;
 }
 
+// 设置搜索框键盘事件监听
+function setupSearchBoxKeyboardEvents() {
+  const searchInputs = [
+    document.querySelector('#search-input'),
+    document.querySelector('#quick-texts-search')
+  ];
 
+  searchInputs.forEach(searchInput => {
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (event) => {
+        // 监听方向键，让搜索框失去焦点以便进入导航模式
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter') {
+          event.preventDefault(); // 阻止默认的光标移动行为
+          searchInput.blur(); // 让搜索框失去焦点
+
+          // 稍微延迟一下，确保焦点已经失去，然后触发导航
+          setTimeout(() => {
+            if (event.key === 'ArrowUp') {
+              navigateUp();
+            } else if (event.key === 'ArrowDown') {
+              navigateDown();
+            }
+          }, 10);
+        }
+
+        // ESC键也让搜索框失去焦点
+        else if (event.key === 'Escape') {
+          event.preventDefault();
+          searchInput.blur();
+        }
+      });
+    }
+  });
+}
+
+// 初始化快捷键帮助面板
+export function initShortcutsHelpPanel() {
+  footer = document.getElementById('footer');
+  shortcutsHelpContent = document.getElementById('shortcuts-help-content');
+  shortcutsHelpClose = document.getElementById('shortcuts-help-close');
+
+  if (!footer || !shortcutsHelpContent || !shortcutsHelpClose) {
+    return;
+  }
+
+  // 检查是否是首次启动
+  checkFirstLaunch();
+
+  // 点击关闭按钮
+  shortcutsHelpClose.addEventListener('click', (e) => {
+    console.log('用户点击关闭按钮');
+    e.stopPropagation();
+    hideShortcutsHelp();
+  });
+
+  // 监听footer的鼠标离开事件，延迟移除隐藏状态
+  footer.addEventListener('mouseleave', () => {
+    setTimeout(() => {
+      // 检查鼠标是否还在帮助内容上
+      if (!shortcutsHelpContent.matches(':hover')) {
+        shortcutsHelpContent.classList.remove('hidden');
+      }
+    }, 100);
+  });
+
+  // 首次启动时自动显示
+  if (isFirstLaunch) {
+    setTimeout(() => {
+      showShortcutsHelpFirstTime();
+    }, 1000); // 延迟1秒显示，让用户先看到主界面
+  }
+}
+
+// 检查是否是首次启动
+function checkFirstLaunch() {
+  const hasShownHelp = localStorage.getItem('shortcuts-help-shown');
+  if (!hasShownHelp) {
+    isFirstLaunch = true;
+    localStorage.setItem('shortcuts-help-shown', 'true');
+  }
+}
+
+// 首次显示快捷键帮助
+function showShortcutsHelpFirstTime() {
+  if (!shortcutsHelpContent) return;
+
+  // 添加首次显示的特殊样式
+  shortcutsHelpContent.classList.add('first-show');
+  shortcutsHelpContent.style.opacity = '1';
+  shortcutsHelpContent.style.visibility = 'visible';
+  shortcutsHelpContent.style.transform = 'translateY(0)';
+
+  // 3秒后自动隐藏
+  setTimeout(() => {
+    hideShortcutsHelp();
+  }, 3000);
+}
+
+// 隐藏快捷键帮助面板
+function hideShortcutsHelp() {
+  if (!shortcutsHelpContent) return;
+
+  console.log('隐藏快捷键帮助面板');
+  shortcutsHelpContent.classList.remove('first-show');
+  shortcutsHelpContent.classList.add('hidden');
+
+  // 清除内联样式
+  shortcutsHelpContent.style.opacity = '';
+  shortcutsHelpContent.style.visibility = '';
+  shortcutsHelpContent.style.transform = '';
+}

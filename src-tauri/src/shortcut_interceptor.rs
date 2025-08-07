@@ -238,14 +238,44 @@ unsafe extern "system" fn shortcut_hook_proc(
                         0x26 => {
                             // VK_UP
                             if wparam.0 as u32 == WM_KEYDOWN {
-                                emit_navigation_event("ArrowUp");
+                                if ctrl_pressed {
+                                    emit_navigation_event("CtrlArrowUp");
+                                } else {
+                                    emit_navigation_event("ArrowUp");
+                                }
                                 return LRESULT(1); // 阻止事件传播
                             }
                         }
                         0x28 => {
                             // VK_DOWN
                             if wparam.0 as u32 == WM_KEYDOWN {
-                                emit_navigation_event("ArrowDown");
+                                if ctrl_pressed {
+                                    emit_navigation_event("CtrlArrowDown");
+                                } else {
+                                    emit_navigation_event("ArrowDown");
+                                }
+                                return LRESULT(1);
+                            }
+                        }
+                        0x25 => {
+                            // VK_LEFT
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                if ctrl_pressed {
+                                    emit_navigation_event("CtrlArrowLeft");
+                                } else {
+                                    emit_navigation_event("ArrowLeft");
+                                }
+                                return LRESULT(1);
+                            }
+                        }
+                        0x27 => {
+                            // VK_RIGHT
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                if ctrl_pressed {
+                                    emit_navigation_event("CtrlArrowRight");
+                                } else {
+                                    emit_navigation_event("ArrowRight");
+                                }
                                 return LRESULT(1);
                             }
                         }
@@ -260,6 +290,21 @@ unsafe extern "system" fn shortcut_hook_proc(
                             // VK_ESCAPE
                             if wparam.0 as u32 == WM_KEYDOWN {
                                 emit_navigation_event("Escape");
+                                return LRESULT(1);
+                            }
+                        }
+                        0x09 => {
+                            // VK_TAB
+                            if wparam.0 as u32 == WM_KEYDOWN {
+                                emit_navigation_event("Tab");
+                                return LRESULT(1);
+                            }
+                        }
+
+                        0x50 => {
+                            // VK_P - Ctrl+P 切换固定状态
+                            if wparam.0 as u32 == WM_KEYDOWN && ctrl_pressed {
+                                emit_navigation_event("CtrlP");
                                 return LRESULT(1);
                             }
                         }

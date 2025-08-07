@@ -18,7 +18,7 @@ function printStartupBanner() {
 
 import { initThemeManager } from './js/themeManager.js';
 import './js/fileIconUtils.js';
-import { initNavigation } from './js/navigation.js';
+import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
 
 import {
   initDOMReferences,
@@ -234,6 +234,9 @@ async function initApp() {
 
   // 初始化导航系统
   await initNavigation();
+
+  // 初始化快捷键帮助面板
+  initShortcutsHelpPanel();
 
   // 初始化截屏功能
   initScreenshot();
