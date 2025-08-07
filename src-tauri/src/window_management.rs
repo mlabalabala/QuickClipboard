@@ -340,8 +340,6 @@ pub fn set_super_topmost_window(window: &WebviewWindow) -> Result<(), String> {
             );
         }
 
-        println!("窗口已设置为超级置顶，应该能显示在开始菜单之上");
-
         // 禁用窗口阴影
         disable_window_shadow(window)?;
 

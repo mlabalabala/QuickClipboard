@@ -733,6 +733,44 @@ pub fn get_image_thumbnail_url(image_id: String) -> Result<String, String> {
     manager.get_thumbnail_data_url(&image_id)
 }
 
+// 保存图片到指定路径
+#[tauri::command]
+pub fn save_image_to_file(content: String, file_path: String) -> Result<(), String> {
+    use base64::{engine::general_purpose, Engine as _};
+    use std::fs;
+
+    let data_url = if content.starts_with("image:") {
+        // 新格式：通过图片ID获取data URL
+        let image_id = content.strip_prefix("image:").unwrap_or("");
+        let image_manager = get_image_manager()?;
+        let manager = image_manager
+            .lock()
+            .map_err(|e| format!("获取图片管理器锁失败: {}", e))?;
+        manager.get_image_data_url(image_id)?
+    } else if content.starts_with("data:image/") {
+        // 旧格式：直接使用data URL
+        content
+    } else {
+        return Err("不支持的图片格式".to_string());
+    };
+
+    // 解析data URL
+    let comma_pos = data_url
+        .find(',')
+        .ok_or_else(|| "无效的data URL格式".to_string())?;
+
+    let encoded = &data_url[(comma_pos + 1)..];
+    let image_data = general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|e| format!("Base64解码失败: {}", e))?;
+
+    // 保存到文件
+    fs::write(&file_path, &image_data).map_err(|e| format!("保存文件失败: {}", e))?;
+
+    println!("图片已保存到: {}", file_path);
+    Ok(())
+}
+
 // 设置预览窗口当前索引
 #[tauri::command]
 pub fn set_preview_index(index: usize) -> Result<(), String> {

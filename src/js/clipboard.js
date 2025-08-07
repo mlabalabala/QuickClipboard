@@ -955,20 +955,35 @@ function viewOriginalImageFromClipboard(item) {
 }
 
 // 从剪贴板另存为图片
-function saveImageAsFromClipboard(item) {
+async function saveImageAsFromClipboard(item) {
   try {
-    if (item.text.startsWith('data:image/')) {
-      // 创建下载链接
-      const link = document.createElement('a');
-      link.href = item.text;
-      link.download = `image_${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showNotification('图片已保存', 'success');
-    } else {
+    if (!item.text.startsWith('data:image/') && !item.text.startsWith('image:')) {
       showNotification('此图片格式暂不支持直接保存', 'info');
+      return;
     }
+
+    // 使用文件对话框选择保存位置
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const filePath = await save({
+      title: '保存图片',
+      defaultPath: `image_${Date.now()}.png`,
+      filters: [{
+        name: '图片文件',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
+      }]
+    });
+
+    if (!filePath) {
+      return; // 用户取消了操作
+    }
+
+    // 调用后端保存图片
+    await invoke('save_image_to_file', {
+      content: item.text,
+      filePath: filePath
+    });
+
+    showNotification('图片已保存', 'success');
   } catch (error) {
     console.error('保存图片失败:', error);
     showNotification('保存图片失败', 'error');
