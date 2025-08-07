@@ -1173,6 +1173,47 @@ pub async fn open_file_location(file_path: String) -> Result<(), String> {
     }
 }
 
+// 使用默认程序打开文件
+#[tauri::command]
+pub async fn open_file_with_default_program(file_path: String) -> Result<(), String> {
+    use std::process::Command;
+
+    #[cfg(windows)]
+    {
+        // Windows: 使用 start 命令打开文件
+        let result = Command::new("cmd")
+            .args(&["/C", "start", "", &file_path])
+            .spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件失败: {}", e)),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: 使用 open 命令打开文件
+        let result = Command::new("open").arg(&file_path).spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件失败: {}", e)),
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: 使用 xdg-open 打开文件
+        let result = Command::new("xdg-open").arg(&file_path).spawn();
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("打开文件失败: {}", e)),
+        }
+    }
+}
+
 // 统一粘贴命令 - 自动识别内容类型并执行相应的粘贴操作
 #[tauri::command]
 pub async fn paste_content(

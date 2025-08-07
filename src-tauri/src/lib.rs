@@ -410,6 +410,7 @@ pub fn run() {
             commands::move_clipboard_item,
             commands::paste_content,
             commands::open_file_location,
+            commands::open_file_with_default_program,
             commands::read_image_file,
             commands::export_data,
             commands::import_data,

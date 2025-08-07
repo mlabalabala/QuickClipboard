@@ -760,6 +760,13 @@ function showClipboardContextMenu(event, item, index) {
     // 文件类型菜单
     menuItems.push(
       {
+        icon: 'ti-external-link',
+        text: '使用默认程序打开',
+        onClick: () => {
+          openFileWithDefaultProgram(item);
+        }
+      },
+      {
         icon: 'ti-folder-open',
         text: '打开文件位置',
         onClick: () => {
@@ -987,6 +994,23 @@ async function saveImageAsFromClipboard(item) {
   } catch (error) {
     console.error('保存图片失败:', error);
     showNotification('保存图片失败', 'error');
+  }
+}
+
+// 使用默认程序打开文件
+async function openFileWithDefaultProgram(item) {
+  try {
+    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const firstFilePath = filesData.files[0].path;
+      await invoke('open_file_with_default_program', { filePath: firstFilePath });
+      showNotification('已使用默认程序打开文件', 'success');
+    }
+  } catch (error) {
+    console.error('打开文件失败:', error);
+    showNotification('打开文件失败', 'error');
   }
 }
 
