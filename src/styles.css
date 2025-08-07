@@ -1149,6 +1149,37 @@ body {
   box-shadow: 0 2px 8px rgba(74, 137, 220, 0.2);
 }
 
+/* 分组标签样式 */
+.group-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #4aa7d5 0%, #477ef4 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  max-width: 60px;
+  overflow: hidden;
+}
+
+.group-badge i {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.group-badge span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 键盘导航选中状态 */
 .quick-text-item.keyboard-selected {
   background-color: rgba(16, 143, 235, 0.5) !important;

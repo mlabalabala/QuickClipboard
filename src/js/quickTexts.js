@@ -17,7 +17,7 @@ import {
 } from './config.js';
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
-import { getCurrentGroupId, updateGroupSelects } from './groups.js';
+import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
@@ -49,15 +49,50 @@ function generateQuickTextItemHTML(text, index) {
   // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
   const timestampHTML = contentType === 'files' ? '' : `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
 
+  // 在"全部"分组中显示分组标签
+  const groupBadgeHTML = generateGroupBadgeHTML(text);
+
   return `
     <div class="quick-text-item" draggable="true" data-index="${index}">
       ${timestampHTML}
+      ${groupBadgeHTML}
       ${contentHTML}
     </div>
   `;
 }
 
+// 生成分组标签HTML
+function generateGroupBadgeHTML(text) {
+  // 只在"全部"分组中显示分组标签
+  const currentGroupId = getCurrentGroupId();
+  if (currentGroupId !== 'all') {
+    return '';
+  }
 
+  // 获取项目的分组信息
+  const itemGroupId = text.group_id || 'all';
+  if (itemGroupId === 'all') {
+    return '';
+  }
+
+  try {
+    const groups = getGroups();
+    const group = groups.find(g => g.id === itemGroupId);
+
+    if (group) {
+      return `
+        <div class="group-badge">
+          <i class="${group.icon}"></i>
+          <span>${escapeHtml(group.name)}</span>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.warn('获取分组信息失败:', error);
+  }
+
+  return '';
+}
 
 // 生成常用文本图片HTML
 function generateQuickTextImageHTML(text) {
@@ -431,6 +466,29 @@ export async function deleteQuickText(id) {
   });
 }
 
+// 计算在目标分组内的正确位置
+function calculateTargetPositionInGroup(filteredData, newIndex, targetGroupId) {
+  // 找到目标分组在filteredData中的所有项目
+  const targetGroupItems = [];
+  let targetIndexInGroup = 0;
+
+  for (let i = 0; i < filteredData.length; i++) {
+    const item = filteredData[i];
+    const itemGroupId = item.group_id || 'all';
+
+    if (itemGroupId === targetGroupId) {
+      targetGroupItems.push({ item, originalIndex: i });
+
+      // 如果当前索引小于等于newIndex，说明目标位置在这个项目之后
+      if (i <= newIndex) {
+        targetIndexInGroup = targetGroupItems.length;
+      }
+    }
+  }
+
+  return Math.max(0, Math.min(targetIndexInGroup - 1, targetGroupItems.length - 1));
+}
+
 // 更新常用文本顺序
 export async function updateQuickTextsOrder(oldIndex, newIndex) {
   try {
@@ -441,11 +499,71 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
     }
 
     const movedItem = filteredData[oldIndex];
+    const targetItem = filteredData[newIndex];
 
     if (!movedItem || !movedItem.id) {
       return;
     }
 
+    // 在"全部"分组中，检查是否跨分组拖拽
+    const currentGroupId = getCurrentGroupId();
+    if (currentGroupId === 'all') {
+      const movedItemGroupId = movedItem.group_id || 'all';
+      const targetItemGroupId = targetItem ? (targetItem.group_id || 'all') : movedItemGroupId;
+
+      if (movedItemGroupId !== targetItemGroupId) {
+        // 跨分组拖拽：将项目移动到目标分组并排序到正确位置
+        try {
+          // 计算在目标分组内的正确位置
+          const targetPositionInGroup = calculateTargetPositionInGroup(filteredData, newIndex, targetItemGroupId);
+
+          // 先移动到目标分组
+          await invoke('move_quick_text_to_group', {
+            id: movedItem.id,
+            groupId: targetItemGroupId
+          });
+
+          // 刷新数据以获取最新的分组内容
+          await refreshQuickTexts();
+
+          // 如果需要在分组内排序到特定位置
+          if (targetPositionInGroup > 0) {
+            // 获取目标分组的所有项目
+            const targetGroupTexts = await invoke('get_quick_texts_by_group', {
+              groupId: targetItemGroupId
+            });
+
+            // 找到刚移动的项目在目标分组中的当前位置（应该是第一个）
+            const currentIndex = targetGroupTexts.findIndex(t => t.id === movedItem.id);
+
+            if (currentIndex !== -1 && currentIndex !== targetPositionInGroup) {
+              // 使用现有的move_quick_text_item命令在分组内排序
+              await invoke('move_quick_text_item', {
+                itemId: movedItem.id,
+                toIndex: targetPositionInGroup
+              });
+            }
+          }
+
+          // 显示成功提示
+          const { getGroups } = await import('./groups.js');
+          const groups = getGroups();
+          const targetGroupName = groups.find(g => g.id === targetItemGroupId)?.name || '分组';
+          const { showNotification } = await import('./ui.js');
+          showNotification(`已移动到 ${targetGroupName}`, 'success');
+
+          await refreshQuickTexts();
+          return;
+        } catch (error) {
+          console.error('跨分组移动失败:', error);
+          const { showNotification } = await import('./ui.js');
+          showNotification('移动到分组失败，请重试', 'error');
+          return;
+        }
+      }
+    }
+
+    // 同分组内的排序
     await invoke('move_quick_text_item', {
       itemId: movedItem.id,
       toIndex: newIndex
@@ -537,8 +655,9 @@ function initQuickTextsVirtualList() {
 function getFilteredQuickTextsData() {
   const searchTerm = quickTextsSearch.value.toLowerCase();
   const filterType = currentQuickTextsFilter;
+  const currentGroupId = getCurrentGroupId();
 
-  return quickTexts.filter(text => {
+  let filteredTexts = quickTexts.filter(text => {
     const contentType = getContentType(text.content);
 
     // 类型筛选
@@ -573,6 +692,52 @@ function getFilteredQuickTextsData() {
 
     return true;
   });
+
+  // 如果是"全部"分组，按分组顺序重新排列数据
+  if (currentGroupId === 'all') {
+    filteredTexts = sortTextsByGroupOrder(filteredTexts);
+  }
+
+  return filteredTexts;
+}
+
+// 按分组顺序排列文本数据
+function sortTextsByGroupOrder(texts) {
+  try {
+    // 获取分组顺序
+    const groupsOrder = getGroups();
+
+    // 按group_id分组
+    const textsByGroup = {};
+    texts.forEach(text => {
+      const groupId = text.group_id || 'all';
+      if (!textsByGroup[groupId]) {
+        textsByGroup[groupId] = [];
+      }
+      textsByGroup[groupId].push(text);
+    });
+
+    // 按分组顺序合并
+    const sortedTexts = [];
+    groupsOrder.forEach(group => {
+      if (textsByGroup[group.id]) {
+        // 每个分组内的数据已经是按顺序的（从数据库获取时）
+        sortedTexts.push(...textsByGroup[group.id]);
+      }
+    });
+
+    // 添加任何不在分组列表中的文本（防止遗漏）
+    Object.keys(textsByGroup).forEach(groupId => {
+      if (!groupsOrder.find(g => g.id === groupId)) {
+        sortedTexts.push(...textsByGroup[groupId]);
+      }
+    });
+
+    return sortedTexts;
+  } catch (error) {
+    console.warn('按分组顺序排列失败，使用原始顺序:', error);
+    return texts;
+  }
 }
 
 // 渲染常用文本列表
