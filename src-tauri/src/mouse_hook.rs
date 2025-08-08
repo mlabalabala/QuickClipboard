@@ -52,9 +52,7 @@ unsafe extern "system" fn mouse_hook_proc(
                     if let Some(window) = MAIN_WINDOW_HANDLE.get() {
                         let window_clone = window.clone();
                         std::thread::spawn(move || {
-                            crate::window_management::toggle_webview_window_visibility(
-                                window_clone,
-                            );
+                            crate::window_management::show_webview_window(window_clone);
                         });
                     }
                     // 拦截鼠标中键事件，防止传递给其他应用

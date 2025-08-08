@@ -7,6 +7,9 @@ static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
 
 /// 显示窗口
 pub fn show_webview_window(window: tauri::WebviewWindow) {
+    // 检查窗口是否已经显示
+    let was_visible = window.is_visible().unwrap_or(false);
+
     // 智能定位窗口到光标位置
     #[cfg(windows)]
     {
@@ -16,8 +19,8 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     // 显示窗口
     let _ = window.show();
 
-    // 发送显示动画事件给前端
-    {
+    // 只有在窗口之前不可见时才发送显示动画事件
+    if !was_visible {
         use tauri::Emitter;
         let _ = window.emit("window-show-animation", ());
     }
