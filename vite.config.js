@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import removeConsole from 'vite-plugin-remove-console'
 
 export default defineConfig({
   root: 'src',
@@ -10,6 +11,17 @@ export default defineConfig({
   },
 
   envPrefix: ['VITE_', 'TAURI_'],
+
+  // 插件配置
+  plugins: [
+    // 判断是否为生产环境
+    process.env.NODE_ENV === 'production' || (!process.env.TAURI_DEBUG && process.env.NODE_ENV !== 'development')
+      ? removeConsole({
+        includes: ['log', 'debug', 'info'],
+        excludes: ['error', 'warn']
+      })
+      : null
+  ].filter(Boolean),
   build: {
     outDir: '../dist',
     target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
