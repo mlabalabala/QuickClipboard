@@ -108,7 +108,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "msi",
+      "app"
+    ],
     "publisher": "MoSheng",
     "copyright": "Copyright © 2025 MoSheng. All rights reserved.",
     "icon": [

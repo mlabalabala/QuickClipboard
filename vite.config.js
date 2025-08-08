@@ -27,6 +27,10 @@ export default defineConfig({
     target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
+    // 启用 CSS 代码分割
+    cssCodeSplit: true,
+    // 设置 chunk 大小警告限制
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'src/index.html'),
@@ -34,6 +38,19 @@ export default defineConfig({
         preview: resolve(__dirname, 'src/preview.html'),
         screenshot: resolve(__dirname, 'src/screenshot.html'),
         textEditor: resolve(__dirname, 'src/textEditor.html'),
+      },
+      output: {
+        // 手动分割代码块，减小单个文件大小
+        manualChunks(id) {
+          // 将 node_modules 中的依赖分离到 vendor chunk
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
+        // 优化资源文件名
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
       },
     },
   },
