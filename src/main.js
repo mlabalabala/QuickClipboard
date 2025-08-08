@@ -91,7 +91,7 @@ document.addEventListener('contextmenu', function (e) {
 // 等待后端初始化完成
 async function waitForBackendInitialization() {
   let attempts = 0;
-  const maxAttempts = 50; // 最多等待5秒
+  const maxAttempts = 30; // 最多等待3秒
 
   while (attempts < maxAttempts) {
     try {
@@ -103,8 +103,8 @@ async function waitForBackendInitialization() {
       // 静默处理错误
     }
 
-    // 等待100ms后重试
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 等待时间50ms
+    await new Promise(resolve => setTimeout(resolve, 50));
     attempts++;
   }
 }
@@ -145,13 +145,18 @@ async function initApp() {
   // 初始化分组功能（必须在常用文本之前）
   await initGroups();
 
+  // 预先初始化虚拟列表，让用户立即看到界面结构
   renderClipboardItems();
   renderQuickTexts();
 
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // 并行获取数据，提高加载速度
+  const dataPromise = Promise.all([
+    refreshClipboardHistory(),
+    refreshQuickTexts()
+  ]);
 
-  await refreshClipboardHistory();
-  await refreshQuickTexts();
+  // 数据获取完成后自动更新显示（refreshClipboardHistory和refreshQuickTexts内部会调用render函数）
+  await dataPromise;
 
   // 设置搜索功能
   searchInput.addEventListener('input', filterClipboardItems);
