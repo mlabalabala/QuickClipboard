@@ -1,6 +1,7 @@
 use crate::mouse_hook::WINDOW_PINNED_STATE;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tauri::WebviewWindow;
 
 static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
@@ -10,10 +11,16 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     // 检查窗口是否已经显示
     let was_visible = window.is_visible().unwrap_or(false);
 
-    // 智能定位窗口到光标位置
+    // 智能定位窗口到光标位置（带缓动动画）
     #[cfg(windows)]
     {
-        let _ = position_window_at_cursor(&window);
+        if was_visible {
+            // 窗口已显示，使用缓动动画移动到新位置
+            let _ = position_window_at_cursor_with_animation(&window);
+        } else {
+            // 窗口未显示，直接定位
+            let _ = position_window_at_cursor(&window);
+        }
     }
 
     // 显示窗口
@@ -454,6 +461,186 @@ pub fn position_window_at_cursor(window: &WebviewWindow) -> Result<(), String> {
 
 #[cfg(not(windows))]
 pub fn position_window_at_cursor(_window: &WebviewWindow) -> Result<(), String> {
+    // 非Windows平台暂不实现
+    Ok(())
+}
+
+// 缓动函数：ease-out-cubic
+fn ease_out_cubic(t: f64) -> f64 {
+    1.0 - (1.0 - t).powi(3)
+}
+
+// 带缓动动画的窗口定位函数
+#[cfg(windows)]
+pub fn position_window_at_cursor_with_animation(window: &WebviewWindow) -> Result<(), String> {
+    use windows::Win32::Foundation::{POINT, RECT};
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
+    };
+
+    // 获取当前窗口位置
+    let current_position = window
+        .outer_position()
+        .map_err(|e| format!("获取当前窗口位置失败: {}", e))?;
+    let start_x = current_position.x as f64;
+    let start_y = current_position.y as f64;
+
+    unsafe {
+        // 计算目标位置（复用原有的定位逻辑）
+        let mut cursor_pos = POINT { x: 0, y: 0 };
+        if GetCursorPos(&mut cursor_pos).is_err() {
+            return Err("获取鼠标位置失败".to_string());
+        }
+
+        // 获取鼠标所在的显示器信息
+        let monitor = MonitorFromPoint(cursor_pos, MONITOR_DEFAULTTONEAREST);
+        let mut monitor_info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            rcMonitor: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
+            rcWork: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
+            dwFlags: 0,
+        };
+
+        let (work_left, work_top, work_width, work_height) =
+            if GetMonitorInfoW(monitor, &mut monitor_info).as_bool() {
+                let work_left = monitor_info.rcWork.left;
+                let work_top = monitor_info.rcWork.top;
+                let work_width = monitor_info.rcWork.right - monitor_info.rcWork.left;
+                let work_height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
+                (work_left, work_top, work_width, work_height)
+            } else {
+                // 回退到主屏幕
+                let screen_width = GetSystemMetrics(SM_CXSCREEN);
+                let screen_height = GetSystemMetrics(SM_CYSCREEN);
+                (0, 0, screen_width, screen_height)
+            };
+
+        // 获取窗口尺寸
+        let window_size = window
+            .outer_size()
+            .map_err(|e| format!("获取窗口尺寸失败: {}", e))?;
+        let window_width = window_size.width as i32;
+        let window_height = window_size.height as i32;
+
+        // 计算目标位置（使用相同的智能定位算法）
+        let margin = 12;
+        let mut target_x;
+        let mut target_y;
+
+        // 策略1：尝试在右下角显示（优先策略）
+        target_x = cursor_pos.x + margin;
+        target_y = cursor_pos.y + margin;
+
+        // 检查右下角是否在工作区域内有足够空间
+        if target_x + window_width <= work_left + work_width
+            && target_y + window_height <= work_top + work_height
+        {
+            // 右下角有足够空间
+        } else {
+            // 策略2：尝试在右上角显示
+            target_x = cursor_pos.x + margin;
+            target_y = cursor_pos.y - window_height - margin;
+
+            if target_x + window_width <= work_left + work_width && target_y >= work_top {
+                // 右上角有足够空间
+            } else {
+                // 策略3：尝试在左下角显示
+                target_x = cursor_pos.x - window_width - margin;
+                target_y = cursor_pos.y + margin;
+
+                if target_x >= work_left && target_y + window_height <= work_top + work_height {
+                    // 左下角有足够空间
+                } else {
+                    // 策略4：尝试在左上角显示
+                    target_x = cursor_pos.x - window_width - margin;
+                    target_y = cursor_pos.y - window_height - margin;
+
+                    if target_x >= work_left && target_y >= work_top {
+                        // 左上角有足够空间
+                    } else {
+                        // 策略5：上下空间都不足时，直接显示在屏幕右下角
+                        target_x = work_left + work_width - window_width - margin;
+                        target_y = work_top + work_height - window_height - margin;
+                    }
+                }
+            }
+        }
+
+        // 最终边界检查和调整
+        if target_x < work_left {
+            target_x = work_left;
+        } else if target_x + window_width > work_left + work_width {
+            target_x = work_left + work_width - window_width;
+        }
+
+        if target_y < work_top {
+            target_y = work_top;
+        } else if target_y + window_height > work_top + work_height {
+            target_y = work_top + work_height - window_height;
+        }
+
+        let end_x = target_x as f64;
+        let end_y = target_y as f64;
+
+        // 如果目标位置和当前位置相同，不需要动画
+        let distance = ((end_x - start_x).powi(2) + (end_y - start_y).powi(2)).sqrt();
+        if distance < 5.0 {
+            return Ok(());
+        }
+
+        // 执行缓动动画
+        let window_clone = window.clone();
+        std::thread::spawn(move || {
+            let animation_duration = Duration::from_millis(200); // 200ms动画时长
+            let frame_duration = Duration::from_millis(16); // ~60fps
+            let start_time = Instant::now();
+
+            loop {
+                let elapsed = start_time.elapsed();
+                let progress = elapsed.as_secs_f64() / animation_duration.as_secs_f64();
+
+                if progress >= 1.0 {
+                    // 动画结束，设置最终位置
+                    let final_position = tauri::PhysicalPosition::new(end_x as i32, end_y as i32);
+                    let _ = window_clone.set_position(final_position);
+                    break;
+                }
+
+                // 应用缓动函数
+                let eased_progress = ease_out_cubic(progress);
+
+                // 计算当前帧的位置
+                let current_x = start_x + (end_x - start_x) * eased_progress;
+                let current_y = start_y + (end_y - start_y) * eased_progress;
+
+                // 设置窗口位置
+                let position = tauri::PhysicalPosition::new(current_x as i32, current_y as i32);
+                let _ = window_clone.set_position(position);
+
+                // 等待下一帧
+                std::thread::sleep(frame_duration);
+            }
+        });
+
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+pub fn position_window_at_cursor_with_animation(_window: &WebviewWindow) -> Result<(), String> {
     // 非Windows平台暂不实现
     Ok(())
 }
