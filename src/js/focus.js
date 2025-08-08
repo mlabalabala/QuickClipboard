@@ -24,7 +24,6 @@ export function initInputFocusManagement() {
       input.addEventListener('focus', async () => {
         try {
           await invoke('focus_clipboard_window');
-          console.log('临时启用窗口焦点');
         } catch (error) {
           console.error('启用窗口焦点失败:', error);
         }
@@ -34,7 +33,6 @@ export function initInputFocusManagement() {
       input.addEventListener('blur', async () => {
         try {
           await invoke('restore_last_focus');
-          console.log('恢复工具窗口模式');
         } catch (error) {
           console.error('恢复工具窗口模式失败:', error);
         }
@@ -48,7 +46,6 @@ export function initInputFocusManagement() {
     radio.addEventListener('focus', async () => {
       try {
         await invoke('enable_window_focus_temp');
-        console.log('临时启用窗口焦点 (主题设置)');
       } catch (error) {
         console.error('启用窗口焦点失败:', error);
       }
@@ -57,7 +54,6 @@ export function initInputFocusManagement() {
     radio.addEventListener('blur', async () => {
       try {
         await invoke('disable_window_focus_temp');
-        console.log('恢复工具窗口模式 (主题设置)');
       } catch (error) {
         console.error('恢复工具窗口模式失败:', error);
       }

@@ -161,12 +161,12 @@ pub async fn open_screenshot_window(app: tauri::AppHandle) -> Result<(), String>
             return Err(format!("再次显示截屏窗口失败: {}", e));
         }
 
-        // 设置为工具窗口（不获取焦点且置顶）
+        // 设置窗口属性（不获取焦点且置顶）
         #[cfg(windows)]
         {
-            if let Err(e) = crate::window_management::set_super_topmost_window(&screenshot_window) {
-                println!("设置截屏窗口为工具窗口失败: {}", e);
-                return Err(format!("设置截屏窗口为工具窗口失败: {}", e));
+            if let Err(e) = crate::window_management::setup_window_properties(&screenshot_window) {
+                println!("设置截屏窗口属性失败: {}", e);
+                return Err(format!("设置截屏窗口属性失败: {}", e));
             }
         }
 
@@ -216,7 +216,7 @@ pub async fn close_screenshot_window(app: tauri::AppHandle) -> Result<(), String
 
         #[cfg(windows)]
         {
-            let _ = crate::window_management::set_super_topmost_window(&main_window);
+            let _ = crate::window_management::setup_window_properties(&main_window);
             // 启用鼠标监听，这样点击外部可以隐藏窗口
             crate::mouse_hook::request_mouse_monitoring("screenshot_main_window");
         }

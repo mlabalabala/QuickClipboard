@@ -688,14 +688,14 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
     quick_texts::add_quick_text_with_group(title, final_content, group_id)
 }
 
-// 设置主窗口为超级置顶（确保在开始菜单之上）
+// 设置主窗口为置顶
 #[tauri::command]
 pub fn set_super_topmost(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         #[cfg(windows)]
         {
-            crate::window_management::set_super_topmost_window(&window)
-                .map_err(|e| format!("设置超级置顶失败: {}", e))?;
+            crate::window_management::setup_window_properties(&window)
+                .map_err(|e| format!("设置窗口属性失败: {}", e))?;
         }
         Ok(())
     } else {
@@ -1172,7 +1172,10 @@ pub async fn open_file_location(file_path: String) -> Result<(), String> {
         }
     }
 }
-
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 // 使用默认程序打开文件
 #[tauri::command]
 pub async fn open_file_with_default_program(file_path: String) -> Result<(), String> {
@@ -1183,6 +1186,7 @@ pub async fn open_file_with_default_program(file_path: String) -> Result<(), Str
         // Windows: 使用 start 命令打开文件
         let result = Command::new("cmd")
             .args(&["/C", "start", "", &file_path])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn();
 
         match result {
