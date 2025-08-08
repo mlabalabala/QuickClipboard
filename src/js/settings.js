@@ -94,7 +94,9 @@ const defaultSettings = {
   aiTranslationPrompt: '请将以下文本翻译成{target_language}，严格保持原文的所有格式、换行符、段落结构和空白字符，只返回翻译结果，不要添加任何解释或修改格式：',
   aiInputSpeed: 50,
   aiNewlineMode: 'auto',
-  aiOutputMode: 'stream'
+  aiOutputMode: 'stream',
+  // 鼠标设置
+  mouseMiddleButtonEnabled: true
 };
 
 // 加载设置
@@ -206,6 +208,9 @@ function initializeUI() {
   // 更新AI输入速度显示
   updateAiInputSpeedDisplay(settings.aiInputSpeed);
 
+  // 鼠标设置
+  document.getElementById('mouse-middle-button-enabled').checked = settings.mouseMiddleButtonEnabled;
+
   // 设置主题
   setActiveTheme(settings.theme);
 
@@ -303,7 +308,8 @@ function bindSettingEvents() {
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
     'screenshot-auto-save', 'screenshot-show-hints',
     'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
-    'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode'
+    'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
+    'mouse-middle-button-enabled'
   ];
 
   settingInputs.forEach(id => {

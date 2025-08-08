@@ -38,19 +38,32 @@ unsafe extern "system" fn mouse_hook_proc(
     };
 
     if code == HC_ACTION as i32 {
-        // 快速检查：如果监听未启用，直接返回
-        if !MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed) {
-            return CallNextHookEx(None, code, wparam, lparam);
-        }
-
         let is_window_pinned = WINDOW_PINNED_STATE.load(Ordering::Relaxed);
         let preview_visible = crate::preview_window::is_preview_window_visible();
+        let mouse_monitoring_enabled = MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed);
 
         // 处理鼠标事件
         match wparam.0 as u32 {
-            WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN => {
-                // 点击事件：只有在窗口未固定时才处理点击外部关闭
-                if !is_window_pinned {
+            WM_MBUTTONDOWN => {
+                // 鼠标中键点击事件：全局监听
+                let settings = crate::settings::get_global_settings();
+                if settings.mouse_middle_button_enabled {
+                    // 在新线程中切换窗口显示状态，避免阻塞钩子
+                    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                        let window_clone = window.clone();
+                        std::thread::spawn(move || {
+                            crate::window_management::toggle_webview_window_visibility(
+                                window_clone,
+                            );
+                        });
+                    }
+                    // 拦截鼠标中键事件，防止传递给其他应用
+                    return windows::Win32::Foundation::LRESULT(1);
+                }
+            }
+            WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
+                // 左键和右键点击事件：只有在鼠标监听启用且窗口未固定时才处理点击外部关闭
+                if mouse_monitoring_enabled && !is_window_pinned {
                     // 获取鼠标点击位置
                     let mouse_data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
                     let click_point = POINT {
@@ -70,9 +83,10 @@ unsafe extern "system" fn mouse_hook_proc(
                     }
                 }
             }
+
             WM_MOUSEWHEEL => {
-                // 滚轮事件：只有在预览窗口显示时才处理，不受固定状态影响
-                if preview_visible {
+                // 滚轮事件：只有在鼠标监听启用且预览窗口显示时才处理，不受固定状态影响
+                if mouse_monitoring_enabled && preview_visible {
                     let mouse_data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
                     let wheel_delta = ((mouse_data.mouseData >> 16) & 0xFFFF) as i16;
 
@@ -152,6 +166,29 @@ pub fn request_mouse_monitoring(source: &str) {
     }
 }
 
+// 安装鼠标钩子（不启用监听状态，仅用于鼠标中键全局监听）
+#[cfg(windows)]
+pub fn install_mouse_hook() {
+    use windows::Win32::Foundation::HINSTANCE;
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowsHookExW, WH_MOUSE_LL};
+
+    // 如果钩子还没有安装，则安装它
+    let mut hook_handle = MOUSE_HOOK_HANDLE.lock().unwrap();
+    if hook_handle.is_none() {
+        unsafe {
+            match SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), HINSTANCE(0), 0) {
+                Ok(hook) => {
+                    *hook_handle = Some(hook);
+                    println!("鼠标钩子已安装（用于全局鼠标中键监听）");
+                }
+                Err(e) => {
+                    println!("安装鼠标钩子失败: {:?}", e);
+                }
+            }
+        }
+    }
+}
+
 // 启用鼠标监听
 #[cfg(windows)]
 pub fn enable_mouse_monitoring() {
@@ -213,6 +250,9 @@ pub fn is_window_pinned() -> bool {
 }
 
 // 非Windows平台的空实现
+#[cfg(not(windows))]
+pub fn install_mouse_hook() {}
+
 #[cfg(not(windows))]
 pub fn enable_mouse_monitoring() {}
 

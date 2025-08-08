@@ -54,6 +54,9 @@ pub struct AppSettings {
     pub ai_input_speed: u32,     // 输入速度，字符/秒
     pub ai_newline_mode: String, // 换行符处理模式：auto, enter, shift_enter, unicode
     pub ai_output_mode: String,  // 输出模式：stream（流式输出）, paste（直接粘贴）
+
+    // 鼠标设置
+    pub mouse_middle_button_enabled: bool, // 启用鼠标中键显示剪贴板
 }
 
 impl Default for AppSettings {
@@ -110,6 +113,9 @@ impl Default for AppSettings {
             ai_input_speed: 50,                // 50字符/秒
             ai_newline_mode: "auto".to_string(), // 默认使用自动模式，兼容性最好
             ai_output_mode: "stream".to_string(), // 默认使用流式输出
+
+            // 鼠标设置默认值
+            mouse_middle_button_enabled: true, // 默认启用鼠标中键显示剪贴板
         }
     }
 }
@@ -216,6 +222,7 @@ impl AppSettings {
             "aiInputSpeed": self.ai_input_speed,
             "aiNewlineMode": self.ai_newline_mode,
             "aiOutputMode": self.ai_output_mode,
+            "mouseMiddleButtonEnabled": self.mouse_middle_button_enabled,
         })
     }
 
@@ -351,6 +358,12 @@ impl AppSettings {
         }
         if let Some(v) = json.get("aiOutputMode").and_then(|v| v.as_str()) {
             self.ai_output_mode = v.to_string();
+        }
+        if let Some(v) = json
+            .get("mouseMiddleButtonEnabled")
+            .and_then(|v| v.as_bool())
+        {
+            self.mouse_middle_button_enabled = v;
         }
     }
 }

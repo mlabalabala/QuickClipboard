@@ -297,9 +297,8 @@ pub fn run() {
                 {
                     // 启动新的按键状态监控系统
                     key_state_monitor::start_keyboard_polling_system();
-                    // 安装鼠标钩子但不启用监听
-                    mouse_hook::enable_mouse_monitoring();
-                    mouse_hook::disable_mouse_monitoring();
+                    // 安装鼠标钩子（用于全局鼠标中键监听）
+                    mouse_hook::install_mouse_hook();
 
                     // 安装快捷键拦截钩子
                     shortcut_interceptor::install_shortcut_hook();
