@@ -1573,7 +1573,12 @@ async function handleImportData() {
     await invoke('import_data', {
       importPath: filePath,
       options: {
-        mode: importMode === 'replace' ? 'Replace' : 'Merge'
+        mode: importMode === 'replace' ? 'Replace' : 'Merge',
+        clipboard_history: true,
+        quick_texts: true,
+        groups: true,
+        settings: true,
+        images: true
       }
     });
 
