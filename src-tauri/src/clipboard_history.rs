@@ -1,13 +1,17 @@
 use crate::database;
 use crate::image_manager::get_image_manager;
+use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
 
 // 使用database模块中的ClipboardItem结构
 pub use crate::database::ClipboardItem;
 
-// 历史记录数量限制
-static HISTORY_LIMIT: RwLock<usize> = RwLock::new(100);
+// 历史记录数量限制 - 从设置文件读取用户配置的值
+static HISTORY_LIMIT: Lazy<RwLock<usize>> = Lazy::new(|| {
+    let settings = crate::settings::get_global_settings();
+    RwLock::new(settings.history_limit as usize)
+});
 
 // 剪贴板监听控制
 static MONITORING_ENABLED: AtomicBool = AtomicBool::new(true);
