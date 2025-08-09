@@ -432,7 +432,7 @@ body {
 
 /* 搜索框样式 */
 .search-container {
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -450,6 +450,11 @@ body {
   background-color: #f8f9fa;
   height: 36px;
   box-sizing: border-box;
+}
+
+#search-input:hover,
+#quick-texts-search:hover {
+  border: 1px solid #4a89dc !important;
 }
 
 /* 内容筛选器样式 */
@@ -502,7 +507,7 @@ body {
 }
 
 .custom-select-trigger:hover {
-  border-color: #d0d7de;
+  border-color: #4a89dc;
   background-color: #f8f9fa;
 }
 
@@ -617,8 +622,8 @@ body {
 
 #search-input:focus,
 #quick-texts-search:focus {
-  border-color: #4a89dc;
-  box-shadow: 0 0 0 3px rgba(74, 137, 220, 0.1);
+  border: 2px sloid #4a89dc;
+  box-shadow: 0 0 0 3px rgba(74, 137, 220, 0.3);
   background-color: white;
 }
 
@@ -627,6 +632,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding-left: 4px;
+  padding-top: 4px;
   min-height: 0;
   /* 将滚动条移到左侧 */
   direction: rtl;
@@ -680,7 +686,7 @@ body {
 
 .clipboard-item {
   padding: 10px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-bottom: 8px;
   background-color: white;
   border: 1px solid #eee;
@@ -854,8 +860,8 @@ body {
 
 .file-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 30px !important;
+  height: 30px !important;
   object-fit: contain;
 }
 
@@ -941,11 +947,6 @@ body {
   padding: 3px 5px;
 }
 
-.quick-text-content .file-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .quick-text-content .file-name {
   font-size: 11px;
 }
@@ -1011,23 +1012,23 @@ body {
 .tab-navigation {
   display: flex;
   background: #f8f9fa;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 3px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   gap: 2px;
 }
 
 .tab-button {
   flex: 1;
-  padding: 8px 12px;
+  padding: 8px 12px !important;
   background: none;
   border: none;
   cursor: pointer;
   font-size: 13px;
   font-weight: bold;
   color: #666;
-  border-radius: 4px;
-  transition: all 0.5s ease;
+  border-radius: 8px;
+  /* transition: all 0.5s ease; */
   position: relative;
 }
 
@@ -1040,7 +1041,7 @@ body {
 .tab-button.active {
   color: #4a89dc;
   background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* 激活状态下的装饰线 */
@@ -1116,6 +1117,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding-left: 4px;
+  padding-top: 4px;
   min-height: 0;
   /* 确保可以收缩 */
   /* 将滚动条移到左侧 */
@@ -1646,7 +1648,7 @@ body {
 
   .quick-texts-header {
     gap: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .add-button {
@@ -1721,7 +1723,7 @@ body {
   bottom: 26px;
   right: -1px;
   width: 90px;
-  height: calc(100% - 163px);
+  height: calc(100% - 162px);
   background: rgba(255, 255, 255, 0.95);
   border-top: 1px solid rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(0, 0, 0, 0.3);
@@ -1734,6 +1736,7 @@ body {
   border-radius: 8px 0 0 8px;
   backdrop-filter: blur(5px);
   box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
+  z-index: 99999;
 }
 
 /* 侧边栏触发区域 */
