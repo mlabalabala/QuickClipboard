@@ -63,13 +63,18 @@ function createSeparator() {
   return separator;
 }
 
-// 显示通用右键菜单
-export function showContextMenu(event, options) {
-  // 移除已存在的菜单
+// 隐藏当前显示的右键菜单
+export function hideContextMenu() {
   const existingMenu = document.querySelector('.context-menu');
   if (existingMenu) {
     existingMenu.remove();
   }
+}
+
+// 显示通用右键菜单
+export function showContextMenu(event, options) {
+  // 移除已存在的菜单
+  hideContextMenu();
 
   // 创建菜单容器
   const menu = document.createElement('div');
@@ -114,12 +119,12 @@ export function showContextMenu(event, options) {
           item.onClick();
           menu.remove();
         });
-        
+
         // 应用自定义样式
         if (item.style) {
           Object.assign(menuItem.style, item.style);
         }
-        
+
         menuItems.push(menuItem);
       }
     });
@@ -139,7 +144,7 @@ export function showContextMenu(event, options) {
       document.removeEventListener('click', closeMenu);
     }
   };
-  
+
   setTimeout(() => {
     document.addEventListener('click', closeMenu);
   }, 0);

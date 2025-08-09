@@ -11,6 +11,7 @@ import {
 import { refreshClipboardHistory, setActiveItem } from './clipboard.js';
 import { hideAlertModal, hideConfirmModal } from './ui.js';
 import { hideQuickTextModal } from './quickTexts.js';
+import { hideContextMenu } from './contextMenu.js';
 
 // 检查是否有输入框获得焦点
 function isInputFocused() {
@@ -98,6 +99,7 @@ export async function setupCustomWindowDrag() {
     }
     if (e.buttons === 1) {
       appWindow.startDragging();
+      hideContextMenu()
     }
   });
 }
