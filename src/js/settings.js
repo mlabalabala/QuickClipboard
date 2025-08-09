@@ -211,6 +211,9 @@ function initializeUI() {
   // 鼠标设置
   document.getElementById('mouse-middle-button-enabled').checked = settings.mouseMiddleButtonEnabled;
 
+  // 动画设置
+  document.getElementById('clipboard-animation-enabled').checked = settings.clipboardAnimationEnabled;
+
   // 设置主题
   setActiveTheme(settings.theme);
 
@@ -309,7 +312,7 @@ function bindSettingEvents() {
     'screenshot-auto-save', 'screenshot-show-hints',
     'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
-    'mouse-middle-button-enabled'
+    'mouse-middle-button-enabled', 'clipboard-animation-enabled'
   ];
 
   settingInputs.forEach(id => {

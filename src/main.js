@@ -19,7 +19,7 @@ function printStartupBanner() {
 import { initThemeManager } from './js/themeManager.js';
 import './js/fileIconUtils.js';
 import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
-
+import { invoke } from '@tauri-apps/api/core';
 import {
   initDOMReferences,
   setCurrentFilter,
@@ -303,7 +303,7 @@ async function setupWindowAnimationListeners() {
 }
 
 // 播放窗口显示动画
-function playWindowShowAnimation() {
+async function playWindowShowAnimation() {
   const container = document.querySelector('body');
   if (!container) return;
 
@@ -318,7 +318,7 @@ function playWindowShowAnimation() {
 }
 
 // 播放窗口隐藏动画
-function playWindowHideAnimation() {
+async function playWindowHideAnimation() {
   const container = document.querySelector('body');
   if (!container) return;
 

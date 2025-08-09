@@ -23,7 +23,9 @@ let currentSettings = {
   soundVolume: 50,
   copySoundPath: '',
   pasteSoundPath: '',
-  soundPreset: 'default'
+  soundPreset: 'default',
+  // 动画设置
+  clipboardAnimationEnabled: true
 };
 
 // 初始化设置管理器
@@ -76,6 +78,11 @@ function applySettings(settings) {
     // 剪贴板监听设置
     // console.log('剪贴板监听设置:', settings.clipboardMonitor);
   }
+
+  // 应用动画设置
+  if (settings.clipboardAnimationEnabled !== undefined) {
+    applyAnimationSettings(settings.clipboardAnimationEnabled);
+  }
 }
 
 // 应用主题
@@ -99,6 +106,41 @@ function applyOpacity(opacity) {
   }
 
   // console.log('透明度已应用:', opacity);
+}
+
+// 应用动画设置
+function applyAnimationSettings(animationEnabled) {
+  // 获取或创建动画样式元素
+  let animationStyleElement = document.getElementById('animation-control-styles');
+  if (!animationStyleElement) {
+    animationStyleElement = document.createElement('style');
+    animationStyleElement.id = 'animation-control-styles';
+    document.head.appendChild(animationStyleElement);
+  }
+
+  if (animationEnabled) {
+    // 启用动画：使用正常的动画持续时间
+    animationStyleElement.textContent = `
+      .window-show-animation {
+        animation: scrollDown 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+      }
+      .window-hide-animation {
+        animation: scrollUp 0.2s cubic-bezier(0.755, 0.05, 0.855, 0.06) forwards;
+      }
+    `;
+  } else {
+    // 禁用动画：将动画持续时间设置为 0
+    animationStyleElement.textContent = `
+      .window-show-animation {
+        animation: scrollDown 0s forwards;
+      }
+      .window-hide-animation {
+        animation: scrollUp 0s forwards;
+      }
+    `;
+  }
+
+  console.log('动画设置已应用:', animationEnabled);
 }
 
 // 获取当前设置

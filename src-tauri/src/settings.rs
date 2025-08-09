@@ -56,7 +56,10 @@ pub struct AppSettings {
     pub ai_output_mode: String,  // 输出模式：stream（流式输出）, paste（直接粘贴）
 
     // 鼠标设置
-    pub mouse_middle_button_enabled: bool, // 启用鼠标中键显示剪贴板
+    pub mouse_middle_button_enabled: bool,
+
+    // 动画设置
+    pub clipboard_animation_enabled: bool, // 启用鼠标中键显示剪贴板
 }
 
 impl Default for AppSettings {
@@ -116,6 +119,9 @@ impl Default for AppSettings {
 
             // 鼠标设置默认值
             mouse_middle_button_enabled: true, // 默认启用鼠标中键显示剪贴板
+
+            // 动画设置默认值
+            clipboard_animation_enabled: true, // 默认启用剪贴板显示/隐藏动画
         }
     }
 }
@@ -223,6 +229,7 @@ impl AppSettings {
             "aiNewlineMode": self.ai_newline_mode,
             "aiOutputMode": self.ai_output_mode,
             "mouseMiddleButtonEnabled": self.mouse_middle_button_enabled,
+            "clipboardAnimationEnabled": self.clipboard_animation_enabled,
         })
     }
 
@@ -364,6 +371,12 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
         {
             self.mouse_middle_button_enabled = v;
+        }
+        if let Some(v) = json
+            .get("clipboardAnimationEnabled")
+            .and_then(|v| v.as_bool())
+        {
+            self.clipboard_animation_enabled = v;
         }
     }
 }

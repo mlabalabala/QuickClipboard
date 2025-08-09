@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 // =================== 模块引入 ===================
 mod admin_privileges;
 mod ai_config;
