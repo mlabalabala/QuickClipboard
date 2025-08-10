@@ -15,10 +15,11 @@ mod groups;
 mod image_manager;
 mod key_state_monitor;
 mod mouse_hook;
+mod native_screenshot;
 mod paste_utils;
 mod preview_window;
 mod quick_texts;
-mod screenshot;
+
 mod services;
 mod settings;
 mod shortcut_interceptor;
@@ -386,10 +387,7 @@ pub fn run() {
             is_backend_initialized,
             send_system_notification,
             send_startup_notification,
-            screenshot::open_screenshot_window,
-            screenshot::close_screenshot_window,
-            screenshot::take_screenshot,
-            screenshot::take_fullscreen_screenshot,
+            native_screenshot::start_native_screenshot,
             commands::test_ai_translation,
             commands::translate_and_input_text,
             commands::translate_and_paste_text,

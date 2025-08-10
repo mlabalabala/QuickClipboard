@@ -54,25 +54,6 @@
         "dragDropEnabled": false
       },
       {
-        "label": "screenshot",
-        "title": "截屏选择",
-        "url": "screenshot.html",
-        "width": 1920,
-        "height": 1080,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "center": false,
-        "visible": false,
-        "resizable": false,
-        "focus": true,
-        "maximizable": false,
-        "minimizable": false,
-        "fullscreen": true,
-        "dragDropEnabled": false
-      },
-      {
         "label": "preview",
         "title": "快速预览",
         "url": "preview.html",

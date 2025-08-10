@@ -579,7 +579,7 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
                 let app_handle = window.app_handle().clone();
                 std::thread::spawn(move || {
                     let _ = tauri::async_runtime::block_on(
-                        crate::screenshot::open_screenshot_window(app_handle),
+                        crate::native_screenshot::start_native_screenshot(app_handle),
                     );
                 });
             }
