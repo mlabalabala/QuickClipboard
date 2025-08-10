@@ -29,8 +29,8 @@ export class VirtualList {
       rows: this.generateRows(),
       scrollId: this.scrollId,
       contentId: this.contentId,
-      rows_in_block: 10, //块大小
-      blocks_in_cluster: 10, // 缓冲区
+      rows_in_block: 15, //块大小
+      blocks_in_cluster: 4, // 缓冲区
       show_no_data_row: true,
       no_data_text: '暂无数据',
       no_data_class: 'clusterize-no-data'

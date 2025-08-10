@@ -29,6 +29,7 @@ mod tray;
 mod utils;
 mod window_effects;
 mod window_management;
+mod memory_manager;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -112,6 +113,11 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                crate::window_management::show_webview_window(window);
+            }
+        }))
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => {
                 if let Some(window) = app.get_webview_window("main") {
@@ -198,6 +204,10 @@ pub fn run() {
                     // 不要因为分组系统失败而阻止应用启动
                 }
             }
+
+            // 启动内存收缩调度器（仅 Windows 生效）
+            #[cfg(windows)]
+            memory_manager::start_memory_trim_scheduler();
 
             // 初始化音效管理器
             if let Err(_e) = sound_manager::initialize_sound_manager() {
