@@ -1141,19 +1141,13 @@ impl NativeScreenshotWindow {
                     let mut state_guard = NATIVE_SCREENSHOT_STATE.lock().unwrap();
                     if let Some(ref mut state_arc) = *state_guard {
                         if let Some(state) = Arc::get_mut(state_arc) {
-                            if !state.show_confirm_buttons {
-                                if let Some(sel) = &state.selection_rect {
-                                    if x >= sel.x && x <= sel.x + sel.width as i32 && y >= sel.y && y <= sel.y + sel.height as i32 {
-                                        state.click_confirm_candidate = true;
-                                        state.pending_click_point = Some((x, y));
-                                    } else {
-                                        state.is_selecting = true;
-                                        state.start_point = Some((x, y));
-                                        state.selection_rect = Some(SelectionRect { x, y, width: 0, height: 0 });
-                                        state.show_confirm_buttons = false;
-                                        started_drag = true;
-                                    }
+                            if let Some(sel) = &state.selection_rect {
+                                if x >= sel.x && x <= sel.x + sel.width as i32 && y >= sel.y && y <= sel.y + sel.height as i32 {
+                                    // 点击在选区内：标记为确认候选，等待鼠标移动判断意图
+                                    state.click_confirm_candidate = true;
+                                    state.pending_click_point = Some((x, y));
                                 } else {
+                                    // 点击在选区外：开始新的拖拽选区
                                     state.is_selecting = true;
                                     state.start_point = Some((x, y));
                                     state.selection_rect = Some(SelectionRect { x, y, width: 0, height: 0 });
@@ -1161,7 +1155,7 @@ impl NativeScreenshotWindow {
                                     started_drag = true;
                                 }
                             } else {
-                                // 已固定时，直接进入手动拖拽新选区
+                                // 没有选区：开始新的拖拽选区
                                 state.is_selecting = true;
                                 state.start_point = Some((x, y));
                                 state.selection_rect = Some(SelectionRect { x, y, width: 0, height: 0 });
@@ -1197,6 +1191,24 @@ impl NativeScreenshotWindow {
                                 state.auto_select_enabled = true;
                             }
                             state.last_mouse_point = Some((x, y));
+                        }
+                    }
+                    
+                    // 智能判断：如果点击确认候选且鼠标移动超过阈值，转换为拖拽模式
+                    if state.click_confirm_candidate && state.pending_click_point.is_some() {
+                        if let Some((click_x, click_y)) = state.pending_click_point {
+                            let move_distance = ((x - click_x).pow(2) + (y - click_y).pow(2)) as f64;
+                            if move_distance.sqrt() > 5.0 { // 5像素的移动阈值
+                                // 转换为拖拽模式
+                                state.is_selecting = true;
+                                state.start_point = Some((click_x, click_y));
+                                state.selection_rect = Some(SelectionRect { x: click_x, y: click_y, width: 0, height: 0 });
+                                state.show_confirm_buttons = false;
+                                state.click_confirm_candidate = false;
+                                state.pending_click_point = None;
+                                should_redraw = true;
+                                force_full_invalidate = true;
+                            }
                         }
                     }
                 }
