@@ -1,28 +1,24 @@
 # QuickClipboard 快速剪贴板
 
-<p align="center">
-  <img src="readme-assets/header-bg.jpeg" alt="背景图" width="100%">
-</p>
-
 <div align="center">
-
-<img src="readme-assets/logo.png" alt="QuickClipboard Logo" width="120">
-
-<br><br>
-
-<a href="https://github.com/mosheng1/QuickClipboard/stargazers">
-  <img src="https://img.shields.io/github/stars/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Stars">
-</a>
-<a href="https://github.com/mosheng1/QuickClipboard/network/members">
-  <img src="https://img.shields.io/github/forks/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Forks">
-</a>
-<a href="https://github.com/mosheng1/QuickClipboard/releases">
-  <img src="https://img.shields.io/github/downloads/mosheng1/QuickClipboard/total.svg?style=for-the-badge" alt="Downloads">
-</a>
-<a href="https://github.com/mosheng1/QuickClipboard/blob/main/LICENSE">
-  <img src="https://img.shields.io/github/license/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="License">
-</a>
-
+  <img src="readme-assets/logo.png" alt="QuickClipboard Logo" width="120">
+  
+  <br>
+  
+  <div style="margin: 16px 0;">
+    <a href="https://github.com/mosheng1/QuickClipboard/stargazers">
+      <img src="https://img.shields.io/github/stars/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Stars">
+    </a>
+    <a href="https://github.com/mosheng1/QuickClipboard/network/members">
+      <img src="https://img.shields.io/github/forks/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Forks">
+    </a>
+    <a href="https://github.com/mosheng1/QuickClipboard/releases">
+      <img src="https://img.shields.io/github/downloads/mosheng1/QuickClipboard/total.svg?style=for-the-badge" alt="Downloads">
+    </a>
+    <a href="https://github.com/mosheng1/QuickClipboard/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="License">
+    </a>
+  </div>
 </div>
 
 ---
@@ -35,12 +31,10 @@
 
 ## 🖼 界面预览
 
-<p align="center">
-  <img src="readme-assets/main.png" alt="主界面预览" width="75%">
-</p>
-<p align="center">
-  <img src="readme-assets/settings.png" alt="设置界面" width="75%">
-</p>
+<div align="center">
+  <img src="readme-assets/main.png" alt="主界面预览" width="24.25%">
+  <img src="readme-assets/settings.png" alt="设置界面" width="45%">
+</div>
 
 ---
 
