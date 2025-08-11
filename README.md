@@ -1,7 +1,7 @@
 # QuickClipboard 快速剪贴板
 
 <p align="center">
-  <img src="readme-assets/header-bg.svg" alt="背景图" width="100%">
+  <img src="readme-assets/header-bg.jpeg" alt="背景图" width="100%">
 </p>
 
 <div align="center">
