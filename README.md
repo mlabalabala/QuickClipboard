@@ -1,87 +1,119 @@
-# 快速剪贴板 (QuickClipboard)
+# QuickClipboard 快速剪贴板
 
-一个简洁高效的剪贴板历史管理工具，让复制粘贴更便捷！
+<p align="center">
+  <img src="readme-assets/header-bg.svg" alt="背景图" width="100%">
+</p>
 
-## ✨ 核心特色
+<div align="center">
 
-### 🚀 一键操作，极速便捷
-- **`Win+V`** - 瞬间显示剪贴板历史
-- **`Ctrl+~`** - 快速预览窗口，滚动选择即粘贴
-- **`Ctrl+1-9`** - 数字键快速粘贴对应历史记录
-- **`Ctrl+Shift+A`** - 一键截屏并自动保存到剪贴板
+<img src="readme-assets/logo.png" alt="QuickClipboard Logo" width="120">
 
-### 📋 智能剪贴板管理
-- **自动记录**：复制任何内容自动保存历史（文本/图片/链接）
-- **实时搜索**：输入关键词瞬间找到历史内容
-- **去重过滤**：自动忽略重复内容，保持列表整洁
-- **分类筛选**：按文本、图片、链接类型快速筛选
+<br><br>
 
-### ⭐ 常用文本收藏
-- **永久保存**：重要内容添加到收藏夹，永不丢失
-- **分组管理**：按项目分类，工作生活井然有序
-- **拖拽排序**：随意调整顺序，常用的放前面
-- **快速编辑**：随时修改标题和内容
+<a href="https://github.com/mosheng1/QuickClipboard/stargazers">
+  <img src="https://img.shields.io/github/stars/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Stars">
+</a>
+<a href="https://github.com/mosheng1/QuickClipboard/network/members">
+  <img src="https://img.shields.io/github/forks/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="Forks">
+</a>
+<a href="https://github.com/mosheng1/QuickClipboard/releases">
+  <img src="https://img.shields.io/github/downloads/mosheng1/QuickClipboard/total.svg?style=for-the-badge" alt="Downloads">
+</a>
+<a href="https://github.com/mosheng1/QuickClipboard/blob/main/LICENSE">
+  <img src="https://img.shields.io/github/license/mosheng1/QuickClipboard.svg?style=for-the-badge" alt="License">
+</a>
 
-### 🎨 个性化体验
-- **多主题**：浅色/暗色/跟随系统，护眼舒适
-- **音效反馈**：复制粘贴有声提示，操作更有趣
-- **后台运行**：最小化到托盘，不占任务栏空间
-- **开机自启**：开机即用，无需手动启动
+</div>
 
-## 🚀 快速开始
+---
 
-1. **下载安装**：从 [Releases](https://github.com/mosheng1/QuickClipboard/releases) 下载最新版本
-2. **启动应用**：运行后自动最小化到系统托盘
-3. **开始使用**：按 `Win+V` 显示窗口，复制任何内容即可自动记录
+## 📖 简介
 
-## 💡 使用技巧
+**QuickClipboard** 是一款为 Windows 设计的高效剪贴板管理工具，支持文本、图片与文件的历史记录管理，并配备多种便捷操作方式，让剪贴板使用更加流畅与智能。
 
-### 🔥 高效工作流
-- **预览窗口**：`Ctrl+~` 快速浏览，无需打开主窗口
-- **数字快捷键**：`Ctrl+1-9` 瞬间粘贴最近9条记录
-- **分组收藏**：常用内容按项目分组，提高查找效率
-- **搜索定位**：关键词搜索，快速找到历史内容
+---
 
-### ⚠️ 注意事项
-- 需要剪贴板和屏幕录制权限
-- 某些安全软件可能拦截全局快捷键
-- 图片内容占用存储空间较大
+## 🖼 界面预览
 
-## 🛠️ 开发构建
+<p align="center">
+  <img src="readme-assets/main.png" alt="主界面预览" width="75%">
+</p>
+<p align="center">
+  <img src="readme-assets/settings.png" alt="设置界面" width="75%">
+</p>
 
-### 环境要求
-- Node.js >= 16.0.0
-- Rust >= 1.70.0
-- Tauri CLI >= 2.0.0
+---
 
-### 开发命令
+## 🔑 主要特性
+
+### 剪贴板管理  
+- 自动记录剪贴板历史，支持文本、图片与文件  
+- 相同内容再次复制时可置顶到列表首位  
+- 常用文本收藏与分组管理，提高复用效率  
+- 跨分组排序与快速标签显示  
+
+### 快捷键支持  
+- **基础导航**：`Win + V` 打开/隐藏窗口，方向键导航，`Tab` 聚焦搜索框  
+- **快速操作**：`Ctrl + Enter` 执行选中项，`Ctrl + 数字` 直接粘贴对应内容，``Ctrl + ` `` 预览内容  
+- **分组切换**：`Ctrl + ↑/↓` 快速切换分组  
+
+### 截图功能  
+- `Ctrl + Shift + A` 一键截图并保存到历史记录  
+- 兼容多显示器与不同分辨率缩放  
+- 智能选区与流畅拖拽体验  
+
+### 数据与存储  
+- 基于 SQLite 保存数据，支持旧版本数据迁移  
+- 提供数据导入与导出，方便跨设备同步  
+
+### 界面与交互  
+- 窗口位置可智能调整  
+- 流畅的显示与收起动画  
+- 支持图片预览、日期显示、滚动条位置调整  
+- 托盘集成与单实例运行  
+
+---
+
+## 💻 系统要求
+- Windows 10/11 (x64)  
+- .NET Framework 4.7.2 或更高版本  
+
+## 📦 下载方式
+
+> 提供多种安装包选择，满足不同用户需求
+
+| 安装包类型 | 说明 | 下载量 | 下载链接 |
+|------------|------|--------|----------|
+| **NSIS 安装包**<br>`QuickClipboard_0.0.3_x64-setup.exe` | 适合大多数用户，支持快速安装与卸载 | ![NSIS 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.3_x64-setup.exe?label=) | [![下载 NSIS](https://img.shields.io/badge/⬇_下载-NSIS安装包-blue?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard_0.0.3_x64-setup.exe) |
+| **MSI 安装包**<br>`QuickClipboard_0.0.3_x64_zh-CN.msi` | 适合企业环境，可用于批量部署 | ![MSI 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.3_x64_zh-CN.msi?label=) | [![下载 MSI](https://img.shields.io/badge/⬇_下载-MSI安装包-green?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard_0.0.3_x64_zh-CN.msi) |
+| **绿色版**<br>`QuickClipboard.exe` | 免安装，解压即可使用 | ![绿色版 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard.exe?label=) | [![下载 绿色版](https://img.shields.io/badge/⬇_下载-绿色版-orange?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard.exe) |
+| **网盘下载** | 备用下载渠道，适合 GitHub 访问较慢时使用 | — | [![网盘下载](https://img.shields.io/badge/🌐_网盘下载-点击进入-red?style=for-the-badge)](https://www.123912.com/s/A9Ckjv-Vu75v?pwd=UhWA#) |
+
+
+</div>
+
+---
+
+## 🚀 快速上手
+1. 下载并安装 QuickClipboard  
+2. 使用 `Win + V` 打开剪贴板窗口  
+3. 在设置中根据需求进行个性化配置  
+
+---
+
+## 🛠 开发与构建
+### 环境需求
+- Node.js ≥ 16.0.0  
+- Rust ≥ 1.70.0  
+- Tauri CLI ≥ 2.0.0  
+
+### 命令示例
 ```bash
 # 安装依赖
 npm install
 
-# 开发模式
+# 开发模式启动
 npm run tauri dev
 
 # 构建应用
 npm run tauri build
-```
-
-### 技术栈
-- **前端**：JavaScript + HTML5 + CSS3
-- **后端**：Rust + Tauri 2.0
-- **构建**：Vite + Tauri CLI
-
-## 🙏 致谢
-
-感谢以下开源项目：
-- [Tauri](https://tauri.app/) - 跨平台应用框架
-- [Tabler Icons](https://tabler-icons.io/) - 图标库
-- [SortableJS](https://sortablejs.github.io/Sortable/) - 拖拽排序
-
-## 📄 许可证
-
-Apache-2.0 License - 查看 [LICENSE](LICENSE) 文件了解详情
-
----
-
-**快速剪贴板 - 让复制粘贴更高效！** 🚀

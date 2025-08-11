@@ -1736,7 +1736,7 @@ body {
   border-radius: 8px 0 0 8px;
   backdrop-filter: blur(5px);
   box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
-  z-index: 99999;
+  z-index: 999;
 }
 
 /* 侧边栏触发区域 */

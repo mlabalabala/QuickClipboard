@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1600" height="420" viewBox="0 0 1600 420" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="45%" stop-color="#0b3b7a"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+
+    <linearGradient id="waveGrad" x1="0" x2="1">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.12"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base gradient -->
+  <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+
+  <!-- Subtle noise-like translucent circles -->
+  <g opacity="0.08" fill="#ffffff">
+    <circle cx="1400" cy="60" r="120"/>
+    <circle cx="1200" cy="300" r="80"/>
+    <circle cx="300" cy="80" r="60"/>
+    <circle cx="420" cy="320" r="90"/>
+    <circle cx="850" cy="200" r="110"/>
+  </g>
+
+  <!-- Abstract flowing waves -->
+  <g filter="url(#softGlow)">
+    <path d="M-200 180 C 150 80, 350 280, 700 200 C 1000 120, 1200 260, 1600 160 L1600 420 L-200 420 Z"
+          fill="url(#waveGrad)" opacity="0.55"/>
+    <path d="M-200 240 C 120 160, 420 340, 760 240 C 1080 150, 1350 310, 1600 220 L1600 420 L-200 420 Z"
+          fill="#7dd3fc" opacity="0.07"/>
+    <path d="M-200 120 C 180 20, 480 200, 820 100 C 1140 10, 1420 180, 1600 90 L1600 420 L-200 420 Z"
+          fill="#c4b5fd" opacity="0.06"/>
+  </g>
+
+  <!-- Soft diagonal grid lines -->
+  <g stroke="#ffffff" stroke-opacity="0.03" stroke-width="1">
+    <defs>
+      <pattern id="diag" width="80" height="80" patternUnits="userSpaceOnUse">
+        <path d="M-10 10 L10 -10 M30 90 L90 30" stroke="#ffffff" stroke-width="1" stroke-opacity="0.02"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#diag)"/>
+  </g>
+
+  <!-- Dotted trail -->
+  <g fill="#ffffff" fill-opacity="0.12">
+    <circle cx="200" cy="200" r="2.8"/>
+    <circle cx="260" cy="180" r="2.8"/>
+    <circle cx="320" cy="160" r="2.8"/>
+    <circle cx="420" cy="140" r="2.8"/>
+    <circle cx="540" cy="125" r="2.8"/>
+    <circle cx="700" cy="110" r="2.8"/>
+    <circle cx="900" cy="110" r="2.8"/>
+    <circle cx="1100" cy="125" r="2.8"/>
+    <circle cx="1280" cy="150" r="2.8"/>
+  </g>
+
+  <!-- Center placeholder for Logo + Title -->
+  <g transform="translate(0,0)">
+    <!-- translucent rounded box for better contrast with logo -->
+    <rect x="640" y="110" rx="12" ry="12" width="320" height="200" fill="#ffffff" opacity="0.04"/>
+    <!-- logo circle placeholder -->
+    <circle cx="800" cy="180" r="44" fill="#ffffff" opacity="0.18"/>
+    <!-- title text -->
+    <text x="800" y="260" font-family="Segoe UI, Roboto, Arial" font-size="28" fill="#ffffff" text-anchor="middle" font-weight="600" opacity="0.95">QuickClipboard</text>
+    <text x="800" y="285" font-family="Segoe UI, Roboto, Arial" font-size="14" fill="#e6e6ff" text-anchor="middle" opacity="0.9">Fast & Simple Clipboard Manager</text>
+  </g>
+
+</svg>
