@@ -2163,7 +2163,7 @@ body {
 /* 滚动滑块 */
 ::-webkit-scrollbar-thumb {
   /* 浅灰色基调 */
-  background: #d0d0d0;
+  background: #d0d0d0 !important;
   border-radius: 3px;
   box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.1);
   transition: background 0.2s ease;
@@ -2540,3 +2540,60 @@ body {
     opacity: 1;
   }
 }
+
+/* =================== 搜索高亮样式 =================== */
+
+/* 搜索关键字高亮 */
+.search-highlight {
+  background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+  color: #333;
+  padding: 1px 2px;
+  border-radius: 3px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(255, 215, 0, 0.3);
+  animation: highlightPulse 0.3s ease-in-out;
+}
+
+/* 高亮动画效果 */
+@keyframes highlightPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 1px 2px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 1px 2px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* 高亮悬停效果 */
+.search-highlight:hover {
+  background: linear-gradient(120deg, #ffed4e 0%, #ffd700 100%);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+/* 搜索时可滚动的文本容器 */
+.clipboard-text.searchable,
+.quick-text-content.searchable {
+  max-height: 120px;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.4;
+  direction: rtl; 
+}
+
+/* 搜索时自动滚动到关键词位置的动画 */
+.clipboard-text.searchable *,
+.quick-text-content.searchable * {
+  direction: ltr !important;
+}
+

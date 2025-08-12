@@ -19,6 +19,7 @@ import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
+import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
@@ -39,10 +40,26 @@ function generateQuickTextItemHTML(text, index) {
   } else if (contentType === 'files') {
     contentHTML = generateQuickTextFilesHTML(text);
   } else {
-    contentHTML = `
-      <div class="quick-text-title">${escapeHtml(text.title)}</div>
-      <div class="quick-text-content">${escapeHtml(text.content)}</div>
-    `;
+    // 高亮搜索关键字并获取位置信息
+    const searchTerms = getCurrentSearchTerms();
+    const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
+    const contentResult = highlightMultipleSearchTermsWithPosition(text.content, searchTerms);
+    
+    // 如果有搜索关键字，添加滚动定位功能
+    if (searchTerms.length > 0) {
+      const hasKeywordInTitle = titleResult.firstKeywordPosition !== -1;
+      const hasKeywordInContent = contentResult.firstKeywordPosition !== -1;
+      
+      contentHTML = `
+        <div class="quick-text-title searchable" ${hasKeywordInTitle ? `data-first-keyword="${titleResult.firstKeywordPosition}"` : ''}>${titleResult.html}</div>
+        <div class="quick-text-content searchable" ${hasKeywordInContent ? `data-first-keyword="${contentResult.firstKeywordPosition}"` : ''}><div>${contentResult.html}</div></div>
+      `;
+    } else {
+      contentHTML = `
+        <div class="quick-text-title">${titleResult.html}</div>
+        <div class="quick-text-content"><div>${contentResult.html}</div></div>
+      `;
+    }
   }
 
   // 生成日期时间HTML
@@ -317,6 +334,11 @@ export async function refreshQuickTexts() {
 // 过滤常用文本
 export function filterQuickTexts() {
   renderQuickTexts();
+  
+  // 导入并调用自动滚动功能
+  import('./utils/highlight.js').then(module => {
+    module.setupSearchResultScrolling();
+  }).catch(() => {});
 }
 
 // 显示常用文本模态框（用于添加新文本）

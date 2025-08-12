@@ -18,6 +18,7 @@ import {
   hideTranslationIndicator
 } from './aiTranslation.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
+import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -41,7 +42,16 @@ function generateClipboardItemHTML(item, index) {
   } else if (contentType === 'files') {
     contentHTML = generateFilesHTML(item);
   } else {
-    contentHTML = `<div class="clipboard-text">${escapeHtml(item.text)}</div>`;
+    // 高亮搜索关键字并获取位置信息
+    const searchTerms = getCurrentSearchTerms();
+    const highlightResult = highlightMultipleSearchTermsWithPosition(item.text, searchTerms);
+    
+    // 如果有搜索关键字，添加滚动定位功能
+    if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
+      contentHTML = `<div class="clipboard-text searchable" data-first-keyword="${highlightResult.firstKeywordPosition}"><div>${highlightResult.html}</div></div>`;
+    } else {
+      contentHTML = `<div class="clipboard-text"><div>${highlightResult.html}</div></div>`;
+    }
   }
 
   // 生成序号和快捷键
@@ -379,6 +389,11 @@ export function setActiveItem(index) {
 // 过滤剪贴板项目
 export function filterClipboardItems() {
   renderClipboardItems();
+  
+  // 导入并调用自动滚动功能
+  import('./utils/highlight.js').then(module => {
+    module.setupSearchResultScrolling();
+  }).catch(() => {});
 }
 
 // 将剪贴板内容添加到常用

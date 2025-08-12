@@ -53,6 +53,10 @@ import {
 } from './js/clipboard.js';
 
 import {
+  setupVirtualScrollScrolling
+} from './js/utils/highlight.js';
+
+import {
   refreshQuickTexts,
   filterQuickTexts,
   setupQuickTexts,
@@ -213,6 +217,9 @@ async function initApp() {
 
   // 设置文件图标刷新事件监听器
   setupFileIconRefreshListener();
+
+  // 设置虚拟滚动监听，处理动态加载内容的自动滚动
+  setupVirtualScrollScrolling();
 
   // 设置标签页切换
   setupTabSwitching();
