@@ -101,7 +101,9 @@ const defaultSettings = {
   windowPositionMode: 'smart',
   rememberWindowSize: false,
   savedWindowPosition: null,
-  savedWindowSize: null
+  savedWindowSize: null,
+  // 显示行为
+  autoScrollToTopOnShow: false
 };
 
 // 加载设置
@@ -218,6 +220,11 @@ function initializeUI() {
 
   // 动画设置
   document.getElementById('clipboard-animation-enabled').checked = settings.clipboardAnimationEnabled;
+  // 显示后自动滚动到顶部
+  const autoScrollSwitch = document.getElementById('auto-scroll-to-top-on-show');
+  if (autoScrollSwitch) {
+    autoScrollSwitch.checked = !!settings.autoScrollToTopOnShow;
+  }
 
   // 窗口位置和大小设置
   document.getElementById('window-position-mode').value = settings.windowPositionMode || 'smart';
@@ -322,7 +329,7 @@ function bindSettingEvents() {
     'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'clipboard-animation-enabled',
-    'window-position-mode', 'remember-window-size'
+    'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show'
   ];
 
   settingInputs.forEach(id => {

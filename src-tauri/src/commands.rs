@@ -494,9 +494,9 @@ pub fn save_settings(
     let sound_settings = crate::sound_manager::SoundSettings {
         enabled: app_settings.sound_enabled,
         volume: (app_settings.sound_volume / 100.0) as f32, // 转换为0.0-1.0范围
-        copy_sound_path: app_settings.copy_sound_path,
-        paste_sound_path: app_settings.paste_sound_path,
-        preset: app_settings.sound_preset,
+        copy_sound_path: app_settings.copy_sound_path.clone(),
+        paste_sound_path: app_settings.paste_sound_path.clone(),
+        preset: app_settings.sound_preset.clone(),
     };
     crate::sound_manager::update_sound_settings(sound_settings);
 
@@ -539,6 +539,15 @@ pub fn save_settings(
                 println!("刷新文件图标失败: {}", e);
             }
         });
+    }
+
+    // 10. 如果设置了显示后滚动到顶部，通知前端（主窗口）更新行为
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        use tauri::Emitter;
+        let _ = main_window.emit(
+            "settings-changed",
+            app_settings.to_json(),
+        );
     }
 
     Ok(())

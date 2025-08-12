@@ -61,6 +61,9 @@ pub struct AppSettings {
     // 动画设置
     pub clipboard_animation_enabled: bool, // 剪贴板显示/隐藏动画开关
 
+    // 显示行为
+    pub auto_scroll_to_top_on_show: bool, // 窗口显示后是否自动滚动到顶部
+
     // 窗口位置和大小设置
     pub window_position_mode: String, // 窗口位置模式：smart(智能位置) 或 remember(记住位置)
     pub remember_window_size: bool,   // 是否记住窗口大小
@@ -128,6 +131,9 @@ impl Default for AppSettings {
 
             // 动画设置默认值
             clipboard_animation_enabled: true, // 默认启用剪贴板显示/隐藏动画
+
+            // 显示行为默认值
+            auto_scroll_to_top_on_show: false,
 
             // 窗口位置和大小设置默认值
             window_position_mode: "smart".to_string(), // 默认使用智能位置
@@ -242,6 +248,7 @@ impl AppSettings {
             "aiOutputMode": self.ai_output_mode,
             "mouseMiddleButtonEnabled": self.mouse_middle_button_enabled,
             "clipboardAnimationEnabled": self.clipboard_animation_enabled,
+            "autoScrollToTopOnShow": self.auto_scroll_to_top_on_show,
             "windowPositionMode":self.window_position_mode,
             "rememberWindowSize":self.remember_window_size,
             "savedWindowPosition":self.saved_window_position,
@@ -393,6 +400,12 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
         {
             self.clipboard_animation_enabled = v;
+        }
+        if let Some(v) = json
+            .get("autoScrollToTopOnShow")
+            .and_then(|v| v.as_bool())
+        {
+            self.auto_scroll_to_top_on_show = v;
         }
         if let Some(v) = json.get("windowPositionMode").and_then(|v| v.as_str()) {
             self.window_position_mode = v.to_string();

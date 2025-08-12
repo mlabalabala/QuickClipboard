@@ -26,6 +26,9 @@ let currentSettings = {
   soundPreset: 'default',
   // 动画设置
   clipboardAnimationEnabled: true
+  ,
+  // 显示行为
+  autoScrollToTopOnShow: false
 };
 
 // 初始化设置管理器
@@ -82,6 +85,12 @@ function applySettings(settings) {
   // 应用动画设置
   if (settings.clipboardAnimationEnabled !== undefined) {
     applyAnimationSettings(settings.clipboardAnimationEnabled);
+  }
+
+  // 设置显示后滚动行为
+  if (settings.autoScrollToTopOnShow !== undefined) {
+    console.log('应用自动滚动设置:', settings.autoScrollToTopOnShow);
+    setupAutoScrollOnShow(Boolean(settings.autoScrollToTopOnShow));
   }
 }
 
@@ -152,6 +161,61 @@ export function getCurrentSettings() {
 export function updateSetting(key, value) {
   currentSettings[key] = value;
   applySettings({ [key]: value });
+}
+
+// 设置窗口显示后自动滚动到顶部
+function setupAutoScrollOnShow(enabled) {
+  console.log('设置自动滚动监听:', enabled);
+  
+  // 如已存在监听，则先解除
+  if (window.__autoScrollUnlisten && typeof window.__autoScrollUnlisten === 'function') {
+    try { 
+      console.log('移除现有自动滚动监听');
+      window.__autoScrollUnlisten(); 
+    } catch (_) { }
+    window.__autoScrollUnlisten = null;
+  }
+
+  if (enabled) {
+    console.log('创建新的自动滚动监听');
+    // 监听来自后端的显示事件
+    import('@tauri-apps/api/event')
+      .then(({ listen }) => listen('window-show-animation', () => autoScrollHandler()))
+      .then((unlisten) => { 
+        console.log('自动滚动监听创建成功');
+        window.__autoScrollUnlisten = unlisten; 
+      })
+      .catch((error) => { 
+        console.error('设置自动滚动监听失败:', error);
+      });
+  } else {
+    console.log('自动滚动已禁用');
+  }
+}
+
+function autoScrollHandler() {
+  console.log('自动滚动处理器被调用，当前设置:', currentSettings.autoScrollToTopOnShow);
+  
+  if (!currentSettings.autoScrollToTopOnShow) {
+    console.log('自动滚动已禁用，不执行滚动');
+    return; 
+  }
+  
+  console.log('执行自动滚动到顶部');
+  // 推迟到渲染完成后执行
+  setTimeout(() => {
+    try {
+      const list = document.getElementById('clipboard-list');
+      if (list) {
+        list.scrollTo({ top: 0, behavior: 'instant' });
+        console.log('滚动到顶部完成');
+      } else {
+        console.log('未找到clipboard-list元素');
+      }
+    } catch (error) { 
+      console.error('滚动到顶部失败:', error);
+    }
+  }, 0);
 }
 
 // 初始化主题（用于应用启动时）
