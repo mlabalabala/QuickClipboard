@@ -20,6 +20,7 @@ mod paste_utils;
 mod preview_window;
 mod quick_texts;
 
+mod memory_manager;
 mod services;
 mod settings;
 mod shortcut_interceptor;
@@ -29,7 +30,6 @@ mod tray;
 mod utils;
 mod window_effects;
 mod window_management;
-mod memory_manager;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -170,29 +170,6 @@ pub fn run() {
             {
                 main_window.open_devtools();
             }
-
-            // 设置窗口效果
-            // window_effects::set_window_blur(&main_window);
-
-            // 设置窗口圆角（Windows 11）
-            // #[cfg(windows)]
-            // {
-            //     if let Err(e) = window_effects::set_window_rounded(&main_window) {
-            //         println!("设置窗口圆角失败: {}", e);
-            //     }
-            // }
-
-            // // 设置为工具窗口，避免抢占焦点，并确保始终置顶
-            // #[cfg(windows)]
-            // {
-            //     if let Err(e) = window_management::set_tool_window(&main_window) {
-            //         println!("设置工具窗口失败: {}", e);
-            //     }
-            //     // 确保窗口始终置顶
-            //     if let Err(e) = main_window.set_always_on_top(true) {
-            //         println!("设置窗口置顶失败: {}", e);
-            //     }
-            // }
 
             // 初始化时获取剪贴板内容并初始化监听器状态
             clipboard_monitor::initialize_clipboard_state();

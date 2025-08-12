@@ -2321,7 +2321,7 @@ body {
   cursor: help;
 }
 
-.footer:hover .shortcuts-help-icon {
+.shortcuts-help-icon:hover {
   color: #007acc;
 }
 
@@ -2344,7 +2344,7 @@ body {
   overflow: hidden;
 }
 
-.footer:hover .shortcuts-help-content,
+.shortcuts-info:has(.shortcuts-help-icon:hover)~.shortcuts-help-content,
 .shortcuts-help-content:hover {
   opacity: 1;
   visibility: visible;
