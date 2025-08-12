@@ -96,7 +96,12 @@ const defaultSettings = {
   aiNewlineMode: 'auto',
   aiOutputMode: 'stream',
   // 鼠标设置
-  mouseMiddleButtonEnabled: true
+  mouseMiddleButtonEnabled: true,
+  // 窗口位置和大小设置
+  windowPositionMode: 'smart',
+  rememberWindowSize: false,
+  savedWindowPosition: null,
+  savedWindowSize: null
 };
 
 // 加载设置
@@ -214,6 +219,10 @@ function initializeUI() {
   // 动画设置
   document.getElementById('clipboard-animation-enabled').checked = settings.clipboardAnimationEnabled;
 
+  // 窗口位置和大小设置
+  document.getElementById('window-position-mode').value = settings.windowPositionMode || 'smart';
+  document.getElementById('remember-window-size').checked = settings.rememberWindowSize;
+
   // 设置主题
   setActiveTheme(settings.theme);
 
@@ -312,7 +321,8 @@ function bindSettingEvents() {
     'screenshot-auto-save', 'screenshot-show-hints',
     'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
-    'mouse-middle-button-enabled', 'clipboard-animation-enabled'
+    'mouse-middle-button-enabled', 'clipboard-animation-enabled',
+    'window-position-mode', 'remember-window-size'
   ];
 
   settingInputs.forEach(id => {

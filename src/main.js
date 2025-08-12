@@ -35,7 +35,7 @@ import {
   quickTextsFilterContainer,
   oneTimePasteSwitch
 } from './js/config.js';
-
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CustomSelect } from './js/customSelect.js';
 
 // 自定义组件实例
@@ -258,6 +258,9 @@ async function initApp() {
   // 设置窗口可见性监听器
   setupWindowVisibilityListener();
 
+  // 设置窗口大小和位置监听器
+  setupWindowSizeAndPositionListeners();
+
 }
 
 // 设置窗口可见性监听器
@@ -346,6 +349,71 @@ async function setupFileIconRefreshListener() {
 
     console.log('数据重新加载完成');
   });
+}
+
+// 设置窗口大小和位置监听器
+function setupWindowSizeAndPositionListeners() {
+  let resizeTimeout;
+  let moveTimeout;
+
+  // 监听窗口大小变化
+  window.addEventListener('resize', async () => {
+    // 使用防抖，避免频繁调用
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(async () => {
+      try {
+        // 获取当前设置
+        const settings = await invoke('get_settings');
+        if (settings.rememberWindowSize) {
+          // 获取当前窗口大小
+          const size = await getCurrentWindow().outerSize();
+          // 保存窗口大小
+          await invoke('save_window_size', {
+            width: size.width,
+            height: size.height
+          });
+          console.log('窗口大小已保存:', size.width, 'x', size.height);
+        }
+      } catch (error) {
+        console.error('保存窗口大小失败:', error);
+      }
+    }, 500); // 500ms防抖
+  });
+
+  // 监听窗口位置变化（仅在记住位置模式下）
+  let lastPosition = null;
+
+  // 定期检查窗口位置变化
+  setInterval(async () => {
+    try {
+      const settings = await invoke('get_settings');
+      if (settings.windowPositionMode === 'remember') {
+        const position = await getCurrentWindow().outerPosition();
+        // 检查位置是否发生变化
+        if (lastPosition &&
+          (lastPosition.x !== position.x || lastPosition.y !== position.y)) {
+          // 使用防抖
+          clearTimeout(moveTimeout);
+          moveTimeout = setTimeout(async () => {
+            try {
+              console.log(position.x, position.y)
+              await invoke('save_window_position', {
+                x: position.x,
+                y: position.y
+              });
+              console.log('窗口位置已保存:', position.x, ',', position.y);
+            } catch (error) {
+              console.error('保存窗口位置失败:', error);
+            }
+          }, 500);
+        }
+
+        lastPosition = position;
+      }
+    } catch (error) {
+      // 静默处理错误，避免控制台噪音
+    }
+  }, 1000); // 每秒检查一次位置变化
 }
 
 // 页面加载完成后初始化

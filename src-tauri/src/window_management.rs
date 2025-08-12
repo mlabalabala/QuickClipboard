@@ -11,15 +11,40 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     // 检查窗口是否已经显示
     let was_visible = window.is_visible().unwrap_or(false);
 
-    // 智能定位窗口到光标位置（带缓动动画）
+    // 根据设置决定窗口定位策略
     #[cfg(windows)]
     {
-        if was_visible {
-            // 窗口已显示，使用缓动动画移动到新位置
-            let _ = position_window_at_cursor_with_animation(&window);
-        } else {
-            // 窗口未显示，直接定位
-            let _ = position_window_at_cursor(&window);
+        let settings = crate::settings::get_global_settings();
+        match settings.window_position_mode.as_str() {
+            "remember" => {
+                // 记住位置模式：使用保存的位置，如果没有则回退到智能定位
+                if let Some((x, y)) = settings.saved_window_position {
+                    let position = tauri::PhysicalPosition::new(x, y);
+                    let _ = window.set_position(position);
+                } else {
+                    // 没有保存的位置，使用智能定位
+                    let _ = position_window_at_cursor(&window);
+                }
+            }
+            _ => {
+                // 智能位置模式（默认）：智能定位窗口到光标位置（带缓动动画）
+                if was_visible {
+                    // 窗口已显示，使用缓动动画移动到新位置
+                    let _ = position_window_at_cursor_with_animation(&window);
+                } else {
+                    // 窗口未显示，直接定位
+                    let _ = position_window_at_cursor(&window);
+                }
+            }
+        }
+    }
+
+    // 根据设置恢复窗口大小
+    let settings = crate::settings::get_global_settings();
+    if settings.remember_window_size {
+        if let Some((width, height)) = settings.saved_window_size {
+            let size = tauri::PhysicalSize::new(width, height);
+            let _ = window.set_size(size);
         }
     }
 

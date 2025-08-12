@@ -402,7 +402,11 @@ pub fn run() {
             commands::restart_app,
             commands::clear_clipboard_history_dm,
             commands::reset_all_data,
-            commands::get_app_data_dir
+            commands::get_app_data_dir,
+            commands::save_window_position,
+            commands::save_window_size,
+            commands::get_saved_window_position,
+            commands::get_saved_window_size
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

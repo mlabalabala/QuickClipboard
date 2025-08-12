@@ -59,7 +59,13 @@ pub struct AppSettings {
     pub mouse_middle_button_enabled: bool,
 
     // 动画设置
-    pub clipboard_animation_enabled: bool, // 启用鼠标中键显示剪贴板
+    pub clipboard_animation_enabled: bool, // 剪贴板显示/隐藏动画开关
+
+    // 窗口位置和大小设置
+    pub window_position_mode: String, // 窗口位置模式：smart(智能位置) 或 remember(记住位置)
+    pub remember_window_size: bool,   // 是否记住窗口大小
+    pub saved_window_position: Option<(i32, i32)>, // 保存的窗口位置 (x, y)
+    pub saved_window_size: Option<(u32, u32)>, // 保存的窗口大小 (width, height)
 }
 
 impl Default for AppSettings {
@@ -122,6 +128,12 @@ impl Default for AppSettings {
 
             // 动画设置默认值
             clipboard_animation_enabled: true, // 默认启用剪贴板显示/隐藏动画
+
+            // 窗口位置和大小设置默认值
+            window_position_mode: "smart".to_string(), // 默认使用智能位置
+            remember_window_size: false,               // 默认不记住窗口大小
+            saved_window_position: None,               // 初始没有保存的位置
+            saved_window_size: None,                   // 初始没有保存的大小
         }
     }
 }
@@ -230,6 +242,10 @@ impl AppSettings {
             "aiOutputMode": self.ai_output_mode,
             "mouseMiddleButtonEnabled": self.mouse_middle_button_enabled,
             "clipboardAnimationEnabled": self.clipboard_animation_enabled,
+            "windowPositionMode":self.window_position_mode,
+            "rememberWindowSize":self.remember_window_size,
+            "savedWindowPosition":self.saved_window_position,
+            "savedWindowSize":self.saved_window_size,
         })
     }
 
@@ -377,6 +393,26 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
         {
             self.clipboard_animation_enabled = v;
+        }
+        if let Some(v) = json.get("windowPositionMode").and_then(|v| v.as_str()) {
+            self.window_position_mode = v.to_string();
+        }
+        if let Some(v) = json.get("rememberWindowSize").and_then(|v| v.as_bool()) {
+            self.remember_window_size = v;
+        }
+        if let Some(v) = json.get("savedWindowPosition").and_then(|v| v.as_array()) {
+            if v.len() == 2 {
+                if let (Some(x), Some(y)) = (v[0].as_i64(), v[1].as_i64()) {
+                    self.saved_window_position = Some((x as i32, y as i32));
+                }
+            }
+        }
+        if let Some(v) = json.get("savedWindowSize").and_then(|v| v.as_array()) {
+            if v.len() == 2 {
+                if let (Some(w), Some(h)) = (v[0].as_u64(), v[1].as_u64()) {
+                    self.saved_window_size = Some((w as u32, h as u32));
+                }
+            }
         }
     }
 }

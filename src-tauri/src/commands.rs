@@ -450,8 +450,16 @@ pub fn save_settings(
     app_handle: tauri::AppHandle,
     settings: serde_json::Value,
 ) -> Result<(), String> {
-    // 更新全局设置
-    crate::settings::update_global_settings_from_json(&settings)?;
+    // 由于设置窗口可能持有过期的窗口尺寸/位置，
+    // 这里过滤掉 savedWindowSize 与 savedWindowPosition，避免覆盖最新值
+    let mut settings_filtered = settings.clone();
+    if let Some(obj) = settings_filtered.as_object_mut() {
+        obj.remove("savedWindowSize");
+        obj.remove("savedWindowPosition");
+    }
+
+    // 更新全局设置（使用过滤后的对象）
+    crate::settings::update_global_settings_from_json(&settings_filtered)?;
 
     // 获取更新后的设置
     let app_settings = crate::settings::get_global_settings();
@@ -523,7 +531,7 @@ pub fn save_settings(
     }
 
     // 9. 检查是否需要刷新文件图标
-    if settings.get("showImagePreview").is_some() {
+    if settings_filtered.get("showImagePreview").is_some() {
         // 异步刷新文件图标，不阻塞设置保存
         let app_handle_clone = app_handle.clone();
         std::thread::spawn(move || {
@@ -1413,4 +1421,36 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+// 保存窗口位置
+#[tauri::command]
+pub fn save_window_position(x: i32, y: i32) -> Result<(), String> {
+    let mut settings = crate::settings::get_global_settings();
+    settings.saved_window_position = Some((x, y));
+    crate::settings::update_global_settings(settings)?;
+    Ok(())
+}
+
+// 保存窗口大小
+#[tauri::command]
+pub fn save_window_size(width: u32, height: u32) -> Result<(), String> {
+    let mut settings = crate::settings::get_global_settings();
+    settings.saved_window_size = Some((width, height));
+    crate::settings::update_global_settings(settings)?;
+    Ok(())
+}
+
+// 获取保存的窗口位置
+#[tauri::command]
+pub fn get_saved_window_position() -> Result<Option<(i32, i32)>, String> {
+    let settings = crate::settings::get_global_settings();
+    Ok(settings.saved_window_position)
+}
+
+// 获取保存的窗口大小
+#[tauri::command]
+pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
+    let settings = crate::settings::get_global_settings();
+    Ok(settings.saved_window_size)
 }
