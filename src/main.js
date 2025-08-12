@@ -79,6 +79,7 @@ import { initInputFocusManagement } from './js/focus.js';
 import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
 import { initScreenshot } from './js/screenshot.js';
+import { initExternalScrollbars } from './js/scrollbar.js';
 import {
   initializeSettingsManager,
   initializeTheme,
@@ -149,6 +150,9 @@ async function initApp() {
   renderClipboardItems();
   renderQuickTexts();
 
+  // 初始化外置滚动条（不占内容空间）
+  initExternalScrollbars();
+
   // 并行获取数据，提高加载速度
   const dataPromise = Promise.all([
     refreshClipboardHistory(),
@@ -157,6 +161,8 @@ async function initApp() {
 
   // 数据获取完成后自动更新显示（refreshClipboardHistory和refreshQuickTexts内部会调用render函数）
   await dataPromise;
+  // 数据渲染后刷新外置滚动条
+  if (window.refreshExternalScrollbars) window.refreshExternalScrollbars();
 
   // 设置搜索功能
   searchInput.addEventListener('input', filterClipboardItems);

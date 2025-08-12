@@ -2184,6 +2184,79 @@ body {
   background: transparent;
 }
 
+/* =================== 列表滚动条隐藏 + 外置自定义滚动条 =================== */
+/* 永久隐藏原生滚动条（不占内容空间） */
+.clipboard-list,
+.quick-texts-list {
+  /* 作为外置滚动条的定位上下文 */
+  position: relative;
+  /* Firefox */
+  scrollbar-width: none;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.clipboard-list::-webkit-scrollbar,
+.quick-texts-list::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 外置滚动条容器 */
+.external-scrollbar {
+  position: fixed;
+  top: 132px;
+  bottom: 0;
+  left: 0px; /* 显示在容器外侧，不覆盖内容 */
+  width: 8px;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+/* 仅在容器悬浮时可见并可交互 */
+.container:hover .external-scrollbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.external-scrollbar__track {
+  position: absolute;
+  top: 2px;
+  bottom: 30px;
+  left: 0;
+  right: 0;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1); 
+  border: 1px solid rgba(58, 128, 249, 0.5);
+}
+.external-scrollbar__track:hover{
+  width: 300%;
+}
+
+/* 拖动状态下轨道也保持宽度 */
+.external-scrollbar.dragging .external-scrollbar__track {
+  width: 300%;
+}
+
+.external-scrollbar__thumb {
+  position: absolute;
+  left: -1.6px;
+  width: 140%;
+  min-height: 20px; /* 防止太小难以拖动 */
+  border-radius: 3px;
+  background: rgba(58, 128, 249, 0.5);
+  transition: background 0.15s ease;
+  cursor: pointer;  
+}
+
+.external-scrollbar__thumb:hover,
+.external-scrollbar.dragging .external-scrollbar__thumb {
+  /* width: 300%; */
+  background: rgba(58, 128, 249, 0.9);
+}
+
 /* =================== 粘贴加载状态样式 =================== */
 
 /* 粘贴加载状态 */
