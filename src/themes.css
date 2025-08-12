@@ -396,7 +396,7 @@ body {
 
   /* 分组侧边栏 */
   .groups-sidebar {
-    background: rgba(40, 40, 40, 0.95);
+    background: rgba(40, 40, 40, 0.65);
     border-left-color: rgba(255, 255, 255, 0.1);
   }
 
@@ -763,7 +763,7 @@ body.theme-light {
 }
 
 .theme-light .groups-sidebar {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.65);
   border-left-color: #e8e9ea;
 }
 
@@ -963,7 +963,7 @@ body.theme-dark {
 }
 
 .theme-dark .shortcuts-help-content {
-  background-color: #222;
+  background-color: rgba(40, 40, 40, 0.85) !important;
   border: 1px solid #444;
   border-bottom: none;
 }
@@ -1334,7 +1334,7 @@ body.theme-dark {
 }
 
 .theme-dark .groups-sidebar {
-  background: rgba(40, 40, 40, 0.95);
+  background: rgba(40, 40, 40, 0.85) !important;
   border-left-color: rgba(255, 255, 255, 0.1);
 }
 
