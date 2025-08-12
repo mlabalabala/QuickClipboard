@@ -323,17 +323,30 @@ export function getContentType(text) {
     return 'files';
   }
 
-  // 链接类型 - 检测URL模式
-  const urlPattern = /^(https?:\/\/|ftp:\/\/|www\.)[^\s]+$/i;
-  const simpleUrlPattern = /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/;
-
-  if (urlPattern.test(text.trim()) || simpleUrlPattern.test(text.trim())) {
+  // 链接类型 - 更严格的URL检测
+  const trimmedText = text.trim();
+  
+  // 1. 标准URL格式（必须包含协议）
+  const standardUrlPattern = /^(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+$/i;
+  if (standardUrlPattern.test(trimmedText)) {
     return 'link';
   }
-
-  // 检测文本中是否包含链接
-  const containsUrlPattern = /(https?:\/\/|ftp:\/\/|www\.)[^\s]+/i;
+  
+  // 2. 以www开头的URL（必须包含协议或www）
+  const wwwUrlPattern = /^www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/i;
+  if (wwwUrlPattern.test(trimmedText)) {
+    return 'link';
+  }
+  
+  // 3. 检测文本中是否包含完整的URL链接
+  const containsUrlPattern = /(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+/gi;
   if (containsUrlPattern.test(text)) {
+    return 'link';
+  }
+  
+  // 4. 检测文本中是否包含www开头的完整URL
+  const containsWwwUrlPattern = /www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?/gi;
+  if (containsWwwUrlPattern.test(text)) {
     return 'link';
   }
 
