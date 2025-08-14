@@ -135,6 +135,11 @@ export function setupTabSwitching() {
 
       setCurrentTab(tabName);
 
+      // 发送标签页切换事件给虚拟列表
+      window.dispatchEvent(new CustomEvent('tab-switched', {
+        detail: { tabName: tabName }
+      }));
+
       import('./navigation.js').then(module => {
         module.onTabSwitch();
       });

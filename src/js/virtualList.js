@@ -42,6 +42,9 @@ export class VirtualList {
     // 绑定事件
     this.bindEvents();
 
+    // 监听行高变化
+    this.bindRowHeightListener();
+
     // 初始化时触发图片加载
     this.triggerImageLoad();
   }
@@ -313,6 +316,16 @@ export class VirtualList {
     if (this.clusterize) {
       this.clusterize.destroy();
     }
+    
+    // 清理行高变化监听器
+    if (this.rowHeightChangeHandler) {
+      window.removeEventListener('row-height-changed', this.rowHeightChangeHandler);
+    }
+    
+    // 清理标签页切换监听器
+    if (this.tabSwitchHandler) {
+      window.removeEventListener('tab-switched', this.tabSwitchHandler);
+    }
   }
 
   getRowsAmount() {
@@ -334,8 +347,7 @@ export class VirtualList {
 
     // 估算每个项目的高度
     const contentElement = document.getElementById(this.contentId);
-    let itemHeight = 120; // 默认高度
-
+    let itemHeight = this.getCurrentRowHeight(); // 根据当前行高设置获取高度
     // 尝试从已渲染的项目中获取实际高度
     const renderedItems = contentElement ? contentElement.querySelectorAll('[data-index]') : [];
     if (renderedItems.length > 0) {
@@ -402,6 +414,68 @@ export class VirtualList {
   // 获取当前数据长度
   getDataLength() {
     return this.data ? this.data.length : 0;
+  }
+
+  // 根据当前行高设置获取项目高度
+  getCurrentRowHeight() {
+    const currentRowHeight = localStorage.getItem('app-row-height') || 'medium';
+    
+    switch (currentRowHeight) {
+      case 'large':
+        return 120; // 大
+      case 'medium':
+        return 90;  // 中
+      case 'small':
+        return 50;  // 小
+      default:
+        return 90;  // 默认中等
+    }
+  }
+
+  // 绑定行高变化监听器
+  bindRowHeightListener() {
+    this.rowHeightChangeHandler = (event) => {
+      // 行高改变时刷新虚拟列表，确保滚动计算正确
+      setTimeout(() => {
+        // 先强制重新计算布局
+        const scrollElement = document.getElementById(this.scrollId);
+        const contentElement = document.getElementById(this.contentId);
+        
+        if (scrollElement && contentElement) {
+          // 保存当前滚动位置
+          const currentScrollTop = scrollElement.scrollTop;
+          
+          // 刷新虚拟列表
+          this.refresh();
+          
+          // 重新设置滚动位置，避免跳动
+          setTimeout(() => {
+            scrollElement.scrollTop = currentScrollTop;
+          }, 10);
+        }
+      }, 150);
+    };
+    
+    // 监听标签页切换事件，在切换时刷新虚拟列表并回到顶部
+    this.tabSwitchHandler = () => {
+      setTimeout(() => {
+        // 刷新虚拟列表
+        this.refresh();
+        
+        // 滚动到顶部
+        const scrollElement = document.getElementById(this.scrollId);
+        if (scrollElement) {
+          scrollElement.scrollTo({
+            top: 0,
+            behavior: 'instant'
+          });
+        }
+      }, 50);
+    };
+    
+    window.addEventListener('row-height-changed', this.rowHeightChangeHandler);
+    // 监听标签页切换
+    window.addEventListener('tab-switched', this.tabSwitchHandler);
   }
 
   // 触发图片加载

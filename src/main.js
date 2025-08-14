@@ -172,38 +172,98 @@ async function initApp() {
   searchInput.addEventListener('input', filterClipboardItems);
   quickTextsSearch.addEventListener('input', filterQuickTexts);
 
-  // 共享的筛选器选项配置
-  const filterOptions = [
-    { value: 'all', text: '全部' },
-    { value: 'text', text: '文本' },
-    { value: 'image', text: '图片' },
-    { value: 'files', text: '文件' },
-    { value: 'link', text: '链接' }
+  // 初始化默认筛选状态
+  if (!localStorage.getItem('clipboard-current-filter')) {
+    localStorage.setItem('clipboard-current-filter', 'all');
+  }
+  if (!localStorage.getItem('quicktexts-current-filter')) {
+    localStorage.setItem('quicktexts-current-filter', 'all');
+  }
+
+  // 二级菜单选项配置：筛选 + 行高
+  const menuOptions = [
+    {
+      value: 'filter',
+      text: '筛选',
+      children: [
+        { value: 'all', text: '全部' },
+        { value: 'text', text: '文本' },
+        { value: 'image', text: '图片' },
+        { value: 'files', text: '文件' },
+        { value: 'link', text: '链接' }
+      ]
+    },
+    {
+      value: 'row-height',
+      text: '行高',
+      children: [
+        { value: 'row-height-large', text: '大' },
+        { value: 'row-height-medium', text: '中' },
+        { value: 'row-height-small', text: '小' }
+      ]
+    }
   ];
 
-  // 初始化自定义剪贴板筛选器
+  // 初始化自定义剪贴板筛选器（二级菜单）
   contentCustomFilter = new CustomSelect(contentFilterContainer, {
-    options: filterOptions,
-    value: 'all',
-    onChange: (value) => {
-      setCurrentFilter(value);
-      filterClipboardItems();
+    isMenuType: true,
+    enableHover: true,
+    options: menuOptions,
+    placeholder: '筛选和设置',
+    onChange: (value, text) => {
+      // 处理筛选选项
+      if (value === 'all' || value === 'text' || value === 'image' || value === 'files' || value === 'link') {
+        setCurrentFilter(value);
+        localStorage.setItem('clipboard-current-filter', value);
+        filterClipboardItems();
+        
+        // 通知其他组件筛选状态已变化
+        window.dispatchEvent(new CustomEvent('filter-changed', {
+          detail: { type: 'clipboard', value: value }
+        }));
+      }
     }
   });
 
-  // 初始化自定义常用文本筛选器
+  // 初始化自定义常用文本筛选器（二级菜单）
   quickTextsCustomFilter = new CustomSelect(quickTextsFilterContainer, {
-    options: filterOptions,
-    value: 'all',
-    onChange: (value) => {
-      setCurrentQuickTextsFilter(value);
-      filterQuickTexts();
+    isMenuType: true,
+    enableHover: true,
+    options: menuOptions,
+    placeholder: '筛选和设置',
+    onChange: (value, text) => {
+      // 处理筛选选项
+      if (value === 'all' || value === 'text' || value === 'image' || value === 'files' || value === 'link') {
+        setCurrentQuickTextsFilter(value);
+        localStorage.setItem('quicktexts-current-filter', value);
+        filterQuickTexts();
+        
+        // 通知其他组件筛选状态已变化
+        window.dispatchEvent(new CustomEvent('filter-changed', {
+          detail: { type: 'quicktexts', value: value }
+        }));
+      }
     }
   });
 
   // 将自定义组件实例设置到config中
   setContentCustomFilter(contentCustomFilter);
   setQuickTextsCustomFilter(quickTextsCustomFilter);
+
+  // 延迟触发筛选状态同步，确保初始高亮正确显示
+  setTimeout(() => {
+    // 获取当前筛选状态并触发更新
+    const clipboardFilter = localStorage.getItem('clipboard-current-filter') || 'all';
+    const quickTextsFilter = localStorage.getItem('quicktexts-current-filter') || 'all';
+    
+    // 手动触发筛选变化事件来更新高亮状态
+    window.dispatchEvent(new CustomEvent('filter-changed', {
+      detail: { type: 'clipboard', value: clipboardFilter }
+    }));
+    window.dispatchEvent(new CustomEvent('filter-changed', {
+      detail: { type: 'quicktexts', value: quickTextsFilter }
+    }));
+  }, 200);
 
   // 设置一次性粘贴开关
   if (oneTimePasteSwitch) {

@@ -888,7 +888,7 @@ body.theme-dark {
 }
 
 .theme-dark .container {
-  background-color: rgba(30, 30, 30, 1);
+  background-color: rgba(30, 30, 30, 1) !important;
 }
 
 .theme-dark .control-button {

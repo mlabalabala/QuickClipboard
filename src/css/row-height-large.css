@@ -1,0 +1,61 @@
+/**
+ * 行高样式 - 大 (120px)
+ */
+
+/* 剪贴板列表样式 */
+.clipboard-item {
+    padding: 10px;
+    height: 120px !important;
+}
+
+.clipboard-image {
+    height: 85% !important;
+}
+
+.clipboard-timestamp {
+    display: block !important;
+}
+
+.file-summary {
+    display: block !important;
+}
+
+.file-item {
+    padding: 4px 6px !important;
+}
+
+.file-icon {
+    width: 30px !important;
+    height: 30px !important;
+}
+
+.file-info {
+    gap: 2px !important;
+}
+
+.file-name {
+    font-size: 12px !important;
+}
+
+/* 常用文本列表样式*/
+.quick-text-item {
+    padding: 10px !important;
+    height: 140px !important;
+}
+
+.quick-text-title {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 8px !important;
+}
+
+.quick-text-content {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    max-height: 90px !important;
+}
+
+.quick-text-meta {
+    font-size: 11px !important;
+    margin-top: 8px !important;
+}

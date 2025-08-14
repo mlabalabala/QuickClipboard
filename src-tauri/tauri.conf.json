@@ -88,7 +88,6 @@
     }
   },
   "bundle": {
-    "artifactName": "${productName}-v${version}.${ext}",
     "active": true,
     "targets": [
       "nsis",
