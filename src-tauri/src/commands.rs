@@ -276,9 +276,10 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
     } else if final_content.starts_with("files:") {
         // 文件内容解析文件名作为标题
         crate::utils::content_utils::generate_files_title(&final_content)
-    } else if final_content.len() > 30 {
+    } else if final_content.chars().count() > 30 {
         // 文本内容取前30个字符作为标题
-        format!("{}...", &final_content[..30])
+        let truncated: String = final_content.chars().take(30).collect();
+        format!("{}...", truncated)
     } else {
         final_content.clone()
     };
