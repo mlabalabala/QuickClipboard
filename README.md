@@ -85,6 +85,14 @@
 
 
 </div>
+---
+
+## 💖 赞赏支持
+
+<div align="center">
+  <p>如果你觉得本项目对你有帮助，欢迎扫描下方二维码赞赏支持开发~</p>
+  <img src="src/assets/wxzsm.png" alt="赞赏码" width="240">
+</div>
 
 ---
 
