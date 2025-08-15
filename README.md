@@ -32,8 +32,18 @@
 ## 🖼 界面预览
 
 <div align="center">
-  <img src="readme-assets/main.png" alt="主界面预览" width="24.25%">
-  <img src="readme-assets/settings.png" alt="设置界面" width="45%">
+  <img src="readme-assets/main-light.png" alt="主界面预览" width="45%">
+  <img src="readme-assets/settings-light.png" alt="设置界面" width="45%">
+</div>
+
+<div align="center">
+  <img src="readme-assets/main-dark.png" alt="主界面预览" width="45%">
+  <img src="readme-assets/settings-dark.png" alt="设置界面" width="45%">
+</div>
+
+<div align="center">
+  <img src="readme-assets/main-bg.png" alt="主界面预览" width="45%">
+  <img src="readme-assets/settings-bg.png" alt="设置界面" width="45%">
 </div>
 
 ---
@@ -84,7 +94,6 @@
 | **网盘下载** | 备用下载渠道，适合 GitHub 访问较慢时使用 | — | [![网盘下载](https://img.shields.io/badge/🌐_网盘下载-点击进入-red?style=for-the-badge)](https://www.123912.com/s/A9Ckjv-Vu75v?pwd=UhWA#) |
 
 
-</div>
 ---
 
 ## 💖 赞赏支持
