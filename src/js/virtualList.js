@@ -83,19 +83,27 @@ export class VirtualList {
 
           // 找到新位置的非拖拽元素来确定真实索引
           const elements = Array.from(evt.to.children);
-          const isForward = evt.newIndex < evt.oldIndex;
+          const isForward = evt.newIndex < evt.oldIndex; // 向上拖拽为true，向下为false
 
-          // 根据拖拽方向查找参考元素
-          const searchStart = isForward ? evt.newIndex : evt.newIndex + 1;
+          // 调整向下拖拽时的搜索起始位置
+          const searchStart = isForward ? evt.newIndex : evt.newIndex; // 向下拖拽时从newIndex开始找
           const searchEnd = isForward ? elements.length : 0;
           const searchStep = isForward ? 1 : -1;
 
           for (let i = searchStart; isForward ? i < searchEnd : i >= searchEnd; i += searchStep) {
             if (elements[i] && elements[i] !== evt.item) {
               const refIndex = parseInt(elements[i].getAttribute('data-index'));
-              realNewIndex = isForward ? refIndex : refIndex + 1;
+              // 向下拖拽时直接使用参考元素索引，不加1
+              realNewIndex = isForward ? refIndex : refIndex; 
               break;
             }
+          }
+
+          // 特殊情况：如果没找到参考元素（拖拽到最末端）
+          if (realNewIndex === realOldIndex) {
+            // 向上拖拽到最前：newIndex=0
+            // 向下拖拽到最后：newIndex=elements.length-1
+            realNewIndex = isForward ? 0 : elements.length - 1;
           }
 
           if (realOldIndex !== realNewIndex) {
@@ -105,7 +113,7 @@ export class VirtualList {
             // 拖拽完成后设置该项为激活状态
             setTimeout(() => {
               this.setDraggedItemActive(evt.item, realNewIndex);
-            }, 50); // 延迟一点时间确保DOM更新完成
+            }, 50);
           }
         }
       }
@@ -126,6 +134,7 @@ export class VirtualList {
 
     this.sortable = Sortable.create(contentElement, finalOptions);
   }
+
 
   // 设置拖拽数据
   setDragData(evt) {
