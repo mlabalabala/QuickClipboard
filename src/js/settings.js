@@ -1,4 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from './colorAnalyzer.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit, listen } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -62,6 +63,7 @@ const defaultSettings = {
   historyLimit: 100,
   theme: 'light',
   opacity: 0.9,
+  backgroundImagePath: '',
   toggleShortcut: 'Win+V',
   numberShortcuts: true,
   clipboardMonitor: true,
@@ -174,6 +176,11 @@ function initializeUI() {
   document.getElementById('save-images').checked = settings.saveImages;
   document.getElementById('show-image-preview').checked = settings.showImagePreview;
 
+  const bgPathInput = document.getElementById('background-image-path');
+  if (bgPathInput) {
+    bgPathInput.value = settings.backgroundImagePath || '';
+  }
+
   // 音效设置
   document.getElementById('sound-enabled').checked = settings.soundEnabled;
   document.getElementById('sound-volume').value = settings.soundVolume;
@@ -246,6 +253,15 @@ function initializeUI() {
 
   // 初始化数据管理功能
   initDataManagement();
+
+  // 初次根据主题显示背景图设置
+  const bgSetting = document.getElementById('background-image-setting');
+  if (bgSetting) {
+    bgSetting.style.display = (settings.theme === 'background') ? '' : 'none';
+  }
+
+  // 初次应用背景
+  applyBackgroundToSettingsContainer();
 }
 
 // 绑定事件
@@ -273,6 +289,12 @@ function bindEvents() {
       const theme = option.dataset.theme;
       setActiveTheme(theme);
       settings.theme = theme;
+      // 切换背景图设置项显隐
+      const bgSetting = document.getElementById('background-image-setting');
+      if (bgSetting) {
+        bgSetting.style.display = theme === 'background' ? '' : 'none';
+      }
+      applyBackgroundToSettingsContainer();
       saveSettings();
     });
   });
@@ -297,6 +319,26 @@ function bindEvents() {
 
   // AI翻译设置事件
   bindAiTranslationEvents();
+
+  // 背景图浏览按钮
+  const browseBgBtn = document.getElementById('browse-background-image');
+  if (browseBgBtn) {
+    browseBgBtn.addEventListener('click', async () => {
+      try {
+        const result = await invoke('browse_image_file');
+        if (result) {
+          settings.backgroundImagePath = result;
+          const bgPathInput = document.getElementById('background-image-path');
+          if (bgPathInput) bgPathInput.value = result;
+          applyBackgroundToSettingsContainer();
+          saveSettings();
+        }
+      } catch (error) {
+        console.error('浏览背景图片失败:', error);
+        showNotification('浏览图片失败', 'error');
+      }
+    });
+  }
 
   // 关于页面按钮
   const checkUpdatesBtn = document.getElementById('check-updates');
@@ -542,6 +584,51 @@ function bindPreviewShortcutEvents() {
       settings.previewShortcut = '';
       saveSettings();
     });
+  }
+
+  // 初次根据主题显示背景图设置
+  const bgSetting = document.getElementById('background-image-setting');
+  if (bgSetting) {
+    bgSetting.style.display = (settings.theme === 'background') ? '' : 'none';
+  }
+
+  // 初次应用背景
+  applyBackgroundToSettingsContainer();
+}
+
+// 将背景图应用到当前文档
+async function applyBackgroundToSettingsContainer() {
+  try {
+    const container = document.querySelector('.settings-container');
+    const path = settings.backgroundImagePath || '';
+    if (container) {
+      if (path && settings.theme === 'background') {
+        let url = '';
+        try {
+          // 优先读原图为 dataURL，避免 asset.localhost 访问失败
+          const dataUrl = await invoke('read_image_file', { filePath: path });
+          url = dataUrl;
+        } catch (e) {
+          // 退回到 convertFileSrc
+          url = convertFileSrc ? convertFileSrc(path) : path;
+        }
+        container.style.backgroundImage = `url("${url.replaceAll('"', '\\"')}")`;
+        
+        try {
+          const dominantColor = await getDominantColor(url);
+          const titleBarColors = generateTitleBarColors(dominantColor);
+          applyTitleBarColors(titleBarColors);
+        } catch (colorError) {
+          console.warn('设置页面分析背景图颜色失败:', colorError);
+          removeTitleBarColors();
+        }
+      } else {
+        container.style.backgroundImage = '';
+        removeTitleBarColors();
+      }
+    }
+  } catch (e) {
+    console.warn('应用背景图片失败:', e);
   }
 }
 

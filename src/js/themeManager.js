@@ -5,7 +5,8 @@ export const THEMES = {
   AUTO: 'auto',      // 跟随系统
   LIGHT: 'light',    // 亮色主题
   DARK: 'dark',      // 暗色主题
-  TRANSPARENT: 'transparent' // 透明主题
+  TRANSPARENT: 'transparent', // 透明主题
+  BACKGROUND: 'background' // 背景图主题
 };
 
 // 当前主题状态
@@ -132,7 +133,7 @@ function applyTheme(theme) {
   const body = document.body;
 
   // 移除所有主题类
-  body.classList.remove('theme-light', 'theme-dark', 'theme-transparent');
+  body.classList.remove('theme-light', 'theme-dark', 'theme-transparent', 'theme-background', 'theme-auto');
 
   // 应用新主题
   switch (theme) {
@@ -144,6 +145,9 @@ function applyTheme(theme) {
       break;
     case THEMES.TRANSPARENT:
       body.classList.add('theme-transparent');
+      break;
+    case THEMES.BACKGROUND:
+      body.classList.add('theme-background');
       break;
     case THEMES.AUTO:
       // 根据系统偏好应用主题
@@ -223,6 +227,8 @@ export function getThemeDisplayName(theme) {
       return '暗色主题';
     case THEMES.TRANSPARENT:
       return '透明主题';
+    case THEMES.BACKGROUND:
+      return '背景图';
     default:
       return '未知主题';
   }
@@ -278,6 +284,9 @@ export function applyThemeToWindow(targetDocument) {
       break;
     case THEMES.TRANSPARENT:
       body.classList.add('theme-transparent');
+      break;
+    case THEMES.BACKGROUND:
+      body.classList.add('theme-background');
       break;
   }
 }

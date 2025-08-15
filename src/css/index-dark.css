@@ -737,3 +737,47 @@ body.theme-dark {
     background-color: rgba(30, 30, 30, 1) !important;
   }
 }
+
+/* 自定义下拉组件 - 暗色主题覆盖（迁移自 customSelect.js） */
+.theme-dark .custom-menu-trigger,
+.theme-dark .custom-menu-dropdown,
+.theme-dark .custom-submenu {
+  background: rgba(50, 50, 50, 1);
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.theme-dark .custom-menu-icon {
+  color: #e2e8f0;
+}
+
+.theme-dark .custom-menu-item:hover,
+.theme-dark .custom-submenu-item:hover {
+  background-color: #4a5568;
+}
+
+.theme-dark .custom-submenu-item.selected {
+  background-color: #1a365d;
+  color: #63b3ed;
+}
+
+.theme-dark .selected-indicator {
+  color: #63b3ed;
+}
+
+.theme-dark .custom-menu-trigger:hover {
+  border-color: #6bb6ff;
+}
+
+.theme-dark .custom-menu-trigger:hover .custom-menu-icon {
+  color: #6bb6ff;
+}
+
+.theme-dark .custom-menu-trigger.active {
+  border-color: #6bb6ff;
+  box-shadow: 0 0 0 2px rgba(107, 182, 255, 0.2);
+}
+
+.theme-dark .custom-menu-trigger.active .custom-menu-icon {
+  color: #6bb6ff;
+}

@@ -346,6 +346,7 @@ pub fn run() {
             reload_settings,
             save_settings,
             browse_sound_file,
+            browse_image_file,
             test_sound,
             play_paste_sound,
             play_scroll_sound,

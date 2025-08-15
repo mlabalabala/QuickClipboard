@@ -68,6 +68,10 @@ body {
   display: flex;
   flex-direction: column;
   transition: all var(--transition-duration) ease;
+  /* 背景自适应 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* =================== 标题栏 =================== */
@@ -83,7 +87,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--padding-lg) var(--padding-xxl);
+  padding: var(--padding-sm) var(--padding-sm);
 }
 
 .header-left {
@@ -140,8 +144,7 @@ body {
 
 /* =================== 侧边栏 =================== */
 .settings-sidebar {
-  width: 240px;
-  padding: var(--padding-xxl) 0;
+  width: 200px;
   border-right: 1px solid transparent;
 }
 
@@ -149,14 +152,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--margin-xs);
-  padding: 0 var(--padding-lg);
+  padding: var(--padding-lg);
+  overflow: auto !important;
+  height: 100%;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: var(--margin-md);
-  padding: var(--margin-md) var(--padding-lg);
+  padding: var(--margin-sm) var(--padding-sm);
   border-radius: var(--border-radius-large);
   text-decoration: none;
   cursor: pointer;
@@ -180,12 +185,14 @@ body {
 .settings-main {
   flex: 1;
   overflow-y: auto;
-  padding: var(--padding-xxl);
+  padding: var(--padding-xs);
 }
 
 .settings-section {
   display: none;
   max-width: 800px;
+  border-radius: var(--border-radius-xl);
+  padding: var(--padding-sm);
 }
 
 .settings-section.active {
@@ -213,7 +220,6 @@ body {
 .settings-group {
   border-radius: var(--border-radius-xl);
   overflow: hidden;
-  margin-bottom: var(--padding-xxl);
   padding: var(--padding-xl);
   border: 1px solid transparent;
   transition: all var(--transition-duration) ease;
@@ -373,6 +379,10 @@ input:checked + .toggle-slider:before {
 
 .theme-dark-preview {
   background: linear-gradient(135deg, #2d2d2d 50%, #1a1a1a 50%);
+}
+
+.theme-background-preview {
+  background: linear-gradient(135deg, #3eb9d4 50%, #1fa836 50%);
 }
 
 .theme-transparent-preview {

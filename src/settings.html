@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/settings-common.css">
   <link rel="stylesheet" href="css/settings-light.css" id="theme-style">
   <link rel="stylesheet" href="css/settings-dark.css" id="row-height-style">
+  <link rel="stylesheet" href="css/settings-background.css">
 
 </head>
 
@@ -198,6 +199,10 @@
                     <div class="theme-preview theme-dark-preview"></div>
                     <span>深色主题</span>
                   </div>
+                  <div class="theme-option" data-theme="background">
+                    <div class="theme-preview theme-background-preview"></div>
+                    <span>背景图</span>
+                  </div>
                   <div class="theme-option" data-theme="transparent" style="display: none;">
                     <div class="theme-preview theme-transparent-preview"></div>
                     <span>透明主题</span>
@@ -215,6 +220,21 @@
                 <div class="slider-container">
                   <input type="range" id="opacity-slider" min="0.3" max="1" step="0.1" value="0.9">
                   <span class="slider-value">90%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item" id="background-image-setting" style="display: none;">
+              <div class="setting-info">
+                <label class="setting-label">背景图片</label>
+                <p class="setting-description">为“背景图”主题选择一张本地图片作为背景</p>
+              </div>
+              <div class="setting-control">
+                <div class="sound-input-group">
+                  <input type="text" id="background-image-path" placeholder="选择图片文件" class="sound-input" readonly>
+                  <button class="sound-browse-btn" id="browse-background-image">
+                    <i class="ti ti-folder"></i>
+                  </button>
                 </div>
               </div>
             </div>

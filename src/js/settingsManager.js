@@ -1,7 +1,8 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentTheme } from './themeManager.js';
 import { refreshClipboardHistory } from './clipboard.js';
+import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from './colorAnalyzer.js';
 
 // 当前设置
 let currentSettings = {
@@ -99,12 +100,56 @@ function applyTheme(theme) {
   const body = document.body;
 
   // 移除所有主题类
-  body.classList.remove('theme-light', 'theme-dark', 'theme-transparent');
+  body.classList.remove('theme-light', 'theme-dark', 'theme-transparent', 'theme-background', 'theme-auto');
+
+  // 将 auto/system 映射为实际主题
+  let resolvedTheme = theme;
+  if (theme === 'auto' || theme === 'system') {
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    resolvedTheme = prefersDark ? 'dark' : 'light';
+  }
 
   // 应用新主题
-  body.classList.add(`theme-${theme}`);
+  body.classList.add(`theme-${resolvedTheme}`);
+  applyBackgroundToMainWindow(resolvedTheme);
 
   // console.log('主题已应用:', theme);
+}
+
+// 应用主窗口背景图
+async function applyBackgroundToMainWindow(theme) {
+  try {
+    const container = document.querySelector('.container');
+    if (!container) return;
+    const path = currentSettings.backgroundImagePath || '';
+    if (theme === 'background' && path) {
+      let url = '';
+      try {
+        const dataUrl = await invoke('read_image_file', { filePath: path });
+        url = dataUrl;
+      } catch (e) {
+        url = convertFileSrc ? convertFileSrc(path) : path;
+      }
+      container.style.backgroundImage = `url("${url.replaceAll('"', '\\"')}")`;
+      
+      // 分析背景图主色调并应用到标题栏
+      try {
+        const dominantColor = await getDominantColor(url);
+        const titleBarColors = generateTitleBarColors(dominantColor);
+        applyTitleBarColors(titleBarColors);
+      } catch (colorError) {
+        console.warn('分析背景图颜色失败:', colorError);
+        // 如果颜色分析失败，移除动态颜色类以使用默认样式
+        removeTitleBarColors();
+      }
+    } else {
+      container.style.backgroundImage = '';
+      // 移除动态标题栏颜色
+      removeTitleBarColors();
+    }
+  } catch (e) {
+    console.warn('应用主窗口背景图片失败:', e);
+  }
 }
 
 // 应用透明度
@@ -238,7 +283,7 @@ export function initializeTheme() {
 // 监听系统主题变化
 export function setupThemeListener() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (currentSettings.theme === 'system') {
+    if (currentSettings.theme === 'auto' || currentSettings.theme === 'system') {
       const prefersDark = e.matches;
       applyTheme(prefersDark ? 'dark' : 'light');
     }

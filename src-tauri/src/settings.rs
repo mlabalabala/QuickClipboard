@@ -13,6 +13,7 @@ pub struct AppSettings {
     pub history_limit: u64,
     pub theme: String,
     pub opacity: f64,
+    pub background_image_path: String,
     pub toggle_shortcut: String,
     pub number_shortcuts: bool,
     pub clipboard_monitor: bool,
@@ -82,6 +83,7 @@ impl Default for AppSettings {
             history_limit: 100,
             theme: "light".to_string(),
             opacity: 0.9,
+            background_image_path: "".to_string(),
             toggle_shortcut: "Win+V".to_string(),
             number_shortcuts: true,
             clipboard_monitor: true,
@@ -213,6 +215,7 @@ impl AppSettings {
             "historyLimit": self.history_limit,
             "theme": self.theme,
             "opacity": self.opacity,
+            "backgroundImagePath": self.background_image_path,
             "toggleShortcut": self.toggle_shortcut,
             "numberShortcuts": self.number_shortcuts,
             "clipboardMonitor": self.clipboard_monitor,
@@ -281,6 +284,12 @@ impl AppSettings {
         }
         if let Some(v) = json.get("opacity").and_then(|v| v.as_f64()) {
             self.opacity = v;
+        }
+        if let Some(v) = json
+            .get("backgroundImagePath")
+            .and_then(|v| v.as_str())
+        {
+            self.background_image_path = v.to_string();
         }
         if let Some(v) = json.get("toggleShortcut").and_then(|v| v.as_str()) {
             self.toggle_shortcut = v.to_string();

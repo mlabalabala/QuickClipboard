@@ -69,7 +69,6 @@ export async function initNavigation() {
 
 // 节流处理导航按键
 function handleThrottledNavigation(key) {
-  console.log('导航键被按下:', key);
   const now = Date.now();
 
   // 如果距离上次导航时间太短，则延迟执行

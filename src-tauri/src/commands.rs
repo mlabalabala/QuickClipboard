@@ -574,6 +574,20 @@ pub async fn browse_sound_file() -> Result<Option<String>, String> {
     }
 }
 
+// 浏览背景图片文件
+#[tauri::command]
+pub async fn browse_image_file() -> Result<Option<String>, String> {
+    let dialog = rfd::AsyncFileDialog::new()
+        .add_filter("图片文件", &["png", "jpg", "jpeg", "bmp", "gif", "webp"])
+        .set_title("选择背景图片");
+
+    if let Some(file) = dialog.pick_file().await {
+        Ok(Some(file.path().to_string_lossy().to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
 // 测试音效（异步版本）
 #[tauri::command]
 pub async fn test_sound(sound_path: String, volume: f32) -> Result<(), String> {
