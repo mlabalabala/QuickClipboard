@@ -26,7 +26,7 @@ pub fn init_groups() -> Result<(), String> {
 
 // 在数据库中初始化默认分组
 fn init_default_groups_db() -> Result<(), String> {
-    let now = chrono::Utc::now().to_rfc3339();
+    let now = chrono::Local::now().to_rfc3339();
     let default_group = Group {
         id: "all".to_string(),
         name: "全部".to_string(),
@@ -93,7 +93,7 @@ pub fn get_group_by_id(id: &str) -> Option<Group> {
 
 // 添加分组
 pub fn add_group(name: String, icon: String) -> Result<Group, String> {
-    let now = chrono::Utc::now().to_rfc3339();
+    let now = chrono::Local::now().to_rfc3339();
     let id = Uuid::new_v4().to_string();
 
     let group = Group {
@@ -122,12 +122,12 @@ pub fn add_group(name: String, icon: String) -> Result<Group, String> {
 
 // 更新分组
 pub fn update_group(id: String, name: String, icon: String) -> Result<Group, String> {
-    let now = chrono::Utc::now().to_rfc3339();
+    let now = chrono::Local::now().to_rfc3339();
     let updated_group = Group {
         id: id.clone(),
         name,
         icon,
-        created_at: "".to_string(), // 这个值会被数据库操作忽略
+        created_at: "".to_string(),
         updated_at: now,
     };
 

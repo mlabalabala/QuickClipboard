@@ -42,7 +42,8 @@ pub fn add_quick_text_with_group(
     content: String,
     group_id: String,
 ) -> Result<QuickText, String> {
-    let now = chrono::Utc::now().timestamp();
+    let now_local = chrono::Local::now();
+    let now = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
     let quick_text = QuickText {
         id: Uuid::new_v4().to_string(),
         title,
@@ -71,14 +72,15 @@ pub fn update_quick_text_with_group(
     content: String,
     group_id: Option<String>,
 ) -> Result<QuickText, String> {
-    let now = chrono::Utc::now().timestamp();
+    let now_local = chrono::Local::now();
+    let now = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
     let group_id = group_id.unwrap_or_else(|| "all".to_string());
 
     let updated_text = QuickText {
         id: id.clone(),
         title,
         content,
-        created_at: 0, // 这个值会被数据库操作忽略
+        created_at: 0,
         updated_at: now,
         group_id,
     };
@@ -200,7 +202,7 @@ pub fn move_quick_text_to_group(id: String, group_id: String) -> Result<(), Stri
     // 创建更新后的文本
     let mut updated_text = existing_text.clone();
     updated_text.group_id = group_id.clone();
-    updated_text.updated_at = chrono::Utc::now().timestamp();
+    updated_text.updated_at = chrono::Local::now().timestamp();
 
     // 在数据库中更新
     database::update_quick_text(&updated_text)?;
@@ -219,7 +221,7 @@ pub fn move_group_texts_to_all(group_id: &str) -> Result<(), String> {
 
     for mut text in texts {
         text.group_id = "all".to_string();
-        text.updated_at = chrono::Utc::now().timestamp();
+        text.updated_at = chrono::Local::now().timestamp();
 
         if let Err(e) = database::update_quick_text(&text) {
             println!("移动常用文本 {} 失败: {}", text.id, e);

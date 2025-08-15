@@ -1407,10 +1407,8 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
                         // 创建更新后的常用文本对象
                         let mut updated_text = text.clone();
                         updated_text.content = updated_content;
-                        updated_text.updated_at = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs() as i64;
+                        let now_local = chrono::Local::now();
+                        updated_text.updated_at = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
 
                         if let Err(e) = database::update_quick_text(&updated_text) {
                             println!("更新常用文本 {} 失败: {}", text.id, e);

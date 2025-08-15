@@ -94,10 +94,10 @@ impl ImageManager {
             width,
             height,
             file_size,
-            created_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            created_at: {
+                let now = chrono::Local::now();
+                (now.timestamp() + now.offset().local_minus_utc() as i64) as u64
+            },
         };
 
         Ok(image_info)
@@ -222,10 +222,13 @@ impl ImageManager {
             id: new_image_id.clone(),
             file_path: new_file_path.to_string_lossy().to_string(),
             thumbnail_path: new_thumbnail_path.to_string_lossy().to_string(),
-            width: 0, // 这些信息在复制时不重要
+            width: 0, 
             height: 0,
             file_size: 0,
-            created_at: chrono::Utc::now().timestamp() as u64,
+            created_at: {
+                let now = chrono::Local::now();
+                (now.timestamp() + now.offset().local_minus_utc() as i64) as u64
+            },
         })
     }
 

@@ -30,29 +30,29 @@ pub struct ClipboardItem {
 
 impl ClipboardItem {
     pub fn new_text(text: String) -> Self {
+        let now = chrono::Local::now();
+        let local_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+        
         Self {
             id: 0, // 将由数据库自动分配
             text,
             is_image: false,
             image_id: None,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            timestamp: local_timestamp,
             created_at: None, // 将由数据库填充
         }
     }
 
     pub fn new_image(image_id: String) -> Self {
+        let now = chrono::Local::now();
+        let local_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+        
         Self {
             id: 0, // 将由数据库自动分配
             text: format!("image:{}", image_id),
             is_image: true,
             image_id: Some(image_id),
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            timestamp: local_timestamp,
             created_at: None, // 将由数据库填充
         }
     }
@@ -107,7 +107,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
             is_image BOOLEAN NOT NULL DEFAULT 0,
             image_id TEXT,
             timestamp INTEGER NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
         )",
         [],
     )?;
@@ -151,7 +151,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         "CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
         )",
         [],
     )?;
@@ -258,11 +258,9 @@ fn migrate_clipboard_history() -> Result<(), String> {
         let tx = conn.unchecked_transaction()?;
 
         for (index, text) in history_list.iter().enumerate() {
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-                - (history_list.len() - index) as u64; // 保持相对顺序
+            let now = chrono::Local::now();
+            let base_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+            let timestamp = base_timestamp - (history_list.len() - index) as u64; // 保持相对顺序
 
             let (is_image, image_id) = if text.starts_with("image:") {
                 (
@@ -401,11 +399,12 @@ fn get_groups_json_path() -> PathBuf {
 // 添加剪贴板项目
 pub fn add_clipboard_item(text: String) -> Result<i64, String> {
     let item = ClipboardItem::new_text(text);
+    let now_local = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp) VALUES (?1, ?2, ?3, ?4)",
-            params![item.text, item.is_image, item.image_id, item.timestamp],
+            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![item.text, item.is_image, item.image_id, item.timestamp, now_local],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -415,11 +414,12 @@ pub fn add_clipboard_item(text: String) -> Result<i64, String> {
 // 添加图片剪贴板项目
 pub fn add_clipboard_image_item(image_id: String) -> Result<i64, String> {
     let item = ClipboardItem::new_image(image_id);
+    let now_local = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp) VALUES (?1, ?2, ?3, ?4)",
-            params![item.text, item.is_image, item.image_id, item.timestamp],
+            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![item.text, item.is_image, item.image_id, item.timestamp, now_local],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -474,10 +474,8 @@ pub fn clipboard_item_exists(text: &str) -> Result<Option<i64>, String> {
 
 // 移动剪贴板项目到最前面（更新时间戳）
 pub fn move_clipboard_item_to_front(id: i64) -> Result<(), String> {
-    let new_timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    let now = chrono::Local::now();
+    let new_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
 
     with_connection(|conn| {
         conn.execute(

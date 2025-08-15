@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{Read, Write};
@@ -60,7 +60,7 @@ pub async fn export_data(export_path: &str, options: ExportOptions) -> Result<()
     // 创建导出元数据
     let metadata = ExportMetadata {
         version: "1.0".to_string(),
-        export_time: Utc::now().to_rfc3339(),
+        export_time: Local::now().to_rfc3339(),
         app_version: env!("CARGO_PKG_VERSION").to_string(),
         options: options.clone(),
     };
@@ -259,7 +259,7 @@ fn read_metadata_from_zip(archive: &mut ZipArchive<fs::File>) -> Result<ExportMe
 // 辅助函数：备份当前数据
 async fn backup_current_data(app_data_dir: &Path) -> Result<(), String> {
     let backup_dir = app_data_dir.join("backup");
-    let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S");
     let backup_path = backup_dir.join(format!("backup_{}.zip", timestamp));
 
     // 创建备份目录
@@ -481,7 +481,7 @@ fn merge_clipboard_history(
             // 插入到clipboard_items表，让数据库自动分配新的ID
             main_conn.execute(
                 "INSERT INTO clipboard_items (text, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![text, is_image, image_id, timestamp, chrono::Utc::now().to_rfc3339()],
+                params![text, is_image, image_id, timestamp, chrono::Local::now().to_rfc3339()],
             )?;
         }
     }
@@ -516,13 +516,13 @@ fn merge_quick_texts(
         let created_at = match row.get::<_, rusqlite::types::Value>(4)? {
             rusqlite::types::Value::Text(s) => s,
             rusqlite::types::Value::Integer(i) => i.to_string(),
-            _ => chrono::Utc::now().to_rfc3339(),
+            _ => chrono::Local::now().to_rfc3339(),
         };
 
         let updated_at = match row.get::<_, rusqlite::types::Value>(5)? {
             rusqlite::types::Value::Text(s) => s,
             rusqlite::types::Value::Integer(i) => i.to_string(),
-            _ => chrono::Utc::now().to_rfc3339(),
+            _ => chrono::Local::now().to_rfc3339(),
         };
 
         Ok((
@@ -589,13 +589,13 @@ fn merge_groups(
         let created_at = match row.get::<_, rusqlite::types::Value>(3)? {
             rusqlite::types::Value::Text(s) => s,
             rusqlite::types::Value::Integer(i) => i.to_string(),
-            _ => chrono::Utc::now().to_rfc3339(),
+            _ => chrono::Local::now().to_rfc3339(),
         };
 
         let updated_at = match row.get::<_, rusqlite::types::Value>(4)? {
             rusqlite::types::Value::Text(s) => s,
             rusqlite::types::Value::Integer(i) => i.to_string(),
-            _ => chrono::Utc::now().to_rfc3339(),
+            _ => chrono::Local::now().to_rfc3339(),
         };
 
         Ok((

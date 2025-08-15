@@ -436,10 +436,8 @@ fn handle_number_shortcut_paste(index: usize) {
     use crate::mouse_hook::MAIN_WINDOW_HANDLE;
 
     // 防抖检查
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
+    let now_local = chrono::Local::now();
+    let now = (now_local.timestamp_millis() + now_local.offset().local_minus_utc() as i64 * 1000) as u64;
 
     static LAST_PASTE_TIME: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     const PASTE_DEBOUNCE_MS: u64 = 50;
