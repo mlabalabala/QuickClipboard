@@ -19,6 +19,9 @@ export class VirtualList {
     this.clusterize = null;
     this.sortable = null;
     this.isDragging = false;
+    
+    // 维护当前行高状态
+    this.currentRowHeightSetting = localStorage.getItem('app-row-height') || 'medium';
 
     this.init();
   }
@@ -354,70 +357,28 @@ export class VirtualList {
     const scrollElement = document.getElementById(this.scrollId);
     if (!scrollElement) return false;
 
-    // 估算每个项目的高度
-    const contentElement = document.getElementById(this.contentId);
-    let itemHeight = this.getCurrentRowHeight(); // 根据当前行高设置获取高度
-    // 尝试从已渲染的项目中获取实际高度
-    const renderedItems = contentElement ? contentElement.querySelectorAll('[data-index]') : [];
-    if (renderedItems.length > 0) {
-      // 计算平均高度，以处理高度不一致的情况
-      let totalHeight = 0;
-      let count = 0;
-      for (let item of renderedItems) {
-        const height = item.offsetHeight;
-        if (height > 0) { // 只计算有效高度
-          totalHeight += height;
-          count++;
-        }
-      }
-      if (count > 0) {
-        itemHeight = totalHeight / count;
-      }
-    }
+    // 使用当前设定的行高
+    const itemHeight = this.getCurrentRowHeight();
 
-    // 计算目标滚动位置
+    // 计算目标滚动位置 - 让目标元素显示在视口顶部偏下一点
     const targetScrollTop = index * itemHeight;
-
-    // 获取容器高度
     const containerHeight = scrollElement.clientHeight;
-    const currentScrollTop = scrollElement.scrollTop;
+    
+    // 添加小量偏移，避免元素刚好贴在视口顶部
+    const offset = itemHeight * 0.1;
+    const adjustedScrollTop = Math.max(0, targetScrollTop - offset);
 
-    // 计算可视区域
-    const viewTop = currentScrollTop;
-    const viewBottom = currentScrollTop + containerHeight;
-    const itemTop = targetScrollTop;
-    const itemBottom = targetScrollTop + itemHeight;
+    // 确保滚动位置在有效范围内
+    const maxScrollTop = Math.max(0, scrollElement.scrollHeight - containerHeight);
+    const validScrollTop = Math.min(adjustedScrollTop, maxScrollTop);
 
-    // 减少缓冲区，让滚动更精确
-    const buffer = itemHeight * 0.2;
+    // 直接设置滚动位置
+    scrollElement.scrollTo({
+      top: validScrollTop,
+      behavior: 'instant'
+    });
 
-    // 检查是否需要滚动
-    let needScroll = false;
-    let newScrollTop = currentScrollTop;
-
-    if (itemTop < viewTop + buffer) {
-      // 项目在视口上方，向上滚动
-      newScrollTop = Math.max(0, itemTop - buffer);
-      needScroll = true;
-    } else if (itemBottom > viewBottom - buffer) {
-      // 项目在视口下方，向下滚动
-      newScrollTop = Math.min(
-        scrollElement.scrollHeight - containerHeight,
-        itemBottom - containerHeight + buffer
-      );
-      needScroll = true;
-    }
-
-    if (needScroll) {
-      // 使用instant行为，确保立即滚动
-      scrollElement.scrollTo({
-        top: newScrollTop,
-        behavior: 'instant'
-      });
-      return true;
-    }
-
-    return false; // 不需要滚动
+    return true;
   }
 
   // 获取当前数据长度
@@ -441,25 +402,124 @@ export class VirtualList {
     }
   }
 
+  // 根据行高名称获取对应的数值
+  getCurrentRowHeightFromEvent(rowHeightName) {
+    if (!rowHeightName) return 90; // 默认中等
+    
+    switch (rowHeightName) {
+      case 'large':
+        return 120; // 大
+      case 'medium':
+        return 90;  // 中
+      case 'small':
+        return 50;  // 小
+      default:
+        return 90;  // 默认中等
+    }
+  }
+
+  // 获取当前视口中第一个可见元素的索引
+  getFirstVisibleElementIndex() {
+    const scrollElement = document.getElementById(this.scrollId);
+    const contentElement = document.getElementById(this.contentId);
+    
+    if (!scrollElement || !contentElement) {
+      return 0;
+    }
+    
+    const scrollTop = scrollElement.scrollTop;
+    const viewportHeight = scrollElement.clientHeight;
+    
+    // 如果滚动到顶部，直接返回0
+    if (scrollTop <= 0) {
+      return 0;
+    }
+    
+    // 查找所有有效的项目元素
+    const items = contentElement.querySelectorAll('[data-index]');
+    let firstVisibleIndex = null;
+    
+    // 使用更精确的可见性检测
+    for (let item of items) {
+      const itemRect = item.getBoundingClientRect();
+      const containerRect = scrollElement.getBoundingClientRect();
+      
+      // 计算相对于容器的位置
+      const itemTop = itemRect.top - containerRect.top;
+      const itemBottom = itemRect.bottom - containerRect.top;
+      
+      // 检查元素是否在视口内可见
+      if (itemBottom > 0 && itemTop < viewportHeight) {
+        const index = parseInt(item.getAttribute('data-index'));
+        if (!isNaN(index)) {
+          if (firstVisibleIndex === null || index < firstVisibleIndex) {
+            firstVisibleIndex = index;
+          }
+        }
+      }
+    }
+    
+    // 如果找到了可见元素，返回最小的索引
+    if (firstVisibleIndex !== null) {
+      return firstVisibleIndex;
+    }
+    
+    // 如果没找到，回退到基于滚动位置的计算
+    const avgRowHeight = this.getCurrentRowHeight();
+    const calculatedIndex = Math.floor(scrollTop / avgRowHeight);
+    
+    // 确保计算出的索引在有效范围内
+    return Math.max(0, Math.min(calculatedIndex, this.data.length - 1));
+  }
+
   // 绑定行高变化监听器
   bindRowHeightListener() {
     this.rowHeightChangeHandler = (event) => {
-      // 行高改变时刷新虚拟列表，确保滚动计算正确
+      // 行高改变时处理滚动位置，确保可见内容一致
       setTimeout(() => {
-        // 先强制重新计算布局
         const scrollElement = document.getElementById(this.scrollId);
         const contentElement = document.getElementById(this.contentId);
         
-        if (scrollElement && contentElement) {
+        if (scrollElement && contentElement && this.data && this.data.length > 0) {
           // 保存当前滚动位置
           const currentScrollTop = scrollElement.scrollTop;
           
-          // 刷新虚拟列表
-          this.refresh();
+          // 获取旧行高和新行高
+          const oldRowHeight = this.getCurrentRowHeightFromEvent(this.currentRowHeightSetting);
+          const newRowHeightName = localStorage.getItem('app-row-height') || 'medium';
+          const newRowHeight = this.getCurrentRowHeightFromEvent(newRowHeightName);
           
-          // 重新设置滚动位置，避免跳动
+          // 根据旧行高计算当前可见的第一个项目索引
+          const firstVisibleIndex = Math.floor(currentScrollTop / oldRowHeight);
+          
+          // 确保索引在有效范围内
+          const validIndex = Math.max(0, Math.min(firstVisibleIndex, this.data.length - 1));
+          
+          console.log('行高切换调试:', {
+            currentScrollTop,
+            oldRowHeightSetting: this.currentRowHeightSetting,
+            oldRowHeight,
+            newRowHeightName,
+            newRowHeight,
+            firstVisibleIndex,
+            validIndex
+          });
+          
+          // 更新当前行高设置
+          this.currentRowHeightSetting = newRowHeightName;
+          
+          // 强制刷新虚拟列表以重新计算块布局
+          this.clusterize.refresh(true);
+          
+          // 根据新的行高和目标元素索引计算新的滚动位置
           setTimeout(() => {
-            scrollElement.scrollTop = currentScrollTop;
+            // 使用 scrollToIndex 方法精确定位到指定元素
+            this.scrollToIndex(validIndex);
+            
+            // 再次刷新以确保虚拟列表正确渲染
+            setTimeout(() => {
+              this.clusterize.refresh(true);
+            }, 50);
           }, 10);
         }
       }, 150);
@@ -468,16 +528,22 @@ export class VirtualList {
     // 监听标签页切换事件，在切换时刷新虚拟列表并回到顶部
     this.tabSwitchHandler = () => {
       setTimeout(() => {
-        // 刷新虚拟列表
-        this.refresh();
-        
-        // 滚动到顶部
         const scrollElement = document.getElementById(this.scrollId);
-        if (scrollElement) {
+        if (scrollElement && this.clusterize) {
+          // 先滚动到顶部
           scrollElement.scrollTo({
             top: 0,
             behavior: 'instant'
           });
+          
+          // 强制刷新虚拟列表布局
+          this.clusterize.refresh(true);
+          
+          // 再次确保滚动位置正确
+          setTimeout(() => {
+            scrollElement.scrollTop = 0;
+            this.clusterize.refresh(true);
+          }, 50);
         }
       }, 50);
     };
