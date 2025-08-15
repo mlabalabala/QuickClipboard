@@ -31,20 +31,28 @@
 
 ## 🖼 界面预览
 
+### 🌞 亮色主题
 <div align="center">
-  <img src="readme-assets/main-light.png" alt="主界面预览" width="45%">
-  <img src="readme-assets/settings-light.png" alt="设置界面" width="45%">
+  <img src="readme-assets/main-light.png" alt="主界面预览-亮色" width="20.75%">
+  <img src="readme-assets/settings-light.png" alt="设置界面-亮色" width="45%">
 </div>
 
+---
+
+### 🌙 暗色主题
 <div align="center">
-  <img src="readme-assets/main-dark.png" alt="主界面预览" width="45%">
-  <img src="readme-assets/settings-dark.png" alt="设置界面" width="45%">
+  <img src="readme-assets/main-dark.png" alt="主界面预览-暗色" width="20.75%">
+  <img src="readme-assets/settings-dark.png" alt="设置界面-暗色" width="45%">
 </div>
 
+---
+
+### 🎨 自定义背景
 <div align="center">
-  <img src="readme-assets/main-bg.png" alt="主界面预览" width="45%">
-  <img src="readme-assets/settings-bg.png" alt="设置界面" width="45%">
+  <img src="readme-assets/main-bg.png" alt="主界面预览-自定义背景" width="20.75%">
+  <img src="readme-assets/settings-bg.png" alt="设置界面-自定义背景" width="45%">
 </div>
+
 
 ---
 
