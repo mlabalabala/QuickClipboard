@@ -893,19 +893,12 @@ pub fn update_theme_setting(theme: String) -> Result<(), String> {
 
 // 获取应用版本信息
 #[tauri::command]
-pub fn get_app_version() -> Result<serde_json::Value, String> {
-    let version = env!("CARGO_PKG_VERSION");
-    let name = env!("CARGO_PKG_NAME");
-    let description = env!("CARGO_PKG_DESCRIPTION");
-    let authors = env!("CARGO_PKG_AUTHORS");
-
+pub fn get_app_version(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let pkg = app.package_info();
+    let version = pkg.version.to_string();
     let version_info = serde_json::json!({
-        "version": version,
-        "name": name,
-        "description": description,
-        "authors": authors
+        "version": version
     });
-
     Ok(version_info)
 }
 

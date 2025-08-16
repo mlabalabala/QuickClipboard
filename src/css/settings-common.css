@@ -474,6 +474,7 @@ input:checked + .toggle-slider:before {
   font-size: 16px;
 }
 
+.shortcut-clear,
 .setting-button-small {
   display: flex;
   align-items: center;
@@ -487,15 +488,18 @@ input:checked + .toggle-slider:before {
   height: 32px;
 }
 
+.shortcut-clear:hover,
 .setting-button-small:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-light);
 }
 
+.shortcut-clear:active,
 .setting-button-small:active {
   transform: translateY(0);
 }
 
+.shortcut-clear i,
 .setting-button-small i {
   font-size: 14px;
 }
@@ -586,7 +590,7 @@ input:checked + .toggle-slider:before {
   animation: recording-pulse 1s infinite;
 }
 
-.shortcut-clear-btn {
+/* .shortcut-clear-btn {
   padding: var(--padding-sm);
   background: #e74c3c;
   color: white;
@@ -605,7 +609,7 @@ input:checked + .toggle-slider:before {
 
 .shortcut-clear-btn i {
   font-size: 14px;
-}
+} */
 
 @keyframes recording-pulse {
   0%, 100% {

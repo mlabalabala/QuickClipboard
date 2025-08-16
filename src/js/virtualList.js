@@ -495,16 +495,6 @@ export class VirtualList {
           // 确保索引在有效范围内
           const validIndex = Math.max(0, Math.min(firstVisibleIndex, this.data.length - 1));
           
-          console.log('行高切换调试:', {
-            currentScrollTop,
-            oldRowHeightSetting: this.currentRowHeightSetting,
-            oldRowHeight,
-            newRowHeightName,
-            newRowHeight,
-            firstVisibleIndex,
-            validIndex
-          });
-          
           // 更新当前行高设置
           this.currentRowHeightSetting = newRowHeightName;
           

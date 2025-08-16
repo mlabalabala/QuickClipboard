@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initAIConfig();
 
   await loadSettings();
-  initializeUI();
+  await initializeUI();
   bindEvents();
   setupWindowEvents();
 });
@@ -158,7 +158,7 @@ async function saveSettings() {
 }
 
 // 初始化UI
-function initializeUI() {
+async function initializeUI() {
   // 设置表单值
   document.getElementById('auto-start').checked = settings.autoStart;
   document.getElementById('start-hidden').checked = settings.startHidden;
@@ -262,6 +262,24 @@ function initializeUI() {
 
   // 初次应用背景
   applyBackgroundToSettingsContainer();
+
+  // 初始化更新检测
+  try {
+    const { setupUpdateChecker } = await import('./updateChecker.js');
+    setupUpdateChecker();
+
+    // 监听模块发出的可更新事件，弹出一次性通知
+    let notified = false;
+    window.addEventListener('qc-update-available', (e) => {
+      if (notified) return;
+      notified = true;
+      const rel = e?.detail?.latestRelease;
+      const ver = (rel?.tagName || rel?.name || '').toString();
+      showNotification(`发现新版本 ${ver}，点击“关于 → 检查更新”查看详情`, 'success');
+    }, { once: true });
+  } catch (e) {
+    console.warn('初始化更新检测失败:', e);
+  }
 }
 
 // 绑定事件
@@ -1013,12 +1031,10 @@ async function clearSoundCache() {
 // 检查更新
 async function checkForUpdates() {
   try {
-    showNotification('正在检查更新...', 'info');
-    // 调用后端API检查更新
-    setTimeout(() => {
-      showNotification('未实现远程更新功能', 'success');
-    }, 2000);
+    const { handleCheckUpdatesClick } = await import('./updateChecker.js');
+    await handleCheckUpdatesClick();
   } catch (error) {
+    console.error('检查更新失败:', error);
     showNotification('检查更新失败', 'error');
   }
 }

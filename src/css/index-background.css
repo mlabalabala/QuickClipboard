@@ -288,7 +288,7 @@ body.theme-background {
 }
 
 .theme-background .quick-text-content {
-    color: #6c757d;
+    color: var(--text-secondary);
 }
 
 /* =================== 序号和索引 =================== */
