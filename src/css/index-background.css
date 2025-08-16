@@ -126,8 +126,8 @@ body.theme-background {
 }
 
 .theme-background .tab-button.active {
-    color: var(--primary-color);
-    background-color: var(--bg-primary);
+    color: var(--titlebar-text-dynamic) !important;
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;
     box-shadow: var(--shadow-light);
 }
 
@@ -149,6 +149,7 @@ body.theme-background {
 }
 
 .theme-background .filter-tab.active {
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;;
     border-color: var(--primary-color);
     box-shadow: var(--shadow-light);
 }
@@ -199,21 +200,21 @@ body.theme-background {
 }
 
 .theme-background .custom-select-option {
-    color: var(--text-primary);
+    color: var(--titlebar-text-dynamic) !important;
     border-bottom-color: var(--separator-color);
 }
 
 .theme-background .custom-select-option:hover {
-    background-color: var(--bg-secondary);
+    background-color: var(--primary-hover) !important;
 }
 
 .theme-background .custom-select-option.selected {
-    background-color: var(--primary-light);
-    color: var(--primary-color);
+    background-color: var(--primary-light) !important;
+    color: var(--titlebar-text-dynamic) !important;
 }
 
 .theme-background .custom-select-option.selected:hover {
-    background-color: #d6ebfa;
+    background-color: var(--primary-hover) !important;
 }
 
 /* 菜单样式 */
@@ -286,22 +287,22 @@ body.theme-background {
 
 .theme-background .clipboard-item.active,
 .theme-background .quick-text-item.active {
-    border-color: var(--primary-color);
+    border-color: color-mix(in srgb, var(--titlebar-text-dynamic) 50%, transparent) !important;
     background-color: var(--bg-active);
     box-shadow: var(--shadow-active);
 }
 
 .theme-background .clipboard-item.keyboard-selected,
 .theme-background .quick-text-item.keyboard-selected {
-    background-color: rgba(93, 188, 255, 0.5) !important;
-    border-color: #108FEB;
+    background-color: color-mix(in srgb, var(--titlebar-text-dynamic) 100%, transparent) !important;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
 }
 
 /* =================== 时间戳 =================== */
 .theme-background .clipboard-timestamp,
 .theme-background .quick-text-timestamp {
-    color: var(--text-tertiary);
+    color: var(--text-primary);
 }
 
 /* =================== 文本内容 =================== */
@@ -310,26 +311,26 @@ body.theme-background {
 }
 
 .theme-background .quick-text-content {
-    color: var(--text-secondary);
+    color: var(--quick-text-content);
 }
 
 /* =================== 序号和索引 =================== */
 .theme-background .clipboard-number {
-    background-color: rgba(74, 137, 220, 0.08);
+    background-color: var(--titlebar-bg-dynamic);
     border-color: rgba(74, 137, 220, 0.25);
-    color: var(--primary-color);
+    color: var(--titlebar-text-dynamic);
 }
 
 .theme-background .clipboard-item.active .clipboard-number {
-    background-color: rgba(74, 137, 220, 0.15);
-    border-color: rgba(74, 137, 220, 0.4);
-    color: var(--primary-dark);
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--titlebar-text-dynamic) !important;
 }
 
 .theme-background .clipboard-item.keyboard-selected .clipboard-number {
-    background-color: rgba(255, 255, 255, 0.9);
-    border-color: rgba(74, 137, 220, 0.6);
-    color: var(--primary-color);
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--titlebar-text-dynamic) !important;
 }
 
 .theme-background .clipboard-index {
@@ -461,42 +462,31 @@ body.theme-background {
 /* =================== 底部信息栏 =================== */
 .theme-background .footer {
     border-top-color: var(--separator-color);
-    color: var(--text-tertiary);
+    color: var(--titlebar-text-dynamic) !important;
 }
 
 /* =================== 快捷键帮助 =================== */
 .theme-background .shortcuts-help-content {
     background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
     border-color: #bdbdbd;
-    z-index: 2 !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
 }
 .theme-background .shortcuts-help-content *{
-    color: rgba(255, 255, 255, 0.8) !important;
-    /* 自动与背景色混合 */
-    mix-blend-mode: difference !important;
+    color: var(--titlebar-text-dynamic) !important;
 }
 .theme-background .shortcuts-help-header {
     border-bottom-color: #bdbdbd;
 }
 
-/* 增加一个模糊背景层 */
-.theme-background .shortcuts-help-content::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    z-index: 0;
-}
-
 /* =================== 分组侧边栏 =================== */
 .theme-background .groups-sidebar {
-    background: rgba(255, 255, 255, 0.65);
+    background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;;
     border-left-color: var(--border-primary);
+}
+
+.theme-background .groups-sidebar *{
+    color: var(--titlebar-text-dynamic) !important;
 }
 
 .theme-background .groups-header {
@@ -519,9 +509,11 @@ body.theme-background {
 }
 
 .theme-background .group-item:hover {
-    background: rgba(74, 137, 220, 0.1);
+    background: var(--primary-hover);
 }
-
+.theme-background .group-item.active {
+    background: var(--titlebar-bg-dynamic);
+}
 .theme-background .group-name {
     color: var(--text-primary);
 }
@@ -583,8 +575,17 @@ body.theme-background {
 
 /* =================== 外置滚动条 =================== */
 .theme-background .external-scrollbar__track {
-    background: rgba(0, 0, 0, 0.1);
-    border-color: rgba(58, 128, 249, 0.5);
+    background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
+    border-color: var(--primary-color);
+}
+
+.theme-background .external-scrollbar__thumb{
+    background: color-mix(in srgb, var(--primary-color) 50%, transparent) !important;
+}
+
+.theme-background .external-scrollbar__thumb:hover,
+.theme-background .external-scrollbar.dragging .external-scrollbar__thumb{
+    background: color-mix(in srgb, var(--primary-color) 100%, transparent) !important;
 }
 
 /* =================== 占位符文本 =================== */
@@ -762,7 +763,12 @@ body.theme-background {
 .theme-background .quick-text-content .file-size {
     color: var(--text-secondary);
 }
-
+.theme-background .add-button{
+    background: linear-gradient(135deg, var(--titlebar-bg-dynamic) 0%, var(--primary-color) 100%);
+}
+.theme-background .add-button:hover{
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--titlebar-bg-dynamic) 100%);
+}
 /* =================== 响应式调整 =================== */
 @media (max-width: 400px) {
     .theme-background .tab-button {
@@ -798,8 +804,7 @@ body.theme-background {
     -webkit-backdrop-filter: blur(10px) !important;
 }
 
-/* 文本对复杂背景的增强：不增加底色，仅增强边缘/局部模糊 */
-.theme-background .contrast-text {
+/* .theme-background .contrast-text {
     position: relative;
     -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.35);
     text-shadow:
@@ -818,12 +823,10 @@ body.theme-background {
     -webkit-backdrop-filter: blur(6px) saturate(115%) contrast(85%);
 }
 
-/* 避免全局 difference 导致整体反相和性能问题，改为可选类控制 */
 .theme-background .blend-boost {
     mix-blend-mode: difference;
 }
 
-/* =================== 全局文本增强（复杂背景下提高清晰度，不加底色） =================== */
 .theme-background,
 .theme-background * {
     text-rendering: optimizeLegibility;
@@ -861,11 +864,36 @@ body.theme-background {
     text-shadow:
         0 0 0.5px rgba(0, 0, 0, 0.4),
         0 0.5px 1px rgba(0, 0, 0, 0.25);
-}
+} */
 
 /* 图标字体避免描边和阴影过重（Tabler Icons等） */
-.theme-background i,
+/* .theme-background i,
 .theme-background .ti {
     -webkit-text-stroke: 0 !important;
     text-shadow: none !important;
+} */
+
+.theme-background h1,
+.theme-background h2,
+.theme-background h3,
+.theme-background h4,
+.theme-background h5,
+.theme-background h6,
+.theme-background p,
+.theme-background span,
+.theme-background div,
+.theme-background label,
+.theme-background a,
+.theme-background li,
+.theme-background button,
+.theme-background kbd,
+.theme-background code,
+.theme-background input,
+.theme-background textarea,
+.theme-background select {
+    -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.28);
+    text-shadow:
+        0 0 0.5px rgba(0, 0, 0, 0.5),
+        0 0.5px 1px rgba(0, 0, 0, 0.35),
+        0 0 0.5px rgba(255, 255, 255, 0.18);
 }

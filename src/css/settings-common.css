@@ -81,6 +81,7 @@ body {
   z-index: var(--z-header);
   -webkit-app-region: drag;
   border-bottom: 1px solid transparent;
+  backdrop-filter: blur(var(--blur-radius));
 }
 
 .header-content {
@@ -193,6 +194,7 @@ body {
   max-width: 800px;
   border-radius: var(--border-radius-xl);
   padding: var(--padding-sm);
+  min-height: 100% !important;
 }
 
 .settings-section.active {
@@ -251,6 +253,8 @@ body {
   font-weight: 500;
   display: block;
   margin-bottom: var(--margin-xs);
+  font-weight: bold;
+
 }
 
 .setting-description {

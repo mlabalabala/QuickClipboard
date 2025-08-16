@@ -84,6 +84,9 @@ body {
 
   /* 筛选激活 */
   --filter-active-color: rgba( 70,135,215, 0.8);
+
+  /* 模糊度 */
+  --blur-radius: 5px;
 }
 
 /* =================== 窗口动画 =================== */
@@ -145,6 +148,11 @@ body {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   pointer-events: none;
+  /* 立体字体 */
+  text-shadow:
+        0 0 1px rgba(0, 0, 0, 0.55),
+        0 1px 2px rgba(0, 0, 0, 0.35),
+        0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .controls {
@@ -377,7 +385,7 @@ body {
   display: flex;
   gap: var(--padding-medium);
   align-items: center;
-  z-index: 99999999 !important;
+  z-index: 9999 !important;
 }
 
 #search-input,
@@ -652,11 +660,11 @@ body {
 
 .tab-button {
   flex: 1;
-  padding: var(--padding-medium) var(--padding-large) !important;
+  padding: var(--padding-small) var(--padding-large) !important;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 16px !important;
   font-weight: bold;
   border-radius: var(--border-radius-large);
   position: relative;
@@ -671,6 +679,7 @@ body {
 .tab-button.active {
   color: var(--primary-color);
   box-shadow: var(--shadow-light) !important;
+  font-weight: bold;
 }
 
 .tab-button.active::after {
@@ -680,7 +689,7 @@ body {
   left: 0;
   width: 100%;
   height: 2px;
-  background-color: #2563eb;
+  background-color: var(--primary-color);
   opacity: 0.8;
   border-radius: 2px 2px 0 0;
 }
@@ -1410,6 +1419,7 @@ body {
   color: red;
   transition: all var(--transition-duration) ease;
   cursor: help;
+  height: 100%;
 }
 
 .shortcuts-help-icon:hover {
@@ -1417,10 +1427,10 @@ body {
 }
 
 .shortcuts-help-content {
-  position: absolute;
-  bottom: 100%;
+  position: fixed;
   left: 0;
   right: 0;
+  bottom: 25px; /* 悬浮于 footer 上方，避免被遮挡 */
   border: 1px solid #bdbdbd;
   border-bottom: none;
   border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
@@ -1429,14 +1439,23 @@ body {
   visibility: hidden;
   transform: translateY(10px);
   transition: all var(--transition-slow) cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: var(--z-overlay);
+  z-index: 99999;
   max-height: 400px;
   overflow: hidden;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(var(--blur-radius));
 }
 
-.shortcuts-info:has(.shortcuts-help-icon:hover) ~ .shortcuts-help-content,
-.shortcuts-help-content:hover {
+/* 移至 body 后，原兄弟选择器失效，改用 .shortcuts-help-content.visible 控制显示；
+   同时保留自身 hover 保持可见 */
+.shortcuts-help-content:hover,
+.shortcuts-help-content.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 通过脚本控制的显示状态 */
+.shortcuts-help-content.visible {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
@@ -1628,7 +1647,7 @@ body {
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(58, 128, 249, 0.5);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(var(--blur-radius));
 }
 
 .external-scrollbar__track:hover {
@@ -1793,7 +1812,7 @@ body {
   align-items: center;
   gap: var(--padding-medium);
   box-shadow: var(--shadow-heavy);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--blur-radius));
   transform: translateX(100%);
   transition: transform var(--transition-slow) ease;
 }
@@ -1887,7 +1906,7 @@ body {
   display: flex;
   flex-direction: column;
   border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(var(--blur-radius));
   box-shadow: -5px 0 5px -3px rgba(0, 143, 238, 0.2);
   border-top: 1px solid rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(0, 0, 0, 0.3);

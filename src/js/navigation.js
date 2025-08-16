@@ -686,6 +686,21 @@ export function initShortcutsHelpPanel() {
     }, 100);
   });
 
+  // 事件模拟：
+  const helpIcon = footer.querySelector('.shortcuts-help-icon');
+  if (helpIcon) {
+    const show = () => shortcutsHelpContent.classList.add('visible');
+    const hide = () => {
+      if (!shortcutsHelpContent.matches(':hover')) {
+        shortcutsHelpContent.classList.remove('visible');
+      }
+    };
+    helpIcon.addEventListener('mouseenter', show);
+    helpIcon.addEventListener('mouseleave', () => setTimeout(hide, 120));
+    shortcutsHelpContent.addEventListener('mouseleave', () => setTimeout(hide, 120));
+    shortcutsHelpContent.addEventListener('mouseenter', () => shortcutsHelpContent.classList.add('visible'));
+  }
+
   // 首次启动时自动显示
   if (isFirstLaunch) {
     setTimeout(() => {
@@ -709,9 +724,7 @@ function showShortcutsHelpFirstTime() {
 
   // 添加首次显示的特殊样式
   shortcutsHelpContent.classList.add('first-show');
-  shortcutsHelpContent.style.opacity = '1';
-  shortcutsHelpContent.style.visibility = 'visible';
-  shortcutsHelpContent.style.transform = 'translateY(0)';
+  shortcutsHelpContent.classList.add('visible');
 
   // 3秒后自动隐藏
   setTimeout(() => {
@@ -726,6 +739,7 @@ function hideShortcutsHelp() {
   console.log('隐藏快捷键帮助面板');
   shortcutsHelpContent.classList.remove('first-show');
   shortcutsHelpContent.classList.add('hidden');
+  shortcutsHelpContent.classList.remove('visible');
 
   // 清除内联样式
   shortcutsHelpContent.style.opacity = '';

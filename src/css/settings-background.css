@@ -12,7 +12,7 @@
     /* 背景颜色 */
     --bg-primary: rgba(255, 255, 255, 0.52);
     --bg-secondary: rgba(248, 249, 250, 0.58);
-    --bg-tertiary: rgba(240, 240, 240, 0514);
+    --bg-tertiary: rgba(240, 240, 240, 0.54);
     --bg-hover: rgba(248, 249, 250, 0.58);
     --bg-active: rgba(240, 247, 255, 0.56);
     --bg-disabled: rgba(245, 245, 245, 0.54);
@@ -44,11 +44,14 @@
     --dropdown-bg: rgba(255, 255, 255, 0.52);
     --tooltip-bg: rgba(0, 0, 0, 0.85);
     --card-bg: rgba(255, 255, 255, 0.52);
-}
 
+    /* 模糊度 */
+    --blur-radius: 5px;
+}
+/* 
 div {
     backdrop-filter: blur(10px) !important;
-}
+} */
 
 /* =================== 基础样式 =================== */
 .theme-background .settings-container {
@@ -76,7 +79,7 @@ div {
 
 /* 动态标题栏颜色（基于背景图主色调）*/
 .theme-background.has-dynamic-titlebar .settings-header {
-    background-color: var(--titlebar-bg-dynamic, var(--bg-primary)) !important;
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;
     border-bottom-color: var(--titlebar-border-dynamic, var(--border-primary)) !important;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -122,10 +125,11 @@ div {
 .theme-background .settings-sidebar {
     background-color: var(--bg-primary);
     border-right-color: var(--border-primary);
+    backdrop-filter: blur(var(--blur-radius));
 }
 
 .theme-background .nav-item {
-    color: var(--text-secondary);
+    color: var(--titlebar-bg-dynamic);
 }
 
 .theme-background .nav-item:hover {
@@ -134,32 +138,34 @@ div {
 }
 
 .theme-background .nav-item.active {
-    background-color: var(--primary-color);
-    color: #fff;
+    background-color: var(--titlebar-bg-dynamic);
+    color: var(--primary-color);
 }
 
 /* =================== 主要设置面板 =================== */
 .theme-background .settings-main {
-    background-color: var(--bg-primary);
-}
-
-.theme-background .settings-section {
     background-color: transparent;
 }
 
+.theme-background .settings-section {
+    background-color: var(--bg-primary);
+    backdrop-filter: blur(var(--blur-radius));
+}
+
 .theme-background .section-header h2 {
-    color: var(--text-primary);
+    color: var(--titlebar-bg-dynamic);
     border-bottom-color: var(--separator-color);
 }
 
 .theme-background .section-header p {
-    color: var(--text-secondary);
+    color: var(--titlebar-bg-dynamic);
 }
 
 /* =================== 设置组 =================== */
 .theme-background .settings-group {
     background-color: transparent !important;
     border-color: var(--border-primary);
+    color: var(--titlebar-bg-dynamic) !;
 }
 
 .theme-background .settings-group:hover {
@@ -176,20 +182,20 @@ div {
 }
 
 .theme-background .setting-info .setting-label {
-    color: var(--text-primary);
+    color: var(--titlebar-bg-dynamic);
 }
 
 .theme-background .setting-info .setting-description {
-    color: var(--text-secondary);
+    color: var(--titlebar-bg-dynamic);
 }
 
 /* =================== 开关控件 =================== */
 .theme-background .toggle-switch .toggle-slider {
-    background-color: #cdcdcd !important;
+    background-color: var(--titlebar-text-dynamic) !important;
 }
 
 .theme-background .toggle-switch input:checked+.toggle-slider {
-    background-color: #1976d2 !important;
+    background-color: var(--primary-hover) !important;
 }
 
 .theme-background .toggle-slider:before {
@@ -251,7 +257,7 @@ div {
 }
 
 .theme-background .primary-button {
-    background: var(--primary-color);
+    background: var(--primary-dark);
     color: white;
 }
 
@@ -398,8 +404,8 @@ div {
 }
 
 .theme-background .about-button {
-    background: var(--primary-color);
-    color: white;
+    background: var(--titlebar-bg-dynamic);
+    color: var(--titlebar-text-dynamic);
 }
 
 .theme-background .about-button:hover {
@@ -471,12 +477,12 @@ div {
 
 /* =================== 数据管理 =================== */
 .theme-background .checkmark {
-    background: var(--bg-primary);
+    background: var(--primary-hover) ;
     border-color: var(--border-secondary);
 }
 
 .theme-background .checkbox-item input[type="checkbox"]:checked+.checkmark {
-    background: var(--primary-color);
+    background: var(--primary-dark);
     border-color: var(--primary-color);
 }
 
@@ -741,7 +747,7 @@ div {
     }
 }
 
-/* 文本对复杂背景的增强：不增加底色，仅增强边缘/局部模糊 */
+
 .theme-background .contrast-text {
     position: relative;
     -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.35);
@@ -761,12 +767,10 @@ div {
     -webkit-backdrop-filter: blur(6px) saturate(115%) contrast(85%);
 }
 
-/* 避免全局 difference 导致整体反相和性能问题，改为可选类控制 */
 .theme-background .blend-boost {
     mix-blend-mode: difference;
 }
 
-/* =================== 全局文本增强（复杂背景下提高清晰度，不加底色） =================== */
 .theme-background,
 .theme-background * {
     text-rendering: optimizeLegibility;
@@ -806,9 +810,8 @@ div {
         0 0.5px 1px rgba(0, 0, 0, 0.25);
 }
 
-/* 图标字体避免描边和阴影过重（Tabler Icons等） */
-.theme-background i,
+/* .theme-background i,
 .theme-background .ti {
     -webkit-text-stroke: 0 !important;
     text-shadow: none !important;
-}
+} */
