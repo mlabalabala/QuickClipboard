@@ -106,6 +106,28 @@ body.theme-dark {
   background-color: var(--border-primary);
 }
 
+/* ================ 筛选标签（暗色） ================ */
+.theme-dark .nav-separator {
+  background: var(--separator-color);
+}
+
+.theme-dark .filter-tab {
+  color: var(--text-secondary);
+  border-color: var(--border-secondary);
+  background: transparent;
+}
+
+.theme-dark .filter-tab:hover {
+  color: var(--primary-color);
+  background-color: var(--border-primary);
+  border-color: var(--border-hover);
+}
+
+.theme-dark .filter-tab.active {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-primary);
+}
+
 /* =================== 搜索和输入框 =================== */
 .theme-dark #search-input,
 .theme-dark #quick-texts-search {

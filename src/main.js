@@ -36,9 +36,11 @@ import {
   oneTimePasteSwitch
 } from './js/config.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { CustomSelect } from './js/customSelect.js';
 
-// 自定义组件实例
+// 筛选tabs容器
+let filterTabsContainer;
+// 自定义菜单
+import { CustomSelect } from './js/customSelect.js';
 let quickTextsCustomFilter;
 let contentCustomFilter;
 
@@ -180,75 +182,37 @@ async function initApp() {
     localStorage.setItem('quicktexts-current-filter', 'all');
   }
 
-  // 二级菜单选项配置：筛选 + 行高
-  const menuOptions = [
-    {
-      value: 'filter',
-      text: '筛选',
-      children: [
-        { value: 'all', text: '全部' },
-        { value: 'text', text: '文本' },
-        { value: 'image', text: '图片' },
-        { value: 'files', text: '文件' },
-        { value: 'link', text: '链接' }
-      ]
-    },
-    {
-      value: 'row-height',
-      text: '行高',
-      children: [
-        { value: 'row-height-large', text: '大' },
-        { value: 'row-height-medium', text: '中' },
-        { value: 'row-height-small', text: '小' }
-      ]
-    }
+  // 初始化筛选标签
+  setupExternalFilterTabs();
+
+  // 自定义下拉菜单
+  const rowHeightOptions = [
+    { value: 'row-height-large', text: '大' },
+    { value: 'row-height-medium', text: '中' },
+    { value: 'row-height-small', text: '小' }
   ];
-
-  // 初始化自定义剪贴板筛选器（二级菜单）
-  contentCustomFilter = new CustomSelect(contentFilterContainer, {
-    isMenuType: true,
-    enableHover: true,
-    options: menuOptions,
-    placeholder: '筛选和设置',
-    onChange: (value, text) => {
-      // 处理筛选选项
-      if (value === 'all' || value === 'text' || value === 'image' || value === 'files' || value === 'link') {
-        setCurrentFilter(value);
-        localStorage.setItem('clipboard-current-filter', value);
-        filterClipboardItems();
-        
-        // 通知其他组件筛选状态已变化
-        window.dispatchEvent(new CustomEvent('filter-changed', {
-          detail: { type: 'clipboard', value: value }
-        }));
-      }
-    }
-  });
-
-  // 初始化自定义常用文本筛选器（二级菜单）
-  quickTextsCustomFilter = new CustomSelect(quickTextsFilterContainer, {
-    isMenuType: true,
-    enableHover: true,
-    options: menuOptions,
-    placeholder: '筛选和设置',
-    onChange: (value, text) => {
-      // 处理筛选选项
-      if (value === 'all' || value === 'text' || value === 'image' || value === 'files' || value === 'link') {
-        setCurrentQuickTextsFilter(value);
-        localStorage.setItem('quicktexts-current-filter', value);
-        filterQuickTexts();
-        
-        // 通知其他组件筛选状态已变化
-        window.dispatchEvent(new CustomEvent('filter-changed', {
-          detail: { type: 'quicktexts', value: value }
-        }));
-      }
-    }
-  });
-
-  // 将自定义组件实例设置到config中
-  setContentCustomFilter(contentCustomFilter);
-  setQuickTextsCustomFilter(quickTextsCustomFilter);
+  if (contentFilterContainer) {
+    contentCustomFilter = new CustomSelect(contentFilterContainer, {
+      isMenuType: true,
+      enableHover: true,
+      options: [
+        { value: 'row-height', text: '行高', children: rowHeightOptions }
+      ],
+      placeholder: '行高'
+    });
+    setContentCustomFilter(contentCustomFilter);
+  }
+  if (quickTextsFilterContainer) {
+    quickTextsCustomFilter = new CustomSelect(quickTextsFilterContainer, {
+      isMenuType: true,
+      enableHover: true,
+      options: [
+        { value: 'row-height', text: '行高', children: rowHeightOptions }
+      ],
+      placeholder: '行高'
+    });
+    setQuickTextsCustomFilter(quickTextsCustomFilter);
+  }
 
   // 延迟触发筛选状态同步，确保初始高亮正确显示
   setTimeout(() => {
@@ -256,13 +220,8 @@ async function initApp() {
     const clipboardFilter = localStorage.getItem('clipboard-current-filter') || 'all';
     const quickTextsFilter = localStorage.getItem('quicktexts-current-filter') || 'all';
     
-    // 手动触发筛选变化事件来更新高亮状态
-    window.dispatchEvent(new CustomEvent('filter-changed', {
-      detail: { type: 'clipboard', value: clipboardFilter }
-    }));
-    window.dispatchEvent(new CustomEvent('filter-changed', {
-      detail: { type: 'quicktexts', value: quickTextsFilter }
-    }));
+    // 同步到外置筛选按钮高亮
+    updateFilterTabsActiveState(getActiveTabName(), getActiveTabName() === 'clipboard' ? clipboardFilter : quickTextsFilter);
   }, 200);
 
   // 设置一次性粘贴开关
@@ -286,6 +245,17 @@ async function initApp() {
 
   // 设置常用文本功能
   setupQuickTexts();
+
+  // 绑定标签切换时刷新筛选tab高亮
+  window.addEventListener('tab-switched', (e) => {
+    try {
+      const tabName = e?.detail?.tabName || getActiveTabName();
+      const filterValue = tabName === 'clipboard'
+        ? (localStorage.getItem('clipboard-current-filter') || 'all')
+        : (localStorage.getItem('quicktexts-current-filter') || 'all');
+      updateFilterTabsActiveState(tabName, filterValue);
+    } catch (_) {}
+  });
 
   // 设置UI模态框
   setupConfirmModal();
@@ -494,4 +464,54 @@ window.addEventListener('DOMContentLoaded', () => {
   // 初始化应用
   initApp();
 });
+
+// 获取当前激活标签名
+function getActiveTabName() {
+  const activeBtn = document.querySelector('.tab-button.active');
+  return activeBtn ? activeBtn.dataset.tab : 'clipboard';
+}
+
+// 初始化并绑定外置筛选标签
+function setupExternalFilterTabs() {
+  filterTabsContainer = document.getElementById('filter-tabs');
+  if (!filterTabsContainer) return;
+
+  const buttons = Array.from(filterTabsContainer.querySelectorAll('.filter-tab'));
+  const applyActive = (tabName, value) => updateFilterTabsActiveState(tabName, value);
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.getAttribute('data-filter');
+      const tabName = getActiveTabName();
+
+      if (tabName === 'clipboard') {
+        setCurrentFilter(value);
+        localStorage.setItem('clipboard-current-filter', value);
+        filterClipboardItems();
+        window.dispatchEvent(new CustomEvent('filter-changed', { detail: { type: 'clipboard', value } }));
+      } else {
+        setCurrentQuickTextsFilter(value);
+        localStorage.setItem('quicktexts-current-filter', value);
+        filterQuickTexts();
+        window.dispatchEvent(new CustomEvent('filter-changed', { detail: { type: 'quicktexts', value } }));
+      }
+
+      applyActive(tabName, value);
+    });
+  });
+
+  // 初始高亮
+  const initTab = getActiveTabName();
+  const initValue = initTab === 'clipboard'
+    ? (localStorage.getItem('clipboard-current-filter') || 'all')
+    : (localStorage.getItem('quicktexts-current-filter') || 'all');
+  applyActive(initTab, initValue);
+}
+
+// 更新外置筛选按钮的高亮状态
+function updateFilterTabsActiveState(tabName, value) {
+  if (!filterTabsContainer) return;
+  const buttons = Array.from(filterTabsContainer.querySelectorAll('.filter-tab'));
+  buttons.forEach(b => b.classList.toggle('active', b.getAttribute('data-filter') === value));
+}
 

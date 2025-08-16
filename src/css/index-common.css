@@ -81,6 +81,9 @@ body {
   --z-sidebar: 99;
   --z-controls: 20;
   --z-overlay: 10;
+
+  /* 筛选激活 */
+  --filter-active-color: rgba( 70,135,215, 0.8);
 }
 
 /* =================== 窗口动画 =================== */
@@ -631,10 +634,20 @@ body {
 /* =================== 标签页导航 =================== */
 .tab-navigation {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   border-radius: var(--border-radius-large);
   padding: 3px;
   margin-bottom: var(--padding-medium);
+  gap: 6px;
+}
+
+.tab-switch-group {
+  display: flex;
+  align-items: center;
   gap: 2px;
+  flex: 1 1 50%;
+  min-width: 0;
 }
 
 .tab-button {
@@ -670,6 +683,55 @@ body {
   background-color: #2563eb;
   opacity: 0.8;
   border-radius: 2px 2px 0 0;
+}
+
+/* 外置筛选标签 */
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.nav-separator {
+  width: 2px;
+  align-self: stretch;
+  background: rgba(0,0,0,0.1);
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  width: 32px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all var(--transition-duration) ease;
+  justify-content: center;
+}
+
+.filter-tab i { font-size: 18px; opacity: 0.9; }
+.filter-tab span { display: none; }
+
+@media (min-width: 520px) {
+  .filter-tab span { display: inline; }
+}
+
+.filter-tab:hover { transform: translateY(-1px); }
+.filter-tab.active {
+  color: var(--primary-light) !important;
+  box-shadow: var(--shadow-light) !important;
+  border-color: var(--primary-color);
+  background: var(--filter-active-color) !important;
+  transform: scale(1.1);
 }
 
 /* =================== 标签页内容 =================== */

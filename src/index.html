@@ -62,10 +62,20 @@
       </div>
     </div>
 
-    <!-- 标签页导航 -->
+    <!-- 标签页导航（左：列表切换；右：内容筛选） -->
     <div class="tab-navigation">
-      <button class="tab-button active" data-tab="clipboard">剪贴板历史</button>
-      <button class="tab-button" data-tab="quick-texts">常用</button>
+      <div class="tab-switch-group">
+        <button class="tab-button active" data-tab="clipboard">剪贴板</button>
+        <button class="tab-button" data-tab="quick-texts">常用</button>
+      </div>
+      <div class="nav-separator" aria-hidden="true"></div>
+      <div class="filter-tabs" id="filter-tabs" aria-label="内容筛选">
+        <button class="filter-tab" data-filter="all" title="全部"><i class="ti ti-category"></i><span>全部</span></button>
+        <button class="filter-tab" data-filter="text" title="文本"><i class="ti ti-file-text"></i><span>文本</span></button>
+        <button class="filter-tab" data-filter="image" title="图片"><i class="ti ti-photo"></i><span>图片</span></button>
+        <button class="filter-tab" data-filter="files" title="文件"><i class="ti ti-folder"></i><span>文件</span></button>
+        <button class="filter-tab" data-filter="link" title="链接"><i class="ti ti-link"></i><span>链接</span></button>
+      </div>
     </div>
 
     <!-- 剪贴板历史标签页 -->
