@@ -3,68 +3,68 @@
  */
 
 /* 剪贴板列表样式 */
-.clipboard-item {
+.row-height-small .clipboard-item {
     padding: 8px;
     height: 50px !important;
 }
 
-.clipboard-image {
+.row-height-small .clipboard-image {
     position: absolute !important;
     height: 66% !important;
 }
 
-.clipboard-timestamp {
+.row-height-small .clipboard-timestamp {
     display: none !important;
 }
-.clipboard-text{
+.row-height-small .clipboard-text{
     font-size: 12px !important;
 }
-.file-summary {
+.row-height-small .file-summary {
     display: none !important;
 }
 
-.file-item {
+.row-height-small .file-item {
     padding: 0px 0px !important;
 }
 
-.file-icon {
+.row-height-small .file-icon {
     width: 28px !important;
     height: 28px !important;
 }
 
-.file-info {
+.row-height-small .file-info {
     gap: 0px !important;
 }
 
-.file-name {
+.row-height-small .file-name {
     font-size: 11px !important;
 }
 
 /* 常用文本列表样式*/
-.quick-text-item {
+.row-height-small .quick-text-item {
     padding: 8px !important;
     height: 50px !important;
 }
-.quick-text-timestamp{
+.row-height-small .quick-text-timestamp{
     display: none !important;
 }
-.quick-text-title {
+.row-height-small .quick-text-title {
     font-size: 12px !important;
     line-height: 1.2 !important;
     margin-bottom: 4px !important;
     display: none !important;
 }
 
-.quick-text-content {
+.row-height-small .quick-text-content {
     font-size: 11px !important;
     /* line-height: 1.1 !important; */
     max-height: 35px !important;
     overflow: hidden !important;
     font-weight: bold !important;
 }
-.quick-text-image{
+.row-height-small .quick-text-image{
     height: 100%;
 }
-.quick-text-meta {
+.row-height-small .quick-text-meta {
     display: none !important;
 }

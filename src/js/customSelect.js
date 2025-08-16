@@ -41,30 +41,18 @@ export class CustomSelect {
   initRowHeightManager() {
     // 初始化行高管理器
     this.currentRowHeight = localStorage.getItem('app-row-height') || 'medium';
-    this.loadRowHeightCSS(this.currentRowHeight);
+    this.applyRowHeightClass(this.currentRowHeight);
   }
 
-  loadRowHeightCSS(size) {
-    const existingLink = document.getElementById('row-height-css');
-    if (existingLink) {
-      existingLink.remove();
-    }
-
-    const link = document.createElement('link');
-    link.id = 'row-height-css';
-    link.rel = 'stylesheet';
-    link.href = `./css/row-height-${size}.css`;
-    document.head.appendChild(link);
-
+  applyRowHeightClass(size) {
+    const body = document.body;
+    body.classList.remove('row-height-small', 'row-height-medium', 'row-height-large');
+    body.classList.add(`row-height-${size}`);
     this.currentRowHeight = size;
     localStorage.setItem('app-row-height', size);
-
-    // 通知虚拟列表行高已变化
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('row-height-changed', {
-        detail: { size: size }
-      }));
-    }, 100);
+      window.dispatchEvent(new CustomEvent('row-height-changed', { detail: { size } }));
+    }, 50);
   }
 
   render() {
@@ -488,7 +476,7 @@ export class CustomSelect {
     // 处理特殊的行高选项
     if (value === 'row-height-large' || value === 'row-height-medium' || value === 'row-height-small') {
       const size = value.replace('row-height-', '');
-      this.loadRowHeightCSS(size);
+      this.applyRowHeightClass(size);
     }
     
     this.value = value;

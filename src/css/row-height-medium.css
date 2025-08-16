@@ -3,59 +3,59 @@
  */
 
 /* 剪贴板列表样式 */
-.clipboard-item {
+.row-height-medium .clipboard-item {
     padding: 10px;
     height: 90px !important;
 }
 
-.clipboard-image {
+.row-height-medium .clipboard-image {
     height: 85% !important;
 }
 
-.clipboard-timestamp {
+.row-height-medium .clipboard-timestamp {
     display: block !important;
 }
 
-.file-summary {
+.row-height-medium .file-summary {
     display: block !important;
 }
 
-.file-item {
+.row-height-medium .file-item {
     padding: 4px 6px !important;
 }
 
-.file-icon {
+.row-height-medium .file-icon {
     width: 30px !important;
     height: 30px !important;
 }
 
-.file-info {
+.row-height-medium .file-info {
     gap: 2px !important;
 }
 
-.file-name {
+.row-height-medium .file-name {
     font-size: 12px !important;
 }
 
 /* 常用文本列表样*/
-.quick-text-item {
+.row-height-medium .quick-text-item {
     padding: 8px !important;
     height: 110px !important;
 }
 
-.quick-text-title {
+.row-height-medium .quick-text-title {
     font-size: 13px !important;
     line-height: 1.3 !important;
     margin-bottom: 6px !important;
 }
 
-.quick-text-content {
+.row-height-medium .quick-text-content {
     font-size: 11px !important;
     line-height: 1.2 !important;
     max-height: 65px !important;
 }
 
-.quick-text-meta {
+.row-height-medium .quick-text-meta {
     font-size: 10px !important;
     margin-top: 6px !important;
 }
