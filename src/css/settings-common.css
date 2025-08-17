@@ -147,6 +147,7 @@ body {
 .settings-sidebar {
   width: 200px;
   border-right: 1px solid transparent;
+  border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
 }
 
 .settings-nav {
@@ -167,7 +168,7 @@ body {
   text-decoration: none;
   cursor: pointer;
   transition: all var(--transition-duration) ease;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -191,8 +192,8 @@ body {
 
 .settings-section {
   display: none;
-  max-width: 800px;
-  border-radius: var(--border-radius-xl);
+  /* max-width: 800px; */
+  border-radius: var(--border-radius-large);
   padding: var(--padding-sm);
   min-height: 100% !important;
 }
@@ -231,7 +232,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--padding-xl) var(--padding-xxl);
+  padding: var(--border-radius-large) var(--border-radius-large);
   border-bottom: 1px solid transparent;
   transition: all var(--transition-duration) ease;
 }

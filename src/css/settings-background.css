@@ -79,7 +79,7 @@ div {
 
 /* 动态标题栏颜色（基于背景图主色调）*/
 .theme-background.has-dynamic-titlebar .settings-header {
-    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 90%, transparent) !important;
     border-bottom-color: var(--titlebar-border-dynamic, var(--border-primary)) !important;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -139,7 +139,7 @@ div {
 
 .theme-background .nav-item.active {
     background-color: var(--titlebar-bg-dynamic);
-    color: var(--primary-color);
+    color: var(--titlebar-text-dynamic);
 }
 
 /* =================== 主要设置面板 =================== */

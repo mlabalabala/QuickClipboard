@@ -294,11 +294,15 @@ body.theme-background {
 
 .theme-background .clipboard-item.keyboard-selected,
 .theme-background .quick-text-item.keyboard-selected {
-    background-color: color-mix(in srgb, var(--titlebar-text-dynamic) 100%, transparent) !important;
+    background-color: color-mix(in srgb, var(--titlebar-text-dynamic) 80%, transparent) !important;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
 }
 
+.theme-background .clipboard-item.keyboard-selected *,
+.theme-background .quick-text-item.keyboard-selected *{
+    color: var(--titlebar-bg-dynamic) !important;
+}
 /* =================== 时间戳 =================== */
 .theme-background .clipboard-timestamp,
 .theme-background .quick-text-timestamp {
@@ -477,6 +481,11 @@ body.theme-background {
 }
 .theme-background .shortcuts-help-header {
     border-bottom-color: #bdbdbd;
+}
+
+.theme-background .shortcut-item kbd{
+    background-color: var(--titlebar-text-dynamic) !important;
+    color: var(--titlebar-bg-dynamic) !important;
 }
 
 /* =================== 分组侧边栏 =================== */
