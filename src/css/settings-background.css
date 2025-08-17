@@ -48,6 +48,7 @@
     /* 模糊度 */
     --blur-radius: 5px;
 }
+
 /* 
 div {
     backdrop-filter: blur(10px) !important;
@@ -477,7 +478,7 @@ div {
 
 /* =================== 数据管理 =================== */
 .theme-background .checkmark {
-    background: var(--primary-hover) ;
+    background: var(--primary-hover);
     border-color: var(--border-secondary);
 }
 
@@ -815,3 +816,12 @@ div {
     -webkit-text-stroke: 0 !important;
     text-shadow: none !important;
 } */
+
+/* 应用黑/白名单 */
+.theme-background .mode-option {
+    color: var(--titlebar-bg-dynamic);
+}
+
+.theme-background .mode-option input[type="radio"]:checked+.mode-card {
+    color: var(--primary-color);
+}

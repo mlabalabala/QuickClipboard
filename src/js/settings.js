@@ -105,7 +105,11 @@ const defaultSettings = {
   savedWindowPosition: null,
   savedWindowSize: null,
   // 显示行为
-  autoScrollToTopOnShow: false
+  autoScrollToTopOnShow: false,
+  // 应用黑白名单设置
+  appFilterEnabled: false,
+  appFilterMode: 'blacklist',
+  appFilterList: []
 };
 
 // 加载设置
@@ -236,6 +240,41 @@ async function initializeUI() {
   // 窗口位置和大小设置
   document.getElementById('window-position-mode').value = settings.windowPositionMode || 'smart';
   document.getElementById('remember-window-size').checked = settings.rememberWindowSize;
+
+  // 应用黑白名单设置
+  document.getElementById('app-filter-enabled').checked = settings.appFilterEnabled || false;
+
+  // 设置过滤模式
+  const modeRadio = document.querySelector(`input[name="filter-mode"][value="${settings.appFilterMode || 'blacklist'}"]`);
+  if (modeRadio) modeRadio.checked = true;
+
+  const appFilterListTextarea = document.getElementById('app-filter-list');
+  if (appFilterListTextarea) {
+    appFilterListTextarea.value = (settings.appFilterList || []).join('\n');
+  }
+
+  updateAppFilterStatus();
+  renderAddedAppsGrid();
+  renderAvailableAppsGrid();
+
+  // 首次进入时自动获取应用列表
+  setTimeout(async () => {
+    try {
+      if (!window.allWindowsInfo || window.allWindowsInfo.length === 0) {
+        const windows = await invoke('get_all_windows_info_cmd');
+        window.allWindowsInfo = windows;
+        renderAddedAppsGrid();
+        renderAvailableAppsGrid();
+      }
+    } catch (error) {
+      console.warn('首次获取应用列表失败，用户可手动刷新:', error);
+      // 显示友好的提示信息
+      const availableGrid = document.getElementById('available-apps-grid');
+      if (availableGrid) {
+        availableGrid.innerHTML = '<div class="empty-grid">点击"刷新"按钮获取应用列表</div>';
+      }
+    }
+  }, 500);
 
   // 设置主题
   setActiveTheme(settings.theme);
@@ -373,6 +412,9 @@ function bindEvents() {
 
   // 绑定管理员运行设置的特殊处理
   bindAdminRunEvents();
+
+  // 绑定应用黑白名单事件
+  bindAppFilterEvents();
 }
 
 // 绑定设置项事件
@@ -1792,8 +1834,377 @@ async function handleResetAllData() {
       }
     }, 2000);
   } catch (error) {
-    console.error('重置数据失败:', error);
-    showNotification(`重置数据失败: ${error}`, 'error');
+    console.error('重置所有数据失败:', error);
+    showNotification(`重置所有数据失败: ${error}`, 'error');
+  }
+}
+
+// 绑定应用黑白名单事件
+function bindAppFilterEvents() {
+  const appFilterEnabled = document.getElementById('app-filter-enabled');
+  const appFilterModeBlacklist = document.querySelector('input[name="filter-mode"][value="blacklist"]');
+  const appFilterModeWhitelist = document.querySelector('input[name="filter-mode"][value="whitelist"]');
+  const appFilterList = document.getElementById('app-filter-list');
+  const clearAppListBtn = document.getElementById('clear-app-list');
+
+  if (appFilterEnabled) {
+    appFilterEnabled.addEventListener('change', () => {
+      settings.appFilterEnabled = appFilterEnabled.checked;
+      saveSettings();
+      updateAppFilterStatus();
+      renderAddedAppsGrid();
+      renderAvailableAppsGrid();
+    });
+  }
+
+  if (appFilterModeBlacklist && appFilterModeWhitelist) {
+    const updateMode = () => {
+      const mode = document.querySelector('input[name="filter-mode"]:checked')?.value || 'blacklist';
+      settings.appFilterMode = mode;
+      saveSettings();
+      updateAppFilterStatus();
+    };
+
+    appFilterModeBlacklist.addEventListener('change', updateMode);
+    appFilterModeWhitelist.addEventListener('change', updateMode);
+  }
+
+  if (appFilterList) {
+    appFilterList.addEventListener('input', () => {
+      const apps = appFilterList.value
+        .split('\n')
+        .map(app => app.trim())
+        .filter(app => app.length > 0);
+      settings.appFilterList = apps;
+      saveSettings();
+      updateAppFilterStatus();
+      renderAddedAppsGrid();
+      renderAvailableAppsGrid();
+    });
+  }
+
+  if (clearAppListBtn) {
+    clearAppListBtn.addEventListener('click', clearAppFilterList);
+  }
+
+  const refreshAppDataBtn = document.getElementById('refresh-windows-list');
+  if (refreshAppDataBtn) {
+    refreshAppDataBtn.addEventListener('click', refreshAppData);
+  }
+
+  // 自定义输入框事件
+  const customAppInput = document.getElementById('custom-app-input');
+  const addCustomAppBtn = document.getElementById('add-custom-app');
+  const addCurrentAppBtn = document.getElementById('add-current-app');
+
+  if (customAppInput && addCustomAppBtn) {
+    addCustomAppBtn.addEventListener('click', () => {
+      const appName = customAppInput.value.trim();
+      if (appName) {
+        addAppToFilterList(appName);
+        customAppInput.value = '';
+      }
+    });
+
+    customAppInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const appName = customAppInput.value.trim();
+        if (appName) {
+          addAppToFilterList(appName);
+          customAppInput.value = '';
+        }
+      }
+    });
+  }
+}
+
+
+
+// 更新应用过滤状态显示
+function updateAppFilterStatus() {
+  const statusElement = document.getElementById('app-filter-status');
+  if (!statusElement) return;
+
+  const enabled = settings.appFilterEnabled || false;
+  const mode = settings.appFilterMode || 'blacklist';
+  const list = settings.appFilterList || [];
+
+  const statusTitle = statusElement.querySelector('.status-title');
+  const statusDescription = statusElement.querySelector('.status-description');
+  const statusIcon = statusElement.querySelector('.status-icon i');
+
+  if (!enabled) {
+    statusTitle.textContent = '功能已禁用';
+    statusDescription.textContent = '应用过滤功能已关闭，所有应用均可使用剪贴板管理';
+    statusIcon.className = 'ti ti-circle-x';
+    statusElement.style.background = 'linear-gradient(135deg, rgba(108, 117, 125, 0.1), rgba(108, 117, 125, 0.05))';
+    statusElement.style.borderColor = 'rgba(108, 117, 125, 0.2)';
+    statusElement.querySelector('.status-icon').style.color = '#6c757d';
+  } else {
+    const modeText = mode === 'blacklist' ? '黑名单' : '白名单';
+    const countText = list.length > 0 ? `${list.length}个应用` : '暂无应用';
+    statusTitle.textContent = `${modeText}模式`;
+    statusDescription.textContent = `已添加 ${countText}，${mode === 'blacklist' ? '这些应用将被禁用' : '仅这些应用可用'}`;
+    statusIcon.className = mode === 'blacklist' ? 'ti ti-ban' : 'ti ti-check-circle';
+
+    if (mode === 'blacklist') {
+      statusElement.style.background = 'linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05))';
+      statusElement.style.borderColor = 'rgba(220, 53, 69, 0.2)';
+      statusElement.querySelector('.status-icon').style.color = '#dc3545';
+    } else {
+      statusElement.style.background = 'linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05))';
+      statusElement.style.borderColor = 'rgba(40, 167, 69, 0.2)';
+      statusElement.querySelector('.status-icon').style.color = '#28a745';
+    }
+  }
+}
+
+// 渲染已添加的应用网格
+function renderAddedAppsGrid() {
+  const grid = document.getElementById('added-apps-grid');
+  if (!grid) return;
+
+  const apps = settings.appFilterList || [];
+  grid.innerHTML = '';
+
+  if (apps.length === 0) {
+    grid.innerHTML = '<div class="empty-grid">暂无添加的应用</div>';
+    return;
+  }
+
+  apps.forEach(app => {
+    const appItem = createAppItem(app, true);
+    grid.appendChild(appItem);
+  });
+}
+
+// 渲染可添加的应用网格
+function renderAvailableAppsGrid() {
+  const grid = document.getElementById('available-apps-grid');
+  if (!grid) return;
+
+  const windows = window.allWindowsInfo || [];
+  const addedApps = settings.appFilterList || [];
+  grid.innerHTML = '';
+
+  if (windows.length === 0) {
+    grid.innerHTML = '<div class="empty-grid">暂无可用应用</div>';
+    return;
+  }
+
+  // 过滤已添加的应用
+  const availableApps = windows.filter(window =>
+    !addedApps.some(added =>
+      added.toLowerCase() === window.process?.toLowerCase()
+    )
+  );
+
+  if (availableApps.length === 0) {
+    grid.innerHTML = '<div class="empty-grid">所有应用已添加</div>';
+    return;
+  }
+
+  // 去重：按进程名分组
+  const uniqueApps = [];
+  const seenProcesses = new Set();
+
+  availableApps.forEach(window => {
+    if (window.process && !seenProcesses.has(window.process.toLowerCase())) {
+      seenProcesses.add(window.process.toLowerCase());
+      uniqueApps.push(window);
+    }
+  });
+
+  uniqueApps.forEach(window => {
+    const appItem = createAppItem(window, false);
+    grid.appendChild(appItem);
+  });
+}
+
+// 创建应用项
+function createAppItem(appData, isAdded) {
+  const appItem = document.createElement('div');
+  appItem.className = `app-item ${isAdded ? 'added' : ''}`;
+  appItem.dataset.app = isAdded ? appData : appData.process;
+
+  let displayName, iconSrc;
+
+  if (isAdded) {
+    displayName = appData;
+    // 对于已添加的应用，尝试从allWindowsInfo中查找图标
+    let foundApp = null;
+    const searchTerm = appData.toLowerCase();
+
+    // 1. 精确匹配进程名
+    foundApp = window.allWindowsInfo?.find(w =>
+      w.process?.toLowerCase() === searchTerm
+    );
+
+    // 2. 模糊匹配进程名（包含关系）
+    if (!foundApp) {
+      foundApp = window.allWindowsInfo?.find(w =>
+        w.process?.toLowerCase().includes(searchTerm) ||
+        searchTerm.includes(w.process?.toLowerCase())
+      );
+    }
+
+    // 3. 匹配窗口标题
+    if (!foundApp) {
+      foundApp = window.allWindowsInfo?.find(w =>
+        w.name?.toLowerCase().includes(searchTerm) ||
+        searchTerm.includes(w.name?.toLowerCase())
+      );
+    }
+
+    // 4. 特殊处理常见应用别名
+    if (!foundApp) {
+      const aliasMap = {
+        'weixin': 'wechat',
+        '微信': 'wechat',
+        'qq': 'qq',
+        '钉钉': 'dingtalk',
+        '企业微信': 'wxwork',
+        'wps': 'wpsoffice',
+        '谷歌浏览器': 'chrome',
+        '火狐': 'firefox'
+      };
+
+      const alias = aliasMap[searchTerm];
+      if (alias) {
+        foundApp = window.allWindowsInfo?.find(w =>
+          w.process?.toLowerCase().includes(alias) ||
+          w.name?.toLowerCase().includes(alias)
+        );
+      }
+    }
+
+    iconSrc = foundApp?.icon || null;
+  } else {
+    displayName = appData.process || '未知应用';
+    iconSrc = appData.icon;
+  }
+
+  appItem.innerHTML = `
+    <div class="app-icon-container">
+      ${iconSrc ?
+      `<img src="${iconSrc}" class="app-icon-img" alt="${displayName}" onerror="this.handleIconError(this)">` :
+      `<div class="app-icon-placeholder">
+          <i class="ti ti-${isAdded ? 'check' : 'plus'}"></i>
+        </div>`
+    }
+    </div>
+    <div class="app-name" title="${displayName}">${displayName}</div>
+  `;
+
+  appItem.addEventListener('click', () => {
+    if (isAdded) {
+      removeAppFromFilter(appData);
+    } else {
+      addAppToFilterList(appData.process, appData.name);
+    }
+  });
+
+  return appItem;
+}
+
+// 处理图标加载错误
+function handleIconError(img) {
+  img.style.display = 'none';
+  const placeholder = img.parentElement.querySelector('.app-icon-placeholder');
+  if (placeholder) {
+    placeholder.style.display = 'flex';
+  }
+}
+
+// 从过滤列表移除应用
+function removeAppFromFilter(appName) {
+  const appList = settings.appFilterList || [];
+  const index = appList.indexOf(appName);
+  if (index > -1) {
+    appList.splice(index, 1);
+    settings.appFilterList = appList;
+
+    const appFilterListTextarea = document.getElementById('app-filter-list');
+    if (appFilterListTextarea) {
+      appFilterListTextarea.value = appList.join('\n');
+    }
+
+    saveSettings();
+    updateAppFilterStatus();
+    renderAddedAppsGrid();
+    renderAvailableAppsGrid();
+    showNotification(`已移除: ${appName}`, 'success');
+  }
+}
+
+// 清空应用过滤列表
+function clearAppFilterList() {
+
+  settings.appFilterList = [];
+
+  const appFilterListTextarea = document.getElementById('app-filter-list');
+  if (appFilterListTextarea) {
+    appFilterListTextarea.value = '';
+  }
+
+  saveSettings();
+  updateAppFilterStatus();
+  renderAddedAppsGrid();
+  renderAvailableAppsGrid();
+  showNotification('应用列表已清空', 'success');
+}
+
+// 刷新应用数据
+async function refreshAppData() {
+  const refreshBtn = document.getElementById('refresh-windows-list');
+
+  if (!refreshBtn) return;
+
+  // 显示加载状态
+  refreshBtn.disabled = true;
+  refreshBtn.innerHTML = '<i class="ti ti-loader"></i> 刷新中...';
+
+  try {
+    const windows = await invoke('get_all_windows_info_cmd');
+
+    // 保存窗口信息到全局变量
+    window.allWindowsInfo = windows;
+
+    // 更新两个网格
+    renderAddedAppsGrid();
+    renderAvailableAppsGrid();
+
+  } catch (error) {
+    console.error('获取应用数据失败:', error);
+    showNotification('获取应用数据失败', 'error');
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = '<i class="ti ti-refresh"></i> 刷新应用列表';
+  }
+}
+
+// 添加应用到过滤列表
+function addAppToFilterList(processName, appName) {
+  if (!processName) return;
+
+  const appList = settings.appFilterList || [];
+
+  if (!appList.includes(processName)) {
+    appList.push(processName);
+    settings.appFilterList = appList;
+
+    // 更新UI
+    const appFilterListTextarea = document.getElementById('app-filter-list');
+    if (appFilterListTextarea) {
+      appFilterListTextarea.value = appList.join('\n');
+    }
+
+    saveSettings();
+    updateAppFilterStatus();
+    renderAddedAppsGrid();
+    renderAvailableAppsGrid();
+
+    showNotification(`已添加 ${processName} 到应用过滤列表`, 'success');
   }
 }
 

@@ -38,6 +38,15 @@ unsafe extern "system" fn mouse_hook_proc(
     };
 
     if code == HC_ACTION as i32 {
+        let settings = crate::settings::get_global_settings();
+        
+        // 检查应用黑白名单过滤
+        if settings.app_filter_enabled {
+            if !crate::app_filter::is_current_app_allowed() {
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
+        }
+
         let is_window_pinned = WINDOW_PINNED_STATE.load(Ordering::Relaxed);
         let preview_visible = crate::preview_window::is_preview_window_visible();
         let mouse_monitoring_enabled = MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed);

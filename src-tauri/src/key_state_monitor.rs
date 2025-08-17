@@ -285,6 +285,13 @@ fn handle_main_window_shortcut_change(last_state: &KeyState, current_state: &Key
         settings.toggle_shortcut.clone()
     };
 
+    // 检查应用过滤
+    if settings.app_filter_enabled {
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
+    }
+
     // 解析快捷键
     if let Some(parsed_shortcut) = parse_shortcut(&toggle_shortcut) {
         let last_combo = check_main_window_shortcut_combo(last_state, &parsed_shortcut);
@@ -346,12 +353,20 @@ fn check_main_window_shortcut_combo(
 fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyState) {
     use crate::global_state::*;
 
+    let settings = crate::settings::get_global_settings();
+    
+    // 检查应用过滤
+    if settings.app_filter_enabled {
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
+    }
+
     if let Ok(config) = PREVIEW_SHORTCUT_CONFIG.lock() {
         let last_combo = check_shortcut_combo(last_state, &config);
         let current_combo = check_shortcut_combo(current_state, &config);
 
         if !last_combo && current_combo {
-            let settings = crate::settings::get_global_settings();
             if !settings.preview_enabled {
                 return;
             }
@@ -369,7 +384,6 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
         } else if last_combo && !current_combo {
             PREVIEW_SHORTCUT_HELD.store(false, Ordering::SeqCst);
 
-            let settings = crate::settings::get_global_settings();
             if !settings.preview_enabled {
                 return;
             }
@@ -415,6 +429,14 @@ fn handle_number_shortcuts_change(last_state: &KeyState, current_state: &KeyStat
 
     if !NUMBER_SHORTCUTS_ENABLED.load(Ordering::SeqCst) || !current_state.ctrl {
         return;
+    }
+
+    // 检查应用过滤
+    let settings = crate::settings::get_global_settings();
+    if settings.app_filter_enabled {
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
     }
 
     let numbers = [
@@ -519,6 +541,14 @@ fn handle_ai_translation_cancel_change(last_state: &KeyState, current_state: &Ke
         return;
     }
 
+    // 检查应用过滤
+    let settings = crate::settings::get_global_settings();
+    if settings.app_filter_enabled {
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
+    }
+
     let last_combo = last_state.ctrl && last_state.shift && last_state.escape;
     let current_combo = current_state.ctrl && current_state.shift && current_state.escape;
 
@@ -564,6 +594,13 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
 
     if !settings.screenshot_enabled {
         return;
+    }
+
+    // 检查应用过滤
+    if settings.app_filter_enabled {
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
     }
 
     let screenshot_shortcut = if settings.screenshot_shortcut.is_empty() {

@@ -277,6 +277,12 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
             continue;
         }
 
+        // 检查当前应用是否在允许列表中
+        if !crate::app_filter::is_current_app_allowed() {
+            thread::sleep(Duration::from_millis(200));
+            continue;
+        }
+
         // 尝试获取剪贴板内容
         let current_content = get_clipboard_content(&mut clipboard);
 

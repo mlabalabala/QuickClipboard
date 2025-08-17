@@ -65,7 +65,12 @@ pub struct AppSettings {
     // 显示行为
     pub auto_scroll_to_top_on_show: bool, // 窗口显示后是否自动滚动到顶部
 
-    // 窗口位置和大小设置
+    // 应用黑白名单设置
+    pub app_filter_enabled: bool,     // 是否启用应用过滤
+    pub app_filter_mode: String,      // 过滤模式：whitelist(白名单) 或 blacklist(黑名单)
+    pub app_filter_list: Vec<String>, // 应用列表（进程名或窗口标题关键词）
+    
+    // 窗口位置和大小设置默认值
     pub window_position_mode: String, // 窗口位置模式：smart(智能位置) 或 remember(记住位置)
     pub remember_window_size: bool,   // 是否记住窗口大小
     pub saved_window_position: Option<(i32, i32)>, // 保存的窗口位置 (x, y)
@@ -137,6 +142,11 @@ impl Default for AppSettings {
             // 显示行为默认值
             auto_scroll_to_top_on_show: false,
 
+            // 应用黑白名单设置默认值
+            app_filter_enabled: false,                  // 默认不启用应用过滤
+            app_filter_mode: "blacklist".to_string(), // 默认使用黑名单模式
+            app_filter_list: vec![],                    // 默认空列表
+            
             // 窗口位置和大小设置默认值
             window_position_mode: "smart".to_string(), // 默认使用智能位置
             remember_window_size: false,               // 默认不记住窗口大小
@@ -256,6 +266,9 @@ impl AppSettings {
             "rememberWindowSize":self.remember_window_size,
             "savedWindowPosition":self.saved_window_position,
             "savedWindowSize":self.saved_window_size,
+            "appFilterEnabled":self.app_filter_enabled,
+            "appFilterMode":self.app_filter_mode,
+            "appFilterList":self.app_filter_list,
         })
     }
 
@@ -435,6 +448,20 @@ impl AppSettings {
                     self.saved_window_size = Some((w as u32, h as u32));
                 }
             }
+        }
+        
+        // 应用黑白名单设置
+        if let Some(v) = json.get("appFilterEnabled").and_then(|v| v.as_bool()) {
+            self.app_filter_enabled = v;
+        }
+        if let Some(v) = json.get("appFilterMode").and_then(|v| v.as_str()) {
+            self.app_filter_mode = v.to_string();
+        }
+        if let Some(v) = json.get("appFilterList").and_then(|v| v.as_array()) {
+            self.app_filter_list = v
+                .iter()
+                .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                .collect();
         }
     }
 }

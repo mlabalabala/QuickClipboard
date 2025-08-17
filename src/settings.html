@@ -77,6 +77,10 @@
             <i class="ti ti-volume"></i>
             <span>音效设置</span>
           </a>
+          <a href="#app-filter" class="nav-item" data-section="app-filter">
+            <i class="ti ti-filter"></i>
+            <span>应用过滤</span>
+          </a>
           <a href="#data-management" class="nav-item" data-section="data-management">
             <i class="ti ti-database"></i>
             <span>数据管理</span>
@@ -892,6 +896,167 @@
                   <input type="checkbox" id="screenshot-show-hints" checked>
                   <span class="toggle-slider"></span>
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 应用黑白名单设置 -->
+        <div class="settings-section" id="app-filter-section">
+          <div class="section-header">
+            <h2>应用黑白名单</h2>
+            <p>智能控制程序在不同应用中的行为，让剪贴板管理更加个性化</p>
+          </div>
+
+          <div class="settings-group">
+            <!-- 功能开关卡片 -->
+            <div class="setting-card">
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label class="setting-label">
+                    <i class="ti ti-shield-check"></i>
+                    启用应用过滤
+                  </label>
+                  <p class="setting-description">开启后，程序将根据您的设置智能识别应用并应用相应规则</p>
+                </div>
+                <div class="setting-control">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="app-filter-enabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 状态提示 -->
+              <div class="app-filter-status-card" id="app-filter-status">
+                <div class="status-icon">
+                  <i class="ti ti-info-circle"></i>
+                </div>
+                <div class="status-content">
+                  <div class="status-title">当前状态</div>
+                  <div class="status-description">应用过滤已启用，正在使用黑名单模式</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模式选择卡片 -->
+            <div class="setting-card">
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label class="setting-label">
+                    <i class="ti ti-list-details"></i>
+                    过滤模式
+                  </label>
+                  <p class="setting-description">选择适合您使用习惯的过滤方式</p>
+                </div>
+                <div class="setting-control">
+                  <div class="mode-selector">
+                    <label class="mode-option">
+                      <input type="radio" name="filter-mode" value="blacklist" id="app-filter-mode">
+                      <div class="mode-card">
+                        <div class="mode-icon">
+                          <i class="ti ti-ban"></i>
+                        </div>
+                        <div class="mode-content">
+                          <div class="mode-title">黑名单模式</div>
+                          <div class="mode-description">选中的应用将被禁用</div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="mode-option">
+                      <input type="radio" name="filter-mode" value="whitelist" id="app-filter-mode-whitelist">
+                      <div class="mode-card">
+                        <div class="mode-icon">
+                          <i class="ti ti-check"></i>
+                        </div>
+                        <div class="mode-content">
+                          <div class="mode-title">白名单模式</div>
+                          <div class="mode-description">仅选中的应用可用</div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 应用列表管理 -->
+            <div class="setting-card">
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label class="setting-label">
+                    <i class="ti ti-apps"></i>
+                    应用管理
+                  </label>
+                  <p class="setting-description">通过手动输入或选择当前窗口来添加应用</p>
+                </div>
+                <div class="setting-control">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="custom-app-input" placeholder="输入应用名称或进程名"
+                      style="flex: 1; padding: 10px 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 13px; background-color: var(--bg-secondary);">
+
+                    <button class="secondary-button small" id="add-custom-app" title="添加自定义应用">
+                      <i class="ti ti-plus"></i>
+                      添加
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 应用管理网格布局 -->
+              <div class="app-management-container">
+                <div class="app-grid-section">
+                  <div class="app-grid-header">
+                    <h4>已添加的应用</h4>
+                    <button class="secondary-button small" id="clear-app-list">
+                      <i class="ti ti-trash"></i>
+                      清空
+                    </button>
+                  </div>
+                  <div class="app-grid" id="added-apps-grid">
+                    <!-- 动态生成已添加的应用网格 -->
+                  </div>
+                </div>
+
+                <div class="app-grid-section">
+                  <div class="app-grid-header">
+                    <h4>可添加的应用</h4>
+                    <button class="secondary-button small" id="refresh-windows-list">
+                      <i class="ti ti-refresh"></i>
+                      刷新
+                    </button>
+                  </div>
+                  <div class="app-grid" id="available-apps-grid">
+                    <!-- 动态生成可添加的应用网格 -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- 隐藏的文本区域，用于兼容现有逻辑 -->
+              <textarea id="app-filter-list" class="app-filter-textarea" style="display: none;"></textarea>
+            </div>
+
+            <!-- 快捷操作提示 -->
+            <div class="setting-card">
+              <div class="tips-container">
+                <div class="tips-header">
+                  <i class="ti ti-lightbulb"></i>
+                  <span>使用提示</span>
+                </div>
+                <div class="tips-content">
+                  <div class="tip-item">
+                    <i class="ti ti-point-filled"></i>
+                    <span>支持模糊匹配：输入"微信"可匹配"WeChat.exe"等进程名</span>
+                  </div>
+                  <div class="tip-item">
+                    <i class="ti ti-point-filled"></i>
+                    <span>也可以输入准确的进程名（如：chrome.exe、wechat.exe）</span>
+                  </div>
+                  <div class="tip-item">
+                    <i class="ti ti-point-filled"></i>
+                    <span>在右侧列表中点击应用图标可直接添加</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

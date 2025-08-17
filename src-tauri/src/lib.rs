@@ -3,6 +3,7 @@
 mod admin_privileges;
 mod ai_config;
 mod ai_translator;
+mod app_filter;
 mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
@@ -397,6 +398,8 @@ pub fn run() {
             commands::paste_content,
             commands::open_file_location,
             commands::open_file_with_default_program,
+
+            app_filter::get_all_windows_info_cmd,
             commands::read_image_file,
             commands::export_data,
             commands::import_data,

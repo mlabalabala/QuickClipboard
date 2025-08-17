@@ -11,10 +11,10 @@ static SHORTCUT_HOOK_HANDLE: Mutex<Option<windows::Win32::UI::WindowsAndMessagin
     Mutex::new(None);
 
 #[cfg(windows)]
-static SHORTCUT_INTERCEPTION_ENABLED: AtomicBool = AtomicBool::new(false);
+pub static SHORTCUT_INTERCEPTION_ENABLED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(windows)]
-static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
+pub static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
 
 // 当前配置的主窗口快捷键
 #[cfg(windows)]
@@ -72,6 +72,14 @@ unsafe extern "system" fn shortcut_hook_proc(
         let alt_pressed = (GetAsyncKeyState(0x12) & 0x8000u16 as i16) != 0; // VK_MENU
         let win_pressed = (GetAsyncKeyState(0x5B) & 0x8000u16 as i16) != 0 // VK_LWIN
             || (GetAsyncKeyState(0x5C) & 0x8000u16 as i16) != 0; // VK_RWIN
+
+        let settings = crate::settings::get_global_settings();
+        // 检查应用黑白名单过滤
+        if settings.app_filter_enabled {
+            if !crate::app_filter::is_current_app_allowed() {
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
+        }
 
         let is_own_window = if let Some(window) = MAIN_WINDOW_HANDLE.get() {
             crate::window_management::is_current_window_own_app(window)
