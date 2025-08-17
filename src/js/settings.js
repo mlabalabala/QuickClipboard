@@ -631,7 +631,7 @@ async function applyBackgroundToSettingsContainer() {
           url = convertFileSrc ? convertFileSrc(path) : path;
         }
         container.style.backgroundImage = `url("${url.replaceAll('"', '\\"')}")`;
-        
+
         try {
           const dominantColor = await getDominantColor(url);
           const titleBarColors = generateTitleBarColors(dominantColor);
@@ -980,7 +980,8 @@ async function testSound(type) {
     // 异步调用音效测试，不等待完成
     invoke('test_sound', {
       soundPath: soundPath || '', // 空路径将播放默认音效
-      volume: settings.soundVolume
+      volume: settings.soundVolume,
+      soundType: type
     }).catch(error => {
       console.error('测试音效失败:', error);
       showNotification('音效测试失败', 'error');

@@ -590,15 +590,20 @@ pub async fn browse_image_file() -> Result<Option<String>, String> {
 
 // 测试音效（异步版本）
 #[tauri::command]
-pub async fn test_sound(sound_path: String, volume: f32) -> Result<(), String> {
+pub async fn test_sound(sound_path: String, volume: f32, sound_type: Option<String>) -> Result<(), String> {
     let volume_normalized = volume / 100.0; // 将0-100转换为0.0-1.0
 
     // 在后台线程中播放音效，避免阻塞前端
     let sound_path_clone = sound_path.clone();
+    let sound_type_clone = sound_type.clone();
     tokio::task::spawn_blocking(move || {
         let effective_path = if sound_path_clone.is_empty() {
-            // 使用默认测试音效文件
-            "sounds/copy.mp3".to_string() // 测试时使用复制音效
+            // 根据音效类型选择默认音效
+            match sound_type_clone.as_deref() {
+                Some("paste") => "sounds/paste.mp3".to_string(),
+                Some("preview-scroll") => "sounds/scroll.mp3".to_string(),
+                _ => "sounds/copy.mp3".to_string(), // 默认为复制音效
+            }
         } else {
             sound_path_clone
         };
@@ -609,8 +614,13 @@ pub async fn test_sound(sound_path: String, volume: f32) -> Result<(), String> {
         {
             eprintln!("测试音效失败: {}", e);
             // 如果文件播放失败，回退到代码生成的音效
+            let frequency = match sound_type_clone.as_deref() {
+                Some("paste") => 600.0,
+                Some("preview-scroll") => 500.0,
+                _ => 700.0,
+            };
             if let Err(e2) =
-                crate::sound_manager::SoundManager::play_beep(700.0, 200, volume_normalized)
+                crate::sound_manager::SoundManager::play_beep(frequency, 200, volume_normalized)
             {
                 eprintln!("测试默认音效也失败: {}", e2);
             }
