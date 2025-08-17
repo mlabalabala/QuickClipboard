@@ -147,8 +147,9 @@ function generateFilesHTML(item) {
     const filesJson = item.text.substring(6);
     const filesData = JSON.parse(filesJson);
 
-    // 格式化时间
-    const timeStr = formatTimestamp(item.timestamp);
+    // 格式化时间 - 优先使用created_at，如果为空则使用timestamp
+    const timeValue = item.created_at || item.timestamp;
+    const timeStr = formatTimestamp(timeValue);
 
     // 顶部显示：时间和文件数量
     let filesHTML = `<div class="file-summary">${timeStr} • ${filesData.files.length} 个文件</div>`;

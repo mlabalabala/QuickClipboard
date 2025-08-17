@@ -31,7 +31,7 @@ pub struct ClipboardItem {
 impl ClipboardItem {
     pub fn new_text(text: String) -> Self {
         let now = chrono::Local::now();
-        let local_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+        let local_timestamp = now.timestamp() as u64;
         
         Self {
             id: 0, // 将由数据库自动分配
@@ -45,7 +45,7 @@ impl ClipboardItem {
 
     pub fn new_image(image_id: String) -> Self {
         let now = chrono::Local::now();
-        let local_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+        let local_timestamp = now.timestamp() as u64;
         
         Self {
             id: 0, // 将由数据库自动分配
@@ -259,7 +259,7 @@ fn migrate_clipboard_history() -> Result<(), String> {
 
         for (index, text) in history_list.iter().enumerate() {
             let now = chrono::Local::now();
-            let base_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+            let base_timestamp = now.timestamp() as u64;
             let timestamp = base_timestamp - (history_list.len() - index) as u64; // 保持相对顺序
 
             let (is_image, image_id) = if text.starts_with("image:") {
@@ -475,7 +475,7 @@ pub fn clipboard_item_exists(text: &str) -> Result<Option<i64>, String> {
 // 移动剪贴板项目到最前面（更新时间戳）
 pub fn move_clipboard_item_to_front(id: i64) -> Result<(), String> {
     let now = chrono::Local::now();
-    let new_timestamp = (now.timestamp() + now.offset().local_minus_utc() as i64) as u64;
+    let new_timestamp = now.timestamp() as u64;
 
     with_connection(|conn| {
         conn.execute(
