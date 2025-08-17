@@ -119,10 +119,10 @@ pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String
         });
 
         // 在开发模式下打开开发者工具
-        #[cfg(debug_assertions)]
-        {
-            editor_window.open_devtools();
-        }
+        // #[cfg(debug_assertions)]
+        // {
+        //     editor_window.open_devtools();
+        // }
     }
 
     Ok(())

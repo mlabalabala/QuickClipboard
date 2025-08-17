@@ -161,35 +161,38 @@ unsafe extern "system" fn shortcut_hook_proc(
         if let Some(preview_shortcut) = PREVIEW_SHORTCUT.lock().unwrap().as_ref() {
             if vk_code == preview_shortcut.key_code {
                 match wparam.0 as u32 {
-                    WM_KEYDOWN | WM_SYSKEYDOWN => {
-                        if ctrl_pressed == preview_shortcut.ctrl
-                            && shift_pressed == preview_shortcut.shift
-                            && alt_pressed == preview_shortcut.alt
-                            && win_pressed == preview_shortcut.win
-                        {
-                            if !is_own_window {
-                                if !PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
-                                    PREVIEW_SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
+                                WM_KEYDOWN | WM_SYSKEYDOWN => {
+                                    if ctrl_pressed == preview_shortcut.ctrl
+                                        && shift_pressed == preview_shortcut.shift
+                                        && alt_pressed == preview_shortcut.alt
+                                        && win_pressed == preview_shortcut.win
+                                    {
+                                        let settings = crate::settings::get_global_settings();
+                                        if !settings.preview_enabled {
+                                            // 如果预览功能被禁用，不拦截事件
+                                            return CallNextHookEx(None, code, wparam, lparam);
+                                        }
 
-                                    let settings = crate::settings::get_global_settings();
-                                    if settings.preview_enabled {
-                                        if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                                            let app_handle = window.app_handle().clone();
-                                            std::thread::spawn(move || {
-                                                let _ = tauri::async_runtime::block_on(
-                                                    crate::preview_window::show_preview_window(
-                                                        app_handle,
-                                                    ),
-                                                );
-                                            });
+                                        if !is_own_window {
+                                            if !PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
+                                                PREVIEW_SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
+
+                                                if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                                                    let app_handle = window.app_handle().clone();
+                                                    std::thread::spawn(move || {
+                                                        let _ = tauri::async_runtime::block_on(
+                                                            crate::preview_window::show_preview_window(
+                                                                app_handle,
+                                                            ),
+                                                        );
+                                                    });
+                                                }
+                                            }
+
+                                            return LRESULT(1);
                                         }
                                     }
                                 }
-
-                                return LRESULT(1);
-                            }
-                        }
-                    }
                     WM_KEYUP | WM_SYSKEYUP => {
                         if vk_code == preview_shortcut.key_code
                             || (preview_shortcut.ctrl && vk_code == 0x11)
@@ -199,23 +202,26 @@ unsafe extern "system" fn shortcut_hook_proc(
                         {
                             if !is_own_window && PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed)
                             {
-                                let user_cancelled = crate::global_state::PREVIEW_CANCELLED_BY_USER
-                                    .load(std::sync::atomic::Ordering::SeqCst);
+                                let settings = crate::settings::get_global_settings();
+                                if settings.preview_enabled {
+                                    let user_cancelled = crate::global_state::PREVIEW_CANCELLED_BY_USER
+                                        .load(std::sync::atomic::Ordering::SeqCst);
 
-                                if user_cancelled {
-                                    crate::global_state::PREVIEW_CANCELLED_BY_USER
-                                        .store(false, std::sync::atomic::Ordering::SeqCst);
-                                    std::thread::spawn(move || {
-                                        let _ = tauri::async_runtime::block_on(
-                                            crate::preview_window::hide_preview_window(),
-                                        );
-                                    });
-                                } else {
-                                    std::thread::spawn(move || {
-                                        let _ = tauri::async_runtime::block_on(
-                                            crate::preview_window::paste_current_preview_item(),
-                                        );
-                                    });
+                                    if user_cancelled {
+                                        crate::global_state::PREVIEW_CANCELLED_BY_USER
+                                            .store(false, std::sync::atomic::Ordering::SeqCst);
+                                        std::thread::spawn(move || {
+                                            let _ = tauri::async_runtime::block_on(
+                                                crate::preview_window::hide_preview_window(),
+                                            );
+                                        });
+                                    } else {
+                                        std::thread::spawn(move || {
+                                            let _ = tauri::async_runtime::block_on(
+                                                crate::preview_window::paste_current_preview_item(),
+                                            );
+                                        });
+                                    }
                                 }
                             }
 

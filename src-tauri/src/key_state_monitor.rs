@@ -369,6 +369,11 @@ fn handle_preview_shortcut_change(last_state: &KeyState, current_state: &KeyStat
         } else if last_combo && !current_combo {
             PREVIEW_SHORTCUT_HELD.store(false, Ordering::SeqCst);
 
+            let settings = crate::settings::get_global_settings();
+            if !settings.preview_enabled {
+                return;
+            }
+
             let user_cancelled =
                 crate::global_state::PREVIEW_CANCELLED_BY_USER.load(Ordering::SeqCst);
 
