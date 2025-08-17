@@ -1415,7 +1415,7 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
                         let mut updated_text = text.clone();
                         updated_text.content = updated_content;
                         let now_local = chrono::Local::now();
-                        updated_text.updated_at = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
+                        updated_text.updated_at = now_local.timestamp();
 
                         if let Err(e) = database::update_quick_text(&updated_text) {
                             println!("更新常用文本 {} 失败: {}", text.id, e);

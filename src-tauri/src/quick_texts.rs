@@ -43,7 +43,7 @@ pub fn add_quick_text_with_group(
     group_id: String,
 ) -> Result<QuickText, String> {
     let now_local = chrono::Local::now();
-    let now = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
+    let now = now_local.timestamp();
     let quick_text = QuickText {
         id: Uuid::new_v4().to_string(),
         title,
@@ -73,7 +73,7 @@ pub fn update_quick_text_with_group(
     group_id: Option<String>,
 ) -> Result<QuickText, String> {
     let now_local = chrono::Local::now();
-    let now = now_local.timestamp() + now_local.offset().local_minus_utc() as i64;
+    let now = now_local.timestamp();
     let group_id = group_id.unwrap_or_else(|| "all".to_string());
 
     let updated_text = QuickText {
