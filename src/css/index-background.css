@@ -127,8 +127,11 @@ body.theme-background {
 
 .theme-background .tab-button.active {
     color: var(--titlebar-text-dynamic) !important;
-    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 100%, transparent) !important;
     box-shadow: var(--shadow-light);
+}
+.theme-background .tab-switch-indicator {
+    background-color: var(--titlebar-bg-dynamic) !important;
 }
 
 /* ================ 筛选标签（背景主题） ================ */
@@ -139,20 +142,23 @@ body.theme-background {
 .theme-background .filter-tab {
     color: var(--text-secondary);
     border-color: var(--border-primary);
-    background: rgba(255, 255, 255, 0.35);
+    /* background: rgba(255, 255, 255, 0.35); */
 }
 
 .theme-background .filter-tab:hover {
     color: var(--primary-color);
-    background-color: rgba(255, 255, 255, 0.55);
+    background-color: rgba(255, 255, 255, 0.25);
     border-color: var(--border-hover);
 }
+.theme-background .filter-tabs-indicator {
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 100%, transparent) !important;
+}
 
-.theme-background .filter-tab.active {
+/* .theme-background .filter-tab.active {
     background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 80%, transparent) !important;;
     border-color: var(--primary-color);
     box-shadow: var(--shadow-light);
-}
+} */
 
 /* =================== 搜索和输入框 =================== */
 .theme-background #search-input,

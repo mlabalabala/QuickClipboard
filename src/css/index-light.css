@@ -102,8 +102,8 @@ body.theme-light {
 }
 
 .theme-light .tab-button.active {
-  color: var(--primary-color);
-  background-color: var(--bg-primary);
+  color: var(--bg-primary) !important;
+  /* background-color: var(--bg-primary); */
   box-shadow: var(--shadow-light);
 }
 
@@ -120,12 +120,13 @@ body.theme-light {
 
 .theme-light .filter-tab:hover {
   color: var(--primary-color);
-  background-color: var(--bg-secondary);
+  background-color: color-mix(in srgb, var(--bg-secondary) 10%, transparent);
   border-color: var(--border-hover);
 }
 
 .theme-light .filter-tab.active {
-  border-color: var(--primary-color);
+  color: var(--bg-primary) !important;
+  /* border-color: var(--primary-color); */
   box-shadow: var(--shadow-light);
 }
 

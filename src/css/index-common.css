@@ -648,6 +648,7 @@ body {
   padding: 3px;
   margin-bottom: var(--padding-medium);
   gap: 6px;
+  border: 1px solid var(--primary-light);
 }
 
 .tab-switch-group {
@@ -656,6 +657,24 @@ body {
   gap: 2px;
   flex: 1 1 50%;
   min-width: 0;
+  position: relative;
+}
+
+/* 标签页滑动指示器 */
+.tab-switch-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 32px;
+  width: 0;
+  background-color: var(--filter-active-color);
+  border-radius: 5px;
+  opacity: 1;
+  pointer-events: none;
+  transition: left var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+              width var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity var(--transition-duration) ease;
+  z-index: 0;
 }
 
 .tab-button {
@@ -669,6 +688,7 @@ body {
   border-radius: var(--border-radius-large);
   position: relative;
   transition: all var(--transition-duration) ease;
+  z-index: 1;
 }
 
 .tab-button:hover {
@@ -682,18 +702,6 @@ body {
   font-weight: bold;
 }
 
-.tab-button.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: var(--primary-color);
-  opacity: 0.8;
-  border-radius: 2px 2px 0 0;
-}
-
 /* 外置筛选标签 */
 .filter-tabs {
   display: flex;
@@ -702,6 +710,28 @@ body {
   gap: 4px;
   flex: 1 1 50%;
   min-width: 0;
+  position: relative;
+}
+
+/* 筛选标签滑动指示器 */
+.filter-tabs-indicator {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 32px;
+  width: 0;
+  background: var(--filter-active-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 5px;
+  transform: translateY(-50%);
+  box-shadow: var(--shadow-light);
+  opacity: 0.95;
+  pointer-events: none;
+  transition: left var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+              width var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+              height var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity var(--transition-duration) ease;
+  z-index: 0;
 }
 
 .nav-separator {
@@ -715,7 +745,7 @@ body {
   align-items: center;
   gap: 6px;
   height: 32px;
-  width: 32px;
+  width: 100%;
   padding: 0 4px;
   border: 1px solid transparent;
   border-radius: 5px;
@@ -725,6 +755,8 @@ body {
   white-space: nowrap;
   transition: all var(--transition-duration) ease;
   justify-content: center;
+  position: relative;
+  z-index: 1; 
 }
 
 .filter-tab i { font-size: 18px; opacity: 0.9; }
@@ -739,8 +771,7 @@ body {
   color: var(--primary-light) !important;
   box-shadow: var(--shadow-light) !important;
   border-color: var(--primary-color);
-  background: var(--filter-active-color) !important;
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 /* =================== 标签页内容 =================== */

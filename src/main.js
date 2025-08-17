@@ -39,6 +39,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // 筛选tabs容器
 let filterTabsContainer;
+let filterTabsIndicator;
+let filterTabsResizeTimer;
 // 自定义菜单
 import { CustomSelect } from './js/customSelect.js';
 let quickTextsCustomFilter;
@@ -184,6 +186,9 @@ async function initApp() {
 
   // 初始化筛选标签
   setupExternalFilterTabs();
+  // 确保创建筛选指示器并定位
+  ensureFilterTabsIndicator();
+  requestAnimationFrame(moveFilterTabsIndicator);
 
   // 自定义下拉菜单
   const rowHeightOptions = [
@@ -246,6 +251,12 @@ async function initApp() {
   // 设置常用文本功能
   setupQuickTexts();
 
+  // 监听窗口尺寸变化，平滑更新筛选指示器位置
+  window.addEventListener('resize', () => {
+    clearTimeout(filterTabsResizeTimer);
+    filterTabsResizeTimer = setTimeout(() => requestAnimationFrame(moveFilterTabsIndicator), 120);
+  });
+
   // 绑定标签切换时刷新筛选tab高亮
   window.addEventListener('tab-switched', (e) => {
     try {
@@ -254,6 +265,7 @@ async function initApp() {
         ? (localStorage.getItem('clipboard-current-filter') || 'all')
         : (localStorage.getItem('quicktexts-current-filter') || 'all');
       updateFilterTabsActiveState(tabName, filterValue);
+      requestAnimationFrame(moveFilterTabsIndicator);
     } catch (_) {}
   });
 
@@ -506,6 +518,8 @@ function setupExternalFilterTabs() {
     ? (localStorage.getItem('clipboard-current-filter') || 'all')
     : (localStorage.getItem('quicktexts-current-filter') || 'all');
   applyActive(initTab, initValue);
+  // 初始化指示器位置
+  requestAnimationFrame(moveFilterTabsIndicator);
 }
 
 // 更新外置筛选按钮的高亮状态
@@ -513,5 +527,34 @@ function updateFilterTabsActiveState(tabName, value) {
   if (!filterTabsContainer) return;
   const buttons = Array.from(filterTabsContainer.querySelectorAll('.filter-tab'));
   buttons.forEach(b => b.classList.toggle('active', b.getAttribute('data-filter') === value));
+
+  // 移动筛选滑动指示器
+  moveFilterTabsIndicator();
+}
+
+// 创建筛选tabs滑动指示器
+function ensureFilterTabsIndicator() {
+  if (!filterTabsContainer) return null;
+  if (!filterTabsIndicator) {
+    filterTabsIndicator = document.createElement('div');
+    filterTabsIndicator.className = 'filter-tabs-indicator';
+    filterTabsContainer.appendChild(filterTabsIndicator);
+  }
+  return filterTabsIndicator;
+}
+
+// 将指示器移动到当前激活的筛选按钮
+function moveFilterTabsIndicator() {
+  if (!filterTabsContainer) return;
+  const indicator = ensureFilterTabsIndicator();
+  const active = filterTabsContainer.querySelector('.filter-tab.active') || filterTabsContainer.querySelector('.filter-tab');
+  if (!indicator || !active) return;
+  const left = active.offsetLeft;
+  const width = active.offsetWidth;
+  const height = active.offsetHeight;
+  indicator.style.left = left + 'px';
+  indicator.style.width = width + 'px';
+  indicator.style.height = height + 'px';
+  indicator.style.opacity = '1';
 }
 

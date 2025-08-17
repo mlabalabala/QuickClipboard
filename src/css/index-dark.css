@@ -89,7 +89,8 @@ body.theme-dark {
 
 /* =================== 标签页导航 =================== */
 .theme-dark .tab-navigation {
-  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
 }
 
 .theme-dark .tab-button {
@@ -102,7 +103,7 @@ body.theme-dark {
 }
 
 .theme-dark .tab-button.active {
-  color: var(--primary-color);
+  color: var(--text-primary) !important;
   background-color: var(--border-primary);
 }
 
@@ -124,7 +125,8 @@ body.theme-dark {
 }
 
 .theme-dark .filter-tab.active {
-  border-color: var(--primary-color);
+  color: var(--text-primary) !important;
+  /* border-color: var(--primary-color); */
   box-shadow: var(--shadow-primary);
 }
 

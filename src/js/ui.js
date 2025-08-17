@@ -121,6 +121,32 @@ export function setupTabSwitching() {
   const tabButtons = document.querySelectorAll('.tab-button');
   const tabContents = document.querySelectorAll('.tab-content');
 
+  // 创建并缓存滑动指示器
+  let tabIndicatorResizeTimer = null;
+  function ensureTabSwitchIndicator() {
+    const group = document.querySelector('.tab-switch-group');
+    if (!group) return null;
+    let indicator = group.querySelector('.tab-switch-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'tab-switch-indicator';
+      group.appendChild(indicator);
+    }
+    return indicator;
+  }
+
+  function moveTabSwitchIndicatorToActive() {
+    const activeButton = document.querySelector('.tab-button.active');
+    const group = document.querySelector('.tab-switch-group');
+    const indicator = ensureTabSwitchIndicator();
+    if (!activeButton || !group || !indicator) return;
+    const left = activeButton.offsetLeft;
+    const width = activeButton.offsetWidth;
+    indicator.style.left = left + 'px';
+    indicator.style.width = width + 'px';
+    indicator.style.opacity = '1';
+  }
+
   tabButtons.forEach(button => {
     button.addEventListener('click', () => {
       const tabName = button.dataset.tab;
@@ -145,7 +171,19 @@ export function setupTabSwitching() {
       });
 
       notifyPreviewWindowTabChange(tabName);
+
+      // 移动指示器到当前激活按钮
+      moveTabSwitchIndicatorToActive();
     });
+  });
+
+  // 初始位置
+  requestAnimationFrame(moveTabSwitchIndicatorToActive);
+
+  // 窗口尺寸变化时重算位置（防抖）
+  window.addEventListener('resize', () => {
+    clearTimeout(tabIndicatorResizeTimer);
+    tabIndicatorResizeTimer = setTimeout(moveTabSwitchIndicatorToActive, 120);
   });
 }
 
