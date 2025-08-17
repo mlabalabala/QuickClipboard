@@ -7,7 +7,8 @@ import {
   setActiveItemIndex,
   isDragging,
   currentFilter,
-  searchInput
+  searchInput,
+  isOneTimePaste
 } from './config.js';
 import { showNotification } from './ui.js';
 import { showContextMenu } from './contextMenu.js';
@@ -679,6 +680,15 @@ async function handleClipboardItemPaste(item, index, element = null) {
             console.log('使用降级处理完成粘贴:', result.error);
           }
 
+          // 一次性粘贴：翻译成功后删除该剪贴板历史项
+          if (isOneTimePaste) {
+            try {
+              setTimeout(async () => {
+                await deleteClipboardItem(index);
+              }, 100);
+            } catch (_) {}
+          }
+
           hideTranslationIndicator();
           hidePasteLoading(element, true, '翻译粘贴成功');
         } else {
@@ -708,6 +718,15 @@ async function handleClipboardItemPaste(item, index, element = null) {
         successMessage = '文件粘贴成功';
       } else if (contentType === 'image') {
         successMessage = '图片粘贴成功';
+      }
+
+      // 一次性粘贴：粘贴成功后删除该剪贴板历史项
+      if (isOneTimePaste) {
+        try {
+          setTimeout(async () => {
+            await deleteClipboardItem(index);
+          }, 100);
+        } catch (_) {}
       }
 
       hidePasteLoading(element, true, successMessage);
