@@ -29,6 +29,10 @@ function parseVersion(version) {
       mainParts.push(type === 'alpha' ? 0 : type === 'beta' ? 1 : 2); // 类型优先级
       mainParts.push(number); // 预发布版本号
     }
+  } else {
+    // 正式版本（无预发布标识）优先级最高
+    mainParts.push(999); // 比任何预发布版本都高
+    mainParts.push(0);
   }
 
   return mainParts;
