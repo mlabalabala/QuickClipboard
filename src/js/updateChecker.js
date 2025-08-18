@@ -6,15 +6,32 @@ let hasUpdateCache = null;
 
 function normalizeVersion(version) {
   if (!version) return '';
-  return String(version).trim().replace(/^v/i, '');
+  return String(version).trim().replace(/^v/i, '').replace(/^V/i, '');
 }
 
 function parseVersion(version) {
-  const v = normalizeVersion(version).split('-')[0];
-  return v.split('.').map(n => {
-    const num = parseInt(n, 10);
+  const parts = normalizeVersion(version).split('-');
+  const mainVersion = parts[0];
+  const preRelease = parts[1] || '';
+
+  const mainParts = mainVersion.split('.').map(n => {
+    const cleanNum = n.replace(/[^0-9]/g, '');
+    const num = parseInt(cleanNum, 10);
     return Number.isNaN(num) ? 0 : num;
   });
+
+  // 添加预发布版本信息
+  if (preRelease) {
+    const preMatch = preRelease.match(/^(beta|alpha|rc)(\.?)(\d+)?$/i);
+    if (preMatch) {
+      const type = preMatch[1].toLowerCase();
+      const number = parseInt(preMatch[3] || '0', 10);
+      mainParts.push(type === 'alpha' ? 0 : type === 'beta' ? 1 : 2); // 类型优先级
+      mainParts.push(number); // 预发布版本号
+    }
+  }
+
+  return mainParts;
 }
 
 function compareVersions(a, b) {
@@ -177,7 +194,7 @@ function renderUpdateModal({ title, version, notes, downloadUrl, isPrerelease })
   downloadBtn.textContent = '前往下载';
   downloadBtn.style.cssText = 'background:#4a89dc;border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;';
   downloadBtn.addEventListener('click', async () => {
-    try { await openUrl(downloadUrl); } catch {}
+    try { await openUrl(downloadUrl); } catch { }
     // document.body.removeChild(overlay);
   });
   footer.appendChild(laterBtn);
@@ -199,7 +216,7 @@ async function autoCheckAndMark() {
         window.dispatchEvent(new CustomEvent('qc-update-available', {
           detail: { latestRelease }
         }));
-      } catch {}
+      } catch { }
     }
   } catch {
     // 静默失败
@@ -209,6 +226,7 @@ async function autoCheckAndMark() {
 async function handleCheckUpdatesClick() {
   try {
     const { hasUpdate, latestRelease, currentVersion } = await checkForUpdateAvailability();
+
     if (hasUpdate) {
       renderUpdateModal({
         title: '发现新版本',

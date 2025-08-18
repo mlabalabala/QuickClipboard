@@ -269,6 +269,8 @@ pub fn is_current_app_allowed() -> bool {
     true
 }
 
+
+
 #[tauri::command]
 pub fn get_all_windows_info_cmd() -> Result<Vec<AppInfo>, String> {
     #[cfg(windows)]
@@ -281,6 +283,7 @@ pub fn get_all_windows_info_cmd() -> Result<Vec<AppInfo>, String> {
         Ok(Vec::new())
     }
 }
+
 
 /// 非Windows平台的占位实现
 #[cfg(not(windows))]
