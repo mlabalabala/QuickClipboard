@@ -48,9 +48,18 @@
 ---
 
 ### 🎨 自定义背景
+
 <div align="center">
-  <img src="readme-assets/main-bg.png" alt="主界面预览-自定义背景" width="20.75%">
-  <img src="readme-assets/settings-bg.png" alt="设置界面-自定义背景" width="45%">
+  <img src="readme-assets/bg-main (1).png" alt="主界面预览-自定义背景" width="15%">
+  <img src="readme-assets/bg-settings (1).png" alt="设置界面-自定义背景" width="31%">
+  <img src="readme-assets/bg-main (2).png" alt="主界面预览-自定义背景" width="15%">
+  <img src="readme-assets/bg-settings (2).png" alt="设置界面-自定义背景" width="31%">
+</div>
+<div align="center">
+  <img src="readme-assets/bg-main (3).png" alt="主界面预览-自定义背景" width="15%">
+  <img src="readme-assets/bg-settings (3).png" alt="设置界面-自定义背景" width="31%">
+  <img src="readme-assets/bg-main (4).png" alt="主界面预览-自定义背景" width="15%">
+  <img src="readme-assets/bg-settings (4).png" alt="设置界面-自定义背景" width="31%">
 </div>
 
 
@@ -96,9 +105,9 @@
 
 | 安装包类型 | 说明 | 下载量 | 下载链接 |
 |------------|------|--------|----------|
-| **NSIS 安装包**<br>`QuickClipboard_0.0.3_x64-setup.exe` | 适合大多数用户，支持快速安装与卸载 | ![NSIS 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.3_x64-setup.exe?label=) | [![下载 NSIS](https://img.shields.io/badge/⬇_下载-NSIS安装包-blue?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard_0.0.3_x64-setup.exe) |
-| **MSI 安装包**<br>`QuickClipboard_0.0.3_x64_zh-CN.msi` | 适合企业环境，可用于批量部署 | ![MSI 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.3_x64_zh-CN.msi?label=) | [![下载 MSI](https://img.shields.io/badge/⬇_下载-MSI安装包-green?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard_0.0.3_x64_zh-CN.msi) |
-| **绿色版**<br>`QuickClipboard.exe` | 免安装，解压即可使用 | ![绿色版 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard.exe?label=) | [![下载 绿色版](https://img.shields.io/badge/⬇_下载-绿色版-orange?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.3/QuickClipboard.exe) |
+| **NSIS 安装包**<br>`QuickClipboard_0.0.4_x64-setup.exe` | 适合大多数用户，支持快速安装与卸载 | ![NSIS 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.4_x64-setup.exe?label=) | [![下载 NSIS](https://img.shields.io/badge/⬇_下载-NSIS安装包-blue?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.4/QuickClipboard_0.0.4_x64-setup.exe) |
+| **MSI 安装包**<br>`QuickClipboard_0.0.4_x64_zh-CN.msi` | 适合企业环境，可用于批量部署 | ![MSI 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard_0.0.4_x64_zh-CN.msi?label=) | [![下载 MSI](https://img.shields.io/badge/⬇_下载-MSI安装包-green?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.4/QuickClipboard_0.0.4_x64_zh-CN.msi) |
+| **绿色版**<br>`QuickClipboard.exe` | 免安装，解压即可使用 | ![绿色版 下载量](https://img.shields.io/github/downloads/mosheng1/QuickClipboard/QuickClipboard.exe?label=) | [![下载 绿色版](https://img.shields.io/badge/⬇_下载-绿色版-orange?style=for-the-badge)](https://github.com/mosheng1/QuickClipboard/releases/download/v0.0.4/QuickClipboard.exe) |
 | **网盘下载** | 备用下载渠道，适合 GitHub 访问较慢时使用 | — | [![网盘下载](https://img.shields.io/badge/🌐_网盘下载-点击进入-red?style=for-the-badge)](https://www.123912.com/s/A9Ckjv-Vu75v?pwd=UhWA#) |
 
 
