@@ -367,7 +367,7 @@ body.theme-dark {
   background-color: #555;
 }
 
-.theme-dark .toggle-switch:checked + .toggle-label {
+.theme-dark .toggle-switch:checked+.toggle-label {
   background-color: var(--primary-color);
 }
 
@@ -375,7 +375,7 @@ body.theme-dark {
   background-color: rgba(189, 189, 189, 0.5);
 }
 
-.theme-dark .toggle-switch input:checked + .toggle-slider {
+.theme-dark .toggle-switch input:checked+.toggle-slider {
   background-color: var(--primary-color) !important;
 }
 
@@ -723,11 +723,11 @@ body.theme-dark {
   .theme-dark .tab-button {
     color: var(--text-secondary);
   }
-  
+
   .theme-dark .tab-button:hover {
     color: var(--primary-color);
   }
-  
+
   .theme-dark .tab-button.active {
     color: var(--primary-color);
   }
@@ -756,13 +756,13 @@ body.theme-dark {
 
 /* =================== 系统主题响应 =================== */
 @media (prefers-color-scheme: dark) {
+
   /* 当系统为暗色模式时的额外调整 */
   .theme-dark .container {
     background-color: rgba(30, 30, 30, 1) !important;
   }
 }
 
-/* 自定义下拉组件 - 暗色主题覆盖（迁移自 customSelect.js） */
 .theme-dark .custom-menu-trigger,
 .theme-dark .custom-menu-dropdown,
 .theme-dark .custom-submenu {

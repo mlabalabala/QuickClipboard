@@ -93,6 +93,11 @@ function applySettings(settings) {
     console.log('应用自动滚动设置:', settings.autoScrollToTopOnShow);
     setupAutoScrollOnShow(Boolean(settings.autoScrollToTopOnShow));
   }
+
+  // 应用标题栏位置设置
+  if (settings.titleBarPosition !== undefined) {
+    applyTitleBarPosition(settings.titleBarPosition);
+  }
 }
 
 // 应用主题
@@ -131,7 +136,7 @@ async function applyBackgroundToMainWindow(theme) {
         url = convertFileSrc ? convertFileSrc(path) : path;
       }
       container.style.backgroundImage = `url("${url.replaceAll('"', '\\"')}")`;
-      
+
       // 分析背景图主色调并应用到标题栏
       try {
         const dominantColor = await getDominantColor(url);
@@ -211,12 +216,12 @@ export function updateSetting(key, value) {
 // 设置窗口显示后自动滚动到顶部
 function setupAutoScrollOnShow(enabled) {
   console.log('设置自动滚动监听:', enabled);
-  
+
   // 如已存在监听，则先解除
   if (window.__autoScrollUnlisten && typeof window.__autoScrollUnlisten === 'function') {
-    try { 
+    try {
       console.log('移除现有自动滚动监听');
-      window.__autoScrollUnlisten(); 
+      window.__autoScrollUnlisten();
     } catch (_) { }
     window.__autoScrollUnlisten = null;
   }
@@ -226,11 +231,11 @@ function setupAutoScrollOnShow(enabled) {
     // 监听来自后端的显示事件
     import('@tauri-apps/api/event')
       .then(({ listen }) => listen('window-show-animation', () => autoScrollHandler()))
-      .then((unlisten) => { 
+      .then((unlisten) => {
         console.log('自动滚动监听创建成功');
-        window.__autoScrollUnlisten = unlisten; 
+        window.__autoScrollUnlisten = unlisten;
       })
-      .catch((error) => { 
+      .catch((error) => {
         console.error('设置自动滚动监听失败:', error);
       });
   } else {
@@ -240,12 +245,12 @@ function setupAutoScrollOnShow(enabled) {
 
 function autoScrollHandler() {
   console.log('自动滚动处理器被调用，当前设置:', currentSettings.autoScrollToTopOnShow);
-  
+
   if (!currentSettings.autoScrollToTopOnShow) {
     console.log('自动滚动已禁用，不执行滚动');
-    return; 
+    return;
   }
-  
+
   console.log('执行自动滚动到顶部');
   // 推迟到渲染完成后执行
   setTimeout(() => {
@@ -257,7 +262,7 @@ function autoScrollHandler() {
       } else {
         console.log('未找到clipboard-list元素');
       }
-    } catch (error) { 
+    } catch (error) {
       console.error('滚动到顶部失败:', error);
     }
   }, 0);
@@ -296,4 +301,39 @@ export function updateShortcutDisplay() {
   if (toggleShortcutElement && currentSettings.toggleShortcut) {
     toggleShortcutElement.textContent = `${currentSettings.toggleShortcut}: 显示/隐藏`;
   }
+}
+
+// 应用标题栏位置设置
+function applyTitleBarPosition(position) {
+  const titleBar = document.getElementById('titlebar');
+  const container = document.querySelector('.container');
+  const body = document.body;
+
+  if (!titleBar || !container) return;
+
+  // 移除所有位置类
+  body.classList.remove('titlebar-top', 'titlebar-bottom', 'titlebar-left', 'titlebar-right');
+
+  // 应用新位置类
+  body.classList.add(`titlebar-${position}`);
+
+  console.log('标题栏位置已应用:', position);
+
+  // 标题栏位置改变后需要重新计算指示器位置
+  updateIndicatorsAfterLayoutChange();
+}
+
+// 布局变化后更新指示器位置
+function updateIndicatorsAfterLayoutChange() {
+  // 等待布局更新完成
+  setTimeout(() => {
+    // 更新标签页切换指示器 - 通过事件触发
+    window.dispatchEvent(new CustomEvent('update-tab-indicator'));
+
+    // 更新筛选标签指示器
+    if (typeof moveFilterTabsIndicator === 'function') {
+      moveFilterTabsIndicator();
+    }
+
+  }, 50); // 短暂延迟确保布局已更新
 }

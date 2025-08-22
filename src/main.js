@@ -224,7 +224,7 @@ async function initApp() {
     // 获取当前筛选状态并触发更新
     const clipboardFilter = localStorage.getItem('clipboard-current-filter') || 'all';
     const quickTextsFilter = localStorage.getItem('quicktexts-current-filter') || 'all';
-    
+
     // 同步到外置筛选按钮高亮
     updateFilterTabsActiveState(getActiveTabName(), getActiveTabName() === 'clipboard' ? clipboardFilter : quickTextsFilter);
   }, 200);
@@ -266,7 +266,7 @@ async function initApp() {
         : (localStorage.getItem('quicktexts-current-filter') || 'all');
       updateFilterTabsActiveState(tabName, filterValue);
       requestAnimationFrame(moveFilterTabsIndicator);
-    } catch (_) {}
+    } catch (_) { }
   });
 
   // 设置UI模态框

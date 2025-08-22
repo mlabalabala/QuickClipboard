@@ -73,8 +73,11 @@ pub struct AppSettings {
     // 窗口位置和大小设置默认值
     pub window_position_mode: String, // 窗口位置模式：smart(智能位置) 或 remember(记住位置)
     pub remember_window_size: bool,   // 是否记住窗口大小
-    pub saved_window_position: Option<(i32, i32)>, // 保存的窗口位置 (x, y)
+    pub saved_window_position: Option<(i32, i32)>, // 保存的极口位置 (x, y)
     pub saved_window_size: Option<(u32, u32)>, // 保存的窗口大小 (width, height)
+    
+    // 标题栏位置设置
+    pub title_bar_position: String,   // 标题栏位置：top(上), bottom(下), left(左), right(右)
 }
 
 impl Default for AppSettings {
@@ -147,11 +150,14 @@ impl Default for AppSettings {
             app_filter_mode: "blacklist".to_string(), // 默认使用黑名单模式
             app_filter_list: vec![],                    // 默认空列表
             
-            // 窗口位置和大小设置默认值
+            // 窗口极口和大小设置默认值
             window_position_mode: "smart".to_string(), // 默认使用智能位置
             remember_window_size: false,               // 默认不记住窗口大小
             saved_window_position: None,               // 初始没有保存的位置
             saved_window_size: None,                   // 初始没有保存的大小
+            
+            // 标题栏位置设置默认值
+            title_bar_position: "top".to_string(),    // 默认标题栏位置在上方
         }
     }
 }
@@ -269,6 +275,7 @@ impl AppSettings {
             "appFilterEnabled":self.app_filter_enabled,
             "appFilterMode":self.app_filter_mode,
             "appFilterList":self.app_filter_list,
+            "titleBarPosition":self.title_bar_position,
         })
     }
 
@@ -462,6 +469,11 @@ impl AppSettings {
                 .iter()
                 .filter_map(|item| item.as_str().map(|s| s.to_string()))
                 .collect();
+        }
+        
+        // 标题栏位置设置
+        if let Some(v) = json.get("titleBarPosition").and_then(|v| v.as_str()) {
+            self.title_bar_position = v.to_string();
         }
     }
 }

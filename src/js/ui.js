@@ -185,6 +185,9 @@ export function setupTabSwitching() {
     clearTimeout(tabIndicatorResizeTimer);
     tabIndicatorResizeTimer = setTimeout(moveTabSwitchIndicatorToActive, 120);
   });
+
+  // 监听标题栏位置变化事件，更新指示器
+  window.addEventListener('update-tab-indicator', moveTabSwitchIndicatorToActive);
 }
 
 // 通知预览窗口标签切换

@@ -104,6 +104,7 @@ const defaultSettings = {
   rememberWindowSize: false,
   savedWindowPosition: null,
   savedWindowSize: null,
+  titleBarPosition: 'top',
   // 显示行为
   autoScrollToTopOnShow: false,
   // 应用黑白名单设置
@@ -240,6 +241,9 @@ async function initializeUI() {
   // 窗口位置和大小设置
   document.getElementById('window-position-mode').value = settings.windowPositionMode || 'smart';
   document.getElementById('remember-window-size').checked = settings.rememberWindowSize;
+  
+  // 标题栏位置设置
+  document.getElementById('title-bar-position').value = settings.titleBarPosition || 'top';
 
   // 应用黑白名单设置
   document.getElementById('app-filter-enabled').checked = settings.appFilterEnabled || false;
@@ -431,7 +435,8 @@ function bindSettingEvents() {
     'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'clipboard-animation-enabled',
-    'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show'
+    'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
+    'title-bar-position'
   ];
 
   settingInputs.forEach(id => {
