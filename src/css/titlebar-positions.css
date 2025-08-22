@@ -48,11 +48,12 @@
 
 /* 上下共同 */
 .titlebar-top .control-button,
-.titlebar-bottom .control-button{
-  font-size:2.1em;
+.titlebar-bottom .control-button {
+  font-size: 2.1em;
 }
+
 .titlebar-top .toggle-label,
-.titlebar-bottom .toggle-label{
+.titlebar-bottom .toggle-label {
   height: 24px;
 }
 
@@ -132,13 +133,15 @@
 
 .titlebar-right .groups-sidebar {
   right: 40px;
-  z-index: 1;
 }
 
 .titlebar-right .sidebar-trigger:hover+.groups-sidebar:not(.pinned),
 .titlebar-right .groups-sidebar:not(.pinned):hover {
   right: 40px;
-  z-index: 1;
+}
+
+.titlebar-right .groups-sidebar.pinned {
+  right: 40px !important;
 }
 
 .titlebar-right .footer {
