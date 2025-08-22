@@ -195,6 +195,11 @@ body {
   overflow: hidden;
   box-sizing: border-box;
   border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
+  cursor: grab;
+}
+
+.container:active {
+  cursor: grabbing;
 }
 
 /* =================== 通用开关样式 =================== */
@@ -1473,6 +1478,11 @@ body {
   z-index: var(--z-modal);
   /* overflow: hidden; */
   border-radius: 0 0 8px 8px;
+  cursor: grab;
+}
+
+.footer:active {
+  cursor: grabbing;
 }
 
 .footer:hover {

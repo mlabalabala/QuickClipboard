@@ -1,27 +1,11 @@
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  appWindow,
-  clipboardHistory,
-  alertModal,
-  settingsModal,
-  quickTextModal,
-  confirmModal
+  appWindow
 } from './config.js';
-import { refreshClipboardHistory, setActiveItem } from './clipboard.js';
-import { hideAlertModal, hideConfirmModal } from './ui.js';
-import { hideQuickTextModal } from './quickTexts.js';
+import { refreshClipboardHistory } from './clipboard.js';
 import { hideContextMenu } from './contextMenu.js';
 
-// 检查是否有输入框获得焦点
-function isInputFocused() {
-  const activeElement = document.activeElement;
-  return activeElement && (
-    activeElement.tagName === 'INPUT' ||
-    activeElement.tagName === 'TEXTAREA' ||
-    activeElement.contentEditable === 'true'
-  );
-}
 
 // 设置剪贴板变化事件监听
 export async function setupClipboardEventListener() {
@@ -87,8 +71,14 @@ export async function setupTrayEventListeners() {
 
 // 自定义窗口拖拽
 export async function setupCustomWindowDrag() {
-  document.getElementById('titlebar')?.addEventListener('mousedown', async (e) => {
-    if (e.target !== titlebar) {
+  const titlebar = document.getElementById('titlebar');
+  const footer = document.getElementById('footer');
+  const container = document.querySelector('.container');
+
+  // 公共拖拽处理函数
+  const handleDrag = async (element, e) => {
+    // 对于footer，允许子元素拖拽；对于其他元素，只允许元素本身拖拽
+    if (element !== footer && e.target !== element) {
       return; // 点击的是子元素，不执行拖拽
     }
     try {
@@ -101,7 +91,16 @@ export async function setupCustomWindowDrag() {
       appWindow.startDragging();
       hideContextMenu()
     }
-  });
+  };
+
+  // 标题栏拖拽
+  titlebar?.addEventListener('mousedown', (e) => handleDrag(titlebar, e));
+
+  // footer拖拽
+  footer?.addEventListener('mousedown', (e) => handleDrag(footer, e));
+
+  // container拖拽
+  container?.addEventListener('mousedown', (e) => handleDrag(container, e));
 }
 
 // 设置右键菜单禁用
