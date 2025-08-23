@@ -1,42 +1,8 @@
-//! AI配置管理模块
-//!
-//! 本模块提供通用的AI配置管理功能，可以被各种AI功能复用。
-//! 包括API配置、模型管理、请求参数等。
-//!
-//! ## 主要功能
-//! - **AI配置结构定义**: 定义通用的AI配置结构
-//! - **配置验证**: 验证AI配置的有效性
-//! - **模型管理**: 获取可用模型列表
-//! - **配置转换**: 从应用设置转换为AI配置
-//!
-//! ## 使用示例
-//! ```rust
-//! use crate::ai_config::{AIConfig, create_ai_config_from_settings};
-//!
-//! let settings = get_global_settings();
-//! let ai_config = create_ai_config_from_settings(&settings);
-//!
-//! if ai_config.is_valid() {
-//!     // 使用AI配置
-//! }
-//! ```
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// AI配置结构体
-///
-/// 包含AI服务所需的所有配置参数，包括API认证信息、模型选择、
-/// 请求参数等。这是一个通用的配置结构，可以被各种AI功能复用。
-///
-/// ## 字段说明
-/// - `api_key`: API密钥，用于身份认证
-/// - `model`: 要使用的AI模型名称
-/// - `base_url`: API服务的基础URL
-/// - `timeout`: API请求超时时间
-/// - `temperature`: 模型温度参数，控制输出的随机性
-/// - `max_tokens`: 最大输出token数量
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AIConfig {
     /// API密钥，用于身份认证
@@ -93,24 +59,6 @@ impl AIConfig {
         Duration::from_secs(self.timeout_secs)
     }
 
-    /// 设置温度参数
-    pub fn with_temperature(mut self, temperature: f32) -> Self {
-        self.temperature = temperature.clamp(0.0, 2.0);
-        self
-    }
-
-    /// 设置最大token数量
-    pub fn with_max_tokens(mut self, max_tokens: u32) -> Self {
-        self.max_tokens = max_tokens;
-        self
-    }
-
-    /// 设置超时时间
-    pub fn with_timeout_secs(mut self, timeout_secs: u64) -> Self {
-        self.timeout_secs = timeout_secs;
-        self
-    }
-
     /// 获取API完整URL
     pub fn get_chat_completions_url(&self) -> String {
         format!("{}/chat/completions", self.base_url.trim_end_matches('/'))
@@ -157,29 +105,6 @@ impl AIConfigManager {
             .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
 
         Ok(Self { config, client })
-    }
-
-    /// 获取当前配置
-    pub fn get_config(&self) -> &AIConfig {
-        &self.config
-    }
-
-    /// 更新配置
-    pub fn update_config(&mut self, config: AIConfig) -> Result<(), String> {
-        if !config.is_valid() {
-            return Err("AI配置无效".to_string());
-        }
-
-        // 如果超时时间发生变化，需要重新创建客户端
-        if config.timeout_secs != self.config.timeout_secs {
-            self.client = Client::builder()
-                .timeout(config.timeout())
-                .build()
-                .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
-        }
-
-        self.config = config;
-        Ok(())
     }
 
     /// 获取可用模型列表
@@ -237,45 +162,4 @@ pub fn create_ai_config_from_settings(settings: &crate::settings::AppSettings) -
 pub fn is_ai_config_valid(settings: &crate::settings::AppSettings) -> bool {
     let config = create_ai_config_from_settings(settings);
     config.is_valid()
-}
-
-/// 获取推荐的AI模型列表
-pub fn get_recommended_models() -> Vec<&'static str> {
-    vec![
-        "Qwen/Qwen2-7B-Instruct",
-        "deepseek-v3",
-        "deepseek-chat",
-        "deepseek-coder",
-        "qwen-turbo",
-        "qwen-plus",
-        "qwen-max",
-        "qwen2.5-72b-instruct",
-        "qwen2.5-32b-instruct",
-        "qwen2.5-14b-instruct",
-        "qwen2.5-7b-instruct",
-    ]
-}
-
-/// 获取模型的友好显示名称
-pub fn get_model_display_name(model_id: &str) -> String {
-    match model_id {
-        "Qwen/Qwen2-7B-Instruct" => "Qwen2-7B-Instruct（推荐）".to_string(),
-        "deepseek-v3" => "DeepSeek V3".to_string(),
-        "deepseek-chat" => "DeepSeek Chat".to_string(),
-        "deepseek-coder" => "DeepSeek Coder".to_string(),
-        "qwen-turbo" => "通义千问 Turbo".to_string(),
-        "qwen-plus" => "通义千问 Plus".to_string(),
-        "qwen-max" => "通义千问 Max".to_string(),
-        "qwen2.5-72b-instruct" => "Qwen2.5-72B-Instruct".to_string(),
-        "qwen2.5-32b-instruct" => "Qwen2.5-32B-Instruct".to_string(),
-        "qwen2.5-14b-instruct" => "Qwen2.5-14B-Instruct".to_string(),
-        "qwen2.5-7b-instruct" => "Qwen2.5-7B-Instruct".to_string(),
-        "chatglm3-6b" => "ChatGLM3-6B".to_string(),
-        "yi-34b-chat" => "Yi-34B-Chat".to_string(),
-        "yi-6b-chat" => "Yi-6B-Chat".to_string(),
-        "baichuan2-13b-chat" => "Baichuan2-13B-Chat".to_string(),
-        "internlm2-chat-7b" => "InternLM2-Chat-7B".to_string(),
-        "internlm2-chat-20b" => "InternLM2-Chat-20B".to_string(),
-        _ => model_id.to_string(),
-    }
 }

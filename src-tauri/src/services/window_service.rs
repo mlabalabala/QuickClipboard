@@ -2,7 +2,7 @@
 //
 // 整合窗口管理相关功能
 
-use tauri::{Manager, WebviewWindow};
+use tauri::{Manager};
 
 /// 打开设置窗口
 pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {

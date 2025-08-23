@@ -1,50 +1,9 @@
-//! AI翻译模块
-//!
-//! 本模块提供AI翻译功能，集成硅基流动API，支持流式响应处理。
-//!
-//! ## 主要功能
-//! - **AI翻译配置管理**: 管理API密钥、模型选择、目标语言等配置
-//! - **流式API调用**: 支持实时接收翻译结果，提供更好的用户体验
-//! - **翻译结果处理**: 解析流式响应，提取翻译内容
-//! - **错误处理和重试机制**: 完善的错误分类和处理策略
-//!
-//! ## AI模型
-//! - Qwen/Qwen2-7B-Instruct (推荐)
-//!
-//! ## 使用示例
-//! ```rust
-//! use crate::ai_translator::{AITranslator, TranslationConfig};
-//! use std::time::Duration;
-//!
-//! let config = TranslationConfig {
-//!     api_key: "your-api-key".to_string(),
-//!     model: "deepseek-chat".to_string(),
-//!     base_url: "https://api.siliconflow.cn/v1".to_string(),
-//!     target_language: "zh-CN".to_string(),
-//!     prompt_template: "请翻译以下文本：".to_string(),
-//!     timeout: Duration::from_secs(30),
-//! };
-//!
-//! let translator = AITranslator::new(config);
-//! // 使用流式翻译
-//! let (tx, rx) = tokio::sync::mpsc::channel(100);
-//! translator.translate_stream("Hello, world!", tx).await?;
-//! ```
 
 use crate::ai_config::AIConfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
-/// AI翻译配置结构体
-///
-/// 包含AI翻译所需的所有配置参数，基于通用的AIConfig，
-/// 并添加翻译特定的配置。
-///
-/// ## 字段说明
-/// - `ai_config`: 通用AI配置（API密钥、模型、基础URL等）
-/// - `target_language`: 目标翻译语言代码（如"zh-CN"、"en"）
-/// - `prompt_template`: 翻译提示词模板，支持{target_language}占位符
 #[derive(Debug, Clone)]
 pub struct TranslationConfig {
     /// 通用AI配置
@@ -154,8 +113,6 @@ pub enum TranslationResult {
     Error(TranslationError),
 }
 
-/// AI翻译器
-///
 /// 线程安全的AI翻译器，支持并发使用
 pub struct AITranslator {
     client: Client,
@@ -347,21 +304,6 @@ impl AITranslator {
         }
 
         Ok(())
-    }
-
-    /// 更新配置
-    pub fn update_config(&mut self, config: TranslationConfig) -> Result<(), TranslationError> {
-        if !config.ai_config.is_valid() {
-            return Err(TranslationError::ConfigError("AI配置无效".to_string()));
-        }
-
-        self.config = config;
-        Ok(())
-    }
-
-    /// 获取当前配置
-    pub fn get_config(&self) -> &TranslationConfig {
-        &self.config
     }
 }
 

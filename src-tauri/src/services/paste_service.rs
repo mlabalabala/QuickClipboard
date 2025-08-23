@@ -1,9 +1,5 @@
-// 粘贴服务模块
-//
-// 整合各种粘贴功能，提供统一的粘贴接口
 use serde::Deserialize;
 use tauri::WebviewWindow;
-
 #[derive(Deserialize)]
 pub struct PasteContentParams {
     pub content: String,

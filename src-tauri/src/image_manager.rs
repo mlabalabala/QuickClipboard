@@ -1,12 +1,11 @@
 use base64::{engine::general_purpose as b64_engine, Engine as _};
 use image::{
-    imageops::FilterType, DynamicImage, GenericImageView, ImageBuffer, ImageOutputFormat, Rgba,
+    imageops::FilterType, GenericImageView,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{ PathBuf};
 use uuid::Uuid;
 
 // 图片存储配置

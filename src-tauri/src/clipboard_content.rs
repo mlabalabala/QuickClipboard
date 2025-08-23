@@ -328,9 +328,6 @@ fn fix_image_urls(html: &str) -> String {
     fixed = fixed.replace("src=\"//", "src=\"https://")
                  .replace("data-original=\"//", "data-original=\"https://");
     
-    // 2. 修复相对路径的图片链接，根据上下文推断基础域名
-    // 例如：src="/images/..." -> src="https://www.mcmod.cn/images/..."
-    
     // 检查HTML中是否有mcmod.cn域名的链接，用作基础域名
     let base_domain = if fixed.contains("mcmod.cn") {
         "https://www.mcmod.cn"

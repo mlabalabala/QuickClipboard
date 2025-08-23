@@ -1,7 +1,7 @@
 use once_cell::sync::OnceCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::{Emitter, WebviewWindow};
+use tauri::{ WebviewWindow};
 
 // 全局状态变量
 #[cfg(windows)]

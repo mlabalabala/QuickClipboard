@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 
 // =================== 全局状态变量 ===================
 
