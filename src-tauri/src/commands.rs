@@ -7,7 +7,7 @@ use tauri::{Emitter, Manager};
 use auto_launch::AutoLaunch;
 
 use crate::admin_privileges;
-use crate::clipboard_content::{image_to_data_url, set_clipboard_content};
+use crate::clipboard_content::{image_to_data_url, set_clipboard_content, set_clipboard_content_with_html};
 use crate::clipboard_history::{self, ClipboardItem};
 use crate::groups::{self, Group};
 use crate::image_manager::get_image_manager;
@@ -54,6 +54,13 @@ pub fn get_clipboard_text() -> Result<String, String> {
 #[tauri::command]
 pub fn set_clipboard_text(text: String) -> Result<(), String> {
     set_clipboard_content(text)?;
+    Ok(())
+}
+
+// 设置剪贴板文本
+#[tauri::command]
+pub fn set_clipboard_text_with_html(text: String, html: Option<String>) -> Result<(), String> {
+    set_clipboard_content_with_html(text, html)?;
     Ok(())
 }
 
@@ -230,6 +237,7 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
     }
 
     let content = items[index].text.clone();
+    let html_content = items[index].html_content.clone();
 
     // 处理内容，如果是图片则创建副本
     let final_content = if content.starts_with("image:") {
@@ -285,7 +293,7 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
     };
 
     // 添加到常用文本
-    quick_texts::add_quick_text(title, final_content)
+    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, "all".to_string())
 }
 
 // =================== 鼠标监听控制命令 ===================
@@ -670,6 +678,7 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
     }
 
     let content = items[index].text.clone(); // 释放锁
+    let html_content = items[index].html_content.clone();
 
     // 处理内容，如果是图片则创建副本
     let final_content = if content.starts_with("image:") {
@@ -727,7 +736,7 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
     };
 
     // 添加到指定分组的常用文本
-    quick_texts::add_quick_text_with_group(title, final_content, group_id)
+    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, group_id)
 }
 
 // 设置主窗口为置顶

@@ -196,6 +196,7 @@ body {
   box-sizing: border-box;
   border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
   cursor: grab;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .container:active {
@@ -2024,10 +2025,6 @@ body {
   cursor: pointer;
 }
 
-/* .sidebar-trigger:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-} */
-
 .sidebar-trigger:hover+.groups-sidebar:not(.pinned),
 .groups-sidebar:not(.pinned):hover {
   z-index: var(--z-tooltip);
@@ -2318,4 +2315,89 @@ body {
 .icon-option:hover i,
 .icon-option.active i {
   color: #1890ff;
+}
+
+/* =================== HTML富文本内容样式 =================== */
+.clipboard-html {
+  white-space: normal !important;
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+  overflow: auto;
+  direction: rtl;
+}
+
+.clipboard-html>* {
+  direction: ltr !important;
+}
+
+.clipboard-html div {
+  white-space: normal;
+}
+
+.clipboard-html * {
+  pointer-events: auto;
+}
+
+.clipboard-html a * {
+  pointer-events: none;
+}
+
+/* =================== 常用文本HTML内容样式 =================== */
+.quick-text-html {
+  /* 重置白空格处理，让HTML正常渲染 */
+  white-space: normal !important;
+  /* 取消line-clamp限制以正确显示HTML */
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+  overflow: auto;
+  direction: rtl;
+}
+
+.quick-text-html>* {
+  direction: ltr !important;
+}
+
+.quick-text-html div {
+  white-space: normal;
+}
+
+.quick-text-html * {
+  pointer-events: auto;
+}
+
+.quick-text-html a * {
+  pointer-events: none;
+}
+
+/* 常用文本中的HTML样式 */
+.quick-text-html img {
+  max-width: 100%;
+  height: auto;
+  loading: lazy;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.quick-text-html img[data-error-handled="true"] {
+  background-color: #f9f9f9;
+  border: 1px dashed #ccc;
+  opacity: 0.7;
+}
+
+.quick-text-html a {
+  display: inline-block;
+  text-decoration: none;
+  cursor: default !important;
+  pointer-events: none;
+  color: inherit;
+}
+
+.quick-text-html a:hover {
+  text-decoration: none !important;
+  cursor: default !important;
 }

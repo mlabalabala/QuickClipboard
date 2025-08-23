@@ -18,6 +18,7 @@ function printStartupBanner() {
 
 import { initThemeManager } from './js/themeManager.js';
 import './js/fileIconUtils.js';
+import './js/utils/htmlProcessor.js';
 import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
 import { invoke } from '@tauri-apps/api/core';
 import {

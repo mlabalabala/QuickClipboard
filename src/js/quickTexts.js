@@ -20,6 +20,7 @@ import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
+import { processHTMLImages } from './utils/htmlProcessor.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
@@ -40,25 +41,46 @@ function generateQuickTextItemHTML(text, index) {
   } else if (contentType === 'files') {
     contentHTML = generateQuickTextFilesHTML(text);
   } else {
-    // 高亮搜索关键字并获取位置信息
-    const searchTerms = getCurrentSearchTerms();
-    const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
-    const contentResult = highlightMultipleSearchTermsWithPosition(text.content, searchTerms);
-    
-    // 如果有搜索关键字，添加滚动定位功能
-    if (searchTerms.length > 0) {
-      const hasKeywordInTitle = titleResult.firstKeywordPosition !== -1;
-      const hasKeywordInContent = contentResult.firstKeywordPosition !== -1;
+    // 检查是否有HTML内容
+    if (text.html_content) {
+      // 如果有HTML内容，处理HTML显示
+      const searchTerms = getCurrentSearchTerms();
+      const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
+      let displayHTML = text.html_content;
+      
+      // 对HTML内容应用搜索高亮
+      if (searchTerms.length > 0) {
+        displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
+      }
+      
+      // 处理HTML内容中的图片，添加错误处理和安全属性
+      displayHTML = processHTMLImages(displayHTML);
       
       contentHTML = `
-        <div class="quick-text-title searchable" ${hasKeywordInTitle ? `data-first-keyword="${titleResult.firstKeywordPosition}"` : ''}>${titleResult.html}</div>
-        <div class="quick-text-content searchable" ${hasKeywordInContent ? `data-first-keyword="${contentResult.firstKeywordPosition}"` : ''}><div>${contentResult.html}</div></div>
+        <div class="quick-text-title">${titleResult.html}</div>
+        <div class="quick-text-content quick-text-html"><div>${displayHTML}</div></div>
       `;
     } else {
-      contentHTML = `
-        <div class="quick-text-title">${titleResult.html}</div>
-        <div class="quick-text-content"><div>${contentResult.html}</div></div>
-      `;
+      // 纯文本内容，使用原有逻辑
+      const searchTerms = getCurrentSearchTerms();
+      const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
+      const contentResult = highlightMultipleSearchTermsWithPosition(text.content, searchTerms);
+      
+      // 如果有搜索关键字，添加滚动定位功能
+      if (searchTerms.length > 0) {
+        const hasKeywordInTitle = titleResult.firstKeywordPosition !== -1;
+        const hasKeywordInContent = contentResult.firstKeywordPosition !== -1;
+        
+        contentHTML = `
+          <div class="quick-text-title searchable" ${hasKeywordInTitle ? `data-first-keyword="${titleResult.firstKeywordPosition}"` : ''}>${titleResult.html}</div>
+          <div class="quick-text-content searchable" ${hasKeywordInContent ? `data-first-keyword="${contentResult.firstKeywordPosition}"` : ''}><div>${contentResult.html}</div></div>
+        `;
+      } else {
+        contentHTML = `
+          <div class="quick-text-title">${titleResult.html}</div>
+          <div class="quick-text-content"><div>${contentResult.html}</div></div>
+        `;
+      }
     }
   }
 
@@ -883,6 +905,7 @@ async function handleQuickTextItemPaste(text, element = null) {
         await invoke('paste_content', {
           params: {
             content: text.content,
+            html_content: text.html_content || null,
             one_time: text.one_time || false,
             quick_text_id: text.id
           }
@@ -918,6 +941,7 @@ async function handleQuickTextItemPaste(text, element = null) {
       await invoke('paste_content', {
         params: {
           content: text.content,
+          html_content: text.html_content || null,
           one_time: text.one_time || false,
           quick_text_id: text.id
         }

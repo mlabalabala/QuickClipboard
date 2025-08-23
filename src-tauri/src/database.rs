@@ -22,6 +22,7 @@ pub static DB_FILE: Lazy<PathBuf> = Lazy::new(|| {
 pub struct ClipboardItem {
     pub id: i64,
     pub text: String,
+    pub html_content: Option<String>,
     pub is_image: bool,
     pub image_id: Option<String>,
     pub timestamp: u64,
@@ -36,10 +37,26 @@ impl ClipboardItem {
         Self {
             id: 0, // 将由数据库自动分配
             text,
+            html_content: None,
             is_image: false,
             image_id: None,
             timestamp: local_timestamp,
-            created_at: None, // 将由数据库填充
+            created_at: None,
+        }
+    }
+
+    pub fn new_text_with_html(text: String, html: Option<String>) -> Self {
+        let now = chrono::Local::now();
+        let local_timestamp = now.timestamp() as u64;
+        
+        Self {
+            id: 0,
+            text,
+            html_content: html,
+            is_image: false,
+            image_id: None,
+            timestamp: local_timestamp,
+            created_at: None,
         }
     }
 
@@ -48,12 +65,13 @@ impl ClipboardItem {
         let local_timestamp = now.timestamp() as u64;
         
         Self {
-            id: 0, // 将由数据库自动分配
+            id: 0,
             text: format!("image:{}", image_id),
+            html_content: None,
             is_image: true,
             image_id: Some(image_id),
             timestamp: local_timestamp,
-            created_at: None, // 将由数据库填充
+            created_at: None,
         }
     }
 }
@@ -64,6 +82,7 @@ pub struct QuickText {
     pub id: String,
     pub title: String,
     pub content: String,
+    pub html_content: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
     pub group_id: String,
@@ -104,6 +123,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         "CREATE TABLE IF NOT EXISTS clipboard_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             text TEXT NOT NULL,
+            html_content TEXT,
             is_image BOOLEAN NOT NULL DEFAULT 0,
             image_id TEXT,
             timestamp INTEGER NOT NULL,
@@ -112,18 +132,31 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
+    // 添加html_content列到现有表（如果不存在）
+    let _ = conn.execute(
+        "ALTER TABLE clipboard_items ADD COLUMN html_content TEXT",
+        [],
+    );
+
     // 常用文本表
     conn.execute(
         "CREATE TABLE IF NOT EXISTS quick_texts (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
+            html_content TEXT,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
             group_id TEXT NOT NULL DEFAULT 'all'
         )",
         [],
     )?;
+
+    // 添加html_content列（如果不存在）
+    let _ = conn.execute(
+        "ALTER TABLE quick_texts ADD COLUMN html_content TEXT",
+        [],
+    );
 
     // 分组表
     conn.execute(
@@ -173,11 +206,6 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
     )?;
 
     Ok(())
-}
-
-// 获取数据库连接
-pub fn get_connection() -> Result<Arc<Mutex<Option<Connection>>>, String> {
-    Ok(DB_CONNECTION.clone())
 }
 
 // 关闭数据库连接
@@ -272,8 +300,8 @@ fn migrate_clipboard_history() -> Result<(), String> {
             };
 
             tx.execute(
-                "INSERT INTO clipboard_items (text, is_image, image_id, timestamp) VALUES (?1, ?2, ?3, ?4)",
-                params![text, is_image, image_id, timestamp],
+                "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![text, None::<String>, is_image, image_id, timestamp],
             )?;
         }
 
@@ -342,7 +370,7 @@ fn migrate_groups() -> Result<(), String> {
 
         // 迁移分组
         if let Some(groups_obj) = data.get("groups").and_then(|v| v.as_object()) {
-            for (id, group_data) in groups_obj {
+            for (_id, group_data) in groups_obj {
                 if let Ok(group) = serde_json::from_value::<Group>(group_data.clone()) {
                     tx.execute(
                         "INSERT INTO groups (id, name, icon, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -403,23 +431,23 @@ pub fn add_clipboard_item(text: String) -> Result<i64, String> {
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![item.text, item.is_image, item.image_id, item.timestamp, now_local],
+            "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.text, item.html_content, item.is_image, item.image_id, item.timestamp, now_local],
         )?;
 
         Ok(conn.last_insert_rowid())
     })
 }
 
-// 添加图片剪贴板项目
-pub fn add_clipboard_image_item(image_id: String) -> Result<i64, String> {
-    let item = ClipboardItem::new_image(image_id);
+// 添加带HTML内容的剪贴板项目
+pub fn add_clipboard_item_with_html(text: String, html: Option<String>) -> Result<i64, String> {
+    let item = ClipboardItem::new_text_with_html(text, html);
     let now_local = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![item.text, item.is_image, item.image_id, item.timestamp, now_local],
+            "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.text, item.html_content, item.is_image, item.image_id, item.timestamp, now_local],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -430,9 +458,9 @@ pub fn add_clipboard_image_item(image_id: String) -> Result<i64, String> {
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, text, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC LIMIT {}", limit)
+            format!("SELECT id, text, html_content, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC LIMIT {}", limit)
         } else {
-            "SELECT id, text, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC".to_string()
+            "SELECT id, text, html_content, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC".to_string()
         };
 
         let mut stmt = conn.prepare(&sql)?;
@@ -440,10 +468,11 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
             Ok(ClipboardItem {
                 id: row.get(0)?,
                 text: row.get(1)?,
-                is_image: row.get(2)?,
-                image_id: row.get(3)?,
-                timestamp: row.get(4)?,
-                created_at: row.get(5).ok(), // 使用 .ok() 处理可能的 NULL 值
+                html_content: row.get(2).ok(),
+                is_image: row.get(3)?,
+                image_id: row.get(4)?,
+                timestamp: row.get(5)?,
+                created_at: row.get(6).ok(),
             })
         })?;
 
@@ -564,8 +593,8 @@ pub fn reorder_clipboard_items(texts: &[String]) -> Result<(), String> {
 pub fn add_quick_text(quick_text: &QuickText) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO quick_texts (id, title, content, created_at, updated_at, group_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![quick_text.id, quick_text.title, quick_text.content, quick_text.created_at, quick_text.updated_at, quick_text.group_id],
+            "INSERT INTO quick_texts (id, title, content, html_content, created_at, updated_at, group_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![quick_text.id, quick_text.title, quick_text.content, quick_text.html_content, quick_text.created_at, quick_text.updated_at, quick_text.group_id],
         )?;
         Ok(())
     })
@@ -575,7 +604,7 @@ pub fn add_quick_text(quick_text: &QuickText) -> Result<(), String> {
 pub fn get_all_quick_texts() -> Result<Vec<QuickText>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, updated_at, group_id FROM quick_texts ORDER BY updated_at DESC"
+            "SELECT id, title, content, html_content, created_at, updated_at, group_id FROM quick_texts ORDER BY updated_at DESC"
         )?;
 
         let rows = stmt.query_map([], |row| {
@@ -583,9 +612,10 @@ pub fn get_all_quick_texts() -> Result<Vec<QuickText>, String> {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 content: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
-                group_id: row.get(5)?,
+                html_content: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+                group_id: row.get(6)?,
             })
         })?;
 
@@ -602,7 +632,7 @@ pub fn get_all_quick_texts() -> Result<Vec<QuickText>, String> {
 pub fn get_quick_texts_by_group(group_id: &str) -> Result<Vec<QuickText>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, updated_at, group_id FROM quick_texts WHERE group_id = ?1 ORDER BY updated_at DESC"
+            "SELECT id, title, content, html_content, created_at, updated_at, group_id FROM quick_texts WHERE group_id = ?1 ORDER BY updated_at DESC"
         )?;
 
         let rows = stmt.query_map([group_id], |row| {
@@ -610,9 +640,10 @@ pub fn get_quick_texts_by_group(group_id: &str) -> Result<Vec<QuickText>, String
                 id: row.get(0)?,
                 title: row.get(1)?,
                 content: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
-                group_id: row.get(5)?,
+                html_content: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+                group_id: row.get(6)?,
             })
         })?;
 
@@ -629,8 +660,8 @@ pub fn get_quick_texts_by_group(group_id: &str) -> Result<Vec<QuickText>, String
 pub fn update_quick_text(quick_text: &QuickText) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-            "UPDATE quick_texts SET title = ?1, content = ?2, updated_at = ?3, group_id = ?4 WHERE id = ?5",
-            params![quick_text.title, quick_text.content, quick_text.updated_at, quick_text.group_id, quick_text.id],
+            "UPDATE quick_texts SET title = ?1, content = ?2, html_content = ?3, updated_at = ?4, group_id = ?5 WHERE id = ?6",
+            params![quick_text.title, quick_text.content, quick_text.html_content, quick_text.updated_at, quick_text.group_id, quick_text.id],
         )?;
         Ok(())
     })

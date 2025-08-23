@@ -474,10 +474,6 @@ body.theme-dark {
   color: #fff;
 }
 
-.theme-dark .sidebar-trigger:hover {
-  background-color: var(--border-primary);
-}
-
 /* =================== 右键菜单 =================== */
 .theme-dark .context-menu {
   background: #2d2d2d !important;

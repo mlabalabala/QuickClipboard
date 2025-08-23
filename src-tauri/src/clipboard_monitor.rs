@@ -253,11 +253,6 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
     });
 }
 
-// 停止剪贴板监听器
-pub fn stop_clipboard_monitor() {
-    MONITOR_RUNNING.store(false, Ordering::Relaxed);
-    println!("停止剪贴板监听器");
-}
 
 // 剪贴板监听循环
 fn clipboard_monitor_loop(app_handle: AppHandle) {
@@ -286,7 +281,7 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
         // 尝试获取剪贴板内容
         let current_content = get_clipboard_content(&mut clipboard);
 
-        if let Some(content) = current_content {
+        if let Some((content, html_content)) = current_content {
             // 检查内容是否发生变化
             let mut last_content = LAST_CLIPBOARD_CONTENT.lock().unwrap();
             if *last_content != content {
@@ -300,7 +295,7 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
                 // 如果正在粘贴，不移动重复内容的位置
                 let move_duplicates = !is_pasting_internal();
                 let was_added =
-                    clipboard_history::add_to_history_with_check_and_move(content, move_duplicates);
+                    clipboard_history::add_to_history_with_check_and_move_html(content, html_content, move_duplicates);
 
                 // 只有在真正添加了新内容且非粘贴状态下才播放复制音效
                 if was_added && !is_pasting_internal() {
@@ -321,8 +316,90 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
     println!("剪贴板监听循环结束");
 }
 
-// 获取剪贴板内容（文本、图片或文件）
-fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
+// Windows HTML剪贴板读取函数
+#[cfg(windows)]
+fn try_get_windows_clipboard_html() -> Option<String> {
+    unsafe {
+        if OpenClipboard(HWND(0)).is_err() {
+            return None;
+        }
+
+        let mut result = None;
+
+        // 注册HTML格式
+        let html_format = RegisterClipboardFormatW(w!("HTML Format"));
+
+        if html_format != 0 && IsClipboardFormatAvailable(html_format).is_ok() {
+            if let Ok(handle) = GetClipboardData(html_format) {
+                if handle.0 != 0 {
+                    let hglobal = windows::Win32::Foundation::HGLOBAL(handle.0 as *mut std::ffi::c_void);
+                    let size = GlobalSize(hglobal);
+                    if size > 0 {
+                        let ptr = GlobalLock(hglobal);
+                        if !ptr.is_null() {
+                            let data_slice = std::slice::from_raw_parts(ptr as *const u8, size);
+                            if let Ok(html_string) = std::str::from_utf8(data_slice) {
+                                result = Some(extract_html_fragment(html_string));
+                            }
+                            let _ = GlobalUnlock(hglobal);
+                        }
+                    }
+                }
+            }
+        }
+
+        let _ = CloseClipboard();
+        result
+    }
+}
+
+
+
+// 从Windows HTML格式中提取HTML片段
+#[cfg(windows)]
+fn extract_html_fragment(html_format: &str) -> String {
+    // Windows HTML格式包含头部信息，需要提取实际的HTML内容
+    if let Some(start_fragment_pos) = html_format.find("StartFragment:") {
+        if let Some(end_fragment_pos) = html_format.find("EndFragment:") {
+            let start_line = &html_format[start_fragment_pos..];
+            let end_line = &html_format[end_fragment_pos..];
+            
+            if let (Some(start_num), Some(end_num)) = (
+                start_line.lines().next()
+                    .and_then(|line| line.split(':').nth(1))
+                    .and_then(|s| s.trim().parse::<usize>().ok()),
+                end_line.lines().next()
+                    .and_then(|line| line.split(':').nth(1))
+                    .and_then(|s| s.trim().parse::<usize>().ok())
+            ) {
+                if start_num < html_format.len() && end_num <= html_format.len() && start_num < end_num {
+                    return html_format[start_num..end_num].to_string();
+                }
+            }
+        }
+    }
+    
+    // 如果无法解析头部信息，尝试查找<html>或其他HTML标签
+    if html_format.contains("<html") || html_format.contains("<HTML") {
+        if let Some(html_start) = html_format.find("<html") {
+            return html_format[html_start..].to_string();
+        }
+        if let Some(html_start) = html_format.find("<HTML") {
+            return html_format[html_start..].to_string();
+        }
+    }
+    
+    // 最后尝试查找任何HTML标签
+    if html_format.contains('<') && html_format.contains('>') {
+        return html_format.to_string();
+    }
+    
+    // 如果都没找到，返回原始内容
+    html_format.to_string()
+}
+
+// 获取剪贴板内容（文本、HTML、图片或文件）
+fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<String>)> {
     // 首先尝试获取文件
     if let Ok(file_paths) = crate::file_handler::get_clipboard_files() {
         if !file_paths.is_empty() {
@@ -365,23 +442,30 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
 
                 // 序列化文件数据
                 if let Ok(json_str) = serde_json::to_string(&file_data) {
-                    return Some(format!("files:{}", json_str));
+                    return Some((format!("files:{}", json_str), None));
                 }
             }
         }
     }
 
-    // 然后尝试获取文本
+    // 尝试获取文本和HTML
     if let Ok(text) = clipboard.get_text() {
         // 过滤空白内容：检查去除空白字符后是否为空
         if !text.is_empty() && !text.trim().is_empty() {
-            return Some(text);
+            // 尝试获取HTML格式
+            #[cfg(windows)]
+            let html_content = try_get_windows_clipboard_html();
+            #[cfg(not(windows))]
+            let html_content = None;
+            
+            // 直接使用系统提供的纯文本
+            return Some((text, html_content));
         }
     }
 
-    // 最后尝试获取图片
+    // 尝试获取图片
     if clipboard_history::is_save_images() {
-        // 首先尝试Windows特定的方法获取图片
+        // 尝试Windows特定的方法获取图片
         #[cfg(windows)]
         if let Some(img) = try_get_windows_clipboard_image() {
             let data_url = image_to_data_url(&img);
@@ -391,16 +475,16 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
                 if let Ok(manager) = image_manager.lock() {
                     match manager.save_image(&data_url) {
                         Ok(image_info) => {
-                            return Some(format!("image:{}", image_info.id));
+                            return Some((format!("image:{}", image_info.id), None));
                         }
                         Err(e) => {
                             println!("保存图片失败: {}, 使用原始data URL", e);
-                            return Some(data_url);
+                            return Some((data_url, None));
                         }
                     }
                 }
             }
-            return Some(data_url);
+            return Some((data_url, None));
         }
 
         // 回退到arboard方法
@@ -418,28 +502,24 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<String> {
                     match manager.save_image(&data_url) {
                         Ok(image_info) => {
                             // 返回图片引用而不是完整的data URL
-                            return Some(format!("image:{}", image_info.id));
+                            return Some((format!("image:{}", image_info.id), None));
                         }
                         Err(e) => {
                             println!("保存图片失败: {}, 使用原始data URL", e);
-                            return Some(data_url);
+                            return Some((data_url, None));
                         }
                     }
                 }
             }
 
             // 如果图片管理器不可用，回退到原始方式
-            return Some(data_url);
+            return Some((data_url, None));
         }
     }
 
     None
 }
 
-// 检查监听器是否正在运行
-pub fn is_monitor_running() -> bool {
-    MONITOR_RUNNING.load(Ordering::Relaxed)
-}
 
 // 开始粘贴操作 - 增加粘贴计数器
 pub fn start_pasting_operation() {
@@ -472,13 +552,13 @@ pub fn initialize_last_content(content: String) {
 pub fn initialize_clipboard_state() {
     if let Ok(mut clipboard) = Clipboard::new() {
         // 使用与监听器相同的逻辑获取剪贴板内容
-        if let Some(content) = get_clipboard_content(&mut clipboard) {
+        if let Some((content, html_content)) = get_clipboard_content(&mut clipboard) {
             // 过滤空白内容：检查去除空白字符后是否为空
             if !content.trim().is_empty() {
                 // 使用与监听器相同的逻辑：检查重复并决定是否添加/移动
                 // 初始化时不移动重复内容，只是确保内容在历史记录中
                 let _was_added =
-                    clipboard_history::add_to_history_with_check_and_move(content.clone(), false);
+                    clipboard_history::add_to_history_with_check_and_move_html(content.clone(), html_content, false);
                 // 初始化监听器的最后内容，避免重复添加
                 initialize_last_content(content);
             }

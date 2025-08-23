@@ -45,20 +45,10 @@ pub fn add_to_history(text: String) {
     }
 }
 
-// 添加图片到历史记录
-pub fn add_image_to_history(image_id: String) {
-    if !MONITORING_ENABLED.load(Ordering::Relaxed) {
-        println!("剪贴板监听已禁用，跳过添加图片历史记录");
-        return;
-    }
 
-    if let Err(e) = database::add_clipboard_image_item(image_id) {
-        println!("添加剪贴板图片历史失败: {}", e);
-    }
-}
 
-// 添加到历史记录并返回是否真正添加了新内容，可控制是否移动重复内容
-pub fn add_to_history_with_check_and_move(text: String, move_duplicates: bool) -> bool {
+// 添加到历史记录并返回是否真正添加了新内容，支持HTML内容，控制是否移动重复内容
+pub fn add_to_history_with_check_and_move_html(text: String, html_content: Option<String>, move_duplicates: bool) -> bool {
     if !MONITORING_ENABLED.load(Ordering::Relaxed) {
         println!("剪贴板监听已禁用，跳过添加历史记录");
         return false;
@@ -87,7 +77,13 @@ pub fn add_to_history_with_check_and_move(text: String, move_duplicates: bool) -
         }
         Ok(None) => {
             // 新文本：添加到历史
-            if let Err(e) = database::add_clipboard_item(text) {
+            let result = if html_content.is_some() {
+                database::add_clipboard_item_with_html(text, html_content)
+            } else {
+                database::add_clipboard_item(text)
+            };
+            
+            if let Err(e) = result {
                 println!("添加剪贴板历史失败: {}", e);
                 return false;
             }

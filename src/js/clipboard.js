@@ -20,6 +20,7 @@ import {
 } from './aiTranslation.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
+import { processHTMLImages } from './utils/htmlProcessor.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -43,15 +44,32 @@ function generateClipboardItemHTML(item, index) {
   } else if (contentType === 'files') {
     contentHTML = generateFilesHTML(item);
   } else {
-    // 高亮搜索关键字并获取位置信息
-    const searchTerms = getCurrentSearchTerms();
-    const highlightResult = highlightMultipleSearchTermsWithPosition(item.text, searchTerms);
-    
-    // 如果有搜索关键字，添加滚动定位功能
-    if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
-      contentHTML = `<div class="clipboard-text searchable" data-first-keyword="${highlightResult.firstKeywordPosition}"><div>${highlightResult.html}</div></div>`;
+    // 检查是否有HTML内容
+    if (item.html_content) {
+      // 有HTML内容，直接渲染HTML
+      const searchTerms = getCurrentSearchTerms();
+      let displayHTML = item.html_content;
+      
+      // 对HTML内容应用搜索高亮
+      if (searchTerms.length > 0) {
+        displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
+      }
+      
+      // 处理HTML内容中的图片，添加错误处理和安全属性
+      displayHTML = processHTMLImages(displayHTML);
+      
+      contentHTML = `<div class="clipboard-text clipboard-html"><div>${displayHTML}</div></div>`;
     } else {
-      contentHTML = `<div class="clipboard-text"><div>${highlightResult.html}</div></div>`;
+      // 纯文本内容，使用原有逻辑
+      const searchTerms = getCurrentSearchTerms();
+      const highlightResult = highlightMultipleSearchTermsWithPosition(item.text, searchTerms);
+      
+      // 如果有搜索关键字，添加滚动定位功能
+      if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
+        contentHTML = `<div class="clipboard-text searchable" data-first-keyword="${highlightResult.firstKeywordPosition}"><div>${highlightResult.html}</div></div>`;
+      } else {
+        contentHTML = `<div class="clipboard-text"><div>${highlightResult.html}</div></div>`;
+      }
     }
   }
 
@@ -93,7 +111,7 @@ function generateImageHTML(item) {
   const imgId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   if (item.image_id) {
-    // 新格式：使用image_id字段
+    // 使用image_id字段
     return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${item.image_id}" data-needs-load="true" loading="lazy">`;
   } else if (item.text.startsWith('image:')) {
     // 从text中提取image_id
@@ -664,6 +682,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
       const fallbackPaste = async () => {
         const params = {
           content: item.text,
+          html_content: item.html_content || null,
           one_time: false
         };
         await invoke('paste_content', { params });
@@ -708,6 +727,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
       // 不需要翻译，直接粘贴
       const params = {
         content: item.text,
+        html_content: item.html_content || null,
         one_time: false
       };
       await invoke('paste_content', { params });
@@ -1095,3 +1115,5 @@ async function copyFilePathsFromClipboard(item) {
     showNotification('复制文件路径失败', 'error');
   }
 }
+
+

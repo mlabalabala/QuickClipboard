@@ -1,7 +1,6 @@
 use arboard::Clipboard;
 use base64::{engine::general_purpose as b64_engine, Engine as _};
 use image::{ImageBuffer, ImageOutputFormat, Rgba};
-use std::borrow::Cow;
 
 // Windows CF_DIB 常量（0x0008）
 #[cfg(windows)]
@@ -199,49 +198,285 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
     }
 }
 
-pub fn data_url_to_image(data_url: &str) -> Result<arboard::ImageData<'static>, String> {
-    let comma = data_url
-        .find(',')
-        .ok_or_else(|| "无效Data URL".to_string())?;
-    let encoded = &data_url[(comma + 1)..];
-    let bytes = b64_engine::STANDARD
-        .decode(encoded)
-        .map_err(|e| format!("Base64解码失败: {}", e))?;
-    let img = image::load_from_memory(&bytes)
-        .map_err(|e| format!("解析PNG失败: {}", e))?
-        .to_rgba8();
-    let (width, height) = img.dimensions();
+/// 同时设置纯文本和HTML格式到剪贴板（Windows）
+#[cfg(windows)]
+fn set_windows_clipboard_both_formats(plain_text: &str, html: &str) -> Result<(), String> {
+    use windows::core::w;
+    use windows::Win32::Foundation::{HANDLE, HGLOBAL, HWND};
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
+    };
+    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 
-    // 将RGBA数据转换为BGRA，并进行预乘alpha，保持行顺序（顶部->底部）
-    let mut bgra: Vec<u8> = Vec::with_capacity((width * height * 4) as usize);
-    for px in img.pixels() {
-        let [r, g, b, a] = px.0;
-        if a == 0 {
-            bgra.extend_from_slice(&[0, 0, 0, 0]);
-        } else {
-            // 预乘alpha
-            let b_p = (b as u16 * a as u16 / 255) as u8;
-            let g_p = (g as u16 * a as u16 / 255) as u8;
-            let r_p = (r as u16 * a as u16 / 255) as u8;
-            bgra.extend_from_slice(&[b_p, g_p, r_p, a]);
+    unsafe {
+        if OpenClipboard(HWND(0)).is_err() {
+            return Err("打开剪贴板失败".into());
         }
-    }
+        let _ = EmptyClipboard();
 
-    Ok(arboard::ImageData {
-        width: width as usize,
-        height: height as usize,
-        bytes: Cow::Owned(bgra),
-    })
+        // 设置Unicode文本格式 (CF_UNICODETEXT = 13) - 优先设置
+        let wide_text: Vec<u16> = plain_text.encode_utf16().chain(std::iter::once(0)).collect();
+        let unicode_hmem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, wide_text.len() * 2)
+            .map_err(|e| format!("GlobalAlloc Unicode失败: {e}"))?;
+        if !unicode_hmem.0.is_null() {
+            let ptr = GlobalLock(unicode_hmem) as *mut u16;
+            if !ptr.is_null() {
+                std::ptr::copy_nonoverlapping(wide_text.as_ptr(), ptr, wide_text.len());
+                let _ = GlobalUnlock(unicode_hmem);
+                let _ = SetClipboardData(13, HANDLE(unicode_hmem.0 as isize)); // CF_UNICODETEXT = 13
+            }
+        }
+
+        // 设置纯文本格式 (CF_TEXT = 1)
+        let text_bytes = plain_text.as_bytes();
+        let text_hmem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, text_bytes.len() + 1)
+            .map_err(|e| format!("GlobalAlloc文本失败: {e}"))?;
+        if !text_hmem.0.is_null() {
+            let ptr = GlobalLock(text_hmem) as *mut u8;
+            if !ptr.is_null() {
+                std::ptr::copy_nonoverlapping(text_bytes.as_ptr(), ptr, text_bytes.len());
+                *ptr.add(text_bytes.len()) = 0; // null terminator
+                let _ = GlobalUnlock(text_hmem);
+                let _ = SetClipboardData(1, HANDLE(text_hmem.0 as isize)); // CF_TEXT = 1
+            }
+        }
+
+        // 设置HTML格式 - 使用Windows标准HTML格式
+        let fmt_html = RegisterClipboardFormatW(w!("HTML Format"));
+        if fmt_html != 0 {
+            // 创建符合Windows标准的HTML格式
+            let html_with_header = create_windows_html_format(html);
+            let html_bytes = html_with_header.as_bytes();
+            let html_hmem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, html_bytes.len() + 1)
+                .map_err(|e| format!("GlobalAlloc HTML失败: {e}"))?;
+            if !html_hmem.0.is_null() {
+                let ptr = GlobalLock(html_hmem) as *mut u8;
+                if !ptr.is_null() {
+                    std::ptr::copy_nonoverlapping(html_bytes.as_ptr(), ptr, html_bytes.len());
+                    *ptr.add(html_bytes.len()) = 0;
+                    let _ = GlobalUnlock(html_hmem);
+                    let _ = SetClipboardData(fmt_html, HANDLE(html_hmem.0 as isize));
+                }
+            }
+        }
+
+        let _ = CloseClipboard();
+    }
+    
+    // 验证剪贴板内容是否正确设置
+    verify_clipboard_formats();
+    
+    Ok(())
 }
 
+/// 创建Windows标准HTML格式
+#[cfg(windows)]
+fn create_windows_html_format(html: &str) -> String {
+    // 修复图片链接：将相对协议 // 转换为 https://
+    let fixed_html = fix_image_urls(html);
+    
+    // 创建简单的HTML文档结构，与其他剪贴板软件保持一致
+    let full_html = format!(
+        "<html>\r\n<body>\r\n<!--StartFragment-->{}<!--EndFragment-->\r\n</body>\r\n</html>",
+        fixed_html
+    );
+    
+    // 计算各部分的字节偏移
+    let version = "Version:0.9";
+    let start_html_tag = "StartHTML:";
+    let end_html_tag = "EndHTML:";
+    let start_fragment_tag = "StartFragment:";
+    let end_fragment_tag = "EndFragment:";
+    
+    // 预计算头部长度（8位数字格式）
+    let header_template = format!("{}\r\n{}00000000\r\n{}00000000\r\n{}00000000\r\n{}00000000\r\n",
+        version, start_html_tag, end_html_tag, start_fragment_tag, end_fragment_tag);
+    
+    let header_length = header_template.len();
+    let html_start = header_length;
+    let html_end = html_start + full_html.len();
+    
+    // 查找fragment的位置
+    let fragment_start = if let Some(pos) = full_html.find("<!--StartFragment-->") {
+        header_length + pos + "<!--StartFragment-->".len()
+    } else {
+        html_start
+    };
+    
+    let fragment_end = if let Some(pos) = full_html.find("<!--EndFragment-->") {
+        header_length + pos
+    } else {
+        html_end
+    };
+    
+    // 创建最终的Windows HTML格式
+    format!("{}\r\n{}{:08}\r\n{}{:08}\r\n{}{:08}\r\n{}{:08}\r\n{}",
+        version,
+        start_html_tag, html_start,
+        end_html_tag, html_end,
+        start_fragment_tag, fragment_start,
+        end_fragment_tag, fragment_end,
+        full_html
+    )
+}
+
+/// 修复图片URL，将相对协议转换为绝对协议
+fn fix_image_urls(html: &str) -> String {
+    let mut fixed = html.to_string();
+    
+    // 1. 修复相对协议的图片链接 //example.com -> https://example.com
+    fixed = fixed.replace("src=\"//", "src=\"https://")
+                 .replace("data-original=\"//", "data-original=\"https://");
+    
+    // 2. 修复相对路径的图片链接，根据上下文推断基础域名
+    // 例如：src="/images/..." -> src="https://www.mcmod.cn/images/..."
+    
+    // 检查HTML中是否有mcmod.cn域名的链接，用作基础域名
+    let base_domain = if fixed.contains("mcmod.cn") {
+        "https://www.mcmod.cn"
+    } else if fixed.contains("githubusercontent.com") {
+        "https://raw.githubusercontent.com"
+    } else {
+        // 默认使用https作为协议
+        "https://www.mcmod.cn"
+    };
+    
+    // 修复以 / 开头的绝对路径
+    fixed = fixed.replace("src=\"/", &format!("src=\"{}/", base_domain))
+                 .replace("data-original=\"/", &format!("data-original=\"{}/", base_domain));
+    
+    // 3. 修复cursor路径特殊情况
+    fixed = fixed.replace(&format!("{}/images/cursor/", base_domain), "https://www.mcmod.cn/images/cursor/");
+    
+    // 4. 确保所有链接都有协议
+    // 处理没有协议的域名链接
+    use regex::Regex;
+    
+    // 修复 src="domain.com/path" 格式的链接
+    if let Ok(re) = Regex::new(r#"src="([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^"]*)"#) {
+        fixed = re.replace_all(&fixed, |caps: &regex::Captures| {
+            let url = &caps[1];
+            if !url.starts_with("http://") && !url.starts_with("https://") {
+                format!("src=\"https://{}\"", url)
+            } else {
+                caps[0].to_string()
+            }
+        }).to_string();
+    }
+    
+    // 对data-original做同样的处理
+    if let Ok(re) = Regex::new(r#"data-original="([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^"]*)"#) {
+        fixed = re.replace_all(&fixed, |caps: &regex::Captures| {
+            let url = &caps[1];
+            if !url.starts_with("http://") && !url.starts_with("https://") {
+                format!("data-original=\"https://{}\"", url)
+            } else {
+                caps[0].to_string()
+            }
+        }).to_string();
+    }
+    
+    fixed
+}
+
+/// 验证剪贴板格式设置
+#[cfg(windows)]
+fn verify_clipboard_formats() {
+    use windows::core::w;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
+    };
+
+    unsafe {
+        if OpenClipboard(HWND(0)).is_ok() {
+            // 检查各种格式是否可用
+            let cf_text_available = IsClipboardFormatAvailable(1).is_ok(); // CF_TEXT
+            let cf_unicode_available = IsClipboardFormatAvailable(13).is_ok(); // CF_UNICODETEXT
+            
+            let fmt_html = RegisterClipboardFormatW(w!("HTML Format"));
+            let html_available = if fmt_html != 0 {
+                IsClipboardFormatAvailable(fmt_html).is_ok()
+            } else {
+                false
+            };
+
+            println!("剪贴板格式验证:");
+            println!("  CF_TEXT: {}", cf_text_available);
+            println!("  CF_UNICODETEXT: {}", cf_unicode_available);
+            println!("  HTML Format ({}): {}", fmt_html, html_available);
+
+            let _ = CloseClipboard();
+        }
+    }
+}
 /// 自动判断文本/图片并设置剪贴板内容
 pub fn set_clipboard_content(content: String) -> Result<(), String> {
     set_clipboard_content_internal(content, true)
 }
 
+/// 设置剪贴板内容（包含HTML格式）
+pub fn set_clipboard_content_with_html(content: String, html_content: Option<String>) -> Result<(), String> {
+    set_clipboard_content_with_html_internal(content, html_content, true)
+}
+
 /// 设置剪贴板内容但不添加到历史记录（用于避免重复添加）
 pub fn set_clipboard_content_no_history(content: String) -> Result<(), String> {
     set_clipboard_content_internal(content, false)
+}
+
+/// 设置剪贴板内容但不添加到历史记录（包含HTML格式）
+pub fn set_clipboard_content_no_history_with_html(content: String, html_content: Option<String>) -> Result<(), String> {
+    set_clipboard_content_with_html_internal(content, html_content, false)
+}
+
+/// 内部函数：设置剪贴板内容（包含HTML格式）
+fn set_clipboard_content_with_html_internal(content: String, html_content: Option<String>, add_to_history: bool) -> Result<(), String> {
+    if content.starts_with("data:image/") {
+        // 图片内容，使用原有逻辑
+        return set_clipboard_content_internal(content, add_to_history);
+    } else if content.starts_with("image:") {
+        // 图片引用，使用原有逻辑
+        return set_clipboard_content_internal(content, add_to_history);
+    } else {
+        // 文本内容，可能包含HTML
+        if let Some(html) = &html_content {
+            // 有HTML内容，同时设置两种格式到剪贴板
+            #[cfg(windows)]
+            {
+                set_windows_clipboard_both_formats(&content, html)?;
+            }
+            #[cfg(not(windows))]
+            {
+                // 非Windows平台只设置纯文本
+                match Clipboard::new() {
+                    Ok(mut clipboard) => {
+                        clipboard
+                            .set_text(content.clone())
+                            .map_err(|e| format!("设置剪贴板文本失败: {}", e))?;
+                    }
+                    Err(e) => return Err(format!("获取剪贴板失败: {}", e)),
+                }
+            }
+        } else {
+            // 只有纯文本
+            match Clipboard::new() {
+                Ok(mut clipboard) => {
+                    clipboard
+                        .set_text(content.clone())
+                        .map_err(|e| format!("设置剪贴板文本失败: {}", e))?;
+                }
+                Err(e) => return Err(format!("获取剪贴板失败: {}", e)),
+            }
+        }
+    }
+
+    // 如果在这里添加，会导致重复记录
+    if add_to_history {
+        println!("剪贴板内容已设置，将由监听器自动添加到历史记录");
+    }
+
+    Ok(())
 }
 
 /// 内部函数：设置剪贴板内容

@@ -7,6 +7,7 @@ use tauri::WebviewWindow;
 #[derive(Deserialize)]
 pub struct PasteContentParams {
     pub content: String,
+    pub html_content: Option<String>,  // HTML格式内容
     pub quick_text_id: Option<String>, // 如果是常用文本，提供ID
     pub one_time: Option<bool>,        // 是否一次性粘贴
 }
@@ -27,7 +28,7 @@ pub async fn paste_content(
         paste_image(params.content, &window).await
     } else {
         // 文本类型粘贴
-        paste_text(params.content, &window).await
+        paste_text_with_html(params.content, params.html_content, &window).await
     }?;
 
     // 处理一次性粘贴逻辑
@@ -42,7 +43,7 @@ pub async fn paste_content(
 }
 
 /// 粘贴文本内容
-pub async fn paste_text(text_content: String, window: &WebviewWindow) -> Result<(), String> {
+pub async fn paste_text_with_html(text_content: String, html_content: Option<String>, window: &WebviewWindow) -> Result<(), String> {
     // 检查是否需要翻译
     let settings = crate::settings::get_global_settings();
     let should_translate = crate::ai_translator::is_translation_config_valid(&settings)
@@ -72,7 +73,12 @@ pub async fn paste_text(text_content: String, window: &WebviewWindow) -> Result<
     }
 
     // 执行普通文本粘贴
-    paste_text_without_translation_internal(text_content, window).await
+    paste_text_without_translation_internal_with_html(text_content, html_content, window).await
+}
+
+/// 粘贴文本内容
+pub async fn paste_text(text_content: String, window: &WebviewWindow) -> Result<(), String> {
+    paste_text_with_html(text_content, None, window).await
 }
 
 /// 粘贴文本内容（包含翻译逻辑）- 兼容旧接口
@@ -83,19 +89,30 @@ pub async fn paste_text_with_translation(
     paste_text(text_content, &window).await
 }
 
-/// 粘贴文本内容（不包含翻译逻辑）- 内部实现
-async fn paste_text_without_translation_internal(
+
+/// 粘贴文本内容
+async fn paste_text_without_translation_internal_with_html(
     text_content: String,
+    html_content: Option<String>,
     window: &WebviewWindow,
 ) -> Result<(), String> {
     // 开始粘贴操作，增加粘贴计数器
     crate::clipboard_monitor::start_pasting_operation();
 
     // 将文本设置到剪贴板（不添加到历史记录，避免重复）
-    if let Err(e) = crate::clipboard_content::set_clipboard_content_no_history(text_content) {
+    let result = if html_content.is_some() {
+        crate::clipboard_content::set_clipboard_content_no_history_with_html(text_content, html_content)
+    } else {
+        crate::clipboard_content::set_clipboard_content_no_history(text_content)
+    };
+    
+    if let Err(e) = result {
         crate::clipboard_monitor::end_pasting_operation();
         return Err(e);
     }
+
+    // 短暂延迟确保剪贴板内容完全设置
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
     // 执行粘贴操作
     if !crate::paste_utils::windows_paste() {

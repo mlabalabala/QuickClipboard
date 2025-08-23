@@ -485,16 +485,17 @@ fn handle_number_shortcut_paste(index: usize) {
             set_last_focus_hwnd(hwnd.0);
 
             // 获取历史记录内容
-            let content = {
+            let (content, html_content) = {
                 match crate::database::get_clipboard_history(None) {
                     Ok(items) => {
                         if index < items.len() {
-                            Some(items[index].text.clone())
+                            let item = &items[index];
+                            (Some(item.text.clone()), item.html_content.clone())
                         } else {
-                            None
+                            (None, None)
                         }
                     }
-                    Err(_) => None,
+                    Err(_) => (None, None),
                 }
             };
 
@@ -506,16 +507,18 @@ fn handle_number_shortcut_paste(index: usize) {
                         && !content.starts_with("data:image/")
                         && !content.starts_with("image:")
                     {
-                        // 文本内容，使用带翻译支持的粘贴
-                        let _ = crate::services::paste_service::paste_text_with_translation(
+                        // 文本内容，使用带HTML和翻译支持的粘贴
+                        let _ = crate::services::paste_service::paste_text_with_html(
                             content,
-                            window_clone,
+                            html_content.clone(),
+                            &window_clone,
                         )
                         .await;
                     } else {
                         // 非文本内容，使用普通粘贴
                         let params = crate::services::paste_service::PasteContentParams {
                             content,
+                            html_content,
                             quick_text_id: None,
                             one_time: None,
                         };
@@ -564,29 +567,6 @@ fn handle_ai_translation_cancel_change(last_state: &KeyState, current_state: &Ke
         }
     }
 }
-
-// 停止按键轮询系统
-pub fn stop_keyboard_polling_system() {
-    if !POLLING_ACTIVE.load(Ordering::SeqCst) {
-        return;
-    }
-
-    // 设置停止标志
-    POLLING_ACTIVE.store(false, Ordering::SeqCst);
-
-    // 等待线程结束
-    if let Ok(mut handle) = POLLING_THREAD_HANDLE.lock() {
-        if let Some(thread_handle) = handle.take() {
-            let _ = thread_handle.join();
-        }
-    }
-}
-
-// 检查轮询系统是否活跃
-pub fn is_polling_system_active() -> bool {
-    POLLING_ACTIVE.load(Ordering::SeqCst)
-}
-
 // 处理截屏快捷键变化
 fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyState) {
     // 获取当前设置的截屏快捷键

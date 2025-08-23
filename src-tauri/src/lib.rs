@@ -314,6 +314,7 @@ pub fn run() {
             greet,
             get_clipboard_text,
             set_clipboard_text,
+            set_clipboard_text_with_html,
             get_clipboard_history,
             refresh_clipboard,
             set_window_pinned,

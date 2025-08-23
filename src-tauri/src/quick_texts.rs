@@ -31,15 +31,20 @@ pub fn get_quick_texts_by_group(group_id: &str) -> Vec<QuickText> {
     }
 }
 
-// 添加常用文本
-pub fn add_quick_text(title: String, content: String) -> Result<QuickText, String> {
-    add_quick_text_with_group(title, content, "all".to_string())
-}
-
 // 添加常用文本到指定分组
 pub fn add_quick_text_with_group(
     title: String,
     content: String,
+    group_id: String,
+) -> Result<QuickText, String> {
+    add_quick_text_with_group_and_html(title, content, None, group_id)
+}
+
+// 添加常用文本到指定分组
+pub fn add_quick_text_with_group_and_html(
+    title: String,
+    content: String,
+    html_content: Option<String>,
     group_id: String,
 ) -> Result<QuickText, String> {
     let now_local = chrono::Local::now();
@@ -48,6 +53,7 @@ pub fn add_quick_text_with_group(
         id: Uuid::new_v4().to_string(),
         title,
         content,
+        html_content,
         created_at: now,
         updated_at: now,
         group_id,
@@ -60,10 +66,6 @@ pub fn add_quick_text_with_group(
     Ok(quick_text)
 }
 
-// 更新常用文本
-pub fn update_quick_text(id: String, title: String, content: String) -> Result<QuickText, String> {
-    update_quick_text_with_group(id, title, content, None)
-}
 
 // 更新常用文本（包含分组）
 pub fn update_quick_text_with_group(
@@ -80,6 +82,7 @@ pub fn update_quick_text_with_group(
         id: id.clone(),
         title,
         content,
+        html_content: None,
         created_at: 0,
         updated_at: now,
         group_id,

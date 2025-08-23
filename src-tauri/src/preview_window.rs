@@ -532,16 +532,17 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             // 粘贴剪贴板历史项
             if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 // 获取历史记录内容
-                let content = {
+                let (content, html_content) = {
                     match crate::database::get_clipboard_history(None) {
                         Ok(items) => {
                             if index < items.len() {
-                                Some(items[index].text.clone())
+                                let item = &items[index];
+                                (Some(item.text.clone()), item.html_content.clone())
                             } else {
-                                None
+                                (None, None)
                             }
                         }
-                        Err(_) => None,
+                        Err(_) => (None, None),
                     }
                 };
 
@@ -551,16 +552,18 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         && !content.starts_with("data:image/")
                         && !content.starts_with("image:")
                     {
-                        // 文本内容，使用带翻译支持的粘贴
-                        crate::services::paste_service::paste_text_with_translation(
+                        // 文本内容，使用带HTML和翻译支持的粘贴
+                        crate::services::paste_service::paste_text_with_html(
                             content,
-                            main_window.clone(),
+                            html_content.clone(),
+                            &main_window,
                         )
                         .await?;
                     } else {
                         // 非文本内容，使用普通粘贴
                         let params = crate::services::paste_service::PasteContentParams {
                             content,
+                            html_content,
                             quick_text_id: None,
                             one_time: None,
                         };
@@ -594,6 +597,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         // 非文本内容，使用普通粘贴
                         let params = crate::services::paste_service::PasteContentParams {
                             content: quick_text.content.clone(),
+                            html_content: None,
                             quick_text_id: Some(quick_text.id.clone()),
                             one_time: Some(false),
                         };
