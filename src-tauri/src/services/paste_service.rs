@@ -30,7 +30,7 @@ pub async fn paste_content(
     // 处理一次性粘贴逻辑
     if let (Some(quick_text_id), Some(true)) = (params.quick_text_id, params.one_time) {
         // 删除一次性常用文本
-        if let Err(e) = crate::quick_texts::delete_quick_text(quick_text_id) {
+        if let Err(e) = crate::quick_texts::delete_quick_text(&quick_text_id) {
             eprintln!("删除一次性常用文本失败: {}", e);
         }
     }

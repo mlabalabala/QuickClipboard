@@ -4,8 +4,8 @@ import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
 
 // 分组相关的全局状态
 let groups = [];
-let currentGroupId = 'all';
-let editingGroupId = null;
+let currentGroupId = '全部';
+let editingGroupName = null;
 let isGroupSidebarPinned = false; // 统一侧边栏固定状态
 
 // DOM元素引用
@@ -89,11 +89,23 @@ function setupIconGridEvents() {
 async function loadGroups() {
   try {
     const result = await invoke('get_groups');
-    groups = result;
+    groups = result || [];
+    
+    // 确保"全部"分组始终存在并排在最前面
+    const allGroupIndex = groups.findIndex(g => g.name === '全部');
+    if (allGroupIndex === -1) {
+      // "全部"分组不存在，添加到最前面
+      groups.unshift({ name: '全部', icon: 'ti ti-list', order: -1, item_count: 0 });
+    } else if (allGroupIndex !== 0) {
+      // "全部"分组存在但不在第一位，移动到最前面
+      const allGroup = groups.splice(allGroupIndex, 1)[0];
+      allGroup.order = -1; 
+      groups.unshift(allGroup);
+    }
   } catch (error) {
-    console.warn('后端分组功能暂未实现，使用默认分组:', error);
-    // 如果后端还没有分组功能，使用默认分组
-    groups = [{ id: 'all', name: '全部', icon: 'ti ti-list' }];
+    console.warn('后端分组功能暂未实现，使用全部分组:', error);
+    // 如果后端还没有分组功能，使用全部分组
+    groups = [{ name: '全部', icon: 'ti ti-list', order: 0, item_count: 0 }];
   }
 
   renderGroups();
@@ -114,9 +126,9 @@ function renderGroupsList(container) {
   groups.forEach(group => {
     const groupItem = document.createElement('div');
     groupItem.className = 'group-item';
-    groupItem.dataset.groupId = group.id;
+    groupItem.dataset.groupName = group.name;
 
-    if (group.id === currentGroupId) {
+    if (group.name === currentGroupId) {
       groupItem.classList.add('active');
     }
 
@@ -131,7 +143,7 @@ function renderGroupsList(container) {
     nameElement.textContent = group.name;
 
     // 操作按钮（全部分组不显示）
-    if (group.id !== 'all') {
+    if (group.name !== '全部') {
       const actionsElement = document.createElement('div');
       actionsElement.className = 'group-actions';
 
@@ -152,7 +164,7 @@ function renderGroupsList(container) {
       deleteButton.title = '删除分组';
       deleteButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        deleteGroup(group.id);
+        deleteGroup(group.name);
       });
 
       actionsElement.appendChild(editButton);
@@ -167,17 +179,17 @@ function renderGroupsList(container) {
         // 剪贴板tab下切换分组时，自动切换到常用tab
         document.querySelector('[data-tab="quick-texts"]').click();
         setCurrentTab('quick-texts');
-        selectGroup(group.id);
-        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: group.id, tab: 'quick-texts' } }));
+        selectGroup(group.name);
+        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupName: group.name, tab: 'quick-texts' } }));
       } else {
         // 常用tab下切换分组
-        selectGroup(group.id);
-        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: group.id, tab: 'quick-texts' } }));
+        selectGroup(group.name);
+        window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupName: group.name, tab: 'quick-texts' } }));
       }
     });
 
     // 拖拽事件
-    setupGroupDropEvents(groupItem, group.id);
+    setupGroupDropEvents(groupItem, group.name);
 
     groupItem.appendChild(iconElement);
     groupItem.appendChild(nameElement);
@@ -186,7 +198,7 @@ function renderGroupsList(container) {
 }
 
 // 设置分组拖拽事件
-function setupGroupDropEvents(groupItem, groupId) {
+function setupGroupDropEvents(groupItem, groupName) {
   groupItem.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation(); // 阻止事件冒泡
@@ -244,7 +256,7 @@ function setupGroupDropEvents(groupItem, groupId) {
           // 从剪贴板历史拖拽到分组，需要先添加到常用文本
           await invoke('add_clipboard_to_group', {
             index: data.index,
-            groupId: groupId
+            groupName: groupName
           });
 
           // 不切换标签页，保持在剪贴板历史列表
@@ -252,8 +264,8 @@ function setupGroupDropEvents(groupItem, groupId) {
           window.dispatchEvent(new CustomEvent('refreshQuickTexts'));
 
           // 显示成功提示
-          const groupName = groups.find(g => g.id === groupId)?.name || '分组';
-          showNotification(`已添加到 ${groupName}`, 'success');
+          const targetGroup = groups.find(g => g.name === groupName);
+          showNotification(`已添加到 ${targetGroup?.name || groupName}`, 'success');
         } catch (error) {
           console.error('添加到分组失败:', error);
           showNotification('添加到分组失败，请重试', 'error');
@@ -263,15 +275,15 @@ function setupGroupDropEvents(groupItem, groupId) {
           // 常用文本拖拽到分组
           await invoke('move_quick_text_to_group', {
             id: data.id,
-            groupId: groupId
+            groupName: groupName
           });
 
           // 强制刷新当前分组的显示
           window.dispatchEvent(new CustomEvent('refreshQuickTexts'));
 
           // 显示成功提示
-          const groupName = groups.find(g => g.id === groupId)?.name || '分组';
-          showNotification(`已移动到 ${groupName}`, 'success');
+          const targetGroup = groups.find(g => g.name === groupName);
+          showNotification(`已移动到 ${targetGroup?.name || groupName}`, 'success');
         } catch (error) {
           console.error('移动到分组失败:', error);
           showNotification('移动到分组失败，请重试', 'error');
@@ -292,7 +304,7 @@ function updateGroupSelects() {
 
   groups.forEach(group => {
     const option = document.createElement('option');
-    option.value = group.id;
+    option.value = group.name;
     option.textContent = group.name;
     quickTextGroupSelect.appendChild(option);
   });
@@ -318,7 +330,7 @@ function pinGroupSidebar() {
 
 // 显示分组模态框
 function showGroupModal(group = null) {
-  editingGroupId = group ? group.id : null;
+  editingGroupName = group ? group.name : null;
 
   if (group) {
     groupModalTitle.textContent = '编辑分组';
@@ -363,7 +375,7 @@ function setIconGridSelection(iconValue) {
 // 隐藏分组模态框
 function hideGroupModal() {
   groupModal.classList.remove('active');
-  editingGroupId = null;
+  editingGroupName = null;
 }
 
 // 编辑分组
@@ -383,10 +395,10 @@ async function saveGroup() {
   }
 
   try {
-    if (editingGroupId) {
+    if (editingGroupName) {
       // 更新分组
       await invoke('update_group', {
-        id: editingGroupId,
+        id: editingGroupName,
         name,
         icon
       });
@@ -401,14 +413,14 @@ async function saveGroup() {
     await loadGroups();
   } catch (error) {
     console.error('保存分组失败:', error);
-    const action = editingGroupId ? '更新' : '创建';
-    showNotification(`${action}分组失败，请重试`, 'error');
+    const action = editingGroupName ? '更新' : '创建';
+    showNotification(`${action}分组失败，请重试：${error}`, 'error');
   }
 }
 
 // 删除分组
-function deleteGroup(groupId) {
-  const group = groups.find(g => g.id === groupId);
+function deleteGroup(groupName) {
+  const group = groups.find(g => g.name === groupName);
   if (!group) return;
 
   showConfirmModal(
@@ -416,11 +428,11 @@ function deleteGroup(groupId) {
     `确定要删除分组"${group.name}"吗？分组中的内容将移动到"全部"分组。`,
     async () => {
       try {
-        await invoke('delete_group', { id: groupId });
+        await invoke('delete_group', { id: groupName });
 
         // 如果删除的是当前选中的分组，切换到全部
-        if (currentGroupId === groupId) {
-          selectGroup('all');
+        if (currentGroupId === groupName) {
+          selectGroup('全部');
         }
 
         await loadGroups();
@@ -438,24 +450,24 @@ function deleteGroup(groupId) {
 }
 
 // 选择分组
-function selectGroup(groupId) {
-  currentGroupId = groupId;
+function selectGroup(groupName) {
+  currentGroupId = groupName;
   renderGroups();
 
   // 触发列表刷新
-  window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId } }));
+  window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupName } }));
 
   // 通知预览窗口分组切换
-  notifyPreviewWindowGroupChange(groupId);
+  notifyPreviewWindowGroupChange(groupName);
 }
 
 // 通知预览窗口分组切换
-async function notifyPreviewWindowGroupChange(groupId) {
+async function notifyPreviewWindowGroupChange(groupName) {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('notify_preview_tab_change', {
       tab: 'quick-texts',
-      groupId: groupId
+      groupName: groupName
     });
   } catch (error) {
     // 预览窗口可能未打开，忽略错误

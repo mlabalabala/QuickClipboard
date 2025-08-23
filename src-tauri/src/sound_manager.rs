@@ -65,70 +65,6 @@ pub struct SoundManager {
 }
 
 impl SoundManager {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(Self {
-            settings: Arc::new(Mutex::new(SoundSettings::default())),
-        })
-    }
-
-    pub fn update_settings(&self, settings: SoundSettings) {
-        if let Ok(mut current_settings) = self.settings.lock() {
-            *current_settings = settings;
-        }
-    }
-
-    pub fn get_settings(&self) -> SoundSettings {
-        self.settings
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone()
-    }
-
-    pub fn play_copy_sound(&self) {
-        self.play_sound_async("copy");
-    }
-
-    pub fn play_paste_sound(&self) {
-        self.play_sound_async("paste");
-    }
-
-    pub fn test_sound(
-        &self,
-        sound_path: &str,
-        volume: f32,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Self::play_sound_sync(sound_path, volume)
-    }
-
-    fn play_sound_async(&self, sound_type: &str) {
-        let settings = self.get_settings();
-
-        if !settings.enabled {
-            return;
-        }
-
-        let sound_path = match sound_type {
-            "copy" => &settings.copy_sound_path,
-            "paste" => &settings.paste_sound_path,
-            _ => return,
-        };
-
-        if sound_path.is_empty() {
-            // 使用默认音效
-            self.play_default_sound(sound_type, settings.volume);
-            return;
-        }
-
-        let path = sound_path.clone();
-        let volume = settings.volume;
-
-        thread::spawn(move || {
-            if let Err(e) = Self::play_sound_sync(&path, volume) {
-                eprintln!("播放音效失败: {}", e);
-            }
-        });
-    }
-
     pub fn play_sound_sync(
         sound_path: &str,
         volume: f32,
@@ -285,22 +221,6 @@ impl SoundManager {
         // 强制垃圾回收，释放内存
         std::thread::sleep(std::time::Duration::from_millis(1));
         result
-    }
-
-    fn play_default_sound(&self, sound_type: &str, volume: f32) {
-        // 播放系统默认音效
-        let sound_type = sound_type.to_string(); // 转换为拥有的字符串
-        thread::spawn(move || {
-            let frequency = match sound_type.as_str() {
-                "copy" => 800.0,  // 复制音效：较高频率
-                "paste" => 600.0, // 粘贴音效：较低频率
-                _ => 700.0,
-            };
-
-            if let Err(e) = Self::play_beep(frequency, 100, volume) {
-                eprintln!("播放默认音效失败: {}", e);
-            }
-        });
     }
 
     pub fn play_beep(
@@ -544,19 +464,4 @@ pub fn clear_sound_cache() -> Result<(), String> {
 // 获取当前活跃音效播放数量
 pub fn get_active_sound_count() -> usize {
     ACTIVE_SOUND_COUNT.load(Ordering::Relaxed)
-}
-
-// 等待所有音效播放完成（用于应用退出时）
-pub fn wait_for_sounds_to_finish(timeout_ms: u64) {
-    let start_time = std::time::Instant::now();
-    let timeout = std::time::Duration::from_millis(timeout_ms);
-
-    while ACTIVE_SOUND_COUNT.load(Ordering::Relaxed) > 0 && start_time.elapsed() < timeout {
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-
-    let remaining = ACTIVE_SOUND_COUNT.load(Ordering::Relaxed);
-    if remaining > 0 {
-        println!("等待音效播放完成超时，仍有 {} 个音效在播放", remaining);
-    }
 }

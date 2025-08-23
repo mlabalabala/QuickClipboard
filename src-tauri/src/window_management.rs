@@ -172,16 +172,6 @@ pub fn get_window_pinned() -> bool {
     WINDOW_PINNED_STATE.load(Ordering::SeqCst)
 }
 
-// 设置主窗口自动显示状态
-pub fn set_main_window_auto_shown(auto_shown: bool) {
-    MAIN_WINDOW_AUTO_SHOWN.store(auto_shown, Ordering::SeqCst);
-}
-
-// 获取主窗口自动显示状态
-pub fn get_main_window_auto_shown() -> bool {
-    MAIN_WINDOW_AUTO_SHOWN.load(Ordering::SeqCst)
-}
-
 // 检查当前前台窗口是否是自己的应用窗口
 #[cfg(windows)]
 pub fn is_current_window_own_app(window: &tauri::WebviewWindow) -> bool {

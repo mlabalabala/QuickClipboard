@@ -159,7 +159,7 @@ export class VirtualList {
         dragData = {
           type: 'clipboard',
           index: originalIndex,
-          content: item.text
+          content: item.content
         };
       } else if (this.scrollId === 'quick-texts-list') {
         // 常用文本列表
@@ -189,8 +189,8 @@ export class VirtualList {
         // 尝试从全局作用域获取clipboardHistory
         const clipboardHistory = window.clipboardHistory || [];
         return clipboardHistory.findIndex(originalItem =>
-          originalItem.text === item.text &&
-          originalItem.timestamp === item.timestamp
+          originalItem.content === item.content &&
+          originalItem.created_at === item.created_at
         );
       } catch (error) {
         console.warn('无法获取原始剪贴板历史数组:', error);

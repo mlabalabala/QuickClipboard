@@ -336,8 +336,8 @@ function createPreviewItem(item, index, position = 'current') {
   }
   previewItem.dataset.index = index;
 
-  // 兼容不同的数据结构：剪贴板历史使用 text，常用文本使用 content
-  const itemText = item.text || item.content || '';
+  // 所有项目都使用 content
+  const itemText = item.content || '';
   const isQuickText = !!item.title; // 判断是否为常用文本
   const contentType = getContentType(itemText);
 

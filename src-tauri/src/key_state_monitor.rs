@@ -490,7 +490,7 @@ fn handle_number_shortcut_paste(index: usize) {
                     Ok(items) => {
                         if index < items.len() {
                             let item = &items[index];
-                            (Some(item.text.clone()), item.html_content.clone())
+                            (Some(item.content.clone()), item.html_content.clone())
                         } else {
                             (None, None)
                         }

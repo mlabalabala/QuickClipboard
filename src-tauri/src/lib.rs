@@ -140,11 +140,6 @@ pub fn run() {
             // 初始化数据库
             if let Err(e) = database::initialize_database() {
                 println!("数据库初始化失败: {}", e);
-            } else {
-                // 执行数据迁移
-                if let Err(e) = database::migrate_from_json() {
-                    println!("数据迁移失败: {}", e);
-                }
             }
 
             // 首先尝试加载历史记录

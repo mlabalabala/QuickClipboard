@@ -55,7 +55,7 @@ export function showNotification(message, type = 'info', duration = 3000) {
     color: white;
     font-size: 14px;
     font-weight: 500;
-    z-index: 10000;
+    z-index: 999999999;
     opacity: 0;
     transform: translateX(100%);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -198,7 +198,7 @@ async function notifyPreviewWindowTabChange(tabName) {
 
     await invoke('notify_preview_tab_change', {
       tab: tabName,
-      groupId: groupId
+      groupName: groupId
     });
   } catch (error) {
     // 预览窗口可能未打开，忽略错误

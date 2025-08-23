@@ -127,11 +127,11 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         let _ = window.emit("clipboard-history-updated", ());
 
         // 在开发模式下打开开发者工具
-        // #[cfg(debug_assertions)]
-        // {
-        //     let _ = window.open_devtools();
-        //     println!("预览窗口开发者工具已打开");
-        // }
+        #[cfg(debug_assertions)]
+        {
+            let _ = window.open_devtools();
+            println!("预览窗口开发者工具已打开");
+        }
 
         println!("预览窗口已显示");
     }
@@ -537,7 +537,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         Ok(items) => {
                             if index < items.len() {
                                 let item = &items[index];
-                                (Some(item.text.clone()), item.html_content.clone())
+                                (Some(item.content.clone()), item.html_content.clone())
                             } else {
                                 (None, None)
                             }

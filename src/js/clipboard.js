@@ -33,8 +33,8 @@ let clipboardVirtualList = null;
 
 // 生成剪贴板项目HTML字符串
 function generateClipboardItemHTML(item, index) {
-  const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
-  const contentType = isImage ? 'image' : getContentType(item.text);
+  const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
+  const contentType = isImage ? 'image' : getContentType(item.content);
 
   let contentHTML = '';
 
@@ -62,7 +62,7 @@ function generateClipboardItemHTML(item, index) {
     } else {
       // 纯文本内容，使用原有逻辑
       const searchTerms = getCurrentSearchTerms();
-      const highlightResult = highlightMultipleSearchTermsWithPosition(item.text, searchTerms);
+      const highlightResult = highlightMultipleSearchTermsWithPosition(item.content, searchTerms);
       
       // 如果有搜索关键字，添加滚动定位功能
       if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
@@ -85,7 +85,7 @@ function generateClipboardItemHTML(item, index) {
 
   // 生成日期时间HTML - 优先使用created_at，如果为空则使用timestamp
   // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
-  const timeValue = item.created_at || item.timestamp;
+  const timeValue = item.created_at || item.created_at;
   const timestampHTML = contentType === 'files' ? '' : `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
 
   // 组合完整的HTML
@@ -113,13 +113,13 @@ function generateImageHTML(item) {
   if (item.image_id) {
     // 使用image_id字段
     return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${item.image_id}" data-needs-load="true" loading="lazy">`;
-  } else if (item.text.startsWith('image:')) {
+  } else if (item.content.startsWith('image:')) {
     // 从text中提取image_id
-    const imageId = item.text.substring(6);
+    const imageId = item.content.substring(6);
     return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">`;
-  } else if (item.text.startsWith('data:image/')) {
+  } else if (item.content.startsWith('data:image/')) {
     // 旧格式的完整图片数据
-    return `<img class="clipboard-image" src="${item.text}" alt="剪贴板图片" loading="lazy">`;
+    return `<img class="clipboard-image" src="${item.content}" alt="剪贴板图片" loading="lazy">`;
   } else {
     // 未知格式，显示占位符
     return `<div class="clipboard-image" style="background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #666;">图片加载失败</div>`;
@@ -162,11 +162,11 @@ function generateFileIconHTML(file, size = 'medium') {
 // 生成文件HTML
 function generateFilesHTML(item) {
   try {
-    const filesJson = item.text.substring(6);
+    const filesJson = item.content.substring(6);
     const filesData = JSON.parse(filesJson);
 
     // 格式化时间 - 优先使用created_at，如果为空则使用timestamp
-    const timeValue = item.created_at || item.timestamp;
+    const timeValue = item.created_at || item.created_at;
     const timeStr = formatTimestamp(timeValue);
 
     // 顶部显示：时间和文件数量
@@ -447,10 +447,10 @@ export async function updateClipboardOrder(oldIndex, newIndex) {
     const targetItem = filteredData[newIndex];
 
     const originalOldIndex = clipboardHistory.findIndex(item =>
-      item.text === movedItem.text && item.timestamp === movedItem.timestamp
+      item.content === movedItem.text && item.created_at === movedItem.timestamp
     );
     const originalNewIndex = clipboardHistory.findIndex(item =>
-      item.text === targetItem.text && item.timestamp === targetItem.timestamp
+      item.content === targetItem.text && item.created_at === targetItem.timestamp
     );
 
     if (originalOldIndex === -1 || originalNewIndex === -1) {
@@ -517,8 +517,8 @@ function getFilteredClipboardData() {
 
   return clipboardHistory.filter((item) => {
     // 使用新的数据结构判断类型
-    const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
-    const contentType = isImage ? 'image' : getContentType(item.text);
+    const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
+    const contentType = isImage ? 'image' : getContentType(item.content);
 
     // 类型筛选
     if (filterType !== 'all' && contentType !== filterType) {
@@ -532,7 +532,7 @@ function getFilteredClipboardData() {
       if (contentType === 'files') {
         // 文件类型：搜索文件名和路径
         try {
-          const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+          const filesJson = item.content.substring(6); // 去掉 "files:" 前缀
           const filesData = JSON.parse(filesJson);
           const searchableText = filesData.files.map(file =>
             `${file.name} ${file.path} ${file.file_type}`
@@ -546,7 +546,7 @@ function getFilteredClipboardData() {
         shouldShow = false;
       } else {
         // 文本和链接类型：搜索内容
-        shouldShow = item.text.toLowerCase().includes(searchTerm);
+        shouldShow = item.content.toLowerCase().includes(searchTerm);
       }
 
       return shouldShow;
@@ -655,9 +655,9 @@ function handleClipboardItemContextMenu(index, event) {
 async function handleClipboardItemPaste(item, index, element = null) {
   try {
     // 检查是否需要AI翻译
-    const contentType = getContentType(item.text);
+    const contentType = getContentType(item.content);
     const isTextContent = contentType === 'text';
-    const translationCheck = isTextContent ? shouldTranslateText(item.text, 'paste') : { should: false, reason: '非文本内容' };
+    const translationCheck = isTextContent ? shouldTranslateText(item.content, 'paste') : { should: false, reason: '非文本内容' };
     const needsTranslation = translationCheck.should;
 
     // 根据内容类型确定加载消息
@@ -675,13 +675,13 @@ async function handleClipboardItemPaste(item, index, element = null) {
 
     if (needsTranslation) {
       // 使用AI翻译并流式输入
-      console.log('开始AI翻译:', item.text, '原因:', translationCheck.reason);
+      console.log('开始AI翻译:', item.content, '原因:', translationCheck.reason);
       showTranslationIndicator('正在翻译...');
 
       // 定义降级回调函数
       const fallbackPaste = async () => {
         const params = {
-          content: item.text,
+          content: item.content,
           html_content: item.html_content || null,
           one_time: false
         };
@@ -689,7 +689,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
       };
 
       try {
-        const result = await safeTranslateAndInputText(item.text, fallbackPaste);
+        const result = await safeTranslateAndInputText(item.content, fallbackPaste);
 
         setActiveItem(index);
 
@@ -726,7 +726,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
     } else {
       // 不需要翻译，直接粘贴
       const params = {
-        content: item.text,
+        content: item.content,
         html_content: item.html_content || null,
         one_time: false
       };
@@ -802,8 +802,8 @@ function showClipboardContextMenu(event, item, index) {
   const menuItems = [];
 
   // 检查内容类型
-  const isImage = item.is_image || item.text.startsWith('data:image/') || item.text.startsWith('image:');
-  const contentType = isImage ? 'image' : getContentType(item.text);
+  const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
+  const contentType = isImage ? 'image' : getContentType(item.content);
 
   // 根据内容类型添加特有菜单项
   if (contentType === 'image') {
@@ -897,7 +897,7 @@ function showClipboardContextMenu(event, item, index) {
   );
 
   showContextMenu(event, {
-    content: item.text,
+    content: item.content,
     items: menuItems
   });
 }
@@ -911,9 +911,9 @@ async function openTextEditor(item, index) {
     // 准备编辑数据
     const editorData = {
       index: index,
-      content: item.text,
+      content: item.content,
       title: `剪贴板项目 #${index + 1}`,
-      timestamp: item.timestamp
+      timestamp: item.created_at
     };
 
     // 延迟发送数据，确保窗口已完全加载
@@ -993,9 +993,9 @@ export async function getClipboardFiles() {
 // 从剪贴板查看原图
 function viewOriginalImageFromClipboard(item) {
   try {
-    if (item.text.startsWith('image:')) {
+    if (item.content.startsWith('image:')) {
       // 新格式：image:id，需要通过后端获取完整图片
-      const imageId = item.text.substring(6);
+      const imageId = item.content.substring(6);
       // 创建一个新窗口显示图片
       const newWindow = window.open('', '_blank');
       newWindow.document.write(`
@@ -1011,14 +1011,14 @@ function viewOriginalImageFromClipboard(item) {
       // 加载完整图片
       loadImageById(newWindow.document.getElementById('fullImage'), imageId, false);
       newWindow.document.getElementById('loading').style.display = 'none';
-    } else if (item.text.startsWith('data:image/')) {
+    } else if (item.content.startsWith('data:image/')) {
       // 旧格式：完整的data URL
       const newWindow = window.open('', '_blank');
       newWindow.document.write(`
         <html>
           <head><title>查看原图</title></head>
           <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-            <img src="${item.text}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
+            <img src="${item.content}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
           </body>
         </html>
       `);
@@ -1032,7 +1032,7 @@ function viewOriginalImageFromClipboard(item) {
 // 从剪贴板另存为图片
 async function saveImageAsFromClipboard(item) {
   try {
-    if (!item.text.startsWith('data:image/') && !item.text.startsWith('image:')) {
+    if (!item.content.startsWith('data:image/') && !item.content.startsWith('image:')) {
       showNotification('此图片格式暂不支持直接保存', 'info');
       return;
     }
@@ -1054,7 +1054,7 @@ async function saveImageAsFromClipboard(item) {
 
     // 调用后端保存图片
     await invoke('save_image_to_file', {
-      content: item.text,
+      content: item.content,
       filePath: filePath
     });
 
@@ -1068,7 +1068,7 @@ async function saveImageAsFromClipboard(item) {
 // 使用默认程序打开文件
 async function openFileWithDefaultProgram(item) {
   try {
-    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesJson = item.content.substring(6); // 去掉 "files:" 前缀
     const filesData = JSON.parse(filesJson);
 
     if (filesData.files && filesData.files.length > 0) {
@@ -1085,7 +1085,7 @@ async function openFileWithDefaultProgram(item) {
 // 从剪贴板打开文件位置
 async function openFileLocationFromClipboard(item) {
   try {
-    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesJson = item.content.substring(6); // 去掉 "files:" 前缀
     const filesData = JSON.parse(filesJson);
 
     if (filesData.files && filesData.files.length > 0) {
@@ -1102,7 +1102,7 @@ async function openFileLocationFromClipboard(item) {
 // 从剪贴板复制文件路径
 async function copyFilePathsFromClipboard(item) {
   try {
-    const filesJson = item.text.substring(6); // 去掉 "files:" 前缀
+    const filesJson = item.content.substring(6); // 去掉 "files:" 前缀
     const filesData = JSON.parse(filesJson);
 
     if (filesData.files && filesData.files.length > 0) {

@@ -117,7 +117,7 @@ pub fn move_to_front_if_exists(text: String) -> bool {
             match database::get_clipboard_history(Some(1)) {
                 Ok(items) => {
                     // 如果已经是第一位，不需要移动
-                    if !items.is_empty() && items[0].text == text {
+                    if !items.is_empty() && items[0].content == text {
                         return false;
                     }
 
@@ -183,7 +183,7 @@ pub fn move_item(from_index: usize, to_index: usize) -> Result<(), String> {
 
     let item_texts: Vec<String> = reordered_items
         .iter()
-        .map(|item| item.text.clone())
+        .map(|item| item.content.clone())
         .collect();
 
     database::reorder_clipboard_items(&item_texts)

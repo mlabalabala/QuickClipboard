@@ -13,89 +13,144 @@ pub static DB_FILE: Lazy<PathBuf> = Lazy::new(|| {
     let mut dir = dirs::data_local_dir().unwrap_or_else(|| std::env::temp_dir());
     dir.push("quickclipboard");
     let _ = std::fs::create_dir_all(&dir);
-    dir.push("clipboard.db");
+    dir.push("quickclipboard.db");
     dir
 });
 
-// 剪贴板项目数据结构（与现有结构兼容）
+// 剪贴板项目数据结构
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClipboardItem {
     pub id: i64,
-    pub text: String,
+    pub content: String,
     pub html_content: Option<String>,
     pub is_image: bool,
     pub image_id: Option<String>,
-    pub timestamp: u64,
-    pub created_at: Option<String>, // DATETIME字段，可能为空（兼容旧数据）
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 impl ClipboardItem {
-    pub fn new_text(text: String) -> Self {
+    pub fn new_text(content: String) -> Self {
         let now = chrono::Local::now();
-        let local_timestamp = now.timestamp() as u64;
-        
-        Self {
-            id: 0, // 将由数据库自动分配
-            text,
-            html_content: None,
-            is_image: false,
-            image_id: None,
-            timestamp: local_timestamp,
-            created_at: None,
-        }
-    }
-
-    pub fn new_text_with_html(text: String, html: Option<String>) -> Self {
-        let now = chrono::Local::now();
-        let local_timestamp = now.timestamp() as u64;
+        let timestamp = now.timestamp();
         
         Self {
             id: 0,
-            text,
+            content,
+            html_content: None,
+            is_image: false,
+            image_id: None,
+            created_at: timestamp,
+            updated_at: timestamp,
+        }
+    }
+
+    pub fn new_text_with_html(content: String, html: Option<String>) -> Self {
+        let now = chrono::Local::now();
+        let timestamp = now.timestamp();
+        
+        Self {
+            id: 0,
+            content,
             html_content: html,
             is_image: false,
             image_id: None,
-            timestamp: local_timestamp,
-            created_at: None,
+            created_at: timestamp,
+            updated_at: timestamp,
         }
     }
 
     pub fn new_image(image_id: String) -> Self {
         let now = chrono::Local::now();
-        let local_timestamp = now.timestamp() as u64;
+        let timestamp = now.timestamp();
         
         Self {
             id: 0,
-            text: format!("image:{}", image_id),
+            content: format!("image:{}", image_id),
             html_content: None,
             is_image: true,
             image_id: Some(image_id),
-            timestamp: local_timestamp,
-            created_at: None,
+            created_at: timestamp,
+            updated_at: timestamp,
         }
     }
 }
 
 // 常用文本数据结构
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct QuickText {
+pub struct FavoriteItem {
     pub id: String,
     pub title: String,
     pub content: String,
     pub html_content: Option<String>,
+    pub is_image: bool,
+    pub image_id: Option<String>,
+    pub group_name: String,       // 分组名称（外键引用groups表）
+    pub item_order: i32,          // 组内排序
     pub created_at: i64,
     pub updated_at: i64,
-    pub group_id: String,
 }
 
-// 分组数据结构
+impl FavoriteItem {
+    pub fn new_text(id: String, title: String, content: String, group_name: String) -> Self {
+        let now = chrono::Local::now().timestamp();
+        
+        Self {
+            id,
+            title,
+            content,
+            html_content: None,
+            is_image: false,
+            image_id: None,
+            group_name,
+            item_order: 0,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    pub fn new_text_with_html(id: String, title: String, content: String, html_content: Option<String>, group_name: String) -> Self {
+        let now = chrono::Local::now().timestamp();
+        
+        Self {
+            id,
+            title,
+            content,
+            html_content,
+            is_image: false,
+            image_id: None,
+            group_name,
+            item_order: 0,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn new_image(id: String, title: String, image_id: String, group_name: String) -> Self {
+        let now = chrono::Local::now().timestamp();
+        
+        Self {
+            id,
+            title,
+            content: format!("image:{}", image_id),
+            html_content: None,
+            is_image: true,
+            image_id: Some(image_id),
+            group_name,
+            item_order: 0,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
+// 分组统计信息（用于查询）
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Group {
-    pub id: String,
+pub struct GroupInfo {
     pub name: String,
     pub icon: String,
-    pub created_at: String,
-    pub updated_at: String,
+    pub order: i32,
+    pub item_count: i32,
 }
 
 // 初始化数据库
@@ -118,63 +173,45 @@ pub fn initialize_database() -> SqliteResult<()> {
 
 // 创建数据库表
 fn create_tables(conn: &Connection) -> SqliteResult<()> {
-    // 剪贴板历史表
+    // 剪贴板表（重命名并统一字段）
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS clipboard_items (
+        "CREATE TABLE IF NOT EXISTS clipboard (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT NOT NULL,
+            content TEXT NOT NULL,
             html_content TEXT,
             is_image BOOLEAN NOT NULL DEFAULT 0,
             image_id TEXT,
-            timestamp INTEGER NOT NULL,
-            created_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         )",
         [],
     )?;
 
-    // 添加html_content列到现有表（如果不存在）
-    let _ = conn.execute(
-        "ALTER TABLE clipboard_items ADD COLUMN html_content TEXT",
-        [],
-    );
-
-    // 常用文本表
+    // 收藏表（原常用文本表，通过group_name引用groups表）
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS quick_texts (
+        "CREATE TABLE IF NOT EXISTS favorites (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             html_content TEXT,
+            is_image BOOLEAN NOT NULL DEFAULT 0,
+            image_id TEXT,
+            group_name TEXT NOT NULL DEFAULT '全部',
+            item_order INTEGER NOT NULL DEFAULT 0,
             created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            group_id TEXT NOT NULL DEFAULT 'all'
+            updated_at INTEGER NOT NULL
         )",
         [],
     )?;
 
-    // 添加html_content列（如果不存在）
-    let _ = conn.execute(
-        "ALTER TABLE quick_texts ADD COLUMN html_content TEXT",
-        [],
-    );
-
-    // 分组表
+    // 分组表（支持空分组）
     conn.execute(
         "CREATE TABLE IF NOT EXISTS groups (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            icon TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    // 分组顺序表
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS group_order (
-            position INTEGER PRIMARY KEY,
-            group_id TEXT NOT NULL
+            name TEXT PRIMARY KEY,
+            icon TEXT NOT NULL DEFAULT 'ti ti-folder',
+            order_index INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         )",
         [],
     )?;
@@ -184,29 +221,33 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         "CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
-            updated_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
+            updated_at INTEGER NOT NULL
         )",
         [],
     )?;
 
     // 创建索引
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_clipboard_timestamp ON clipboard_items(timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_clipboard_created ON clipboard(created_at DESC)",
         [],
     )?;
 
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_quick_texts_group ON quick_texts(group_id)",
+        "CREATE INDEX IF NOT EXISTS idx_favorites_group ON favorites(group_name, item_order)",
         [],
     )?;
 
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_quick_texts_updated ON quick_texts(updated_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_favorites_updated ON favorites(updated_at DESC)",
         [],
     )?;
+
+
 
     Ok(())
 }
+
+
 
 // 关闭数据库连接
 pub fn close_database_connection() -> Result<(), String> {
@@ -236,203 +277,16 @@ where
     }
 }
 
-// 数据迁移功能
-pub fn migrate_from_json() -> Result<(), String> {
-    println!("开始检查JSON数据迁移...");
-
-    // 检查是否需要迁移
-    let needs_migration = with_connection(|conn| {
-        let count: i64 =
-            conn.query_row("SELECT COUNT(*) FROM clipboard_items", [], |row| row.get(0))?;
-        Ok(count == 0)
-    })?;
-
-    if !needs_migration {
-        println!("数据库已有数据，跳过迁移");
-        return Ok(());
-    }
-
-    // 迁移剪贴板历史
-    migrate_clipboard_history()?;
-
-    // 迁移常用文本
-    migrate_quick_texts()?;
-
-    // 迁移分组
-    migrate_groups()?;
-
-    println!("JSON数据迁移完成");
-    Ok(())
-}
-
-// 迁移剪贴板历史
-fn migrate_clipboard_history() -> Result<(), String> {
-    let history_file = get_history_json_path();
-
-    if !history_file.exists() {
-        println!("未找到剪贴板历史JSON文件，跳过迁移");
-        return Ok(());
-    }
-
-    println!("迁移剪贴板历史数据...");
-
-    let content =
-        std::fs::read_to_string(&history_file).map_err(|e| format!("读取历史文件失败: {}", e))?;
-
-    let history_list: Vec<String> =
-        serde_json::from_str(&content).map_err(|e| format!("解析历史文件失败: {}", e))?;
-
-    with_connection(|conn| {
-        let tx = conn.unchecked_transaction()?;
-
-        for (index, text) in history_list.iter().enumerate() {
-            let now = chrono::Local::now();
-            let base_timestamp = now.timestamp() as u64;
-            let timestamp = base_timestamp - (history_list.len() - index) as u64; // 保持相对顺序
-
-            let (is_image, image_id) = if text.starts_with("image:") {
-                (
-                    true,
-                    Some(text.strip_prefix("image:").unwrap_or("").to_string()),
-                )
-            } else {
-                (false, None)
-            };
-
-            tx.execute(
-                "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![text, None::<String>, is_image, image_id, timestamp],
-            )?;
-        }
-
-        tx.commit()?;
-        Ok(())
-    })?;
-
-    println!("剪贴板历史迁移完成，共迁移 {} 条记录", history_list.len());
-    Ok(())
-}
-
-// 迁移常用文本
-fn migrate_quick_texts() -> Result<(), String> {
-    let quick_texts_file = get_quick_texts_json_path();
-
-    if !quick_texts_file.exists() {
-        println!("未找到常用文本JSON文件，跳过迁移");
-        return Ok(());
-    }
-
-    println!("迁移常用文本数据...");
-
-    let content = std::fs::read_to_string(&quick_texts_file)
-        .map_err(|e| format!("读取常用文本文件失败: {}", e))?;
-
-    let quick_texts: Vec<QuickText> =
-        serde_json::from_str(&content).map_err(|e| format!("解析常用文本文件失败: {}", e))?;
-
-    with_connection(|conn| {
-        let tx = conn.unchecked_transaction()?;
-
-        for text in &quick_texts {
-            tx.execute(
-                "INSERT INTO quick_texts (id, title, content, created_at, updated_at, group_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![text.id, text.title, text.content, text.created_at, text.updated_at, text.group_id],
-            )?;
-        }
-
-        tx.commit()?;
-        Ok(())
-    })?;
-
-    println!("常用文本迁移完成，共迁移 {} 条记录", quick_texts.len());
-    Ok(())
-}
-
-// 迁移分组数据
-fn migrate_groups() -> Result<(), String> {
-    let groups_file = get_groups_json_path();
-
-    if !groups_file.exists() {
-        println!("未找到分组JSON文件，跳过迁移");
-        return Ok(());
-    }
-
-    println!("迁移分组数据...");
-
-    let content =
-        std::fs::read_to_string(&groups_file).map_err(|e| format!("读取分组文件失败: {}", e))?;
-
-    let data: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| format!("解析分组文件失败: {}", e))?;
-
-    with_connection(|conn| {
-        let tx = conn.unchecked_transaction()?;
-
-        // 迁移分组
-        if let Some(groups_obj) = data.get("groups").and_then(|v| v.as_object()) {
-            for (_id, group_data) in groups_obj {
-                if let Ok(group) = serde_json::from_value::<Group>(group_data.clone()) {
-                    tx.execute(
-                        "INSERT INTO groups (id, name, icon, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                        params![group.id, group.name, group.icon, group.created_at, group.updated_at],
-                    )?;
-                }
-            }
-        }
-
-        // 迁移分组顺序
-        if let Some(order_array) = data.get("order").and_then(|v| v.as_array()) {
-            for (position, item) in order_array.iter().enumerate() {
-                if let Some(group_id) = item.as_str() {
-                    tx.execute(
-                        "INSERT INTO group_order (position, group_id) VALUES (?1, ?2)",
-                        params![position as i32, group_id],
-                    )?;
-                }
-            }
-        }
-
-        tx.commit()?;
-        Ok(())
-    })?;
-
-    println!("分组数据迁移完成");
-    Ok(())
-}
-
-// 获取JSON文件路径的辅助函数
-fn get_history_json_path() -> PathBuf {
-    let mut dir = dirs::data_local_dir().unwrap_or_else(|| std::env::temp_dir());
-    dir.push("quickclipboard");
-    dir.push("history.json");
-    dir
-}
-
-fn get_quick_texts_json_path() -> PathBuf {
-    let mut dir = dirs::data_local_dir().unwrap_or_else(|| std::env::temp_dir());
-    dir.push("quickclipboard");
-    dir.push("quick_texts.json");
-    dir
-}
-
-fn get_groups_json_path() -> PathBuf {
-    let mut dir = dirs::data_local_dir().unwrap_or_else(|| std::env::temp_dir());
-    dir.push("quickclipboard");
-    dir.push("groups.json");
-    dir
-}
-
 // =================== 剪贴板历史数据库操作 ===================
 
 // 添加剪贴板项目
-pub fn add_clipboard_item(text: String) -> Result<i64, String> {
-    let item = ClipboardItem::new_text(text);
-    let now_local = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+pub fn add_clipboard_item(content: String) -> Result<i64, String> {
+    let item = ClipboardItem::new_text(content);
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.text, item.html_content, item.is_image, item.image_id, item.timestamp, now_local],
+            "INSERT INTO clipboard (content, html_content, is_image, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.is_image, item.image_id, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -440,39 +294,38 @@ pub fn add_clipboard_item(text: String) -> Result<i64, String> {
 }
 
 // 添加带HTML内容的剪贴板项目
-pub fn add_clipboard_item_with_html(text: String, html: Option<String>) -> Result<i64, String> {
-    let item = ClipboardItem::new_text_with_html(text, html);
-    let now_local = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+pub fn add_clipboard_item_with_html(content: String, html: Option<String>) -> Result<i64, String> {
+    let item = ClipboardItem::new_text_with_html(content, html);
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard_items (text, html_content, is_image, image_id, timestamp, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.text, item.html_content, item.is_image, item.image_id, item.timestamp, now_local],
+            "INSERT INTO clipboard (content, html_content, is_image, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.is_image, item.image_id, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
     })
 }
 
-// 获取剪贴板历史（按时间戳倒序）
+// 获取剪贴板历史（按创建时间倒序）
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, text, html_content, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC LIMIT {}", limit)
+            format!("SELECT id, content, html_content, is_image, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC LIMIT {}", limit)
         } else {
-            "SELECT id, text, html_content, is_image, image_id, timestamp, created_at FROM clipboard_items ORDER BY timestamp DESC".to_string()
+            "SELECT id, content, html_content, is_image, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC".to_string()
         };
 
         let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map([], |row| {
             Ok(ClipboardItem {
                 id: row.get(0)?,
-                text: row.get(1)?,
+                content: row.get(1)?,
                 html_content: row.get(2).ok(),
                 is_image: row.get(3)?,
                 image_id: row.get(4)?,
-                timestamp: row.get(5)?,
-                created_at: row.get(6).ok(),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -486,12 +339,12 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
 }
 
 // 检查剪贴板项目是否存在
-pub fn clipboard_item_exists(text: &str) -> Result<Option<i64>, String> {
+pub fn clipboard_item_exists(content: &str) -> Result<Option<i64>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id FROM clipboard_items WHERE text = ?1 ORDER BY timestamp DESC LIMIT 1",
+            "SELECT id FROM clipboard WHERE content = ?1 ORDER BY created_at DESC LIMIT 1",
         )?;
-        let mut rows = stmt.query_map([text], |row| Ok(row.get::<_, i64>(0)?))?;
+        let mut rows = stmt.query_map([content], |row| Ok(row.get::<_, i64>(0)?))?;
 
         if let Some(row) = rows.next() {
             Ok(Some(row?))
@@ -504,11 +357,11 @@ pub fn clipboard_item_exists(text: &str) -> Result<Option<i64>, String> {
 // 移动剪贴板项目到最前面（更新时间戳）
 pub fn move_clipboard_item_to_front(id: i64) -> Result<(), String> {
     let now = chrono::Local::now();
-    let new_timestamp = now.timestamp() as u64;
+    let new_timestamp = now.timestamp();
 
     with_connection(|conn| {
         conn.execute(
-            "UPDATE clipboard_items SET timestamp = ?1 WHERE id = ?2",
+            "UPDATE clipboard SET updated_at = ?1 WHERE id = ?2",
             params![new_timestamp, id],
         )?;
         Ok(())
@@ -518,17 +371,19 @@ pub fn move_clipboard_item_to_front(id: i64) -> Result<(), String> {
 // 删除剪贴板项目
 pub fn delete_clipboard_item(id: i64) -> Result<(), String> {
     with_connection(|conn| {
-        conn.execute("DELETE FROM clipboard_items WHERE id = ?1", params![id])?;
+        conn.execute("DELETE FROM clipboard WHERE id = ?1", params![id])?;
         Ok(())
     })
 }
 
 // 更新剪贴板项目内容
-pub fn update_clipboard_item(id: i64, new_text: String) -> Result<(), String> {
+pub fn update_clipboard_item(id: i64, new_content: String) -> Result<(), String> {
+    let now = chrono::Local::now().timestamp();
+    
     with_connection(|conn| {
         conn.execute(
-            "UPDATE clipboard_items SET text = ?1 WHERE id = ?2",
-            params![new_text, id],
+            "UPDATE clipboard SET content = ?1, updated_at = ?2 WHERE id = ?3",
+            params![new_content, now, id],
         )?;
         Ok(())
     })
@@ -537,7 +392,7 @@ pub fn update_clipboard_item(id: i64, new_text: String) -> Result<(), String> {
 // 清空剪贴板历史
 pub fn clear_clipboard_history() -> Result<(), String> {
     with_connection(|conn| {
-        conn.execute("DELETE FROM clipboard_items", [])?;
+        conn.execute("DELETE FROM clipboard", [])?;
         Ok(())
     })
 }
@@ -547,8 +402,8 @@ pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
     with_connection(|conn| {
         // 删除超出限制的旧记录
         conn.execute(
-            "DELETE FROM clipboard_items WHERE id NOT IN (
-                SELECT id FROM clipboard_items ORDER BY timestamp DESC LIMIT ?1
+            "DELETE FROM clipboard WHERE id NOT IN (
+                SELECT id FROM clipboard ORDER BY created_at DESC LIMIT ?1
             )",
             params![max_count],
         )?;
@@ -557,28 +412,28 @@ pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
 }
 
 // 批量更新剪贴板项目的时间戳（用于重新排序）
-pub fn reorder_clipboard_items(texts: &[String]) -> Result<(), String> {
+pub fn reorder_clipboard_items(contents: &[String]) -> Result<(), String> {
     with_connection(|conn| {
         let tx = conn.unchecked_transaction()?;
 
         // 获取当前最大时间戳，确保排序后的项目时间戳都小于未来可能的新项目
-        let max_timestamp: u64 = conn.query_row(
-            "SELECT COALESCE(MAX(timestamp), 0) FROM clipboard_items",
+        let max_timestamp: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(created_at), 0) FROM clipboard",
             [],
             |row| row.get(0),
         )?;
 
         // 使用比当前最大时间戳小的值作为基准，为排序项目分配时间戳
         // 这样确保新复制的内容（使用当前时间戳）总是在最前面
-        let base_timestamp = max_timestamp.saturating_sub(texts.len() as u64 * 2);
+        let base_timestamp = max_timestamp.saturating_sub(contents.len() as i64 * 2);
 
         // 为每个文本分配新的时间戳，第一个项目时间戳最大（但仍小于未来的新项目）
-        for (index, text) in texts.iter().enumerate() {
-            let new_timestamp = base_timestamp + (texts.len() - index) as u64;
+        for (index, content) in contents.iter().enumerate() {
+            let new_timestamp = base_timestamp + (contents.len() - index) as i64;
 
             tx.execute(
-                "UPDATE clipboard_items SET timestamp = ?1 WHERE text = ?2",
-                params![new_timestamp, text],
+                "UPDATE clipboard SET updated_at = ?1 WHERE content = ?2",
+                params![new_timestamp, content],
             )?;
         }
 
@@ -587,99 +442,108 @@ pub fn reorder_clipboard_items(texts: &[String]) -> Result<(), String> {
     })
 }
 
-// =================== 常用文本数据库操作 ===================
+// =================== 收藏项目数据库操作 ===================
 
-// 添加常用文本
-pub fn add_quick_text(quick_text: &QuickText) -> Result<(), String> {
+// 添加收藏项目
+pub fn add_favorite_item(item: &FavoriteItem) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO quick_texts (id, title, content, html_content, created_at, updated_at, group_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![quick_text.id, quick_text.title, quick_text.content, quick_text.html_content, quick_text.created_at, quick_text.updated_at, quick_text.group_id],
+                    "INSERT INTO favorites (id, title, content, html_content, is_image, image_id, group_name, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![item.id, item.title, item.content, item.html_content, item.is_image, item.image_id, item.group_name, item.item_order, item.created_at, item.updated_at],
         )?;
         Ok(())
     })
 }
 
-// 获取所有常用文本
-pub fn get_all_quick_texts() -> Result<Vec<QuickText>, String> {
+// 获取所有收藏项目
+pub fn get_all_favorite_items() -> Result<Vec<FavoriteItem>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, html_content, created_at, updated_at, group_id FROM quick_texts ORDER BY updated_at DESC"
+            "SELECT f.id, f.title, f.content, f.html_content, f.is_image, f.image_id, f.group_name, f.item_order, f.created_at, f.updated_at 
+             FROM favorites f 
+             LEFT JOIN groups g ON f.group_name = g.name 
+             ORDER BY COALESCE(g.order_index, 999999), f.item_order, f.updated_at DESC"
         )?;
 
         let rows = stmt.query_map([], |row| {
-            Ok(QuickText {
+            Ok(FavoriteItem {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 content: row.get(2)?,
                 html_content: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                group_id: row.get(6)?,
+                is_image: row.get(4)?,
+                image_id: row.get(5)?,
+                group_name: row.get(6)?,
+                item_order: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })?;
 
-        let mut texts = Vec::new();
+        let mut items = Vec::new();
         for row in rows {
-            texts.push(row?);
+            items.push(row?);
         }
 
-        Ok(texts)
+        Ok(items)
     })
 }
 
-// 按分组获取常用文本
-pub fn get_quick_texts_by_group(group_id: &str) -> Result<Vec<QuickText>, String> {
+// 按分组获取收藏项目
+pub fn get_favorite_items_by_group(group_name: &str) -> Result<Vec<FavoriteItem>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, html_content, created_at, updated_at, group_id FROM quick_texts WHERE group_id = ?1 ORDER BY updated_at DESC"
+            "SELECT id, title, content, html_content, is_image, image_id, group_name, item_order, created_at, updated_at FROM favorites WHERE group_name = ?1 ORDER BY item_order, updated_at DESC"
         )?;
 
-        let rows = stmt.query_map([group_id], |row| {
-            Ok(QuickText {
+        let rows = stmt.query_map([group_name], |row| {
+            Ok(FavoriteItem {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 content: row.get(2)?,
                 html_content: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                group_id: row.get(6)?,
+                is_image: row.get(4)?,
+                image_id: row.get(5)?,
+                group_name: row.get(6)?,
+                item_order: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })?;
 
-        let mut texts = Vec::new();
+        let mut items = Vec::new();
         for row in rows {
-            texts.push(row?);
+            items.push(row?);
         }
 
-        Ok(texts)
+        Ok(items)
     })
 }
 
-// 更新常用文本
-pub fn update_quick_text(quick_text: &QuickText) -> Result<(), String> {
+// 更新收藏项目
+pub fn update_favorite_item(item: &FavoriteItem) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-            "UPDATE quick_texts SET title = ?1, content = ?2, html_content = ?3, updated_at = ?4, group_id = ?5 WHERE id = ?6",
-            params![quick_text.title, quick_text.content, quick_text.html_content, quick_text.updated_at, quick_text.group_id, quick_text.id],
+            "UPDATE favorites SET title = ?1, content = ?2, html_content = ?3, is_image = ?4, image_id = ?5, group_name = ?6, item_order = ?7, updated_at = ?8 WHERE id = ?9",
+            params![item.title, item.content, item.html_content, item.is_image, item.image_id, item.group_name, item.item_order, item.updated_at, item.id],
         )?;
         Ok(())
     })
 }
 
-// 删除常用文本
-pub fn delete_quick_text(id: &str) -> Result<(), String> {
+// 删除收藏项目
+pub fn delete_favorite_item(id: &str) -> Result<(), String> {
     with_connection(|conn| {
-        conn.execute("DELETE FROM quick_texts WHERE id = ?1", params![id])?;
+        conn.execute("DELETE FROM favorites WHERE id = ?1", params![id])?;
         Ok(())
     })
 }
 
-// 检查常用文本是否存在
-pub fn quick_text_exists(id: &str) -> Result<bool, String> {
+// 检查收藏项目是否存在
+pub fn favorite_item_exists(id: &str) -> Result<bool, String> {
     with_connection(|conn| {
         let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM quick_texts WHERE id = ?1",
+            "SELECT COUNT(*) FROM favorites WHERE id = ?1",
             params![id],
             |row| row.get(0),
         )?;
@@ -687,29 +551,16 @@ pub fn quick_text_exists(id: &str) -> Result<bool, String> {
     })
 }
 
-// 批量更新常用文本的时间戳（用于重新排序）
-pub fn reorder_quick_texts(items: &[QuickText]) -> Result<(), String> {
+// 批量更新收藏项目的排序
+pub fn reorder_favorite_items(items: &[FavoriteItem]) -> Result<(), String> {
     with_connection(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // 获取当前最大时间戳，确保排序后的项目时间戳都小于未来可能的新项目
-        let max_timestamp: i64 = conn.query_row(
-            "SELECT COALESCE(MAX(updated_at), 0) FROM quick_texts",
-            [],
-            |row| row.get(0),
-        )?;
-
-        // 使用比当前最大时间戳小的值作为基准，为排序项目分配时间戳
-        // 这样确保新添加的内容（使用当前时间戳）总是在最前面
-        let base_timestamp = max_timestamp.saturating_sub(items.len() as i64 * 2);
-
-        // 为每个项目分配新的时间戳，第一个项目时间戳最大（但仍小于未来的新项目）
+        // 更新每个项目的排序信息
         for (index, item) in items.iter().enumerate() {
-            let new_timestamp = base_timestamp + (items.len() - index) as i64;
-
             tx.execute(
-                "UPDATE quick_texts SET updated_at = ?1 WHERE id = ?2",
-                params![new_timestamp, item.id],
+                "UPDATE favorites SET item_order = ?1, updated_at = ?2 WHERE id = ?3",
+                params![index as i32, item.updated_at, item.id],
             )?;
         }
 
@@ -718,108 +569,88 @@ pub fn reorder_quick_texts(items: &[QuickText]) -> Result<(), String> {
     })
 }
 
-// =================== 分组数据库操作 ===================
+// =================== 分组信息查询操作 ===================
 
-// 添加分组
-pub fn add_group(group: &Group) -> Result<(), String> {
+// 获取所有分组信息（合并groups表和favorites表的数据）
+pub fn get_all_groups() -> Result<Vec<GroupInfo>, String> {
     with_connection(|conn| {
-        conn.execute(
-            "INSERT INTO groups (id, name, icon, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![group.id, group.name, group.icon, group.created_at, group.updated_at],
-        )?;
-        Ok(())
-    })
-}
-
-// 获取所有分组
-pub fn get_all_groups() -> Result<Vec<Group>, String> {
-    with_connection(|conn| {
-        let mut stmt = conn.prepare("SELECT id, name, icon, created_at, updated_at FROM groups")?;
-
-        let rows = stmt.query_map([], |row| {
-            Ok(Group {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                icon: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
-            })
-        })?;
-
         let mut groups = Vec::new();
-        for row in rows {
-            groups.push(row?);
+        
+        // 首先获取所有在groups表中定义的分组
+        let mut stmt = conn.prepare("SELECT name, icon, order_index FROM groups ORDER BY order_index, name")?;
+        let group_rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i32>(2)?))
+        })?;
+        
+        // 为每个定义的分组计算项目数量
+        for group_row in group_rows {
+            let (name, icon, order) = group_row?;
+            let mut count_stmt = conn.prepare("SELECT COUNT(*) FROM favorites WHERE group_name = ?1")?;
+            let item_count: i32 = count_stmt.query_row([&name], |row| row.get(0))?;
+            
+            groups.push(GroupInfo {
+                name,
+                icon,
+                order,
+                item_count,
+            });
         }
+        
+
 
         Ok(groups)
     })
 }
 
-// 更新分组
-pub fn update_group(group: &Group) -> Result<(), String> {
+// 更新分组信息（批量更新指定分组的所有项目）
+pub fn update_group_info(old_name: &str, new_name: &str, new_icon: &str, new_order: i32) -> Result<(), String> {
+    let now = chrono::Local::now().timestamp();
+    
     with_connection(|conn| {
-        conn.execute(
-            "UPDATE groups SET name = ?1, icon = ?2, updated_at = ?3 WHERE id = ?4",
-            params![group.name, group.icon, group.updated_at, group.id],
+        let tx = conn.unchecked_transaction()?;
+        
+        // 更新groups表
+        tx.execute(
+            "UPDATE groups SET name = ?1, icon = ?2, order_index = ?3, updated_at = ?4 WHERE name = ?5",
+            params![new_name, new_icon, new_order, now, old_name],
         )?;
+        
+
+        
+        tx.commit()?;
         Ok(())
     })
 }
 
-// 删除分组
-pub fn delete_group(id: &str) -> Result<(), String> {
+// 删除分组（将分组下的所有项目移动到全部）
+pub fn delete_group_items(group_name: &str) -> Result<(), String> {
+    let now = chrono::Local::now().timestamp();
+    
     with_connection(|conn| {
-        conn.execute("DELETE FROM groups WHERE id = ?1", params![id])?;
+        let tx = conn.unchecked_transaction()?;
+        
+        // 删除groups表中的分组
+        tx.execute(
+            "DELETE FROM groups WHERE name = ?1",
+            params![group_name],
+        )?;
+        
+
+        
+        tx.commit()?;
         Ok(())
     })
 }
 
 // 检查分组是否存在
-pub fn group_exists(id: &str) -> Result<bool, String> {
+pub fn group_exists(group_name: &str) -> Result<bool, String> {
     with_connection(|conn| {
         let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM groups WHERE id = ?1",
-            params![id],
+            "SELECT COUNT(*) FROM groups WHERE name = ?1",
+            params![group_name],
             |row| row.get(0),
         )?;
         Ok(count > 0)
-    })
-}
-
-// 获取分组顺序
-pub fn get_group_order() -> Result<Vec<String>, String> {
-    with_connection(|conn| {
-        let mut stmt = conn.prepare("SELECT group_id FROM group_order ORDER BY position")?;
-
-        let rows = stmt.query_map([], |row| Ok(row.get::<_, String>(0)?))?;
-
-        let mut order = Vec::new();
-        for row in rows {
-            order.push(row?);
-        }
-
-        Ok(order)
-    })
-}
-
-// 设置分组顺序
-pub fn set_group_order(order: &[String]) -> Result<(), String> {
-    with_connection(|conn| {
-        let tx = conn.unchecked_transaction()?;
-
-        // 清空现有顺序
-        tx.execute("DELETE FROM group_order", [])?;
-
-        // 插入新顺序
-        for (position, group_id) in order.iter().enumerate() {
-            tx.execute(
-                "INSERT INTO group_order (position, group_id) VALUES (?1, ?2)",
-                params![position as i32, group_id],
-            )?;
-        }
-
-        tx.commit()?;
-        Ok(())
     })
 }
 
@@ -837,7 +668,7 @@ pub fn clear_all_data() -> Result<(), String> {
                 .map_err(|e| format!("创建事务失败: {}", e))?;
 
             // 安全地清空所有表（如果表存在的话）
-            let tables = vec!["clipboard_history", "quick_texts", "groups", "group_order"];
+            let tables = vec!["clipboard", "favorites", "groups"];
 
             for table in tables {
                 // 检查表是否存在
@@ -872,11 +703,44 @@ pub fn clear_all_data() -> Result<(), String> {
                 .unwrap_or(false);
 
             if sequence_exists {
-                tx.execute("DELETE FROM sqlite_sequence WHERE name IN ('clipboard_history', 'quick_texts', 'groups')", [])
+                tx.execute("DELETE FROM sqlite_sequence WHERE name IN ('clipboard', 'favorites')", [])
                     .map_err(|e| format!("重置自增ID失败: {}", e))?;
             }
 
             tx.commit().map_err(|e| format!("提交事务失败: {}", e))?;
+            Ok(())
+        }
+        None => Err("数据库未初始化".to_string()),
+    }
+}
+
+// =================== 分组管理操作 ===================
+
+// 创建分组
+pub fn create_group(name: &str, icon: &str) -> Result<(), String> {
+    let conn_arc = DB_CONNECTION.clone();
+    let mut conn_guard = conn_arc
+        .lock()
+        .map_err(|e| format!("获取数据库锁失败: {}", e))?;
+
+    match conn_guard.as_mut() {
+        Some(conn) => {
+            // 先检查分组名称是否已存在
+            let count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM groups WHERE name = ?1",
+                params![name],
+                |row| row.get(0),
+            ).map_err(|e| format!("检查分组名称失败: {}", e))?;
+            
+            if count > 0 {
+                return Err(format!("分组名称 '{}' 已存在，请使用其他名称", name));
+            }
+            
+            let now = chrono::Utc::now().timestamp();
+            conn.execute(
+                "INSERT INTO groups (name, icon, order_index, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?4)",
+                params![name, icon, now, now],
+            ).map_err(|e| format!("创建分组失败: {}", e))?;
             Ok(())
         }
         None => Err("数据库未初始化".to_string()),

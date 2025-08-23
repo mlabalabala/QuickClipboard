@@ -9,10 +9,11 @@ use auto_launch::AutoLaunch;
 use crate::admin_privileges;
 use crate::clipboard_content::{image_to_data_url, set_clipboard_content, set_clipboard_content_with_html};
 use crate::clipboard_history::{self, ClipboardItem};
-use crate::groups::{self, Group};
+use crate::groups::{self};
 use crate::image_manager::get_image_manager;
 use crate::mouse_hook::{disable_mouse_monitoring, enable_mouse_monitoring};
-use crate::quick_texts::{self, QuickText};
+use crate::quick_texts::{self};
+use crate::database::{self, FavoriteItem, GroupInfo};
 use crate::window_management;
 
 #[derive(Deserialize)]
@@ -192,7 +193,7 @@ pub fn hide_main_window_if_auto_shown(app: tauri::AppHandle) -> Result<(), Strin
 
 // 获取所有常用文本
 #[tauri::command]
-pub fn get_quick_texts() -> Vec<QuickText> {
+pub fn get_quick_texts() -> Vec<FavoriteItem> {
     quick_texts::get_all_quick_texts()
 }
 
@@ -201,10 +202,10 @@ pub fn get_quick_texts() -> Vec<QuickText> {
 pub fn add_quick_text(
     title: String,
     content: String,
-    groupId: String,
-) -> Result<QuickText, String> {
-    // 直接使用传入的groupId，就像拖拽功能一样
-    quick_texts::add_quick_text_with_group(title, content, groupId)
+    groupName: String,
+) -> Result<FavoriteItem, String> {
+    // 直接使用传入的groupName
+    quick_texts::add_quick_text(title, content, groupName)
 }
 
 // 更新常用文本
@@ -213,21 +214,21 @@ pub fn update_quick_text(
     id: String,
     title: String,
     content: String,
-    groupId: String,
-) -> Result<QuickText, String> {
-    // 直接使用传入的groupId，就像拖拽功能一样
-    quick_texts::update_quick_text_with_group(id, title, content, Some(groupId))
+    groupName: String,
+) -> Result<FavoriteItem, String> {
+    // 直接使用传入的groupName
+    quick_texts::update_quick_text(id, title, content, Some(groupName))
 }
 
 // 删除常用文本
 #[tauri::command]
 pub fn delete_quick_text(id: String) -> Result<(), String> {
-    quick_texts::delete_quick_text(id)
+    quick_texts::delete_quick_text(&id)
 }
 
 // 将剪贴板历史项添加到常用文本
 #[tauri::command]
-pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
+pub fn add_clipboard_to_favorites(index: usize) -> Result<FavoriteItem, String> {
     // 从数据库获取剪贴板历史
     let items = crate::database::get_clipboard_history(None)
         .map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
@@ -236,7 +237,7 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
         return Err(format!("索引 {} 超出历史范围", index));
     }
 
-    let content = items[index].text.clone();
+    let content = items[index].content.clone();
     let html_content = items[index].html_content.clone();
 
     // 处理内容，如果是图片则创建副本
@@ -293,7 +294,7 @@ pub fn add_clipboard_to_favorites(index: usize) -> Result<QuickText, String> {
     };
 
     // 添加到常用文本
-    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, "all".to_string())
+    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, "全部".to_string())
 }
 
 // =================== 鼠标监听控制命令 ===================
@@ -364,8 +365,8 @@ pub fn move_clipboard_item(from_index: usize, to_index: usize) -> Result<(), Str
 
 // 移动常用文本到指定位置
 #[tauri::command]
-pub fn move_quick_text_item(item_id: String, to_index: usize) -> Result<(), String> {
-    quick_texts::move_item(item_id, to_index)
+pub fn move_quick_text_item(item_index: usize, to_index: usize) -> Result<(), String> {
+    quick_texts::move_quick_text_within_group(item_index, to_index)
 }
 
 // 重新排序剪贴板历史（保留兼容性）
@@ -377,7 +378,7 @@ pub fn reorder_clipboard_history(items: Vec<String>) -> Result<(), String> {
 
 // 重新排序常用文本（保留兼容性）
 #[tauri::command]
-pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
+pub fn reorder_quick_texts(items: Vec<FavoriteItem>) -> Result<(), String> {
     quick_texts::reorder_quick_texts(items)
 }
 
@@ -385,19 +386,19 @@ pub fn reorder_quick_texts(items: Vec<QuickText>) -> Result<(), String> {
 
 // 获取所有分组
 #[tauri::command]
-pub fn get_groups() -> Vec<Group> {
-    groups::get_all_groups()
+pub fn get_groups() -> Vec<GroupInfo> {
+    database::get_all_groups().unwrap_or_default()
 }
 
 // 添加分组
 #[tauri::command]
-pub fn add_group(name: String, icon: String) -> Result<Group, String> {
+pub fn add_group(name: String, icon: String) -> Result<GroupInfo, String> {
     groups::add_group(name, icon)
 }
 
 // 更新分组
 #[tauri::command]
-pub fn update_group(id: String, name: String, icon: String) -> Result<Group, String> {
+pub fn update_group(id: String, name: String, icon: String) -> Result<GroupInfo, String> {
     groups::update_group(id, name, icon)
 }
 
@@ -409,14 +410,14 @@ pub fn delete_group(id: String) -> Result<(), String> {
 
 // 按分组获取常用文本
 #[tauri::command]
-pub fn get_quick_texts_by_group(group_id: String) -> Vec<QuickText> {
-    quick_texts::get_quick_texts_by_group(&group_id)
+pub fn get_quick_texts_by_group(groupName: String) -> Vec<FavoriteItem> {
+    quick_texts::get_quick_texts_by_group(&groupName)
 }
 
 // 移动常用文本到分组
 #[tauri::command]
-pub fn move_quick_text_to_group(id: String, group_id: String) -> Result<(), String> {
-    quick_texts::move_quick_text_to_group(id, group_id)
+pub fn move_quick_text_to_group(id: String, groupName: String) -> Result<(), String> {
+    quick_texts::move_quick_text_to_group(id, groupName)
 }
 
 // 打开设置窗口
@@ -668,7 +669,7 @@ pub fn get_active_sound_count() -> usize {
 
 // 从剪贴板历史添加到分组
 #[tauri::command]
-pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickText, String> {
+pub fn add_clipboard_to_group(index: usize, groupName: String) -> Result<FavoriteItem, String> {
     // 从数据库获取剪贴板历史
     let items = crate::database::get_clipboard_history(None)
         .map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
@@ -677,7 +678,7 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
         return Err(format!("索引 {} 超出历史范围", index));
     }
 
-    let content = items[index].text.clone(); // 释放锁
+    let content = items[index].content.clone(); // 释放锁
     let html_content = items[index].html_content.clone();
 
     // 处理内容，如果是图片则创建副本
@@ -736,7 +737,7 @@ pub fn add_clipboard_to_group(index: usize, group_id: String) -> Result<QuickTex
     };
 
     // 添加到指定分组的常用文本
-    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, group_id)
+    quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, groupName)
 }
 
 // 设置主窗口为置顶
@@ -891,8 +892,8 @@ pub async fn emit_quick_texts_updated(app: tauri::AppHandle) -> Result<(), Strin
 
 // 通知预览窗口标签切换
 #[tauri::command]
-pub fn notify_preview_tab_change(tab: String, group_id: String) -> Result<(), String> {
-    crate::preview_window::update_preview_source(tab, group_id)
+pub fn notify_preview_tab_change(tab: String, groupName: String) -> Result<(), String> {
+    crate::preview_window::update_preview_source(tab, groupName)
 }
 
 // 获取主窗口当前状态
@@ -1372,8 +1373,8 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     let clipboard_items = database::get_clipboard_history(None)?;
     for item in clipboard_items {
         // 检查是否是文件类型的项目
-        if item.text.starts_with("files:") {
-            let json_str = item.text.strip_prefix("files:").unwrap_or("");
+        if item.content.starts_with("files:") {
+            let json_str = item.content.strip_prefix("files:").unwrap_or("");
 
             // 解析文件数据
             if let Ok(mut file_data) = serde_json::from_str::<FileClipboardData>(json_str) {
@@ -1405,7 +1406,7 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     }
 
     // 2. 刷新常用文本列表中的文件图标
-    let quick_texts = database::get_all_quick_texts()?;
+    let quick_texts = database::get_all_favorite_items()?;
     for text in quick_texts {
         // 检查是否是文件类型的常用文本
         if text.content.starts_with("files:") {
@@ -1436,7 +1437,7 @@ fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
                         let now_local = chrono::Local::now();
                         updated_text.updated_at = now_local.timestamp();
 
-                        if let Err(e) = database::update_quick_text(&updated_text) {
+                        if let Err(e) = database::update_favorite_item(&updated_text) {
                             println!("更新常用文本 {} 失败: {}", text.id, e);
                         } else {
                             updated_count += 1;
