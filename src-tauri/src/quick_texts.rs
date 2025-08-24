@@ -94,13 +94,14 @@ pub fn move_quick_text_within_group(
 ) -> Result<(), String> {
     // 获取所有常用文本
     let all_texts = database::get_all_favorite_items()?;
-
+    println!("item_index: {}, new_index: {}", item_index, new_index);
     if item_index >= all_texts.len() {
         return Err("无效的项目索引".to_string());
     }
 
-    // 获取要移动的项目的分组名称
-    let item_group_name = &all_texts[item_index].group_name;
+    // 获取要移动的项目
+    let moved_item = &all_texts[item_index];
+    let item_group_name = &moved_item.group_name;
 
     // 获取同一分组的所有项目
     let mut group_texts: Vec<FavoriteItem> = all_texts
@@ -109,12 +110,18 @@ pub fn move_quick_text_within_group(
         .cloned()
         .collect();
 
+    // 找到要移动的项目在分组内的实际索引
+    let actual_item_index = group_texts
+        .iter()
+        .position(|t| t.id == moved_item.id)
+        .ok_or_else(|| "在分组中找不到要移动的项目".to_string())?;
+
     if new_index >= group_texts.len() {
         return Err("无效的新位置索引".to_string());
     }
 
     // 在分组内重新排序
-    let item = group_texts.remove(item_index);
+    let item = group_texts.remove(actual_item_index);
     group_texts.insert(new_index, item);
 
     // 更新排序

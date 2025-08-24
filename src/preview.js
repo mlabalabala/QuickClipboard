@@ -217,7 +217,7 @@ async function refreshDataSource(tab, groupId) {
       } else {
         // 获取指定分组的常用文本
         try {
-          const quickTexts = await invoke('get_quick_texts_by_group', { groupId: groupId });
+          const quickTexts = await invoke('get_quick_texts_by_group', { groupName: groupId });
           clipboardHistory = quickTexts || [];
 
           // 获取分组名称
