@@ -8,6 +8,9 @@ let controlsSortable = null;
 let toolsPanelSortable = null;
 let wasPanelOpenBeforeDrag = false;
 
+// 本地存储键名
+const STORAGE_KEY = 'titlebar-controls-layout';
+
 // 初始化标题栏拖拽功能
 export function initTitlebarDrag() {
   // 延迟初始化，确保DOM完全加载
@@ -18,6 +21,9 @@ export function initTitlebarDrag() {
     if (!titlebarControls || !toolsPanel) {
       return;
     }
+
+    // 恢复保存的布局
+    restoreLayout();
 
     // 初始化标题栏控件拖拽
     initControlsSortable();
@@ -56,18 +62,20 @@ function initControlsSortable() {
       document.body.classList.add('dragging');
       evt.item.classList.add('dragging-item');
       
-      // 确保两个容器都显示拖拽目标边框
-      titlebarControls.classList.add('drag-target');
-      toolsPanel.classList.add('drag-target');
+      // 当前容器（标题栏）保持蓝色，其他容器（工具面板）显示绿色
+      titlebarControls.classList.add('drag-source'); // 蓝色边框
+      toolsPanel.classList.add('drag-target'); // 绿色边框
     },
 
     onEnd: function(evt) {
       document.body.classList.remove('dragging');
       evt.item.classList.remove('dragging-item');
       
-      // 清除拖拽目标边框
-      titlebarControls.classList.remove('drag-target');
-      toolsPanel.classList.remove('drag-target');
+      // 清除所有拖拽目标样式
+      clearAllDragTargets();
+      
+      // 保存当前布局
+      saveLayout();
       
       // 如果拖拽前面板是关闭的，拖拽结束后自动关闭
       if (!wasPanelOpenBeforeDrag) {
@@ -107,18 +115,20 @@ function initToolsPanelSortable() {
       document.body.classList.add('dragging');
       evt.item.classList.add('dragging-item');
       
-      // 确保两个容器都显示拖拽目标边框
-      titlebarControls.classList.add('drag-target');
-      toolsPanel.classList.add('drag-target');
+      // 当前容器（工具面板）保持蓝色，其他容器（标题栏）显示绿色
+      toolsPanel.classList.add('drag-source'); // 蓝色边框
+      titlebarControls.classList.add('drag-target'); // 绿色边框
     },
 
     onEnd: function(evt) {
       document.body.classList.remove('dragging');
       evt.item.classList.remove('dragging-item');
       
-      // 清除拖拽目标边框
-      titlebarControls.classList.remove('drag-target');
-      toolsPanel.classList.remove('drag-target');
+      // 清除所有拖拽目标样式
+      clearAllDragTargets();
+      
+      // 保存当前布局
+      saveLayout();
     },
 
     onAdd: function(evt) {
@@ -196,10 +206,162 @@ export function destroyTitlebarDrag() {
   dragTargets.forEach(target => target.classList.remove('drag-target'));
 }
 
+// 清除所有拖拽目标样式
+function clearAllDragTargets() {
+  const dragTargets = document.querySelectorAll('.drag-target');
+  dragTargets.forEach(target => target.classList.remove('drag-target'));
+  
+  const dragSources = document.querySelectorAll('.drag-source');
+  dragSources.forEach(source => source.classList.remove('drag-source'));
+}
+
 // 刷新拖拽功能
 export function refreshTitlebarDrag() {
   destroyTitlebarDrag();
   initTitlebarDrag();
+}
+
+// 保存当前布局到本地存储
+function saveLayout() {
+  try {
+    const layout = {
+      titlebarControls: [],
+      toolsPanelItems: []
+    };
+
+    // 保存标题栏控件的顺序和ID
+    if (titlebarControls) {
+      const buttons = titlebarControls.querySelectorAll('.control-button');
+      buttons.forEach(button => {
+        layout.titlebarControls.push({
+          id: button.id,
+          title: button.title,
+          innerHTML: button.innerHTML
+        });
+      });
+    }
+
+    // 保存工具面板项的顺序和ID
+    if (toolsPanel) {
+      const toolItems = toolsPanel.querySelectorAll('.tool-item');
+      toolItems.forEach(item => {
+        const button = item.querySelector('.tool-button');
+        if (button) {
+          layout.toolsPanelItems.push({
+            id: button.id,
+            title: button.title,
+            innerHTML: button.innerHTML,
+            className: button.className
+          });
+        }
+      });
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+  } catch (error) {
+    // 静默处理存储错误
+  }
+}
+
+// 从本地存储恢复布局
+function restoreLayout() {
+  try {
+    const savedLayout = localStorage.getItem(STORAGE_KEY);
+    if (!savedLayout) return;
+
+    const layout = JSON.parse(savedLayout);
+    
+    // 恢复标题栏控件
+    if (layout.titlebarControls && titlebarControls) {
+      restoreTitlebarControls(layout.titlebarControls);
+    }
+
+    // 恢复工具面板项
+    if (layout.toolsPanelItems && toolsPanel) {
+      restoreToolsPanelItems(layout.toolsPanelItems);
+    }
+  } catch (error) {
+    // 静默处理恢复错误
+  }
+}
+
+// 恢复标题栏控件
+function restoreTitlebarControls(controlsData) {
+  const existingButtons = Array.from(titlebarControls.querySelectorAll('.control-button'));
+  
+  // 创建一个映射，方便查找现有按钮
+  const buttonMap = new Map();
+  existingButtons.forEach(button => {
+    buttonMap.set(button.id, button);
+  });
+
+  // 清空容器
+  titlebarControls.innerHTML = '';
+
+  // 按保存的顺序重新添加按钮
+  controlsData.forEach(controlData => {
+    const existingButton = buttonMap.get(controlData.id);
+    if (existingButton) {
+      titlebarControls.appendChild(existingButton);
+    } else {
+      // 如果按钮不存在，创建新的
+      const button = document.createElement('button');
+      button.id = controlData.id;
+      button.className = 'control-button';
+      button.title = controlData.title;
+      button.innerHTML = controlData.innerHTML;
+      button.setAttribute('draggable', 'true');
+      titlebarControls.appendChild(button);
+    }
+  });
+}
+
+// 恢复工具面板项
+function restoreToolsPanelItems(itemsData) {
+  const existingItems = Array.from(toolsPanel.querySelectorAll('.tool-item'));
+  
+  // 创建一个映射，方便查找现有项
+  const itemMap = new Map();
+  existingItems.forEach(item => {
+    const button = item.querySelector('.tool-button');
+    if (button) {
+      itemMap.set(button.id, item);
+    }
+  });
+
+  // 清空容器
+  toolsPanel.innerHTML = '';
+
+  // 按保存的顺序重新添加项
+  itemsData.forEach(itemData => {
+    const existingItem = itemMap.get(itemData.id);
+    if (existingItem) {
+      toolsPanel.appendChild(existingItem);
+    } else {
+      // 如果项不存在，创建新的
+      const toolItem = document.createElement('div');
+      toolItem.className = 'tool-item';
+      toolItem.setAttribute('draggable', 'true');
+      
+      const button = document.createElement('button');
+      button.id = itemData.id;
+      button.className = itemData.className;
+      button.title = itemData.title;
+      button.innerHTML = itemData.innerHTML;
+      
+      toolItem.appendChild(button);
+      toolsPanel.appendChild(toolItem);
+    }
+  });
+}
+
+// 清除保存的布局
+export function clearSavedLayout() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    // 静默处理错误
+  }
 }
 
 // 测试函数 - 在浏览器控制台中使用（仅返回状态信息）
@@ -212,7 +374,8 @@ export function testTitlebarDrag() {
     toolsPanel,
     controlsSortable,
     toolsPanelSortable,
-    wasPanelOpenBeforeDrag
+    wasPanelOpenBeforeDrag,
+    savedLayout: localStorage.getItem(STORAGE_KEY)
   };
 }
 
@@ -220,4 +383,5 @@ export function testTitlebarDrag() {
 if (typeof window !== 'undefined') {
   window.testTitlebarDrag = testTitlebarDrag;
   window.refreshTitlebarDrag = refreshTitlebarDrag;
+  window.clearSavedLayout = clearSavedLayout;
 }

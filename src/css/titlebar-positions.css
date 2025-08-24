@@ -209,6 +209,7 @@
   position: static;
   flex-direction: column;
   margin-top: auto;
+  min-height: 50% !important;
 }
 
 .titlebar-left .container,

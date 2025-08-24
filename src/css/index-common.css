@@ -2469,26 +2469,41 @@ body.dragging .tools-panel-content:hover {
 }
 
 /* 拖拽时两个容器都显示边框 */
-body.dragging .title-bar .controls {
-  border: 2px dashed var(--primary-green) !important;
-  background: rgba(74, 137, 220, 0.1) !important;
-}
-
+/* 拖拽时的默认容器边框 */
+body.dragging .controls,
 body.dragging .tools-panel-content {
   border: 2px dashed var(--primary-color) !important;
   background: rgba(74, 137, 220, 0.1) !important;
 }
 
-/* 拖拽目标容器样式 */
-.drag-target {
-  border: 2px dashed var(--primary-color) !important;
-  background: rgba(220, 74, 74, 0.1) !important;
+/* 拖拽目标容器样式 - 绿色边框表示可放置 */
+body.dragging .controls.drag-target,
+body.dragging .tools-panel-content.drag-target {
+  border: 2px dashed var(--primary-green) !important;
+  background: rgba(42, 235, 49, 0.1) !important;
   border-radius: 6px !important;
   transition: all 0.2s ease !important;
 }
 
-.drag-target:hover {
+body.dragging .controls.drag-target:hover,
+body.dragging .tools-panel-content.drag-target:hover {
+  border-color: #22c928 !important;
+  background: rgba(42, 235, 49, 0.2) !important;
+  box-shadow: 0 0 10px rgba(42, 235, 49, 0.3) !important;
+}
+
+/* 拖拽源容器样式 - 蓝色边框表示当前拖拽来源 */
+body.dragging .controls.drag-source,
+body.dragging .tools-panel-content.drag-source {
+  border: 2px dashed var(--primary-color) !important;
+  background: rgba(74, 137, 220, 0.1) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.dragging .controls.drag-source:hover,
+body.dragging .tools-panel-content.drag-source:hover {
   border-color: var(--primary-hover) !important;
-  background: var(--primary-light) !important;
+  background: rgba(74, 137, 220, 0.2) !important;
   box-shadow: 0 0 10px rgba(74, 137, 220, 0.3) !important;
 }
