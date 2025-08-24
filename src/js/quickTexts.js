@@ -919,7 +919,7 @@ async function handleQuickTextItemPaste(text, element = null) {
           params: {
             content: text.content,
             html_content: text.html_content || null,
-            one_time: text.one_time || false,
+            one_time: false,
             quick_text_id: text.id
           }
         });
@@ -933,6 +933,22 @@ async function handleQuickTextItemPaste(text, element = null) {
             console.log('AI翻译成功完成');
           } else if (result.method === 'fallback') {
             console.log('使用降级处理完成粘贴:', result.error);
+          }
+
+          // 一次性粘贴：翻译成功后删除该常用文本项
+          if (isOneTimePaste) {
+            try {
+              setTimeout(async () => {
+                try {
+                  await invoke('delete_quick_text', { id: text.id });
+                  await refreshQuickTexts();
+                  showNotification('已删除常用文本', 'success');
+                } catch (error) {
+                  console.error('删除常用文本失败:', error);
+                  showNotification('删除失败，请重试', 'error');
+                }
+              }, 100);
+            } catch (_) {}
           }
 
           hideTranslationIndicator();
@@ -955,7 +971,7 @@ async function handleQuickTextItemPaste(text, element = null) {
         params: {
           content: text.content,
           html_content: text.html_content || null,
-          one_time: text.one_time || false,
+          one_time: false,
           quick_text_id: text.id
         }
       });
@@ -966,6 +982,22 @@ async function handleQuickTextItemPaste(text, element = null) {
         successMessage = '文件粘贴成功';
       } else if (contentType === 'image') {
         successMessage = '图片粘贴成功';
+      }
+
+      // 一次性粘贴：粘贴成功后删除该常用文本项
+      if (isOneTimePaste) {
+        try {
+          setTimeout(async () => {
+            try {
+              await invoke('delete_quick_text', { id: text.id });
+              await refreshQuickTexts();
+              showNotification('已删除常用文本', 'success');
+            } catch (error) {
+              console.error('删除常用文本失败:', error);
+              showNotification('删除失败，请重试', 'error');
+            }
+          }, 100);
+        } catch (_) {}
       }
 
       hidePasteLoading(element, true, successMessage);

@@ -5,7 +5,6 @@ pub struct PasteContentParams {
     pub content: String,
     pub html_content: Option<String>,  // HTML格式内容
     pub quick_text_id: Option<String>, // 如果是常用文本，提供ID
-    pub one_time: Option<bool>,        // 是否一次性粘贴
 }
 
 /// 统一粘贴内容 - 自动识别内容类型并执行相应的粘贴操作
@@ -26,14 +25,6 @@ pub async fn paste_content(
         // 文本类型粘贴
         paste_text_with_html(params.content, params.html_content, &window).await
     }?;
-
-    // 处理一次性粘贴逻辑
-    if let (Some(quick_text_id), Some(true)) = (params.quick_text_id, params.one_time) {
-        // 删除一次性常用文本
-        if let Err(e) = crate::quick_texts::delete_quick_text(&quick_text_id) {
-            eprintln!("删除一次性常用文本失败: {}", e);
-        }
-    }
 
     Ok(())
 }
@@ -70,19 +61,6 @@ pub async fn paste_text_with_html(text_content: String, html_content: Option<Str
 
     // 执行普通文本粘贴
     paste_text_without_translation_internal_with_html(text_content, html_content, window).await
-}
-
-/// 粘贴文本内容
-pub async fn paste_text(text_content: String, window: &WebviewWindow) -> Result<(), String> {
-    paste_text_with_html(text_content, None, window).await
-}
-
-/// 粘贴文本内容（包含翻译逻辑）- 兼容旧接口
-pub async fn paste_text_with_translation(
-    text_content: String,
-    window: WebviewWindow,
-) -> Result<(), String> {
-    paste_text(text_content, &window).await
 }
 
 

@@ -520,7 +520,6 @@ fn handle_number_shortcut_paste(index: usize) {
                             content,
                             html_content,
                             quick_text_id: None,
-                            one_time: None,
                         };
                         let _ = crate::commands::paste_content(params, window_clone).await;
                     }

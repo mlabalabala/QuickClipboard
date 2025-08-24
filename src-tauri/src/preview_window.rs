@@ -565,7 +565,6 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                             content,
                             html_content,
                             quick_text_id: None,
-                            one_time: None,
                         };
                         crate::commands::paste_content(params, main_window.clone()).await?;
                     }
@@ -587,7 +586,6 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
                         content: quick_text.content.clone(),
                         html_content: quick_text.html_content.clone(),
                         quick_text_id: Some(quick_text.id.clone()),
-                        one_time: Some(false),
                     };
                     crate::commands::paste_content(params, main_window.clone()).await?;
                 }
