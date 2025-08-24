@@ -186,6 +186,7 @@
 .titlebar-right .tools-panel-content {
   width: fit-content;
   height: fit-content;
+  direction: rtl;
 }
 
 /* 左右共同样式 */
@@ -228,9 +229,10 @@
 .titlebar-right .tools-panel-content {
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   padding: var(--padding-medium) var(--padding-small);
   gap: var(--padding-medium);
+  height: 100%;
 }
 
 .titlebar-left .tool-item,
