@@ -80,7 +80,7 @@ function applySettings(settings) {
 
   if (settings.clipboardMonitor !== undefined) {
     // 剪贴板监听设置
-    // console.log('剪贴板监听设置:', settings.clipboardMonitor);
+    console.log('剪贴板监听设置:', settings.clipboardMonitor);
   }
 
   // 应用动画设置

@@ -54,12 +54,16 @@ body.theme-dark {
 }
 
 /* =================== 标题栏 =================== */
-.theme-dark .title-bar {
+.theme-dark .title-bar ,
+.theme-dark .tools-panel{
   background-color: var(--bg-tertiary);
   border-bottom-color: var(--border-primary);
   color: var(--text-primary);
 }
-
+.theme-dark .tools-panel{
+  background-color: color-mix(in srgb, var(--bg-tertiary) 50%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
 .theme-dark .title {
   color: var(--text-primary);
 }
@@ -69,6 +73,21 @@ body.theme-dark {
 }
 
 .theme-dark .control-button:hover {
+  background-color: var(--border-primary);
+}
+
+.theme-dark .control-button.active{
+  color: var(--text-primary);
+}
+
+.theme-dark .control-button.active:hover{
+  background-color: var( --info-color);
+}
+.theme-dark .tool-item{
+  border: 1px solid var(--border-secondary);
+  background-color: var(--bg-secondary);
+}
+.theme-dark .tool-item:hover{
   background-color: var(--border-primary);
 }
 

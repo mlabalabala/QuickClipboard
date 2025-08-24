@@ -34,7 +34,8 @@ import {
   quickTextsSearch,
   quickTextsFilter,
   quickTextsFilterContainer,
-  oneTimePasteSwitch
+  oneTimePasteButton,
+  isOneTimePaste
 } from './js/config.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -88,6 +89,8 @@ import { initInputFocusManagement } from './js/focus.js';
 import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
 import { initScreenshot } from './js/screenshot.js';
+import { initToolsPanel } from './js/toolsPanel.js';
+
 import { initExternalScrollbars } from './js/scrollbar.js';
 import {
   initializeSettingsManager,
@@ -116,6 +119,17 @@ async function waitForBackendInitialization() {
     // 等待时间50ms
     await new Promise(resolve => setTimeout(resolve, 50));
     attempts++;
+  }
+}
+
+// 更新一次性粘贴按钮状态
+function updateOneTimePasteButtonState() {
+  if (oneTimePasteButton) {
+    if (isOneTimePaste) {
+      oneTimePasteButton.classList.add('active');
+    } else {
+      oneTimePasteButton.classList.remove('active');
+    }
   }
 }
 
@@ -230,11 +244,16 @@ async function initApp() {
     updateFilterTabsActiveState(getActiveTabName(), getActiveTabName() === 'clipboard' ? clipboardFilter : quickTextsFilter);
   }, 200);
 
-  // 设置一次性粘贴开关
-  if (oneTimePasteSwitch) {
-    oneTimePasteSwitch.addEventListener('change', (e) => {
-      setIsOneTimePaste(e.target.checked);
+  // 设置一次性粘贴按钮
+  if (oneTimePasteButton) {
+    oneTimePasteButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newState = !isOneTimePaste;
+      setIsOneTimePaste(newState);
+      updateOneTimePasteButtonState();
     });
+    // 初始化按钮状态
+    updateOneTimePasteButtonState();
   }
 
   // 初始化AI翻译功能
@@ -301,6 +320,9 @@ async function initApp() {
 
   // 初始化截屏功能
   initScreenshot();
+
+  // 初始化工具面板
+  initToolsPanel();
 
   // 设置右键菜单禁用
   setupContextMenuDisable();

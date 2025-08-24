@@ -54,12 +54,16 @@ body.theme-light {
 }
 
 /* =================== 标题栏 =================== */
-.theme-light .title-bar {
+.theme-light .title-bar,
+.theme-light .tools-panel {
   background-color: var(--bg-tertiary);
   border-bottom-color: var(--border-secondary);
   color: var(--text-secondary);
 }
-
+.theme-light .tools-panel{
+  background-color: color-mix(in srgb, var(--bg-tertiary) 50%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
 .theme-light .title {
   color: var(--text-secondary);
 }
@@ -69,9 +73,23 @@ body.theme-light {
 }
 
 .theme-light .control-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
+.theme-light .control-button.active{
+  color: var(--bg-active);
+}
+
+.theme-light .control-button.active:hover{
+  background-color: var(--primary-color);
+}
+.theme-light .tool-item{
+  border: 1px solid var(--border-primary);
+  background-color: var(--bg-primary);
+}
+.theme-light .tool-item:hover{
+  background-color: rgba(0, 0, 0, 0.1);
+}
 .theme-light .minimize-btn:hover {
   background: #e3f2fd;
   color: #1976d2;
@@ -362,24 +380,6 @@ body.theme-light {
 .theme-light .icon-select:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(74, 137, 220, 0.2);
-}
-
-/* =================== 开关样式 =================== */
-.theme-light .toggle-label {
-  background-color: #cdcdcd;
-}
-
-.theme-light .toggle-slider {
-  background-color: var(--bg-primary);
-}
-
-.theme-light .toggle-switch input:checked + .toggle-slider {
-  background-color: #1976d2 !important;
-}
-
-/* =================== AI翻译开关 =================== */
-.theme-light .ai-translation-toggle .toggle-icon {
-  color: var(--text-secondary);
 }
 
 /* =================== 底部信息栏 =================== */

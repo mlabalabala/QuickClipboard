@@ -76,8 +76,10 @@ body {
   --margin-large: 16px;
 
   /* Z-index层级 */
+  --z-root: 999999999;
   --z-modal: 1000;
   --z-tooltip: 999;
+  --z-dropdown: 500;
   --z-sidebar: 99;
   --z-controls: 20;
   --z-overlay: 10;
@@ -135,7 +137,7 @@ body {
   padding: var(--padding-medium) var(--padding-large);
   border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
   cursor: grab;
-  z-index: var(--z-modal);
+  z-index: var(--z-root);
 }
 
 .title-bar:active {
@@ -161,7 +163,7 @@ body {
 
 .controls {
   display: flex;
-  gap: var(--padding-medium);
+  gap: var(--padding-small);
   position: fixed;
   right: 8px;
   z-index: var(--z-controls);
@@ -170,19 +172,95 @@ body {
 .control-button {
   background: none;
   border: none;
-  width: 24px;
-  height: 24px;
+  width: fit-content;
+  height: fit-content;
   border-radius: var(--border-radius-small);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 2em;
+  font-size: 1.8em;
   transition: all var(--transition-duration) ease;
+  padding: 4px;
+}
+
+.control-button.active {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 #close-button:hover {
   background-color: #ff4d4f;
+  color: white;
+}
+
+/* =================== 可展开工具面板 =================== */
+.tools-panel {
+  position: fixed;
+  box-shadow: var(--shadow-light);
+  z-index: var(--z-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-duration) ease;
+  border-radius: var(--border-radius-large);
+  overflow: hidden !important;
+}
+
+.tools-panel.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tools-panel-content {
+  padding: var(--padding-medium);
+  display: flex;
+  gap: var(--padding-small);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-item {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-small);
+  border-radius: var(--border-radius-small);
+  transition: background-color var(--transition-duration) ease;
+  cursor: pointer;
+}
+
+.tool-item:hover {
+  background-color: var(--primary-color);
+}
+
+.tool-button {
+  background: none;
+  border: none;
+  padding: var(--padding-small);
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: background-color var(--transition-duration) ease;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-button:hover {
+  background-color: var(--hover-bg);
+}
+
+.tool-button i {
+  font-size: 22px;
+}
+
+/* 切换按钮样式 */
+.toggle-button {
+  position: relative;
+}
+
+.toggle-button.active {
+  background-color: var(--primary-color);
   color: white;
 }
 
@@ -201,107 +279,6 @@ body {
 
 .container:active {
   cursor: grabbing;
-}
-
-/* =================== 通用开关样式 =================== */
-.one-time-paste-toggle,
-.ai-translation-toggle {
-  display: flex;
-  align-items: center;
-}
-
-.toggle-switch {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.toggle-label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 36px;
-  height: 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all var(--transition-slow) ease;
-}
-
-.toggle-slider {
-  position: absolute;
-  top: 50%;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  transition: transform var(--transition-slow) ease;
-  box-shadow: var(--shadow-light);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  transform: translateY(-50%);
-}
-
-.toggle-switch:checked+.toggle-label {
-  background-color: var(--primary-color);
-}
-
-.toggle-switch:checked+.toggle-label .toggle-slider {
-  transform: translateX(16px) translateY(-50%);
-}
-
-.toggle-label:hover {
-  opacity: 0.8;
-}
-
-.toggle-switch:checked+.toggle-label:hover {
-  background-color: var(--primary-hover);
-}
-
-/* =================== AI翻译开关特有样式 =================== */
-.ai-translation-toggle .toggle-label {
-  justify-content: center;
-}
-
-.ai-translation-toggle .toggle-icon {
-  position: absolute;
-  font-size: 12px;
-  transition: color var(--transition-slow) ease;
-  z-index: 1;
-}
-
-.ai-translation-toggle .toggle-switch:checked+.toggle-label .toggle-icon {
-  color: #fff;
-}
-
-.ai-translation-toggle .toggle-label:hover {
-  transform: scale(1.05);
-}
-
-.ai-translation-toggle .toggle-switch:checked+.toggle-label {
-  animation: toggleSuccess var(--transition-slow) ease-out;
-}
-
-@keyframes toggleSuccess {
-  0% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.1);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.ai-translation-toggle.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.ai-translation-toggle.disabled .toggle-label {
-  cursor: not-allowed;
 }
 
 /* =================== AI翻译进度指示器 =================== */
@@ -411,7 +388,7 @@ body {
   display: flex;
   gap: var(--padding-medium);
   align-items: center;
-  z-index: 9999 !important;
+  z-index:99 !important;
 }
 
 #search-input,
@@ -1476,7 +1453,7 @@ body {
   right: 0;
   padding: 4px 10px;
   transition: all var(--transition-slow) ease;
-  z-index: var(--z-modal);
+  z-index: 99 ;
   /* overflow: hidden; */
   border-radius: 0 0 8px 8px;
   cursor: grab;

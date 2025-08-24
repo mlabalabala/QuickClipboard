@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import {
-  aiTranslationSwitch,
+  aiTranslationButton,
   setIsAiTranslationEnabled,
   getIsAiTranslationEnabled
 } from './config.js';
@@ -79,9 +79,7 @@ async function loadAiTranslationSettings() {
 
     // 更新UI状态
     setIsAiTranslationEnabled(settings.aiTranslationEnabled);
-    if (aiTranslationSwitch) {
-      aiTranslationSwitch.checked = settings.aiTranslationEnabled;
-    }
+    updateAiTranslationButtonState();
   } catch (error) {
     console.error('加载AI翻译设置失败:', error);
   }
@@ -91,41 +89,60 @@ async function loadAiTranslationSettings() {
  * 设置AI翻译开关事件监听
  */
 function setupAiTranslationSwitch() {
-  if (!aiTranslationSwitch) {
-    console.warn('AI翻译开关元素未找到');
+  if (!aiTranslationButton) {
+    console.warn('AI翻译按钮元素未找到');
     return;
   }
 
-  aiTranslationSwitch.addEventListener('change', async (event) => {
-    const enabled = event.target.checked;
-    console.log('AI翻译开关状态变化:', enabled);
+  aiTranslationButton.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const currentEnabled = getIsAiTranslationEnabled();
+    const newEnabled = !currentEnabled;
+    console.log('AI翻译按钮点击，状态变化:', newEnabled);
 
     try {
       // 检查AI翻译配置是否有效
       const isConfigValid = await invoke('check_ai_translation_config');
 
-      if (enabled && !isConfigValid) {
-        // 配置无效，显示提示并重置开关
-        event.target.checked = false;
+      if (newEnabled && !isConfigValid) {
+        // 配置无效，显示提示
         showAiTranslationConfigError();
         return;
       }
 
       // 更新本地状态
-      setIsAiTranslationEnabled(enabled);
+      setIsAiTranslationEnabled(newEnabled);
+
+      // 更新按钮状态
+      updateAiTranslationButtonState();
 
       // 保存AI翻译设置到后端
-      await saveAiTranslationSetting('aiTranslationEnabled', enabled);
+      await saveAiTranslationSetting('aiTranslationEnabled', newEnabled);
 
       // 发送状态变化事件给设置窗口
-      await broadcastAiTranslationStateChange(enabled);
+      await broadcastAiTranslationStateChange(newEnabled);
 
     } catch (error) {
       console.error('切换AI翻译状态失败:', error);
-      // 恢复开关状态
-      event.target.checked = !enabled;
+      // 状态切换失败，不需要恢复按钮状态，因为本地状态没有改变
     }
   });
+
+  // 初始化按钮状态
+  updateAiTranslationButtonState();
+}
+
+/**
+ * 更新AI翻译按钮状态
+ */
+function updateAiTranslationButtonState() {
+  if (aiTranslationButton) {
+    if (getIsAiTranslationEnabled()) {
+      aiTranslationButton.classList.add('active');
+    } else {
+      aiTranslationButton.classList.remove('active');
+    }
+  }
 }
 
 /**
@@ -141,10 +158,8 @@ async function setupAiTranslationEventListeners() {
       // 更新本地状态
       setIsAiTranslationEnabled(enabled);
 
-      // 更新开关UI
-      if (aiTranslationSwitch) {
-        aiTranslationSwitch.checked = enabled;
-      }
+      // 更新按钮UI
+      updateAiTranslationButtonState();
     });
 
     // 监听AI翻译设置更新

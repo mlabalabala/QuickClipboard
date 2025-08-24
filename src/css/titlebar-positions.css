@@ -3,7 +3,6 @@
 /* 默认标题栏在上方 */
 .titlebar-top .title-bar {
   order: 0;
-  flex-direction: row;
   border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
 }
 
@@ -15,7 +14,6 @@
 /* 标题栏在下方 */
 .titlebar-bottom .title-bar {
   order: 1;
-  flex-direction: row;
   border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
 }
 
@@ -46,42 +44,34 @@
   bottom: 65px;
 }
 
-/* 上下共同 */
+/* 上下共同样式 */
 .titlebar-top .control-button,
 .titlebar-bottom .control-button {
-  font-size: 2.1em;
+  font-size: 1.8em;
 }
 
-.titlebar-top .toggle-label,
-.titlebar-bottom .toggle-label {
-  height: 24px;
+.titlebar-top .title-bar,
+.titlebar-bottom .title-bar {
+  flex-direction: row;
 }
+
+.titlebar-top .tools-panel-content,
+.titlebar-bottom .tools-panel-content {
+  flex-direction: row;
+  justify-content: center;
+  padding: var(--padding-small) var(--padding-medium);
+}
+
+
 
 /* 标题栏在左侧 */
 .titlebar-left .title-bar {
   order: 0;
-  flex-direction: column;
-  width: 40px;
-  height: 100vh;
   border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
-  padding: var(--padding-large) var(--padding-medium);
-}
-
-.titlebar-left .title {
-  writing-mode: vertical-rl;
-  margin: var(--margin-medium) 0;
-}
-
-.titlebar-left .controls {
-  position: static;
-  flex-direction: column;
-  margin-top: auto;
-  gap: var(--padding-medium);
 }
 
 .titlebar-left .container {
   order: 1;
-  flex: 1;
   border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
 }
 
@@ -102,28 +92,11 @@
 /* 标题栏在右侧 */
 .titlebar-right .title-bar {
   order: 1;
-  flex-direction: column;
-  width: 40px;
-  height: 100vh;
   border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
-  padding: var(--padding-large) var(--padding-medium);
-}
-
-.titlebar-right .title {
-  writing-mode: vertical-rl;
-  margin: var(--margin-medium) 0;
-}
-
-.titlebar-right .controls {
-  position: static;
-  flex-direction: column;
-  margin-top: auto;
-  gap: var(--padding-medium);
 }
 
 .titlebar-right .container {
   order: 0;
-  flex: 1;
   border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
 }
 
@@ -150,38 +123,133 @@
   border-radius: 0 0 var(--border-radius-large) 0;
 }
 
-/* 侧边栏模式下的标题栏开关样式调整 */
+/* =================== 可展开工具面板位置适配 =================== */
 
-.titlebar-left .toggle-label,
-.titlebar-right .toggle-label {
-  width: 28px;
+/* 标题栏在上方 - 面板在下方展开 */
+.titlebar-top .tools-panel {
+  top: 40px; /* 标题栏高度 */
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  border-top: none;
 }
 
-.titlebar-left .toggle-slider,
-.titlebar-right .toggle-slider {
-  width: 14px;
+.titlebar-top .tools-panel.show {
+  transform: translateY(0);
+  border-radius: 0 0 8px 8px;
 }
 
-.titlebar-left .toggle-switch:checked+.toggle-label .toggle-slider,
-.titlebar-right .toggle-switch:checked+.toggle-label .toggle-slider {
-  transform: translateX(10px) translateY(-50%);
+/* 标题栏在下方 - 面板在上方展开 */
+.titlebar-bottom .tools-panel {
+  bottom: 40px; /* 标题栏高度 */
+  left: 0;
+  right: 0;
+  transform: translateY(100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
 }
 
-/* 侧边栏标题栏的控件样式调整 */
-.titlebar-left .control-button,
-.titlebar-right .control-button {
+.titlebar-bottom .tools-panel.show {
+  transform: translateY(0);
+}
+
+
+
+/* 标题栏在左侧 - 面板在右侧展开 */
+.titlebar-left .tools-panel {
+  left: 40px; /* 标题栏宽度 */
+  transform: translateX(-100%);
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+
+.titlebar-left .tools-panel.show {
+  transform: translateX(0);
+}
+
+.titlebar-left .tools-panel-content {
+  height: fit-content;
+}
+
+/* 标题栏在右侧 - 面板在左侧展开 */
+.titlebar-right .tools-panel {
+  right: 40px; /* 标题栏宽度 */
+  transform: translateX(100%);
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+
+.titlebar-right .tools-panel.show {
+  transform: translateX(0);
+}
+
+.titlebar-right .tools-panel-content {
+  width: fit-content;
+  height: fit-content;
+}
+
+/* 左右共同样式 */
+.titlebar-left .title-bar,
+.titlebar-right .title-bar {
+  flex-direction: column;
+  width: 40px;
+  height: 100%;
+  padding: var(--padding-large) var(--padding-medium);
+}
+
+.titlebar-left .title,
+.titlebar-right .title {
+  writing-mode: vertical-rl;
+  margin: var(--margin-medium) 0;
+}
+
+.titlebar-left .controls,
+.titlebar-right .controls {
+  position: static;
+  flex-direction: column;
+  margin-top: auto;
+}
+
+.titlebar-left .container,
+.titlebar-right .container {
+  flex: 1;
+}
+
+.titlebar-left .tools-panel,
+.titlebar-right .tools-panel {
+  top: 0;
+  bottom: 0;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+}
+
+.titlebar-left .tools-panel-content,
+.titlebar-right .tools-panel-content {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--padding-medium) var(--padding-small);
+  gap: var(--padding-medium);
+}
+
+.titlebar-left .tool-item,
+.titlebar-right .tool-item {
+  flex-direction: column;
+  gap: var(--padding-small);
+  justify-content: center;
+}
+
+.titlebar-left .tool-button,
+.titlebar-right .tool-button {
   width: 32px;
   height: 32px;
-  font-size: 2.3em;
 }
 
-/* 侧边栏标题栏的开关样式调整 */
-.titlebar-left .one-time-paste-toggle,
-.titlebar-left .ai-translation-toggle,
-.titlebar-right .one-time-paste-toggle,
-.titlebar-right .ai-translation-toggle {
-  flex-direction: column;
-  margin: var(--margin-small) 0;
+.titlebar-left .tool-icon-wrapper,
+.titlebar-right .tool-icon-wrapper {
+  width: 20px;
+  height: 20px;
 }
 
 /* 确保body在侧边栏模式下使用flex布局 */
@@ -223,6 +291,8 @@
   height: 32px;
   /* font-size: 1.5em !important; */
 }
+
+
 
 /* =================== 外置滚动条 =================== */
 .titlebar-left .external-scrollbar,

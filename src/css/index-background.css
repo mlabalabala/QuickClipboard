@@ -28,6 +28,10 @@
     /* 状态颜色 */
     --success-color: #52c41a;
     --warning-color: #faad14;
+
+    /* 动画时长 */
+    --transition-duration: 0.2s;
+    --transition-slow: 0.3s;
     --error-color: #ff4d4f;
     --info-color: #1890ff;
 
@@ -44,16 +48,17 @@
 
 /* =================== 基础样式 =================== */
 body.theme-background {
-    background: transparent;
+    background: transparent !important;
     color: var(--text-primary);
     border-color: var(--border-primary) !important;
 }
 
 .theme-background .container {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-primary) !important;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    border: none;
 }
 
 /* =================== 标题栏 =================== */
@@ -72,11 +77,19 @@ body.theme-background {
 }
 
 /* 动态标题栏颜色（基于背景图主色调）*/
-.theme-background.has-dynamic-titlebar .title-bar {
+.theme-background.has-dynamic-titlebar .title-bar,
+.theme-background.has-dynamic-titlebar .tools-panel {
     background-color: var(--titlebar-bg-dynamic, rgba(240, 240, 240, 1)) !important;
     border-bottom-color: var(--titlebar-border-dynamic, var(--border-secondary)) !important;
     color: var(--titlebar-text-dynamic, var(--text-secondary)) !important;
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.theme-background .tools-panel{
+    transition: all var(--transition-duration) ease !important;
+}
+.theme-background.has-dynamic-titlebar .tools-panel {
+    background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
+    backdrop-filter: blur(10px);
 }
 
 .theme-background.has-dynamic-titlebar .title {
@@ -87,7 +100,8 @@ body.theme-background {
     color: var(--titlebar-text-dynamic, var(--text-secondary)) !important;
 }
 
-.theme-background.has-dynamic-titlebar .control-button:hover {
+.theme-background.has-dynamic-titlebar .control-button:hover,
+.theme-background .tool-item:hover {
     background-color: var(--titlebar-text-dynamic, var(--text-secondary)) !important;
     color: var(--titlebar-bg-dynamic, rgba(240, 240, 240, 1)) !important;
 }
@@ -95,7 +109,18 @@ body.theme-background {
 .theme-background .control-button:hover {
     background-color: rgba(0, 0, 0, 0.05);
 }
-
+.theme-background .control-button.active{
+    color: var(--titlebar-bg-dynamic) !important;
+    background-color: var(--titlebar-text-dynamic) !important;
+}
+.theme-background .tool-item {
+    border: 1px solid var(--border-primary);
+    background-color: var(--bg-primary);
+}
+.theme-background .toggle-button.active{
+    color: var(--titlebar-bg-dynamic) !important;
+    background-color: var(--titlebar-text-dynamic) !important;
+}
 .theme-background .minimize-btn:hover {
     background: #e3f2fd;
     color: #1976d2;
@@ -130,6 +155,7 @@ body.theme-background {
     background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 100%, transparent) !important;
     box-shadow: var(--shadow-light);
 }
+
 .theme-background .tab-switch-indicator {
     background-color: var(--titlebar-bg-dynamic) !important;
 }
@@ -150,6 +176,7 @@ body.theme-background {
     background-color: rgba(255, 255, 255, 0.25);
     border-color: var(--border-hover);
 }
+
 .theme-background .filter-tabs-indicator {
     background-color: color-mix(in srgb, var(--titlebar-bg-dynamic) 100%, transparent) !important;
 }
@@ -306,9 +333,10 @@ body.theme-background {
 }
 
 .theme-background .clipboard-item.keyboard-selected *,
-.theme-background .quick-text-item.keyboard-selected *{
+.theme-background .quick-text-item.keyboard-selected * {
     color: var(--titlebar-bg-dynamic) !important;
 }
+
 /* =================== 时间戳 =================== */
 .theme-background .clipboard-timestamp,
 .theme-background .quick-text-timestamp {
@@ -451,24 +479,6 @@ body.theme-background {
     box-shadow: 0 0 0 2px rgba(74, 137, 220, 0.2);
 }
 
-/* =================== 开关样式 =================== */
-.theme-background .toggle-label {
-    background-color: #cdcdcd;
-}
-
-.theme-background .toggle-slider {
-    background-color: var(--bg-primary);
-}
-
-.theme-background .toggle-switch input:checked+.toggle-slider {
-    background-color: #1976d2 !important;
-}
-
-/* =================== AI翻译开关 =================== */
-.theme-background .ai-translation-toggle .toggle-icon {
-    color: var(--text-secondary);
-}
-
 /* =================== 底部信息栏 =================== */
 .theme-background .footer {
     border-top-color: var(--separator-color);
@@ -482,25 +492,28 @@ body.theme-background {
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
 }
-.theme-background .shortcuts-help-content *{
+
+.theme-background .shortcuts-help-content * {
     color: var(--titlebar-text-dynamic) !important;
 }
+
 .theme-background .shortcuts-help-header {
     border-bottom-color: #bdbdbd;
 }
 
-.theme-background .shortcut-item kbd{
+.theme-background .shortcut-item kbd {
     background-color: var(--titlebar-text-dynamic) !important;
     color: var(--titlebar-bg-dynamic) !important;
 }
 
 /* =================== 分组侧边栏 =================== */
 .theme-background .groups-sidebar {
-    background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;;
+    background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
+    ;
     border-left-color: var(--border-primary);
 }
 
-.theme-background .groups-sidebar *{
+.theme-background .groups-sidebar * {
     color: var(--titlebar-text-dynamic) !important;
 }
 
@@ -526,9 +539,11 @@ body.theme-background {
 .theme-background .group-item:hover {
     background: var(--primary-hover);
 }
+
 .theme-background .group-item.active {
     background: var(--titlebar-bg-dynamic);
 }
+
 .theme-background .group-name {
     color: var(--text-primary);
 }
@@ -594,12 +609,12 @@ body.theme-background {
     border-color: var(--primary-color);
 }
 
-.theme-background .external-scrollbar__thumb{
+.theme-background .external-scrollbar__thumb {
     background: color-mix(in srgb, var(--primary-color) 50%, transparent) !important;
 }
 
 .theme-background .external-scrollbar__thumb:hover,
-.theme-background .external-scrollbar.dragging .external-scrollbar__thumb{
+.theme-background .external-scrollbar.dragging .external-scrollbar__thumb {
     background: color-mix(in srgb, var(--primary-color) 100%, transparent) !important;
 }
 
@@ -778,12 +793,15 @@ body.theme-background {
 .theme-background .quick-text-content .file-size {
     color: var(--text-secondary);
 }
-.theme-background .add-button{
+
+.theme-background .add-button {
     background: linear-gradient(135deg, var(--titlebar-bg-dynamic) 0%, var(--primary-color) 100%);
 }
-.theme-background .add-button:hover{
+
+.theme-background .add-button:hover {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--titlebar-bg-dynamic) 100%);
 }
+
 /* =================== 响应式调整 =================== */
 @media (max-width: 400px) {
     .theme-background .tab-button {
