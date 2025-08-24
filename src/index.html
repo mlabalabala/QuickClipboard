@@ -23,35 +23,35 @@
 <body>
   <div class="title-bar" id="titlebar">
     <div class="title"><img src="./assets/icon1024.png" style="width: 18px; height: 18px;" alt="">QuickClipboard</div>
-    <div class="controls">
+    <div class="controls" id="titlebar-controls">
       <!-- 工具面板切换按钮 -->
       <button id="tools-panel-toggle" class="control-button" title="工具面板"><i class="ti ti-apps"></i></button>
       
-      <button id="settings-button" class="control-button" title="设置"><i class="ti ti-settings"></i></button>
+      <button id="settings-button" class="control-button" title="设置" draggable="true"><i class="ti ti-settings"></i></button>
 
-      <button id="pin-button" class="control-button" title="固定"><i class="ti ti-pin"></i></button>
+      <button id="pin-button" class="control-button" title="固定" draggable="true"><i class="ti ti-pin"></i></button>
     </div>
   </div>
 
   <!-- 工具面板 -->
   <div class="tools-panel" id="tools-panel">
-    <div class="tools-panel-content">
+    <div class="tools-panel-content" id="tools-panel-content">
       <!-- 截屏按钮 -->
-      <div class="tool-item">
+      <div class="tool-item" draggable="true">
         <button id="screenshot-button" class="tool-button" title="截屏">
           <i class="ti ti-screenshot"></i>
         </button>
       </div>
 
       <!-- 一次性粘贴按钮 -->
-      <div class="tool-item">
+      <div class="tool-item" draggable="true">
         <button id="one-time-paste-button" class="tool-button toggle-button" title="一次性粘贴 - 开启后粘贴项目会自动删除">
           <i class="ti ti-trash"></i>
         </button>
       </div>
 
       <!-- AI翻译按钮 -->
-      <div class="tool-item">
+      <div class="tool-item" draggable="true">
         <button id="ai-translation-button" class="tool-button toggle-button" title="AI翻译 - 开启AI自动翻译功能">
           <i class="ti ti-language"></i>
         </button>

@@ -90,6 +90,7 @@ import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
 import { initScreenshot } from './js/screenshot.js';
 import { initToolsPanel } from './js/toolsPanel.js';
+import { initTitlebarDrag } from './js/titlebarDrag.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
 import {
@@ -323,6 +324,9 @@ async function initApp() {
 
   // 初始化工具面板
   initToolsPanel();
+
+  // 初始化标题栏拖拽功能
+  initTitlebarDrag();
 
   // 设置右键菜单禁用
   setupContextMenuDisable();

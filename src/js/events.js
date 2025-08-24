@@ -74,6 +74,7 @@ export async function setupCustomWindowDrag() {
   const titlebar = document.getElementById('titlebar');
   const footer = document.getElementById('footer');
   const container = document.querySelector('.container');
+  const controls = document.querySelector('.controls');
 
   // 公共拖拽处理函数
   const handleDrag = async (element, e) => {
@@ -101,6 +102,9 @@ export async function setupCustomWindowDrag() {
 
   // container拖拽
   container?.addEventListener('mousedown', (e) => handleDrag(container, e));
+
+  // controls拖拽
+  controls?.addEventListener('mousedown', (e) => handleDrag(controls, e));
 }
 
 // 设置右键菜单禁用

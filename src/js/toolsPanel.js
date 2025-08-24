@@ -86,3 +86,8 @@ export function isToolsPanelOpen() {
 export function forceClosePanel() {
   closePanel();
 }
+
+// 强制打开面板（供其他模块调用）
+export function forceOpenPanel() {
+  openPanel();
+}

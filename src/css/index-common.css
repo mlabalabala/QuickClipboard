@@ -45,7 +45,7 @@ body {
   --primary-hover: #357abd;
   --primary-light: #e8f4fd;
   --primary-dark: #2c5aa0;
-
+  --primary-green: #2aeb31;
   /* 透明度和窗口 */
   --window-opacity: 0.9;
   --window-opacity-light: 0.15;
@@ -167,6 +167,9 @@ body {
   position: fixed;
   right: 8px;
   z-index: var(--z-controls);
+  justify-content: flex-end;
+  min-width: 50%;
+  backdrop-filter: blur(10px);
 }
 
 .control-button {
@@ -204,6 +207,7 @@ body {
   transition: all var(--transition-duration) ease;
   border-radius: var(--border-radius-large);
   overflow: hidden !important;
+  min-height: 25px;
 }
 
 .tools-panel.show {
@@ -2377,4 +2381,114 @@ body {
 .quick-text-html a:hover {
   text-decoration: none !important;
   cursor: default !important;
+}
+
+/* =================== 拖拽样式 =================== */
+/* 拖拽状态 */
+body.dragging {
+  user-select: none;
+}
+
+/* 确保拖拽时容器有足够高的层级 */
+body.dragging .tools-panel {
+  z-index: 10000 !important;
+}
+
+body.dragging .title-bar {
+  z-index: 10000 !important;
+}
+
+/* 拖拽中的元素 */
+.dragging-item {
+  opacity: 0.6 !important;
+  transform: rotate(2deg);
+  transition: all 0.2s ease;
+}
+
+/* Sortable 拖拽样式 - 简化并确保高层级 */
+.sortable-ghost {
+  opacity: 0.3;
+  background: var(--primary-color) !important;
+  border-radius: 6px;
+  transform: scale(0.98);
+}
+
+.sortable-chosen {
+  cursor: grabbing !important;
+  z-index: 10002 !important;
+  position: relative;
+}
+
+.sortable-drag {
+  opacity: 0.9;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  z-index: 10002 !important;
+  position: relative;
+}
+
+/* 控制按钮和工具项的拖拽样式 */
+.control-button[draggable="true"],
+.tool-item[draggable="true"] {
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.control-button[draggable="true"]:hover,
+.tool-item[draggable="true"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.control-button[draggable="true"]:active,
+.tool-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* 不可拖拽的按钮样式 */
+.control-button:not([draggable="true"]) {
+  cursor: pointer;
+}
+
+/* 拖拽区域高亮效果 */
+body.dragging .controls,
+body.dragging .tools-panel-content {
+  /* position: relative; */
+  border: 2px dashed var(--primary-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: rgba(74, 137, 220, 0.1);
+}
+
+/* 拖拽悬停时加强高亮 */
+body.dragging .controls:hover,
+body.dragging .tools-panel-content:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-light);
+  box-shadow: 0 0 10px rgba(74, 137, 220, 0.3);
+}
+
+/* 拖拽时两个容器都显示边框 */
+body.dragging .title-bar .controls {
+  border: 2px dashed var(--primary-green) !important;
+  background: rgba(74, 137, 220, 0.1) !important;
+}
+
+body.dragging .tools-panel-content {
+  border: 2px dashed var(--primary-color) !important;
+  background: rgba(74, 137, 220, 0.1) !important;
+}
+
+/* 拖拽目标容器样式 */
+.drag-target {
+  border: 2px dashed var(--primary-color) !important;
+  background: rgba(220, 74, 74, 0.1) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.drag-target:hover {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-light) !important;
+  box-shadow: 0 0 10px rgba(74, 137, 220, 0.3) !important;
 }
