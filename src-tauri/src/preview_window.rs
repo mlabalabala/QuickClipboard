@@ -447,7 +447,7 @@ fn get_current_data_source_length() -> usize {
             crate::commands::get_clipboard_history().len()
         } else if state.tab == "quick-texts" {
             // 常用文本
-            if state.group_id == "all" || state.group_id == "clipboard" {
+            if state.group_id == "all" || state.group_id == "clipboard" || state.group_id == "全部" {
                 crate::quick_texts::get_all_quick_texts().len()
             } else {
                 crate::quick_texts::get_quick_texts_by_group(&state.group_id).len()
@@ -573,7 +573,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             }
         } else if state.tab == "quick-texts" {
             // 粘贴常用文本
-            let quick_texts = if state.group_id == "all" || state.group_id == "clipboard" {
+            let quick_texts = if state.group_id == "all" || state.group_id == "clipboard" || state.group_id == "全部" {
                 crate::quick_texts::get_all_quick_texts()
             } else {
                 crate::quick_texts::get_quick_texts_by_group(&state.group_id)
@@ -582,27 +582,14 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
                 if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
-                    if !quick_text.content.starts_with("files:")
-                        && !quick_text.content.starts_with("data:image/")
-                        && !quick_text.content.starts_with("image:")
-                    {
-                        // 文本内容，使用带翻译支持的粘贴
-                        crate::services::paste_service::paste_text_with_translation(
-                            quick_text.content.clone(),
-                            main_window.clone(),
-                        )
-                        .await?;
-                    } else {
-                        // 非文本内容，使用普通粘贴
-                        let params = crate::services::paste_service::PasteContentParams {
-                            content: quick_text.content.clone(),
-                            html_content: None,
-                            quick_text_id: Some(quick_text.id.clone()),
-                            one_time: Some(false),
-                        };
-                        crate::commands::paste_content(params, main_window.clone()).await?;
-                    }
+                    // 使用统一的粘贴命令，支持HTML格式
+                    let params = crate::services::paste_service::PasteContentParams {
+                        content: quick_text.content.clone(),
+                        html_content: quick_text.html_content.clone(),
+                        quick_text_id: Some(quick_text.id.clone()),
+                        one_time: Some(false),
+                    };
+                    crate::commands::paste_content(params, main_window.clone()).await?;
                 }
             }
         }

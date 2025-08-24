@@ -209,7 +209,7 @@ async function refreshDataSource(tab, groupId) {
       statusText = '剪贴板历史';
     } else if (tab === 'quick-texts') {
       // 常用文本
-      if (groupId === 'all' || groupId === 'clipboard') {
+      if (groupId === 'all' || groupId === 'clipboard' || groupId === '全部') {
         // 获取所有常用文本
         const quickTexts = await invoke('get_quick_texts');
         clipboardHistory = quickTexts || [];
