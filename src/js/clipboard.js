@@ -8,7 +8,8 @@ import {
   isDragging,
   currentFilter,
   searchInput,
-  isOneTimePaste
+  isOneTimePaste,
+  pasteWithFormat
 } from './config.js';
 import { showNotification } from './ui.js';
 import { showContextMenu } from './contextMenu.js';
@@ -44,9 +45,9 @@ function generateClipboardItemHTML(item, index) {
   } else if (contentType === 'files') {
     contentHTML = generateFilesHTML(item);
   } else {
-    // 检查是否有HTML内容
-    if (item.html_content) {
-      // 有HTML内容，直接渲染HTML
+    // 检查是否有HTML内容且开启格式显示
+    if (item.html_content && pasteWithFormat) {
+      // 有HTML内容且开启格式显示，直接渲染HTML
       const searchTerms = getCurrentSearchTerms();
       let displayHTML = item.html_content;
       
@@ -682,7 +683,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
       const fallbackPaste = async () => {
         const params = {
           content: item.content,
-          html_content: item.html_content || null,
+          html_content: pasteWithFormat ? (item.html_content || null) : null,
           one_time: false
         };
         await invoke('paste_content', { params });
@@ -727,7 +728,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
       // 不需要翻译，直接粘贴
       const params = {
         content: item.content,
-        html_content: item.html_content || null,
+        html_content: pasteWithFormat ? (item.html_content || null) : null,
         one_time: false
       };
       await invoke('paste_content', { params });
@@ -1115,5 +1116,11 @@ async function copyFilePathsFromClipboard(item) {
     showNotification('复制文件路径失败', 'error');
   }
 }
+
+// 监听格式模式变化事件
+window.addEventListener('format-mode-changed', (event) => {
+  console.log('格式模式变化，重新渲染剪贴板列表');
+  renderClipboardItems();
+});
 
 

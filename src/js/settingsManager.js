@@ -3,6 +3,8 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentTheme } from './themeManager.js';
 import { refreshClipboardHistory } from './clipboard.js';
 import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from './colorAnalyzer.js';
+import { setPasteWithFormat } from './config.js';
+import { updateFormatButtonStatus } from './toolsPanel.js';
 
 // 当前设置
 let currentSettings = {
@@ -29,7 +31,9 @@ let currentSettings = {
   clipboardAnimationEnabled: true
   ,
   // 显示行为
-  autoScrollToTopOnShow: false
+  autoScrollToTopOnShow: false,
+  // 格式设置
+  pasteWithFormat: true // 是否带格式粘贴和显示，true=带格式，false=纯文本
 };
 
 // 初始化设置管理器
@@ -97,6 +101,16 @@ function applySettings(settings) {
   // 应用标题栏位置设置
   if (settings.titleBarPosition !== undefined) {
     applyTitleBarPosition(settings.titleBarPosition);
+  }
+
+  // 应用格式设置
+  if (settings.pasteWithFormat !== undefined) {
+    setPasteWithFormat(settings.pasteWithFormat);
+    try {
+      updateFormatButtonStatus();
+    } catch (error) {
+      console.warn('更新格式按钮状态失败:', error);
+    }
   }
 }
 

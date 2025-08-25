@@ -15,6 +15,7 @@ export let currentFilter = 'all'; // 当前剪贴板筛选类型：all, text, im
 export let currentQuickTextsFilter = 'all'; // 当前常用文本筛选类型：all, text, image, link
 export let isOneTimePaste = false; // 一次性粘贴开关状态
 export let isAiTranslationEnabled = false; // AI翻译开关状态
+export let pasteWithFormat = true; // 格式开关状态，true=带格式，false=纯文本
 
 
 
@@ -26,6 +27,7 @@ export let clipboardList;
 export let pinButton;
 export let oneTimePasteButton;
 export let aiTranslationButton;
+export let formatToggleButton;
 export let quickTextsSearch;
 export let quickTextsFilter;
 export let quickTextsFilterContainer;
@@ -115,6 +117,14 @@ export function getIsAiTranslationEnabled() {
   return isAiTranslationEnabled;
 }
 
+export function setPasteWithFormat(withFormat) {
+  pasteWithFormat = withFormat;
+}
+
+export function getPasteWithFormat() {
+  return pasteWithFormat;
+}
+
 
 
 export function setConfirmCallback(callback) {
@@ -134,6 +144,7 @@ export function initDOMReferences() {
   pinButton = document.querySelector('#pin-button');
   oneTimePasteButton = document.querySelector('#one-time-paste-button');
   aiTranslationButton = document.querySelector('#ai-translation-button');
+  formatToggleButton = document.querySelector('#format-toggle-button');
   quickTextsSearch = document.querySelector('#quick-texts-search');
   quickTextsFilter = document.querySelector('#quick-texts-filter');
   quickTextsFilterContainer = document.querySelector('#quick-texts-filter');

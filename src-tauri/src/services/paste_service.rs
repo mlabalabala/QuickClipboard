@@ -73,8 +73,12 @@ async fn paste_text_without_translation_internal_with_html(
     // 开始粘贴操作，增加粘贴计数器
     crate::clipboard_monitor::start_pasting_operation();
 
+    // 获取格式设置
+    let settings = crate::settings::get_global_settings();
+    let use_html = html_content.is_some() && settings.paste_with_format;
+
     // 将文本设置到剪贴板（不添加到历史记录，避免重复）
-    let result = if html_content.is_some() {
+    let result = if use_html {
         crate::clipboard_content::set_clipboard_content_no_history_with_html(text_content, html_content)
     } else {
         crate::clipboard_content::set_clipboard_content_no_history(text_content)

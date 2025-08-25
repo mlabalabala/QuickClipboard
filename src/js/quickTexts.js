@@ -13,7 +13,8 @@ import {
   modalTitle,
   quickTextTitleInput,
   quickTextContentInput,
-  quickTextGroupSelect
+  quickTextGroupSelect,
+  pasteWithFormat
 } from './config.js';
 import { getContentType, loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
@@ -41,9 +42,9 @@ function generateQuickTextItemHTML(text, index) {
   } else if (contentType === 'files') {
     contentHTML = generateQuickTextFilesHTML(text);
   } else {
-    // 检查是否有HTML内容
-    if (text.html_content) {
-      // 如果有HTML内容，处理HTML显示
+    // 检查是否有HTML内容且开启格式显示
+    if (text.html_content && pasteWithFormat) {
+      // 如果有HTML内容且开启格式显示，处理HTML显示
       const searchTerms = getCurrentSearchTerms();
       const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
       let displayHTML = text.html_content;
@@ -918,7 +919,7 @@ async function handleQuickTextItemPaste(text, element = null) {
         await invoke('paste_content', {
           params: {
             content: text.content,
-            html_content: text.html_content || null,
+            html_content: pasteWithFormat ? (text.html_content || null) : null,
             one_time: false,
             quick_text_id: text.id
           }
@@ -970,7 +971,7 @@ async function handleQuickTextItemPaste(text, element = null) {
       await invoke('paste_content', {
         params: {
           content: text.content,
-          html_content: text.html_content || null,
+          html_content: pasteWithFormat ? (text.html_content || null) : null,
           one_time: false,
           quick_text_id: text.id
         }
@@ -1228,3 +1229,9 @@ async function copyFilePaths(text) {
     showNotification('复制文件路径失败', 'error');
   }
 }
+
+// 监听格式模式变化事件
+window.addEventListener('format-mode-changed', (event) => {
+  console.log('格式模式变化，重新渲染常用文本列表');
+  renderQuickTexts();
+});

@@ -78,6 +78,9 @@ pub struct AppSettings {
     
     // 标题栏位置设置
     pub title_bar_position: String,   // 标题栏位置：top(上), bottom(下), left(左), right(右)
+    
+    // 格式设置
+    pub paste_with_format: bool,      // 是否带格式粘贴和显示，true=带格式，false=纯文本
 }
 
 impl Default for AppSettings {
@@ -158,6 +161,9 @@ impl Default for AppSettings {
             
             // 标题栏位置设置默认值
             title_bar_position: "top".to_string(),    // 默认标题栏位置在上方
+            
+            // 格式设置默认值
+            paste_with_format: true,                   // 默认带格式粘贴
         }
     }
 }
@@ -276,6 +282,7 @@ impl AppSettings {
             "appFilterMode":self.app_filter_mode,
             "appFilterList":self.app_filter_list,
             "titleBarPosition":self.title_bar_position,
+            "pasteWithFormat":self.paste_with_format,
         })
     }
 
@@ -474,6 +481,11 @@ impl AppSettings {
         // 标题栏位置设置
         if let Some(v) = json.get("titleBarPosition").and_then(|v| v.as_str()) {
             self.title_bar_position = v.to_string();
+        }
+        
+        // 格式设置
+        if let Some(v) = json.get("pasteWithFormat").and_then(|v| v.as_bool()) {
+            self.paste_with_format = v;
         }
     }
 }
