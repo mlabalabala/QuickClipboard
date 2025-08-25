@@ -11,7 +11,7 @@ import {
   isOneTimePaste,
   pasteWithFormat
 } from './config.js';
-import { showNotification } from './ui.js';
+import { showNotification,showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { showContextMenu } from './contextMenu.js';
 import {
   shouldTranslateText,
@@ -204,82 +204,7 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-// =================== 粘贴加载状态管理 ===================
-
-// 显示粘贴加载状态
-function showPasteLoading(element, message = '正在粘贴...') {
-  // 给元素添加加载状态
-  if (element) {
-    element.classList.add('paste-loading');
-  }
-
-  // 显示全局加载指示器
-  showPasteIndicator(message);
-}
-
-// 隐藏粘贴加载状态
-function hidePasteLoading(element, success = true, message = null) {
-  // 移除元素的加载状态
-  if (element) {
-    element.classList.remove('paste-loading');
-  }
-
-  // 显示结果状态
-  if (success) {
-    showPasteIndicator(message || '粘贴成功', 'success', 1500);
-  } else {
-    showPasteIndicator(message || '粘贴失败', 'error', 2000);
-  }
-}
-
-// 显示粘贴指示器
-function showPasteIndicator(message, type = 'loading', duration = 0) {
-  // 移除现有的指示器
-  const existingIndicator = document.querySelector('.paste-loading-indicator');
-  if (existingIndicator) {
-    existingIndicator.remove();
-  }
-
-  // 创建新的指示器
-  const indicator = document.createElement('div');
-  indicator.className = `paste-loading-indicator ${type}`;
-
-  if (type === 'loading') {
-    indicator.innerHTML = `
-      <div class="loading-spinner"></div>
-      <span>${message}</span>
-    `;
-  } else {
-    indicator.innerHTML = `<span>${message}</span>`;
-  }
-
-  document.body.appendChild(indicator);
-
-  // 显示动画
-  setTimeout(() => {
-    indicator.classList.add('show');
-  }, 10);
-
-  // 自动隐藏
-  if (duration > 0) {
-    setTimeout(() => {
-      hidePasteIndicator();
-    }, duration);
-  }
-}
-
-// 隐藏粘贴指示器
-function hidePasteIndicator() {
-  const indicator = document.querySelector('.paste-loading-indicator');
-  if (indicator) {
-    indicator.classList.remove('show');
-    setTimeout(() => {
-      if (indicator.parentNode) {
-        indicator.remove();
-      }
-    }, 300);
-  }
-}
+// =================== 剪贴板操作函数 ===================
 
 // 读取剪贴板文本
 export async function readClipboardText() {

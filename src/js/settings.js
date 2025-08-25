@@ -6,6 +6,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { setTheme, getCurrentTheme, getAvailableThemes, addThemeChangeListener } from './themeManager.js';
 import { updateShortcutDisplay } from './settingsManager.js';
+import { showNotification } from './notificationManager.js';
 import {
   initAIConfig,
   getCurrentAIConfig,
@@ -1094,85 +1095,6 @@ async function openGitHub() {
   } catch (error) {
     console.error('打开GitHub失败:', error);
   }
-}
-
-// 显示通知
-function showNotification(message, type = 'info', duration = 3000) {
-  // 移除已存在的通知
-  const existingNotifications = document.querySelectorAll('.notification');
-  existingNotifications.forEach(n => n.remove());
-
-  // 创建通知元素
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-
-  // 创建图标
-  const icon = document.createElement('i');
-  if (type === 'success') {
-    icon.className = 'ti ti-check-circle';
-  } else if (type === 'error') {
-    icon.className = 'ti ti-alert-circle';
-  } else {
-    icon.className = 'ti ti-info-circle';
-  }
-
-  // 创建消息文本
-  const messageSpan = document.createElement('span');
-  messageSpan.textContent = message;
-
-  // 组装通知内容
-  notification.appendChild(icon);
-  notification.appendChild(messageSpan);
-
-  // 添加样式
-  notification.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 10000;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    max-width: 300px;
-  `;
-
-  // 根据类型设置背景色
-  if (type === 'success') {
-    notification.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
-  } else if (type === 'error') {
-    notification.style.background = 'linear-gradient(135deg, #dc3545, #e74c3c)';
-  } else {
-    notification.style.background = 'linear-gradient(135deg, #4a89dc, #007bff)';
-  }
-
-  // 添加到页面
-  document.body.appendChild(notification);
-
-  // 显示动画
-  setTimeout(() => {
-    notification.style.opacity = '1';
-    notification.style.transform = 'translateX(0)';
-  }, 10);
-
-  // 自动隐藏
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 300);
-  }, duration);
 }
 
 // 加载应用版本信息

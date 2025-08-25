@@ -2,10 +2,6 @@
 
 /**
  * 高亮文本中的搜索关键字
- * @param {string} text - 原始文本
- * @param {string} searchTerm - 搜索关键字
- * @param {string} highlightClass - 高亮CSS类名
- * @returns {string} 高亮后的HTML字符串
  */
 export function highlightSearchTerm(text, searchTerm, highlightClass = 'search-highlight') {
   if (!searchTerm || !text) {
@@ -22,10 +18,6 @@ export function highlightSearchTerm(text, searchTerm, highlightClass = 'search-h
 
 /**
  * 高亮多个搜索关键字
- * @param {string} text - 原始文本
- * @param {string[]} searchTerms - 搜索关键字数组
- * @param {string} highlightClass - 高亮CSS类名
- * @returns {string} 高亮后的HTML字符串
  */
 export function highlightMultipleSearchTerms(text, searchTerms, highlightClass = 'search-highlight') {
   if (!searchTerms || searchTerms.length === 0 || !text) {
@@ -49,10 +41,6 @@ export function highlightMultipleSearchTerms(text, searchTerms, highlightClass =
 
 /**
  * 高亮多个搜索关键字并返回位置信息
- * @param {string} text - 原始文本
- * @param {string[]} searchTerms - 搜索关键字数组
- * @param {string} highlightClass - 高亮CSS类名
- * @returns {object} 包含高亮文本和第一个关键词位置的对象
  */
 export function highlightMultipleSearchTermsWithPosition(text, searchTerms, highlightClass = 'search-highlight') {
   if (!searchTerms || searchTerms.length === 0 || !text) {
@@ -89,8 +77,6 @@ export function highlightMultipleSearchTermsWithPosition(text, searchTerms, high
 
 /**
  * 转义HTML特殊字符
- * @param {string} text - 需要转义的文本
- * @returns {string} 转义后的文本
  */
 function escapeHtml(text) {
   if (typeof text !== 'string') {
@@ -122,7 +108,6 @@ export function getCurrentSearchTerm() {
 
 /**
  * 获取当前搜索关键字数组（按空格分割）
- * @returns {string[]} 搜索关键字数组
  */
 export function getCurrentSearchTerms() {
   const searchTerm = getCurrentSearchTerm();
@@ -133,8 +118,6 @@ export function getCurrentSearchTerms() {
 
 /**
  * 自动滚动到第一个关键词位置
- * @param {HTMLElement} container - 包含关键词的容器元素
- * @param {number} keywordPosition - 关键词在文本中的位置
  */
 export function scrollToKeyword(container, keywordPosition) {
   if (!container || keywordPosition === -1) return;

@@ -113,7 +113,6 @@ pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String
         let app_handle = app.clone();
         editor_window.on_window_event(move |event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // 当编辑窗口关闭时，可以执行一些清理操作
                 println!("文本编辑窗口已关闭");
             }
         });

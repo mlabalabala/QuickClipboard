@@ -1,6 +1,6 @@
 // 通用右键菜单模块
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { showNotification } from './ui.js';
+import { showNotification } from './notificationManager.js';
 import { getContentType } from './clipboard.js';
 
 // 打开链接

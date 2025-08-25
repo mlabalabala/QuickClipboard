@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Window } from '@tauri-apps/api/window';
+import { showNotification } from './js/notificationManager.js';
 document.addEventListener('contextmenu', function (e) {
   e.preventDefault();
 });
@@ -524,73 +525,4 @@ function showLoading(show) {
   cancelBtn.disabled = show;
 }
 
-// 显示通知
-function showNotification(message, type = 'info', duration = 3000) {
-  // 移除已存在的通知
-  const existingNotifications = document.querySelectorAll('.notification');
-  existingNotifications.forEach(n => n.remove());
 
-  // 创建通知元素
-  const notification = document.createElement('div');
-  notification.className = 'notification';
-
-  // 设置样式
-  const colors = {
-    success: '#10b981',
-    error: '#ef4444',
-    info: '#3b82f6',
-    warning: '#f59e0b'
-  };
-
-  notification.style.cssText = `
-    position: fixed;
-    top: 60px;
-    right: 20px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 10000;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 300px;
-    word-wrap: break-word;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    background-color: ${colors[type] || colors.info};
-  `;
-
-  notification.textContent = message;
-
-  // 添加到页面
-  document.body.appendChild(notification);
-
-  // 显示动画
-  setTimeout(() => {
-    notification.style.opacity = '1';
-    notification.style.transform = 'translateX(0)';
-  }, 10);
-
-  // 自动隐藏
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 300);
-  }, duration);
-
-  // 点击关闭
-  notification.addEventListener('click', () => {
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 300);
-  });
-}

@@ -1,4 +1,3 @@
-// AI翻译管理模块
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import {
@@ -6,7 +5,7 @@ import {
   setIsAiTranslationEnabled,
   getIsAiTranslationEnabled
 } from './config.js';
-import { showNotification } from './ui.js';
+import { showNotification, showTranslationNotification } from './notificationManager.js';
 import {
   initAIConfig,
   loadAIConfig,
@@ -190,7 +189,11 @@ async function setupAiTranslationEventListeners() {
     await listen('ai-translation-cancelled', () => {
       console.log('收到后端AI翻译取消事件');
       hideTranslationIndicator();
-      showTranslationNotification('翻译已取消', 'warning', 1500);
+      
+      // 检查翻译功能是否启用
+      if (aiTranslationConfig.enabled) {
+        showTranslationNotification('翻译已取消', 'warning', 1500);
+      }
     });
 
     // 监听后端发送的翻译开始事件
@@ -316,11 +319,14 @@ async function broadcastAiTranslationStateChange(enabled) {
 function showAiTranslationConfigError() {
   console.warn('AI翻译配置无效，请先在设置中配置API密钥等信息');
 
+  // 检查翻译功能是否启用
+  if (!aiTranslationConfig.enabled) {
+    console.log('翻译功能未启用，跳过显示配置错误通知');
+    return;
+  }
+
   // 使用自定义翻译通知系统显示错误提示
   showTranslationNotification('请先配置API密钥和模型信息', 'error', 4000);
-
-  // 可以考虑打开设置窗口并跳转到AI翻译设置页面
-  // 这里可以添加自动打开设置页面的逻辑
 }
 
 /**
@@ -345,7 +351,12 @@ export async function cancelTranslation() {
   try {
     await invoke('cancel_translation');
     hideTranslationIndicator();
-    showTranslationNotification('翻译已取消', 'warning', 1500);
+    
+    // 检查翻译功能是否启用
+    if (aiTranslationConfig.enabled) {
+      showTranslationNotification('翻译已取消', 'warning', 1500);
+    }
+    
     console.log('[AI翻译] 用户取消翻译');
   } catch (error) {
     console.error('取消翻译失败:', error);
@@ -423,7 +434,9 @@ export async function translateAndInputText(text) {
     // 检查是否是用户取消
     if (error.toString().includes('翻译已被取消')) {
       hideTranslationIndicator();
-      showTranslationNotification('翻译已取消', 'warning', 1500);
+      if (aiTranslationConfig.enabled) {
+        showTranslationNotification('翻译已取消', 'warning', 1500);
+      }
       return; // 不抛出错误，因为这是正常的取消操作
     }
 
@@ -545,7 +558,9 @@ export async function translateAndInputOnCopy(text) {
     }
 
     // 翻译成功反馈
-    showTranslationNotification('复制内容已翻译并输入', 'success', 1500);
+    if (aiTranslationConfig.enabled) {
+      showTranslationNotification('复制内容已翻译并输入', 'success', 1500);
+    }
     console.log('复制时翻译完成');
   } catch (error) {
     console.error('复制时翻译失败:', error);
@@ -560,7 +575,9 @@ export async function translateAndInputOnCopy(text) {
       }
     }
 
-    showTranslationNotification(`复制时翻译失败: ${error}`, 'error', 3000);
+    if (aiTranslationConfig.enabled) {
+      showTranslationNotification(`复制时翻译失败: ${error}`, 'error', 3000);
+    }
   } finally {
     hideTranslationIndicator();
   }
@@ -880,27 +897,7 @@ export async function playTranslationSound(type = 'success') {
   }
 }
 
-/**
- * 显示翻译通知
- */
-export function showTranslationNotification(message, type = 'info', duration = 3000) {
-  try {
-    // 添加翻译图标前缀
-    const iconMap = {
-      'success': '✅',
-      'error': '❌',
-      'warning': '⚠️',
-      'info': '🌐'
-    };
 
-    const icon = iconMap[type] || '🌐';
-    const fullMessage = `${icon} ${message}`;
-
-    showNotification(fullMessage, type, duration);
-  } catch (error) {
-    console.warn('显示翻译通知失败:', error);
-  }
-}
 
 /**
  * 显示翻译状态提示
@@ -927,6 +924,11 @@ export function showTranslationStatus(status, details = '') {
  */
 export async function handleTranslationSuccess(originalText, translatedLength) {
   try {
+    // 检查翻译功能是否启用
+    if (!aiTranslationConfig.enabled) {
+      return;
+    }
+
     // 播放成功音效
     await playTranslationSound('success');
 
@@ -948,6 +950,11 @@ export async function handleTranslationSuccess(originalText, translatedLength) {
  */
 export async function handleTranslationError(error, originalText) {
   try {
+    // 检查翻译功能是否启用
+    if (!aiTranslationConfig.enabled) {
+      return;
+    }
+
     // 播放错误音效
     await playTranslationSound('error');
 

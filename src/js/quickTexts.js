@@ -17,7 +17,7 @@ import {
   pasteWithFormat
 } from './config.js';
 import { getContentType, loadImageById } from './clipboard.js';
-import { showAlertModal, showConfirmModal, showNotification } from './ui.js';
+import { showAlertModal, showConfirmModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
@@ -240,82 +240,7 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-// =================== 粘贴加载状态管理 ===================
-
-// 显示粘贴加载状态
-function showPasteLoading(element, message = '正在粘贴...') {
-  // 给元素添加加载状态
-  if (element) {
-    element.classList.add('paste-loading');
-  }
-
-  // 显示全局加载指示器
-  showPasteIndicator(message);
-}
-
-// 隐藏粘贴加载状态
-function hidePasteLoading(element, success = true, message = null) {
-  // 移除元素的加载状态
-  if (element) {
-    element.classList.remove('paste-loading');
-  }
-
-  // 显示结果状态
-  if (success) {
-    showPasteIndicator(message || '粘贴成功', 'success', 1500);
-  } else {
-    showPasteIndicator(message || '粘贴失败', 'error', 2000);
-  }
-}
-
-// 显示粘贴指示器
-function showPasteIndicator(message, type = 'loading', duration = 0) {
-  // 移除现有的指示器
-  const existingIndicator = document.querySelector('.paste-loading-indicator');
-  if (existingIndicator) {
-    existingIndicator.remove();
-  }
-
-  // 创建新的指示器
-  const indicator = document.createElement('div');
-  indicator.className = `paste-loading-indicator ${type}`;
-
-  if (type === 'loading') {
-    indicator.innerHTML = `
-      <div class="loading-spinner"></div>
-      <span>${message}</span>
-    `;
-  } else {
-    indicator.innerHTML = `<span>${message}</span>`;
-  }
-
-  document.body.appendChild(indicator);
-
-  // 显示动画
-  setTimeout(() => {
-    indicator.classList.add('show');
-  }, 10);
-
-  // 自动隐藏
-  if (duration > 0) {
-    setTimeout(() => {
-      hidePasteIndicator();
-    }, duration);
-  }
-}
-
-// 隐藏粘贴指示器
-function hidePasteIndicator() {
-  const indicator = document.querySelector('.paste-loading-indicator');
-  if (indicator) {
-    indicator.classList.remove('show');
-    setTimeout(() => {
-      if (indicator.parentNode) {
-        indicator.remove();
-      }
-    }, 300);
-  }
-}
+// =================== 常用文本操作函数 ===================
 
 // 刷新常用文本列表
 export async function refreshQuickTexts() {
@@ -603,14 +528,14 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
           const { getGroups } = await import('./groups.js');
           const groups = getGroups();
           const targetGroupName = groups.find(g => g.id === targetItemGroupId)?.name || '分组';
-          const { showNotification } = await import('./ui.js');
+          const { showNotification } = await import('./notificationManager.js');
           showNotification(`已移动到 ${targetGroupName}`, 'success');
 
           await refreshQuickTexts();
           return;
         } catch (error) {
           console.error('跨分组移动失败:', error);
-          const { showNotification } = await import('./ui.js');
+          const { showNotification } = await import('./notificationManager.js');
           showNotification('移动到分组失败，请重试', 'error');
           return;
         }
