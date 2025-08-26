@@ -1,12 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
-import { screenshotButton } from './config.js';
 import { showNotification } from './notificationManager.js';
 
 // 初始化截屏功能
 export function initScreenshot() {
-  if (screenshotButton) {
-    screenshotButton.addEventListener('click', startNativeScreenshot);
-  }
+  document.addEventListener('click', (e) => {
+    const screenshotBtn = e.target.closest('#screenshot-button');
+    if (screenshotBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      startNativeScreenshot();
+    }
+  }, true);
 }
 
 // 启动原生截屏
