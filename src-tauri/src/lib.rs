@@ -371,6 +371,7 @@ pub fn run() {
             restart_as_admin,
             is_backend_initialized,
             send_system_notification,
+            commands::fetch_image_as_data_url,
             send_startup_notification,
             native_screenshot::start_native_screenshot,
             commands::test_ai_translation,

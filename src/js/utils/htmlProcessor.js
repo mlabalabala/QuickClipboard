@@ -21,10 +21,8 @@ export function processHTMLImages(htmlContent) {
       img.setAttribute('data-original-src', originalSrc);
     }
     
-    // 使用事件监听器而不是内联事件处理器
-    img.addEventListener('error', function() {
-      window.handleImageError(this);
-    });
+    // 使用 inline onerror 以确保字符串注入后仍能生效
+    img.setAttribute('onerror', 'this.onerror=null; window.handleHtmlImageError && window.handleHtmlImageError(this);');
     img.setAttribute('loading', 'lazy');
     
     // 设置基本样式
@@ -119,5 +117,22 @@ if (!window.handleImageError) {
     // 可选：输出调试信息
     const imgId = imgElement.getAttribute('data-img-id');
     console.log(`Image load error for ${imgId}:`, imgElement.getAttribute('data-original-src') || 'unknown src');
+  };
+}
+
+// 代理失败后回退处理
+if (!window.handleHtmlImageError) {
+  window.handleHtmlImageError = async function(imgElement) {
+    try {
+      const src = imgElement.getAttribute('src');
+      if (src && /^https?:\/\//i.test(src) && !imgElement.hasAttribute('data-proxied')) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const dataUrl = await invoke('fetch_image_as_data_url', { url: src });
+        imgElement.setAttribute('data-proxied', 'true');
+        imgElement.src = dataUrl;
+        return;
+      }
+    } catch (_) {}
+    window.handleImageError(imgElement);
   };
 }

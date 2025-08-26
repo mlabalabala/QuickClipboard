@@ -56,7 +56,7 @@ function generateClipboardItemHTML(item, index) {
         displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
       }
       
-      // 处理HTML内容中的图片，添加错误处理和安全属性
+      // 处理HTML内容中的图片
       displayHTML = processHTMLImages(displayHTML);
       
       contentHTML = `<div class="clipboard-text clipboard-html"><div>${displayHTML}</div></div>`;

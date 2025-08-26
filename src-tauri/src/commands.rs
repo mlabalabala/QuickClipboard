@@ -922,6 +922,63 @@ pub fn get_app_version(app: tauri::AppHandle) -> Result<serde_json::Value, Strin
     Ok(version_info)
 }
 
+// =================== 网络图片代理 ===================
+
+/// 通过后端下载网络图片并返回 data URL（用于绕过部分站点的热链/跨域限制）
+#[tauri::command]
+pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
+    use base64::{engine::general_purpose, Engine as _};
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) QuickClipboard/1.0 Chrome/122 Safari/537.36")
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+
+    // 尝试设置Referer为图片来源域名，规避部分站点的防盗链
+    let referer = reqwest::Url::parse(&url)
+        .ok()
+        .and_then(|u| u.domain().map(|d| (u.scheme().to_string(), d.to_string())))
+        .map(|(scheme, domain)| format!("{}://{}", scheme, domain));
+
+    let mut request = client
+        .get(&url)
+        .header(reqwest::header::ACCEPT, "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
+
+    if let Some(ref v) = referer {
+        request = request.header(reqwest::header::REFERER, v);
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("请求图片失败: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("请求失败: {}", response.status()));
+    }
+
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("image/png")
+        .to_string();
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("读取图片失败: {}", e))?;
+
+    const MAX_SIZE: usize = 10 * 1024 * 1024; // 10MB
+    if bytes.len() > MAX_SIZE {
+        return Err("图片过大".to_string());
+    }
+
+    let base64_data = general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:{};base64,{}", content_type, base64_data))
+}
+
 // =================== 管理员权限相关命令 ===================
 
 // 获取管理员权限状态
