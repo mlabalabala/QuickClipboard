@@ -81,14 +81,44 @@ function sanitizeHTML(element) {
       }
     });
     
-    // 处理style属性中的危险内容
+    // 处理CSS类名，移除可能导致全局影响的类
+    const className = el.getAttribute('class');
+    if (className) {
+      // 移除可能的Bootstrap或其他框架的浮动/定位类
+      const cleanClassName = className
+        .replace(/\b(fixed|sticky|absolute|float-\w+|position-\w+)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      if (cleanClassName) {
+        el.setAttribute('class', cleanClassName);
+      } else {
+        el.removeAttribute('class');
+      }
+    }
+    
+    // 处理style属性中的危险内容和浮动定位
     const style = el.getAttribute('style');
     if (style) {
       // 移除可能的javascript:前缀和expression()
-      const cleanStyle = style
+      let cleanStyle = style
         .replace(/javascript:/gi, '')
         .replace(/expression\s*\(/gi, '')
         .replace(/url\s*\(\s*javascript:/gi, '');
+      
+      // 限制定位属性，防止元素脱离容器范围
+      cleanStyle = cleanStyle
+        .replace(/position\s*:\s*(fixed|sticky)/gi, 'position: relative')
+        .replace(/position\s*:\s*absolute/gi, 'position: relative')
+        // 移除可能导致溢出的属性
+        .replace(/z-index\s*:\s*[^;]+/gi, '')
+        .replace(/top\s*:\s*[^;]+/gi, '')
+        .replace(/left\s*:\s*[^;]+/gi, '')
+        .replace(/right\s*:\s*[^;]+/gi, '')
+        .replace(/bottom\s*:\s*[^;]+/gi, '')
+        // 限制浮动
+        .replace(/float\s*:\s*[^;]+/gi, '');
+      
       el.setAttribute('style', cleanStyle);
     }
     

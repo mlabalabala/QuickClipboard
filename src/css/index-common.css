@@ -2306,10 +2306,15 @@ body {
   -webkit-box-orient: unset !important;
   overflow: auto;
   direction: rtl;
+  position: relative;
+  contain: layout style;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .clipboard-html>* {
   direction: ltr !important;
+  position: static !important;
 }
 
 .clipboard-html div {
@@ -2318,6 +2323,9 @@ body {
 
 .clipboard-html * {
   pointer-events: auto;
+  max-width: 100% !important;
+  float: none !important;
+  position: static !important;
 }
 
 .clipboard-html a * {
@@ -2326,18 +2334,21 @@ body {
 
 /* =================== 常用文本HTML内容样式 =================== */
 .quick-text-html {
-  /* 重置白空格处理，让HTML正常渲染 */
   white-space: normal !important;
-  /* 取消line-clamp限制以正确显示HTML */
   display: block !important;
   -webkit-line-clamp: unset !important;
   -webkit-box-orient: unset !important;
   overflow: auto;
   direction: rtl;
+  position: relative;
+  contain: layout style;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .quick-text-html>* {
   direction: ltr !important;
+  position: static !important;
 }
 
 .quick-text-html div {
@@ -2346,6 +2357,9 @@ body {
 
 .quick-text-html * {
   pointer-events: auto;
+  max-width: 100% !important;
+  float: none !important;
+  position: static !important;
 }
 
 .quick-text-html a * {
