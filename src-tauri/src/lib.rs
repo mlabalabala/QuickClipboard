@@ -16,7 +16,7 @@ mod groups;
 mod image_manager;
 mod key_state_monitor;
 mod mouse_hook;
-mod native_screenshot;
+mod screenshot_window;
 mod paste_utils;
 mod preview_window;
 mod quick_texts;
@@ -373,7 +373,7 @@ pub fn run() {
             send_system_notification,
             commands::fetch_image_as_data_url,
             send_startup_notification,
-            native_screenshot::start_native_screenshot,
+            screenshot_window::screenshot_window::start_native_screenshot,
             commands::test_ai_translation,
             commands::translate_and_input_text,
             commands::translate_and_paste_text,
