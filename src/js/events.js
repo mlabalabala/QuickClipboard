@@ -5,6 +5,7 @@ import {
 } from './config.js';
 import { refreshClipboardHistory } from './clipboard.js';
 import { hideContextMenu } from './contextMenu.js';
+import { forceClosePanel } from './toolsPanel.js';
 
 
 // 设置剪贴板变化事件监听
@@ -89,6 +90,8 @@ export async function setupCustomWindowDrag() {
       console.error('恢复工具窗口模式失败:', error);
     }
     if (e.buttons === 1) {
+      // 拖拽开始时关闭工具面板
+      forceClosePanel();
       appWindow.startDragging();
       hideContextMenu()
     }

@@ -89,7 +89,7 @@ import { initInputFocusManagement } from './js/focus.js';
 import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
 import { initScreenshot } from './js/screenshot.js';
-import { initToolsPanel } from './js/toolsPanel.js';
+import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';

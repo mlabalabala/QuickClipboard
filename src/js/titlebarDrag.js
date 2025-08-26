@@ -1,6 +1,6 @@
 // 标题栏控件拖拽模块
 import Sortable from 'sortablejs';
-import { forceOpenPanel, forceClosePanel, isToolsPanelOpen } from './toolsPanel.js';
+import { forceOpenPanel, forceClosePanel, isToolsPanelOpen, updateFormatButtonStatus } from './toolsPanel.js';
 
 let titlebarControls = null;
 let toolsPanel = null;
@@ -280,6 +280,9 @@ function restoreLayout() {
     if (layout.toolsPanelItems && toolsPanel) {
       restoreToolsPanelItems(layout.toolsPanelItems);
     }
+
+    // 布局恢复后，同步格式按钮激活状态
+    try { updateFormatButtonStatus(); } catch (_) {}
   } catch (error) {
     // 静默处理恢复错误
   }
