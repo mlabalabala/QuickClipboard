@@ -13,13 +13,13 @@ export function initScreenshot() {
   }, true);
 }
 
-// 启动原生截屏
+// 启动外部截屏程序
 export async function startNativeScreenshot() {
   try {
-    console.log('启动原生截屏...');
-    await invoke('start_native_screenshot');
+    console.log('启动外部截屏程序...');
+    await invoke('launch_external_screenshot');
   } catch (error) {
-    console.error('原生截屏失败:', error);
-    showNotification(`原生截屏失败: ${error}`, 'error');
+    console.error('启动外部截屏程序失败:', error);
+    showNotification(`启动外部截屏程序失败: ${error}`, 'error');
   }
 }
