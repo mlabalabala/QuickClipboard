@@ -669,6 +669,15 @@ export function initShortcutsHelpPanel() {
   // 检查是否是首次启动
   checkFirstLaunch();
 
+  // 事件处理：点击显示/关闭快捷键帮助
+  const helpIcon = footer.querySelector('.shortcuts-help-icon');
+  if (helpIcon) {
+    helpIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleShortcutsHelp();
+    });
+  }
+
   // 点击关闭按钮
   shortcutsHelpClose.addEventListener('click', (e) => {
     console.log('用户点击关闭按钮');
@@ -676,30 +685,14 @@ export function initShortcutsHelpPanel() {
     hideShortcutsHelp();
   });
 
-  // 监听footer的鼠标离开事件，延迟移除隐藏状态
-  footer.addEventListener('mouseleave', () => {
-    setTimeout(() => {
-      // 检查鼠标是否还在帮助内容上
-      if (!shortcutsHelpContent.matches(':hover')) {
-        shortcutsHelpContent.classList.remove('hidden');
-      }
-    }, 100);
+  // 点击帮助内容外部区域关闭帮助
+  document.addEventListener('click', (e) => {
+    if (shortcutsHelpContent.classList.contains('visible') &&
+      !shortcutsHelpContent.contains(e.target) &&
+      !(helpIcon && helpIcon.contains(e.target))) {
+      hideShortcutsHelp();
+    }
   });
-
-  // 事件模拟：
-  const helpIcon = footer.querySelector('.shortcuts-help-icon');
-  if (helpIcon) {
-    const show = () => shortcutsHelpContent.classList.add('visible');
-    const hide = () => {
-      if (!shortcutsHelpContent.matches(':hover')) {
-        shortcutsHelpContent.classList.remove('visible');
-      }
-    };
-    helpIcon.addEventListener('mouseenter', show);
-    helpIcon.addEventListener('mouseleave', () => setTimeout(hide, 120));
-    shortcutsHelpContent.addEventListener('mouseleave', () => setTimeout(hide, 120));
-    shortcutsHelpContent.addEventListener('mouseenter', () => shortcutsHelpContent.classList.add('visible'));
-  }
 
   // 首次启动时自动显示
   if (isFirstLaunch) {
@@ -724,7 +717,7 @@ function showShortcutsHelpFirstTime() {
 
   // 添加首次显示的特殊样式
   shortcutsHelpContent.classList.add('first-show');
-  shortcutsHelpContent.classList.add('visible');
+  showShortcutsHelp();
 
   // 3秒后自动隐藏
   setTimeout(() => {
@@ -732,8 +725,27 @@ function showShortcutsHelpFirstTime() {
   }, 3000);
 }
 
+// 切换快捷键帮助面板显示状态
+function toggleShortcutsHelp() {
+  if (!shortcutsHelpContent) return;
+
+  if (shortcutsHelpContent.classList.contains('visible')) {
+    hideShortcutsHelp();
+  } else {
+    showShortcutsHelp();
+  }
+}
+
+// 显示快捷键帮助面板
+function showShortcutsHelp() {
+  if (!shortcutsHelpContent) return;
+
+  shortcutsHelpContent.classList.remove('hidden');
+  shortcutsHelpContent.classList.add('visible');
+}
+
 // 隐藏快捷键帮助面板
-function hideShortcutsHelp() {
+export function hideShortcutsHelp() {
   if (!shortcutsHelpContent) return;
 
   console.log('隐藏快捷键帮助面板');

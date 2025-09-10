@@ -393,7 +393,7 @@ body {
   display: flex;
   gap: var(--padding-medium);
   align-items: center;
-  z-index:99 !important;
+  z-index: 99 !important;
 }
 
 #search-input,
@@ -1458,7 +1458,7 @@ body {
   right: 0;
   padding: 4px 10px;
   transition: all var(--transition-slow) ease;
-  z-index: 99 ;
+  z-index: 99;
   /* overflow: hidden; */
   border-radius: 0 0 8px 8px;
   cursor: grab;
@@ -1491,13 +1491,9 @@ body {
   font-size: 16px;
   color: red;
   transition: all var(--transition-duration) ease;
-  cursor: help;
+  cursor: pointer;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.01);
-}
-
-.shortcuts-help-icon:hover {
-  color: #007acc;
 }
 
 .shortcuts-help-content {
@@ -1520,7 +1516,6 @@ body {
   backdrop-filter: blur(var(--blur-radius));
 }
 
-.shortcuts-help-content:hover,
 .shortcuts-help-content.visible {
   opacity: 1;
   visibility: visible;

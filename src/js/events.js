@@ -6,7 +6,7 @@ import {
 import { refreshClipboardHistory } from './clipboard.js';
 import { hideContextMenu } from './contextMenu.js';
 import { forceClosePanel } from './toolsPanel.js';
-
+import { hideShortcutsHelp } from './navigation.js'
 
 // 设置剪贴板变化事件监听
 export async function setupClipboardEventListener() {
@@ -79,10 +79,16 @@ export async function setupCustomWindowDrag() {
 
   // 公共拖拽处理函数
   const handleDrag = async (element, e) => {
-    // 对于footer，允许子元素拖拽；对于其他元素，只允许元素本身拖拽
+    // 对于footer，允许子元素拖拽，但排除shortcuts-help-icon；对于其他元素，只允许元素本身拖拽
     if (element !== footer && e.target !== element) {
       return; // 点击的是子元素，不执行拖拽
     }
+
+    // 特别处理footer中的shortcuts-help-icon，不允许拖拽
+    if (element === footer && e.target.closest('.shortcuts-help-icon')) {
+      return; // 点击的是快捷键帮助图标，不执行拖拽
+    }
+
     try {
       await invoke('restore_last_focus');
       console.log('恢复工具窗口模式');
@@ -91,6 +97,7 @@ export async function setupCustomWindowDrag() {
     }
     if (e.buttons === 1) {
       // 拖拽开始时关闭工具面板
+      hideShortcutsHelp()
       forceClosePanel();
       appWindow.startDragging();
       hideContextMenu()
