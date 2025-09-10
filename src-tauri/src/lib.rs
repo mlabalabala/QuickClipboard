@@ -179,9 +179,9 @@ pub fn run() {
                 }
             }
 
-            // 启动内存收缩调度器（仅 Windows 生效）
-            #[cfg(windows)]
-            memory_manager::start_memory_trim_scheduler();
+            // 启动内存收缩调度器，暂停使用避免程序崩溃
+            // #[cfg(windows)]
+            // memory_manager::start_memory_trim_scheduler();
 
             // 初始化音效管理器
             if let Err(_e) = sound_manager::initialize_sound_manager() {
