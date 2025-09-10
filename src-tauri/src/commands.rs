@@ -1549,16 +1549,29 @@ pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
 
 // =================== 外部截屏程序命令 ===================
 
-// 启动外部截屏程序
+// 通过HTTP请求触发截屏
 #[tauri::command]
-pub fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
-    use std::process::Command;
+pub async fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
     
     // 隐藏主窗口
     if let Some(main_window) = app.get_webview_window("main") {
         crate::window_management::hide_webview_window(main_window);
     }
+    
+    // 触发截屏
+    crate::screenshot_service::trigger_screenshot().await
+        .map_err(|e| format!("截屏请求失败: {}", e))?;
+    
+    Ok(())
+}
+
+// 启动外部截屏程序进程
+#[tauri::command]
+pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+    use std::io::{BufRead, BufReader};
+    use tauri::Manager;
     
     // 获取应用资源目录
     let resource_dir = app.path().resource_dir()
@@ -1580,20 +1593,49 @@ pub fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
     
     println!("启动外部截屏程序: {}", screenshot_exe.display());
     
-    // 同步启动外部截屏程序，减少延迟
+    // 启动外部截屏程序
     let mut command = Command::new(&screenshot_exe);
     command.current_dir(&external_apps_dir);
-    
-    // 使用detached模式启动，避免父子进程关联导致的崩溃
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(0x00000008); // DETACHED_PROCESS
-    }
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
     
     match command.spawn() {
         Ok(mut child) => {
             println!("外部截屏程序已启动，PID: {:?}", child.id());
+            
+            // 读取子程序的输出来获取端口信息
+            if let Some(stdout) = child.stdout.take() {
+                let reader = BufReader::new(stdout);
+                
+                // 在新线程中读取输出，避免阻塞
+                std::thread::spawn(move || {
+                    for line in reader.lines() {
+                        if let Ok(line) = line {
+                            println!("子程序输出: {}", line);
+                            
+                            // 解析端口信息，匹配子程序输出格式如 "QCScreenshot started on port: 8080"
+                            if line.contains("QCScreenshot started on port:") {
+                                if let Some(port_str) = line.split(':').last() {
+                                    if let Ok(port) = port_str.trim().parse::<u16>() {
+                                        crate::screenshot_service::set_screenshot_service_port(port);
+                                        println!("成功解析到端口: {}", port);
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // 也支持纯数字格式的端口输出
+                            if let Ok(port) = line.trim().parse::<u16>() {
+                                if port > 1024 && port < 65535 {
+                                    crate::screenshot_service::set_screenshot_service_port(port);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
             // 立即detach，不等待进程结束
             std::mem::forget(child);
             Ok(())

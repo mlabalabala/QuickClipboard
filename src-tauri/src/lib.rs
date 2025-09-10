@@ -10,6 +10,8 @@ mod clipboard_monitor;
 mod commands;
 mod data_manager;
 mod database;
+mod http_client;
+mod screenshot_service;
 mod file_handler;
 mod global_state;
 mod groups;
@@ -305,8 +307,8 @@ pub fn run() {
                 // 等待一小段时间确保应用完全启动
                 std::thread::sleep(std::time::Duration::from_millis(1500));
                 
-                // 启动外部截屏程序
-                if let Err(e) = commands::launch_external_screenshot(app_handle_screenshot) {
+                // 启动外部截屏程序进程（仅启动进程，不触发截屏）
+                if let Err(e) = commands::launch_external_screenshot_process(app_handle_screenshot) {
                     println!("启动外部截屏程序失败: {}", e);
                 }
             });
@@ -419,7 +421,8 @@ pub fn run() {
             commands::save_window_size,
             commands::get_saved_window_position,
             commands::get_saved_window_size,
-            commands::launch_external_screenshot
+            commands::launch_external_screenshot,
+            commands::launch_external_screenshot_process
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
