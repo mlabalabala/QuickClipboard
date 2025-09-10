@@ -1551,7 +1551,7 @@ pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
 
 // 启动外部截屏程序
 #[tauri::command]
-pub async fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
+pub fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
     use std::process::Command;
     use tauri::Manager;
     
@@ -1572,42 +1572,35 @@ pub async fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), Str
         return Err("截屏程序目录不存在，请重新安装QuickClipboard".to_string());
     }
     
-    let screenshot_exe = external_apps_dir.join("QuickClipboardScreenshot.exe");
+    let screenshot_exe = external_apps_dir.join("QCScreenshot.exe");
     
     if !screenshot_exe.exists() {
         return Err("截屏程序未找到或被删除\n\n请将QuickClipboardScreenshot.exe文件放入external_apps文件夹中".to_string());
     }
     
-    // 异步启动外部截屏程序，避免阻塞主线程
-    let screenshot_exe_clone = screenshot_exe.clone();
-    let external_apps_dir_clone = external_apps_dir.clone();
+    println!("启动外部截屏程序: {}", screenshot_exe.display());
     
-    tokio::task::spawn_blocking(move || {
-        println!("启动外部截屏程序: {}", screenshot_exe_clone.display());
-        
-        let mut command = Command::new(&screenshot_exe_clone);
-        command.current_dir(&external_apps_dir_clone);
-        
-        // 使用detached模式启动，避免父子进程关联导致的崩溃
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            command.creation_flags(0x00000008);
-        }
-        
-        match command.spawn() {
-            Ok(mut child) => {
-                println!("外部截屏程序已启动，PID: {:?}", child.id());
-                // 立即detach，不等待进程结束
-                std::thread::spawn(move || {
-                    let _ = child.wait();
-                });
-            }
-            Err(e) => {
-                eprintln!("启动截屏程序失败: {}", e);
-            }
-        }
-    });
+    // 同步启动外部截屏程序，减少延迟
+    let mut command = Command::new(&screenshot_exe);
+    command.current_dir(&external_apps_dir);
     
-    Ok(())
+    // 使用detached模式启动，避免父子进程关联导致的崩溃
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x00000008); // DETACHED_PROCESS
+    }
+    
+    match command.spawn() {
+        Ok(mut child) => {
+            println!("外部截屏程序已启动，PID: {:?}", child.id());
+            // 立即detach，不等待进程结束
+            std::mem::forget(child);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("启动截屏程序失败: {}", e);
+            Err(format!("启动截屏程序失败: {}", e))
+        }
+    }
 }

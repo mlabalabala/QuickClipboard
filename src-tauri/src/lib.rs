@@ -299,6 +299,18 @@ pub fn run() {
                 let _ = send_startup_notification_internal(&app_handle);
             });
 
+            // 启动外部截屏程序
+            let app_handle_screenshot = app.handle().clone();
+            std::thread::spawn(move || {
+                // 等待一小段时间确保应用完全启动
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+                
+                // 启动外部截屏程序
+                if let Err(e) = commands::launch_external_screenshot(app_handle_screenshot) {
+                    println!("启动外部截屏程序失败: {}", e);
+                }
+            });
+
             // 标记后端初始化完成
             BACKEND_INITIALIZED.store(true, Ordering::Relaxed);
 

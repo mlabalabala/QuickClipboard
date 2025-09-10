@@ -598,7 +598,7 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
                 let app_handle = window.app_handle().clone();
                 // 使用异步任务启动，避免在钉子线程中直接启动进程
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = crate::commands::launch_external_screenshot(app_handle).await {
+                    if let Err(e) = crate::commands::launch_external_screenshot(app_handle) {
                         eprintln!("启动外部截屏程序失败: {}", e);
                     }
                 });
