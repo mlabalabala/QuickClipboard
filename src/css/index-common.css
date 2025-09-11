@@ -1094,7 +1094,7 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* =================== 文件列表样式 =================== */
+/* 默认文件容器样式（详细信息模式） */
 .clipboard-files {
   display: flex;
   flex-direction: column;
@@ -1182,6 +1182,33 @@ body {
   font-weight: 500;
   margin-bottom: var(--margin-small);
   line-height: 1.3;
+}
+
+/* =================== 文件样式 - 详细信息（默认样式） */
+/* 文件样式 - 仅图标 */
+/* 保持滚动条在左侧 */
+.file-style-icons-only .clipboard-files,
+.file-style-icons-only .files-container {
+  direction: rtl !important;
+  overflow-y: auto !important;
+}
+
+/* 内部包装层，确保内容从左到右排列 */
+.file-style-icons-only .clipboard-files-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 4px;
+  padding: 8px;
+  max-height: none !important;
+  overflow-y: visible !important;
+  justify-content: center;
+  align-items: center;
+  direction: ltr !important;
+  padding: 0;
+}
+
+.file-style-icons-only .file-info {
+  display: none;
 }
 
 /* =================== 分组标签样式 =================== */

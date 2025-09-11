@@ -206,6 +206,7 @@ function generateQuickTextFilesHTML(text) {
     // 顶部显示：时间和文件数量
     filesHTML += `<div class="file-summary">${timeStr} • ${filesData.files.length} 个文件</div>`;
     filesHTML += '<div class="files-container">';
+    filesHTML += '<div class="clipboard-files-inner">';
 
     filesData.files.forEach(file => {
       const iconHTML = generateFileIconHTML(file, 'medium');
@@ -221,6 +222,7 @@ function generateQuickTextFilesHTML(text) {
       `;
     });
 
+    filesHTML += '</div>';
     filesHTML += '</div>';
     return filesHTML;
   } catch (error) {

@@ -173,6 +173,8 @@ function generateFilesHTML(item) {
     // 顶部显示：时间和文件数量
     let filesHTML = `<div class="file-summary">${timeStr} • ${filesData.files.length} 个文件</div>`;
     filesHTML += '<div class="clipboard-files">';
+    // 添加内部包装层，用于处理图标模式下的内容方向
+    filesHTML += '  <div class="clipboard-files-inner">';
 
     filesData.files.forEach(file => {
       const iconHTML = generateFileIconHTML(file, 'medium');
@@ -188,6 +190,7 @@ function generateFilesHTML(item) {
       `;
     });
 
+    filesHTML += '  </div>';
     filesHTML += '</div>';
     return filesHTML;
   } catch (error) {

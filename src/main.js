@@ -216,12 +216,20 @@ async function initApp() {
     { value: 'row-height-medium', text: '中' },
     { value: 'row-height-small', text: '小' }
   ];
+  
+  // 文件样式选项
+  const fileStyleOptions = [
+    { value: 'file-style-detailed', text: '详细信息' },
+    { value: 'file-style-icons-only', text: '仅图标' }
+  ];
+  
   if (contentFilterContainer) {
     contentCustomFilter = new CustomSelect(contentFilterContainer, {
       isMenuType: true,
       enableHover: true,
       options: [
-        { value: 'row-height', text: '行高', children: rowHeightOptions }
+        { value: 'row-height', text: '行高', children: rowHeightOptions },
+        { value: 'file-style', text: '文件样式', children: fileStyleOptions }
       ],
       placeholder: '行高'
     });
@@ -232,7 +240,8 @@ async function initApp() {
       isMenuType: true,
       enableHover: true,
       options: [
-        { value: 'row-height', text: '行高', children: rowHeightOptions }
+        { value: 'row-height', text: '行高', children: rowHeightOptions },
+        { value: 'file-style', text: '文件样式', children: fileStyleOptions }
       ],
       placeholder: '行高'
     });
