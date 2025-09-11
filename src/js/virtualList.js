@@ -19,7 +19,7 @@ export class VirtualList {
     this.clusterize = null;
     this.sortable = null;
     this.isDragging = false;
-    
+
     // 维护当前行高状态
     this.currentRowHeightSetting = localStorage.getItem('app-row-height') || 'medium';
 
@@ -97,7 +97,7 @@ export class VirtualList {
             if (elements[i] && elements[i] !== evt.item) {
               const refIndex = parseInt(elements[i].getAttribute('data-index'));
               // 向下拖拽时直接使用参考元素索引，不加1
-              realNewIndex = isForward ? refIndex : refIndex; 
+              realNewIndex = isForward ? refIndex : refIndex;
               break;
             }
           }
@@ -112,6 +112,9 @@ export class VirtualList {
           if (realOldIndex !== realNewIndex) {
             console.log('oldIndex:', realOldIndex, 'newIndex:', realNewIndex);
             this.onSort(realOldIndex, realNewIndex);
+
+            // 拖拽完成后重新设置data-index
+            this.updateDataIndexesAfterDrag(realOldIndex, realNewIndex);
 
             // 拖拽完成后设置该项为激活状态
             setTimeout(() => {
@@ -207,7 +210,6 @@ export class VirtualList {
       import('./navigation.js').then(navigationModule => {
         // 更新拖拽元素的data-index属性为新索引
         draggedElement.setAttribute('data-index', newIndex.toString());
-
         // 调用navigation模块的syncClickedItem函数设置激活状态
         navigationModule.syncClickedItem(draggedElement);
       }).catch(error => {
@@ -215,6 +217,50 @@ export class VirtualList {
       });
     } catch (error) {
       console.warn('设置拖拽项激活状态失败:', error);
+    }
+  }
+
+  // 拖拽完成后更新所有相关元素的data-index
+  updateDataIndexesAfterDrag(oldIndex, newIndex) {
+    try {
+      const contentElement = document.getElementById(this.contentId);
+      if (!contentElement) return;
+
+      const items = contentElement.querySelectorAll('[data-index]');
+      if (!items || items.length === 0) return;
+
+      // 确定索引范围
+      const startIndex = Math.min(oldIndex, newIndex);
+      const endIndex = Math.max(oldIndex, newIndex);
+
+      // 更新受影响范围内的所有元素的data-index
+      items.forEach(item => {
+        const currentIndex = parseInt(item.getAttribute('data-index'));
+        if (!isNaN(currentIndex)) {
+          // 如果是拖拽元素本身，设置为新索引
+          if (currentIndex === oldIndex) {
+            item.setAttribute('data-index', newIndex.toString());
+          }
+          // 如果元素在拖拽路径上，根据拖拽方向调整索引
+          else if (currentIndex >= startIndex && currentIndex <= endIndex) {
+            if (oldIndex < newIndex) {
+              // 向下拖拽，被拖拽元素经过的元素索引减1
+              if (currentIndex > oldIndex && currentIndex <= newIndex) {
+                item.setAttribute('data-index', (currentIndex - 1).toString());
+              }
+            } else {
+              // 向上拖拽，被拖拽元素经过的元素索引加1
+              if (currentIndex >= newIndex && currentIndex < oldIndex) {
+                item.setAttribute('data-index', (currentIndex + 1).toString());
+              }
+            }
+          }
+        }
+      });
+
+      console.log(`拖拽后更新索引: ${oldIndex} -> ${newIndex}`);
+    } catch (error) {
+      console.warn('更新拖拽后的data-index失败:', error);
     }
   }
 
@@ -328,12 +374,12 @@ export class VirtualList {
     if (this.clusterize) {
       this.clusterize.destroy();
     }
-    
+
     // 清理行高变化监听器
     if (this.rowHeightChangeHandler) {
       window.removeEventListener('row-height-changed', this.rowHeightChangeHandler);
     }
-    
+
     // 清理标签页切换监听器
     if (this.tabSwitchHandler) {
       window.removeEventListener('tab-switched', this.tabSwitchHandler);
@@ -363,7 +409,7 @@ export class VirtualList {
     // 计算目标滚动位置 - 让目标元素显示在视口顶部偏下一点
     const targetScrollTop = index * itemHeight;
     const containerHeight = scrollElement.clientHeight;
-    
+
     // 添加小量偏移，避免元素刚好贴在视口顶部
     const offset = itemHeight * 0.1;
     const adjustedScrollTop = Math.max(0, targetScrollTop - offset);
@@ -389,7 +435,7 @@ export class VirtualList {
   // 根据当前行高设置获取项目高度
   getCurrentRowHeight() {
     const currentRowHeight = localStorage.getItem('app-row-height') || 'medium';
-    
+
     switch (currentRowHeight) {
       case 'large':
         return 120; // 大
@@ -405,7 +451,7 @@ export class VirtualList {
   // 根据行高名称获取对应的数值
   getCurrentRowHeightFromEvent(rowHeightName) {
     if (!rowHeightName) return 90; // 默认中等
-    
+
     switch (rowHeightName) {
       case 'large':
         return 120; // 大
@@ -422,32 +468,32 @@ export class VirtualList {
   getFirstVisibleElementIndex() {
     const scrollElement = document.getElementById(this.scrollId);
     const contentElement = document.getElementById(this.contentId);
-    
+
     if (!scrollElement || !contentElement) {
       return 0;
     }
-    
+
     const scrollTop = scrollElement.scrollTop;
     const viewportHeight = scrollElement.clientHeight;
-    
+
     // 如果滚动到顶部，直接返回0
     if (scrollTop <= 0) {
       return 0;
     }
-    
+
     // 查找所有有效的项目元素
     const items = contentElement.querySelectorAll('[data-index]');
     let firstVisibleIndex = null;
-    
+
     // 使用更精确的可见性检测
     for (let item of items) {
       const itemRect = item.getBoundingClientRect();
       const containerRect = scrollElement.getBoundingClientRect();
-      
+
       // 计算相对于容器的位置
       const itemTop = itemRect.top - containerRect.top;
       const itemBottom = itemRect.bottom - containerRect.top;
-      
+
       // 检查元素是否在视口内可见
       if (itemBottom > 0 && itemTop < viewportHeight) {
         const index = parseInt(item.getAttribute('data-index'));
@@ -458,16 +504,16 @@ export class VirtualList {
         }
       }
     }
-    
+
     // 如果找到了可见元素，返回最小的索引
     if (firstVisibleIndex !== null) {
       return firstVisibleIndex;
     }
-    
+
     // 如果没找到，回退到基于滚动位置的计算
     const avgRowHeight = this.getCurrentRowHeight();
     const calculatedIndex = Math.floor(scrollTop / avgRowHeight);
-    
+
     // 确保计算出的索引在有效范围内
     return Math.max(0, Math.min(calculatedIndex, this.data.length - 1));
   }
@@ -479,33 +525,33 @@ export class VirtualList {
       setTimeout(() => {
         const scrollElement = document.getElementById(this.scrollId);
         const contentElement = document.getElementById(this.contentId);
-        
+
         if (scrollElement && contentElement && this.data && this.data.length > 0) {
           // 保存当前滚动位置
           const currentScrollTop = scrollElement.scrollTop;
-          
+
           // 获取旧行高和新行高
           const oldRowHeight = this.getCurrentRowHeightFromEvent(this.currentRowHeightSetting);
           const newRowHeightName = localStorage.getItem('app-row-height') || 'medium';
           const newRowHeight = this.getCurrentRowHeightFromEvent(newRowHeightName);
-          
+
           // 根据旧行高计算当前可见的第一个项目索引
           const firstVisibleIndex = Math.floor(currentScrollTop / oldRowHeight);
-          
+
           // 确保索引在有效范围内
           const validIndex = Math.max(0, Math.min(firstVisibleIndex, this.data.length - 1));
-          
+
           // 更新当前行高设置
           this.currentRowHeightSetting = newRowHeightName;
-          
+
           // 强制刷新虚拟列表以重新计算块布局
           this.clusterize.refresh(true);
-          
+
           // 根据新的行高和目标元素索引计算新的滚动位置
           setTimeout(() => {
             // 使用 scrollToIndex 方法精确定位到指定元素
             this.scrollToIndex(validIndex);
-            
+
             // 再次刷新以确保虚拟列表正确渲染
             setTimeout(() => {
               this.clusterize.refresh(true);
@@ -514,7 +560,7 @@ export class VirtualList {
         }
       }, 150);
     };
-    
+
     // 监听标签页切换事件，在切换时刷新虚拟列表并回到顶部
     this.tabSwitchHandler = () => {
       setTimeout(() => {
@@ -525,10 +571,10 @@ export class VirtualList {
             top: 0,
             behavior: 'instant'
           });
-          
+
           // 强制刷新虚拟列表布局
           this.clusterize.refresh(true);
-          
+
           // 再次确保滚动位置正确
           setTimeout(() => {
             scrollElement.scrollTop = 0;
@@ -537,7 +583,7 @@ export class VirtualList {
         }
       }, 50);
     };
-    
+
     window.addEventListener('row-height-changed', this.rowHeightChangeHandler);
     // 监听标签页切换
     window.addEventListener('tab-switched', this.tabSwitchHandler);
