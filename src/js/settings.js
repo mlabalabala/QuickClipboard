@@ -433,7 +433,7 @@ function bindSettingEvents() {
     'preview-scroll-sound', 'preview-scroll-sound-path',
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
     'screenshot-auto-save', 'screenshot-show-hints',
-    'ai-translation-enabled', 'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
+    'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
@@ -1484,10 +1484,61 @@ function bindAiTranslationEvents() {
   if (aiTranslationEnabledCheckbox) {
     aiTranslationEnabledCheckbox.addEventListener('change', async (e) => {
       try {
+        // 如果尝试启用AI翻译，先检查API密钥是否配置
+        if (e.target.checked) {
+          // 获取当前AI配置
+          const aiConfig = getCurrentAIConfig();
+          
+          // 检查API密钥是否为空
+          if (!aiConfig.apiKey || aiConfig.apiKey.trim() === '') {
+            // API密钥未配置，不允许启用，并弹出提示
+            e.target.checked = false; // 恢复开关状态
+            showNotification('请先配置AI API密钥后再启用AI翻译功能', 'warning');
+            
+            // 滚动到AI配置区域
+            const aiConfigSection = document.getElementById('ai-config-section');
+            if (aiConfigSection) {
+              aiConfigSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            return;
+          }
+          
+          // 检查AI配置是否有效
+          const isConfigValid = await invoke('check_ai_translation_config');
+          if (!isConfigValid) {
+            // AI配置无效，不允许启用，并弹出提示
+            e.target.checked = false; // 恢复开关状态
+            showNotification('AI配置无效，请检查AI配置后再启用AI翻译功能', 'warning');
+            
+            // 滚动到AI配置区域
+            const aiConfigSection = document.getElementById('ai-config-section');
+            if (aiConfigSection) {
+              aiConfigSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            return;
+          }
+        }
+        
+        // 更新本地设置
+        settings.aiTranslationEnabled = e.target.checked;
+        saveSettings();
+        
         // 发送AI翻译状态变化事件到主窗口
         await emit('ai-translation-state-changed', { enabled: e.target.checked });
+        
+        // 显示适当的提示
+        if (e.target.checked) {
+          showNotification('AI翻译功能已启用', 'success');
+        } else {
+          showNotification('AI翻译功能已禁用', 'info');
+        }
       } catch (error) {
         console.error('发送AI翻译状态变化事件失败:', error);
+        // 如果发生错误，恢复开关状态
+        e.target.checked = !e.target.checked;
+        showNotification('启用AI翻译失败，请重试', 'error');
       }
     });
   }

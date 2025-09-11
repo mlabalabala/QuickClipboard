@@ -189,7 +189,7 @@ async function setupAiTranslationEventListeners() {
     await listen('ai-translation-cancelled', () => {
       console.log('收到后端AI翻译取消事件');
       hideTranslationIndicator();
-      
+
       // 检查翻译功能是否启用
       if (aiTranslationConfig.enabled) {
         showTranslationNotification('翻译已取消', 'warning', 1500);
@@ -319,12 +319,6 @@ async function broadcastAiTranslationStateChange(enabled) {
 function showAiTranslationConfigError() {
   console.warn('AI翻译配置无效，请先在设置中配置API密钥等信息');
 
-  // 检查翻译功能是否启用
-  if (!aiTranslationConfig.enabled) {
-    console.log('翻译功能未启用，跳过显示配置错误通知');
-    return;
-  }
-
   // 使用自定义翻译通知系统显示错误提示
   showTranslationNotification('请先配置API密钥和模型信息', 'error', 4000);
 }
@@ -351,12 +345,12 @@ export async function cancelTranslation() {
   try {
     await invoke('cancel_translation');
     hideTranslationIndicator();
-    
+
     // 检查翻译功能是否启用
     if (aiTranslationConfig.enabled) {
       showTranslationNotification('翻译已取消', 'warning', 1500);
     }
-    
+
     console.log('[AI翻译] 用户取消翻译');
   } catch (error) {
     console.error('取消翻译失败:', error);
