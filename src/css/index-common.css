@@ -2446,7 +2446,6 @@ body.dragging .title-bar {
 
 .sortable-chosen {
   cursor: grabbing !important;
-  z-index: 10002 !important;
   position: relative;
 }
 
@@ -2454,7 +2453,6 @@ body.dragging .title-bar {
   opacity: 0.9;
   transform: rotate(2deg);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-  z-index: 10002 !important;
   position: relative;
 }
 
