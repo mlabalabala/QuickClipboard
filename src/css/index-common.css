@@ -2002,12 +2002,6 @@ body {
   cursor: pointer;
 }
 
-.sidebar-trigger:hover+.groups-sidebar:not(.pinned),
-.groups-sidebar:not(.pinned):hover {
-  z-index: var(--z-tooltip);
-  transform: translateX(0);
-  right: 0;
-}
 
 .groups-sidebar.pinned {
   transform: translateX(0) !important;

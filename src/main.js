@@ -1,4 +1,4 @@
-﻿// 主入口文件 - 协调各个模块
+// 主入口文件 - 协调各个模块
 
 // =================== 启动横幅 ===================
 function printStartupBanner() {
@@ -93,6 +93,7 @@ import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
+import { initSidebarHover } from './js/sidebarHover.js';
 import {
   initializeSettingsManager,
   initializeTheme,
@@ -169,6 +170,9 @@ async function initApp() {
 
   // 初始化分组功能（必须在常用文本之前）
   await initGroups();
+
+  // 初始化侧边栏悬停延迟功能
+  initSidebarHover();
 
   // 预先初始化虚拟列表，让用户立即看到界面结构
   renderClipboardItems();

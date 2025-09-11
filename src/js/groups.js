@@ -326,6 +326,11 @@ function pinGroupSidebar() {
     pinGroupBtn.title = '固定侧边栏';
     pinGroupBtn.innerHTML = '<i class="ti ti-pin"></i>';
   }
+  
+  // 更新侧边栏悬停行为
+  import('./sidebarHover.js').then(module => {
+    module.updateSidebarHoverBehavior();
+  });
 }
 
 // 显示分组模态框
