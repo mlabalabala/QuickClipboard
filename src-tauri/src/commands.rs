@@ -1606,6 +1606,7 @@ pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), S
             // 读取子程序的输出来获取端口信息
             if let Some(stdout) = child.stdout.take() {
                 let reader = BufReader::new(stdout);
+                let app_handle_clone = app.clone();
                 
                 // 在新线程中读取输出，避免阻塞
                 std::thread::spawn(move || {
@@ -1617,8 +1618,8 @@ pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), S
                             if line.contains("QCScreenshot started on port:") {
                                 if let Some(port_str) = line.split(':').last() {
                                     if let Ok(port) = port_str.trim().parse::<u16>() {
-                                        crate::screenshot_service::set_screenshot_service_port(port);
-                                        println!("成功解析到端口: {}", port);
+                                        crate::screenshot_service::set_screenshot_service_port_and_start_heartbeat(port, app_handle_clone.clone());
+                                        println!("成功解析到端口: {}，心跳检测服务已启动", port);
                                         break;
                                     }
                                 }
@@ -1627,7 +1628,8 @@ pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), S
                             // 也支持纯数字格式的端口输出
                             if let Ok(port) = line.trim().parse::<u16>() {
                                 if port > 1024 && port < 65535 {
-                                    crate::screenshot_service::set_screenshot_service_port(port);
+                                    crate::screenshot_service::set_screenshot_service_port_and_start_heartbeat(port, app_handle_clone.clone());
+                                    println!("成功解析到端口: {}，心跳检测服务已启动", port);
                                     break;
                                 }
                             }

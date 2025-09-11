@@ -43,7 +43,7 @@ impl HttpClient {
     pub async fn get(&self, endpoint: &str) -> Result<Value, String> {
         let url = format!("{}{}", self.config.base_url, endpoint);
         
-        println!("发送GET请求: {}", url);
+        // println!("发送GET请求: {}", url);
         
         let response = self.client
             .get(&url)
@@ -66,7 +66,7 @@ impl HttpClient {
     pub async fn post(&self, endpoint: &str, body: Option<Value>) -> Result<Value, String> {
         let url = format!("{}{}", self.config.base_url, endpoint);
         
-        println!("发送POST请求: {}", url);
+        // println!("发送POST请求: {}", url);
         
         let mut request = self.client.post(&url);
         
