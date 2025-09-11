@@ -11,7 +11,7 @@ import {
   isOneTimePaste,
   pasteWithFormat
 } from './config.js';
-import { showNotification,showPasteLoading, hidePasteLoading } from './notificationManager.js';
+import { showNotification, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { showContextMenu } from './contextMenu.js';
 import {
   shouldTranslateText,
@@ -50,21 +50,21 @@ function generateClipboardItemHTML(item, index) {
       // 有HTML内容且开启格式显示，直接渲染HTML
       const searchTerms = getCurrentSearchTerms();
       let displayHTML = item.html_content;
-      
+
       // 对HTML内容应用搜索高亮
       if (searchTerms.length > 0) {
         displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
       }
-      
+
       // 处理HTML内容中的图片
       displayHTML = processHTMLImages(displayHTML);
-      
+
       contentHTML = `<div class="clipboard-text clipboard-html"><div>${displayHTML}</div></div>`;
     } else {
       // 纯文本内容，使用原有逻辑
       const searchTerms = getCurrentSearchTerms();
       const highlightResult = highlightMultipleSearchTermsWithPosition(item.content, searchTerms);
-      
+
       // 如果有搜索关键字，添加滚动定位功能
       if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
         contentHTML = `<div class="clipboard-text searchable" data-first-keyword="${highlightResult.firstKeywordPosition}"><div>${highlightResult.html}</div></div>`;
@@ -281,25 +281,25 @@ export function getContentType(text) {
 
   // 链接类型 - 更严格的URL检测
   const trimmedText = text.trim();
-  
+
   // 1. 标准URL格式（必须包含协议）
   const standardUrlPattern = /^(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+$/i;
   if (standardUrlPattern.test(trimmedText)) {
     return 'link';
   }
-  
+
   // 2. 以www开头的URL（必须包含协议或www）
   const wwwUrlPattern = /^www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/i;
   if (wwwUrlPattern.test(trimmedText)) {
     return 'link';
   }
-  
+
   // 3. 检测文本中是否包含完整的URL链接
   const containsUrlPattern = /(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+/gi;
   if (containsUrlPattern.test(text)) {
     return 'link';
   }
-  
+
   // 4. 检测文本中是否包含www开头的完整URL
   const containsWwwUrlPattern = /www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?/gi;
   if (containsWwwUrlPattern.test(text)) {
@@ -308,22 +308,6 @@ export function getContentType(text) {
 
   // 默认为文本类型
   return 'text';
-}
-
-// 打开链接
-async function openLink(url) {
-  try {
-    // 如果URL不包含协议，添加https://
-    if (!url.match(/^https?:\/\//i)) {
-      url = 'https://' + url;
-    }
-
-    await openUrl(url);
-    showNotification('已在浏览器中打开链接', 'success', 2000);
-  } catch (error) {
-    console.error('打开链接失败:', error);
-    showNotification('打开链接失败', 'error');
-  }
 }
 
 // 设置活动项目
@@ -335,11 +319,11 @@ export function setActiveItem(index) {
 // 过滤剪贴板项目
 export function filterClipboardItems() {
   renderClipboardItems();
-  
+
   // 导入并调用自动滚动功能
   import('./utils/highlight.js').then(module => {
     module.setupSearchResultScrolling();
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 // 将剪贴板内容添加到常用
@@ -632,7 +616,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
               setTimeout(async () => {
                 await deleteClipboardItem(index);
               }, 100);
-            } catch (_) {}
+            } catch (_) { }
           }
 
           hideTranslationIndicator();
@@ -673,7 +657,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
           setTimeout(async () => {
             await deleteClipboardItem(index);
           }, 100);
-        } catch (_) {}
+        } catch (_) { }
       }
 
       hidePasteLoading(element, true, successMessage);
