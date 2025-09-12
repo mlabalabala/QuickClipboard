@@ -422,7 +422,9 @@ pub fn run() {
             commands::get_saved_window_position,
             commands::get_saved_window_size,
             commands::launch_external_screenshot,
-            commands::launch_external_screenshot_process
+            commands::launch_external_screenshot_process,
+            commands::get_image_file_path,
+            commands::pin_image_to_screen
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

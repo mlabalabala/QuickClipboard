@@ -785,6 +785,29 @@ pub fn get_image_thumbnail_url(image_id: String) -> Result<String, String> {
     manager.get_thumbnail_data_url(&image_id)
 }
 
+// 获取图片文件路径
+#[tauri::command]
+pub fn get_image_file_path(content: String) -> Result<String, String> {
+    if content.starts_with("image:") {
+        // 新格式：通过图片ID获取文件路径
+        let image_id = content.strip_prefix("image:").unwrap_or("");
+        let image_manager = get_image_manager()?;
+        let manager = image_manager
+            .lock()
+            .map_err(|e| format!("获取图片管理器锁失败: {}", e))?;
+        manager.get_image_file_path(image_id)
+    } else {
+        Err("不支持的图片格式".to_string())
+    }
+}
+
+// 钉图片到屏幕
+#[tauri::command]
+pub async fn pin_image_to_screen(content: String) -> Result<(), String> {
+    let image_path = get_image_file_path(content)?;
+    crate::screenshot_service::pin_image_to_screen(&image_path).await
+}
+
 // 保存图片到指定路径
 #[tauri::command]
 pub fn save_image_to_file(content: String, file_path: String) -> Result<(), String> {

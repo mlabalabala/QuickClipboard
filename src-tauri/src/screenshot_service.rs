@@ -11,6 +11,8 @@ impl ScreenshotApis {
     pub const SCREENSHOT: &'static str = "/screenshot";
     /// 心跳检测API端点
     pub const HEARTBEAT: &'static str = "/heartbeat";
+    /// 钉图片API端点
+    pub const PIN_IMAGE: &'static str = "/pinimage";
     
     // 在这里添加新的截屏相关API端点，保持代码整洁和可维护性
 }
@@ -46,6 +48,13 @@ impl ScreenshotApiService {
     /// 发送心跳检测请求
     pub async fn send_heartbeat(&self) -> Result<(), String> {
         self.client.get(ScreenshotApis::HEARTBEAT).await?;
+        Ok(())
+    }
+
+    /// 钉图片到屏幕
+    pub async fn pin_image(&self, image_path: &str) -> Result<(), String> {
+        let url = format!("{}?path={}", ScreenshotApis::PIN_IMAGE, urlencoding::encode(image_path));
+        self.client.post_simple(&url).await?;
         Ok(())
     }
 }
@@ -87,6 +96,14 @@ pub fn get_screenshot_service_port() -> Option<u16> {
 pub async fn trigger_screenshot() -> Result<(), String> {
     let service = ScreenshotApiService::new()?;
     service.trigger_screenshot().await?;
+    
+    Ok(())
+}
+
+/// 快速钉图片（直接调用）
+pub async fn pin_image_to_screen(image_path: &str) -> Result<(), String> {
+    let service = ScreenshotApiService::new()?;
+    service.pin_image(image_path).await?;
     
     Ok(())
 }

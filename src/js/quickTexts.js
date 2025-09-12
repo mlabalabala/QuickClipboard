@@ -949,10 +949,10 @@ function showQuickTextContextMenu(event, text) {
     // 图片类型菜单
     menuItems = [
       {
-        icon: 'ti-eye',
-        text: '查看原图',
-        onClick: () => {
-          viewOriginalImage(text);
+        icon: 'ti-pin',
+        text: '钉到屏幕',
+        onClick: async () => {
+          await pinImageToScreen(text);
         }
       },
       {
@@ -1033,42 +1033,14 @@ function showQuickTextContextMenu(event, text) {
 
 
 
-// 查看原图
-function viewOriginalImage(text) {
+// 钉图片到屏幕
+async function pinImageToScreen(text) {
   try {
-    if (text.content.startsWith('image:')) {
-      // 新格式：image:id，需要通过后端获取完整图片
-      const imageId = text.content.substring(6);
-      // 创建一个新窗口显示图片
-      const newWindow = window.open('', '_blank');
-      newWindow.document.write(`
-        <html>
-          <head><title>查看原图</title></head>
-          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-            <img id="fullImage" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
-            <div id="loading" style="color:white;font-size:18px;">加载中...</div>
-          </body>
-        </html>
-      `);
-
-      // 加载完整图片
-      loadImageById(newWindow.document.getElementById('fullImage'), imageId, false);
-      newWindow.document.getElementById('loading').style.display = 'none';
-    } else if (text.content.startsWith('data:image/')) {
-      // 旧格式：完整的data URL
-      const newWindow = window.open('', '_blank');
-      newWindow.document.write(`
-        <html>
-          <head><title>查看原图</title></head>
-          <body style="margin:0;padding:20px;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-            <img src="${text.content}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="原图" />
-          </body>
-        </html>
-      `);
-    }
+    await invoke('pin_image_to_screen', { content: text.content });
+    showNotification('图片已钉到屏幕', 'success');
   } catch (error) {
-    console.error('查看原图失败:', error);
-    showNotification('查看原图失败', 'error');
+    console.error('钉图片到屏幕失败:', error);
+    showNotification('钉图片失败', 'error');
   }
 }
 

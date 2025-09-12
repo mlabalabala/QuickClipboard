@@ -11,7 +11,7 @@ pub struct HttpClientConfig {
 impl Default for HttpClientConfig {
     fn default() -> Self {
         Self {
-            base_url: "http://localhost:8080".to_string(),
+            base_url: "http://localhost:18080".to_string(),
             timeout_seconds: 10,
         }
     }
@@ -80,11 +80,20 @@ impl HttpClient {
             .map_err(|e| format!("POST请求失败: {}", e))?;
 
         if response.status().is_success() {
-            let json = response
-                .json::<Value>()
+            // 尝试解析JSON，如果失败则返回文本响应
+            let text = response
+                .text()
                 .await
-                .map_err(|e| format!("解析响应JSON失败: {}", e))?;
-            Ok(json)
+                .map_err(|e| format!("获取响应文本失败: {}", e))?;
+            
+            // 尝试解析为JSON
+            match serde_json::from_str::<Value>(&text) {
+                Ok(json) => Ok(json),
+                Err(_) => {
+                    // 如果不是JSON，返回包含文本的JSON对象
+                    Ok(serde_json::json!({ "message": text, "success": true }))
+                }
+            }
         } else {
             Err(format!("HTTP请求失败，状态码: {}", response.status()))
         }
@@ -136,6 +145,23 @@ impl HttpClient {
                 .await
                 .map_err(|e| format!("解析响应JSON失败: {}", e))?;
             Ok(json)
+        } else {
+            Err(format!("HTTP请求失败，状态码: {}", response.status()))
+        }
+    }
+
+    /// 发送简单的POST请求（不解析响应JSON，只检查状态码）
+    pub async fn post_simple(&self, endpoint: &str) -> Result<(), String> {
+        let url = format!("{}{}", self.config.base_url, endpoint);
+        
+        let response = self.client
+            .post(&url)
+            .send()
+            .await
+            .map_err(|e| format!("POST请求失败: {}", e))?;
+
+        if response.status().is_success() {
+            Ok(())
         } else {
             Err(format!("HTTP请求失败，状态码: {}", response.status()))
         }

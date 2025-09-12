@@ -194,6 +194,17 @@ impl ImageManager {
         Ok(format!("data:image/png;base64,{}", base64_string))
     }
 
+    /// 获取图片文件路径
+    pub fn get_image_file_path(&self, image_id: &str) -> Result<String, String> {
+        let file_path = self.images_dir.join(format!("{}.png", image_id));
+        
+        if !file_path.exists() {
+            return Err("图片文件不存在".to_string());
+        }
+        
+        Ok(file_path.to_string_lossy().to_string())
+    }
+
     /// 复制图片，返回新的图片ID
     pub fn copy_image(&self, source_image_id: &str) -> Result<ImageInfo, String> {
         let source_file_path = self.images_dir.join(format!("{}.png", source_image_id));
