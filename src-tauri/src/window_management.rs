@@ -8,6 +8,17 @@ static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
 
 /// 显示窗口
 pub fn show_webview_window(window: tauri::WebviewWindow) {
+    // 检查是否处于边缘吸附隐藏状态
+    if crate::edge_snap::is_window_edge_hidden() {
+        // 窗口处于贴边隐藏状态，使用贴边显示
+        if let Err(_) = crate::edge_snap::show_snapped_window(&window) {
+            // 贴边显示失败，恢复到正常状态并继续执行正常显示
+            let _ = crate::edge_snap::restore_window_from_snap(&window);
+        } else {
+            // 贴边显示成功，直接返回
+            return;
+        }
+    }
     // 检查窗口是否已经显示
     let was_visible = window.is_visible().unwrap_or(false);
 
@@ -50,13 +61,11 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
 
     // 显示窗口
     let _ = window.show();
-
     // 只有在窗口之前不可见时才发送显示动画事件
     if !was_visible {
         use tauri::Emitter;
         let _ = window.emit("window-show-animation", ());
     }
-
     // Windows平台特定设置
     #[cfg(windows)]
     {
@@ -71,6 +80,23 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
 
 /// 隐藏窗口
 pub fn hide_webview_window(window: tauri::WebviewWindow) {
+    // 检查是否处于边缘吸附隐藏状态
+    if crate::edge_snap::is_window_edge_hidden() {
+        // 窗口已经处于贴边隐藏状态，不需要再次隐藏
+        return;
+    }
+    
+    // 如果窗口处于贴边显示状态，点击外部应该隐藏到贴边位置
+    if crate::edge_snap::is_window_edge_snapped() {
+        // 使用贴边隐藏方式
+        if let Err(_) = crate::edge_snap::hide_snapped_window(&window) {
+            // 贴边隐藏失败，使用正常隐藏
+        } else {
+            // 贴边隐藏成功，直接返回
+            return;
+        }
+    }
+    
     // 发送隐藏动画事件给前端
     {
         use tauri::Emitter;
@@ -93,9 +119,15 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
 
 /// 切换窗口显示/隐藏状态
 pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
-    if window.is_visible().unwrap_or(true) {
+    // 检查是否处于边缘吸附隐藏状态
+    if crate::edge_snap::is_window_edge_hidden() {
+        // 贴边隐藏状态，应该显示
+        show_webview_window(window);
+    } else if window.is_visible().unwrap_or(true) {
+        // 窗口可见，应该隐藏
         hide_webview_window(window);
     } else {
+        // 窗口不可见，应该显示
         show_webview_window(window);
     }
 }

@@ -401,34 +401,10 @@ pub fn install_shortcut_hook() {
     }
 }
 
-// 卸载快捷键钩子
-#[cfg(windows)]
-pub fn uninstall_shortcut_hook() {
-    use windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx;
-
-    SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
-
-    let mut hook_handle = SHORTCUT_HOOK_HANDLE.lock().unwrap();
-    if let Some(hook) = hook_handle.take() {
-        unsafe {
-            let _ = UnhookWindowsHookEx(hook);
-        }
-    }
-}
-
 // 启用快捷键拦截
 #[cfg(windows)]
 pub fn enable_shortcut_interception() {
     SHORTCUT_INTERCEPTION_ENABLED.store(true, Ordering::SeqCst);
-}
-
-// 禁用快捷键拦截
-#[cfg(windows)]
-pub fn disable_shortcut_interception() {
-    SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
-    SHORTCUT_TRIGGERED.store(false, Ordering::SeqCst);
-    WIN_V_INTERCEPTED.store(false, Ordering::SeqCst);
-    V_KEY_PRESSED.store(false, Ordering::SeqCst);
 }
 
 // 更新要拦截的快捷键
@@ -449,11 +425,6 @@ pub fn update_preview_shortcut_to_intercept(shortcut: &str) {
     }
 }
 
-#[cfg(windows)]
-pub fn is_interception_enabled() -> bool {
-    SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::Relaxed)
-}
-
 // 启用导航按键监听
 #[cfg(windows)]
 pub fn enable_navigation_keys() {
@@ -466,22 +437,10 @@ pub fn disable_navigation_keys() {
     NAVIGATION_KEYS_ENABLED.store(false, Ordering::SeqCst);
 }
 
-// 检查导航按键监听是否启用
-#[cfg(windows)]
-pub fn is_navigation_keys_enabled() -> bool {
-    NAVIGATION_KEYS_ENABLED.load(Ordering::Relaxed)
-}
-
 // 设置翻译进行状态（禁用导航按键）
 #[cfg(windows)]
 pub fn set_translation_in_progress(in_progress: bool) {
     TRANSLATION_IN_PROGRESS.store(in_progress, Ordering::SeqCst);
-}
-
-// 检查翻译是否正在进行
-#[cfg(windows)]
-pub fn is_translation_in_progress() -> bool {
-    TRANSLATION_IN_PROGRESS.load(Ordering::Relaxed)
 }
 
 // 非Windows平台的空实现

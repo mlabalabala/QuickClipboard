@@ -1671,3 +1671,78 @@ pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), S
         }
     }
 }
+
+// =================== 边缘吸附相关命令 ===================
+
+// 初始化边缘吸附
+#[tauri::command]
+pub fn init_edge_snap() -> Result<(), String> {
+    crate::edge_snap::init_edge_snap()
+}
+
+// 检查窗口边缘吸附
+#[tauri::command]
+pub fn check_window_edge_snap(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    
+    if let Some(window) = app.get_webview_window("main") {
+        crate::edge_snap::check_window_snap(&window)
+    } else {
+        Err("找不到主窗口".to_string())
+    }
+}
+
+// 从吸附状态恢复窗口
+#[tauri::command]
+pub fn restore_window_from_snap(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    
+    if let Some(window) = app.get_webview_window("main") {
+        crate::edge_snap::restore_from_snap(&window)
+    } else {
+        Err("找不到主窗口".to_string())
+    }
+}
+
+
+#[tauri::command]
+pub fn get_screen_size() -> Result<(i32, i32), String> {
+    crate::edge_snap::get_screen_size()
+}
+
+#[tauri::command]
+pub fn start_custom_drag(app: tauri::AppHandle, mouse_screen_x: i32, mouse_screen_y: i32) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        crate::window_drag::start_custom_drag(window, mouse_screen_x, mouse_screen_y)
+    } else {
+        Err("找不到主窗口".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn stop_custom_drag() -> Result<(), String> {
+    crate::window_drag::stop_custom_drag()
+}
+
+#[tauri::command]
+pub fn set_edge_hide_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    use tauri::Manager;
+    let window = app.get_webview_window("main");
+    crate::edge_snap::set_edge_hide_enabled(enabled, window.as_ref())
+}
+
+#[tauri::command]
+pub fn is_edge_hide_enabled() -> bool {
+    crate::edge_snap::is_edge_hide_enabled()
+}
+
+#[tauri::command]
+pub fn restore_edge_snap_on_startup(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        crate::edge_snap::restore_edge_snap_on_startup(&window)
+    } else {
+        Err("找不到主窗口".to_string())
+    }
+}

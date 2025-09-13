@@ -108,6 +108,8 @@ const defaultSettings = {
   titleBarPosition: 'top',
   // 显示行为
   autoScrollToTopOnShow: false,
+  // 贴边隐藏设置
+  edgeHideEnabled: true,
   // 应用黑白名单设置
   appFilterEnabled: false,
   appFilterMode: 'blacklist',
@@ -245,6 +247,9 @@ async function initializeUI() {
   
   // 标题栏位置设置
   document.getElementById('title-bar-position').value = settings.titleBarPosition || 'top';
+  
+  // 贴边隐藏设置
+  document.getElementById('edge-hide-enabled').checked = settings.edgeHideEnabled !== undefined ? settings.edgeHideEnabled : true;
 
   // 应用黑白名单设置
   document.getElementById('app-filter-enabled').checked = settings.appFilterEnabled || false;
@@ -437,7 +442,7 @@ function bindSettingEvents() {
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
-    'title-bar-position'
+    'title-bar-position', 'edge-hide-enabled'
   ];
 
   settingInputs.forEach(id => {
@@ -477,6 +482,9 @@ function bindSettingEvents() {
 
   // 截屏快捷键特殊处理
   bindScreenshotShortcutEvents();
+  
+  // 贴边隐藏特殊处理
+  bindEdgeHideEvents();
 }
 
 // 绑定显示/隐藏窗口快捷键事件
@@ -767,6 +775,31 @@ function bindScreenshotShortcutEvents() {
       shortcutInput.value = '';
       settings.screenshot_shortcut = '';
       saveSettings();
+    });
+  }
+}
+
+// 绑定贴边隐藏设置事件
+function bindEdgeHideEvents() {
+  const edgeHideCheckbox = document.getElementById('edge-hide-enabled');
+  if (edgeHideCheckbox) {
+    edgeHideCheckbox.addEventListener('change', async (e) => {
+      try {
+        // 调用后端设置贴边隐藏开关
+        await invoke('set_edge_hide_enabled', { enabled: e.target.checked });
+        console.log('贴边隐藏设置已更新:', e.target.checked);
+        
+        if (e.target.checked) {
+          showNotification('贴边隐藏功能已启用', 'success');
+        } else {
+          showNotification('贴边隐藏功能已禁用', 'info');
+        }
+      } catch (error) {
+        console.error('更新贴边隐藏设置失败:', error);
+        showNotification('设置失败: ' + error, 'error');
+        // 恢复复选框状态
+        e.target.checked = !e.target.checked;
+      }
     });
   }
 }

@@ -76,6 +76,10 @@ pub struct AppSettings {
     pub saved_window_position: Option<(i32, i32)>, // 保存的极口位置 (x, y)
     pub saved_window_size: Option<(u32, u32)>, // 保存的窗口大小 (width, height)
     
+    // 贴边隐藏设置
+    pub edge_hide_enabled: bool, // 是否启用贴边隐藏功能
+    pub edge_snap_position: Option<(i32, i32)>, // 贴边隐藏时的窗口位置
+    
     // 标题栏位置设置
     pub title_bar_position: String,   // 标题栏位置：top(上), bottom(下), left(左), right(右)
     
@@ -158,6 +162,10 @@ impl Default for AppSettings {
             remember_window_size: false,               // 默认不记住窗口大小
             saved_window_position: None,               // 初始没有保存的位置
             saved_window_size: None,                   // 初始没有保存的大小
+            
+            // 贴边隐藏设置默认值
+            edge_hide_enabled: true,                   // 默认启用贴边隐藏功能
+            edge_snap_position: None,                  // 默认没有保存的贴边位置
             
             // 标题栏位置设置默认值
             title_bar_position: "top".to_string(),    // 默认标题栏位置在上方
@@ -282,6 +290,7 @@ impl AppSettings {
             "appFilterMode":self.app_filter_mode,
             "appFilterList":self.app_filter_list,
             "titleBarPosition":self.title_bar_position,
+            "edgeHideEnabled":self.edge_hide_enabled,
             "pasteWithFormat":self.paste_with_format,
         })
     }
@@ -481,6 +490,11 @@ impl AppSettings {
         // 标题栏位置设置
         if let Some(v) = json.get("titleBarPosition").and_then(|v| v.as_str()) {
             self.title_bar_position = v.to_string();
+        }
+        
+        // 贴边隐藏设置
+        if let Some(v) = json.get("edgeHideEnabled").and_then(|v| v.as_bool()) {
+            self.edge_hide_enabled = v;
         }
         
         // 格式设置

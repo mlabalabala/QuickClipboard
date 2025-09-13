@@ -32,6 +32,8 @@ mod tray;
 mod utils;
 mod window_effects;
 mod window_management;
+mod edge_snap;
+mod window_drag;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -313,6 +315,9 @@ pub fn run() {
                 }
             });
 
+            // 初始化边缘吸附功能
+            let _ = crate::edge_snap::init_edge_snap();
+
             // 标记后端初始化完成
             BACKEND_INITIALIZED.store(true, Ordering::Relaxed);
 
@@ -421,6 +426,15 @@ pub fn run() {
             commands::save_window_size,
             commands::get_saved_window_position,
             commands::get_saved_window_size,
+            commands::init_edge_snap,
+            commands::check_window_edge_snap,
+            commands::restore_window_from_snap,
+            commands::set_edge_hide_enabled,
+            commands::is_edge_hide_enabled,
+            commands::restore_edge_snap_on_startup,
+            commands::get_screen_size,
+            commands::start_custom_drag,
+            commands::stop_custom_drag,
             commands::launch_external_screenshot,
             commands::launch_external_screenshot_process,
             commands::get_image_file_path,

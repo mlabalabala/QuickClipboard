@@ -1,5 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { LogicalPosition, LogicalSize } from '@tauri-apps/api/window';
 import {
   appWindow
 } from './config.js';
@@ -99,10 +100,55 @@ export async function setupCustomWindowDrag() {
       // 拖拽开始时关闭工具面板
       hideShortcutsHelp()
       forceClosePanel();
-      appWindow.startDragging();
+      
+      // 启动Rust后端拖拽
+      startRustDrag(e);
+      
       hideContextMenu()
     }
   };
+
+  // 使用Rust后端的高性能拖拽
+  async function startRustDrag(initialEvent) {
+    try {
+      // 调用Rust后端开始拖拽
+      await invoke('start_custom_drag', {
+        mouseScreenX: initialEvent.screenX,
+        mouseScreenY: initialEvent.screenY
+      });
+      
+      // 设置拖拽样式
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'move';
+      
+      // 监听鼠标松开事件
+      const onMouseUp = async () => {
+        // 停止Rust拖拽
+        try {
+          await invoke('stop_custom_drag');
+        } catch (error) {
+          console.error('停止Rust拖拽失败:', error);
+        }
+        
+        // 恢复样式
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        // 移除事件监听
+        document.removeEventListener('mouseup', onMouseUp);
+        
+      };
+      
+      // 监听鼠标松开
+      document.addEventListener('mouseup', onMouseUp, { passive: false });
+      
+      // 阻止默认拖拽行为
+      initialEvent.preventDefault();
+      
+    } catch (error) {
+      console.error('启动Rust拖拽失败:', error);
+    }
+  }
 
   // 标题栏拖拽
   titlebar?.addEventListener('mousedown', (e) => handleDrag(titlebar, e));

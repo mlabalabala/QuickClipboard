@@ -395,8 +395,21 @@ async function setupWindowAnimationListeners() {
     });
 
     // console.log('窗口动画监听器设置完成');
+    
+    // 前端动画初始化完成后，恢复贴边隐藏状态
+    await restoreEdgeSnapOnStartup();
   } catch (error) {
     console.error('设置窗口动画监听器失败:', error);
+  }
+}
+
+// 恢复贴边隐藏状态
+async function restoreEdgeSnapOnStartup() {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('restore_edge_snap_on_startup');
+  } catch (error) {
+    console.error('恢复贴边隐藏状态失败:', error);
   }
 }
 
