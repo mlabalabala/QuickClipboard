@@ -367,24 +367,7 @@ export function clearSavedLayout() {
   }
 }
 
-// 测试函数 - 在浏览器控制台中使用（仅返回状态信息）
-export function testTitlebarDrag() {
-  const titlebarControls = document.querySelector('#titlebar .controls');
-  const toolsPanel = document.querySelector('#tools-panel .tools-panel-content');
-  
-  return {
-    titlebarControls,
-    toolsPanel,
-    controlsSortable,
-    toolsPanelSortable,
-    wasPanelOpenBeforeDrag,
-    savedLayout: localStorage.getItem(STORAGE_KEY)
-  };
-}
-
-// 将测试函数暴露到全局
 if (typeof window !== 'undefined') {
-  window.testTitlebarDrag = testTitlebarDrag;
   window.refreshTitlebarDrag = refreshTitlebarDrag;
   window.clearSavedLayout = clearSavedLayout;
 }
