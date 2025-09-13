@@ -12,6 +12,7 @@ import {
   getCurrentAIConfig,
   saveAIConfig
 } from './aiConfig.js';
+import { settingsSearch } from './settingsSearch.js';
 
 // =================== 启动横幅 ===================
 function printSettingsBanner() {
@@ -53,6 +54,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initializeUI();
   bindEvents();
   setupWindowEvents();
+  
+  // 初始化搜索功能
+  setTimeout(() => {
+    settingsSearch.init();
+  }, 100);
 });
 
 // 默认设置
