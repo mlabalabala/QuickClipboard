@@ -16,12 +16,13 @@ import {
   quickTextGroupSelect,
   pasteWithFormat
 } from './config.js';
-import { getContentType, loadImageById } from './clipboard.js';
+import { loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
+import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
@@ -32,14 +33,15 @@ let quickTextsVirtualList = null;
 
 // 生成常用文本项目HTML字符串
 function generateQuickTextItemHTML(text, index) {
-  const contentType = getContentType(text.content);
+  // 直接使用后端返回的content_type字段
+  const contentType = text.content_type || 'text';
 
   let contentHTML = '';
 
   // 生成内容HTML
   if (contentType === 'image') {
     contentHTML = generateQuickTextImageHTML(text);
-  } else if (contentType === 'files') {
+  } else if (contentType === 'file') {
     contentHTML = generateQuickTextFilesHTML(text);
   } else {
     // 检查是否有HTML内容且开启格式显示
@@ -87,7 +89,7 @@ function generateQuickTextItemHTML(text, index) {
 
   // 生成日期时间HTML
   // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
-  const timestampHTML = contentType === 'files' ? '' : `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
+  const timestampHTML = contentType === 'file' ? '' : `<div class="quick-text-timestamp">${formatTimestamp(text.created_at)}</div>`;
 
   // 在"全部"分组中显示分组标签
   const groupBadgeHTML = generateGroupBadgeHTML(text);
@@ -342,7 +344,7 @@ export async function editQuickText(text) {
         // 获取编辑器窗口并发送数据
         const { emit } = await import('@tauri-apps/api/event');
         await emit('editor-data', editorData);
-        console.log('已发送常用文本编辑数据到文本编辑器');
+        // 编辑数据已发送
       } catch (error) {
         console.error('发送编辑数据失败:', error);
         showNotification('打开编辑器失败', 'error');
@@ -544,10 +546,6 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
       }
     }
 
-    console.log('oldIndex', oldIndex);
-    console.log('newIndex', newIndex);
-    console.log('actualOldIndex', actualOldIndex);
-    
     // 同分组内的排序
     await invoke('move_quick_text_item', {
       itemIndex: actualOldIndex,
@@ -643,39 +641,15 @@ function getFilteredQuickTextsData() {
   const currentGroupId = getCurrentGroupId();
 
   let filteredTexts = quickTexts.filter(text => {
-    const contentType = getContentType(text.content);
+    const contentType = text.content_type || 'text';
 
     // 类型筛选
-    if (filterType !== 'all' && contentType !== filterType) {
+    if (!matchesFilter(contentType, filterType)) {
       return false;
     }
 
-    // 搜索过滤：支持文本、链接和文件类型
-    if (searchTerm) {
-      if (contentType === 'files') {
-        // 文件类型：搜索标题和文件内容
-        try {
-          const filesJson = text.content.substring(6); // 去掉 "files:" 前缀
-          const filesData = JSON.parse(filesJson);
-          const searchableText = filesData.files.map(file =>
-            `${file.name} ${file.path} ${file.file_type}`
-          ).join(' ').toLowerCase();
-          return text.title.toLowerCase().includes(searchTerm) ||
-            searchableText.includes(searchTerm);
-        } catch (error) {
-          return text.title.toLowerCase().includes(searchTerm);
-        }
-      } else if (contentType === 'image') {
-        // 图片类型：只搜索标题
-        return text.title.toLowerCase().includes(searchTerm);
-      } else {
-        // 文本和链接类型：搜索标题和内容
-        return text.title.toLowerCase().includes(searchTerm) ||
-          text.content.toLowerCase().includes(searchTerm);
-      }
-    }
-
-    return true;
+    // 搜索筛选
+    return matchesSearch(text, searchTerm, contentType);
   });
 
   // 如果是"全部"分组，按分组顺序重新排列数据
@@ -725,7 +699,6 @@ function sortTextsByGroupOrder(texts) {
   }
 }
 
-// 渲染常用文本列表
 // 异步加载文件图标和图片
 async function loadFileIcons() {
   // 加载文件图标
@@ -818,14 +791,14 @@ function handleQuickTextItemContextMenu(index, event) {
 async function handleQuickTextItemPaste(text, element = null) {
   try {
     // 检查是否需要AI翻译
-    const contentType = getContentType(text.content);
+    const contentType = text.content_type || 'text';
     const isTextContent = contentType === 'text';
     const translationCheck = isTextContent ? shouldTranslateText(text.content, 'paste') : { should: false, reason: '非文本内容' };
     const needsTranslation = translationCheck.should;
 
     // 根据内容类型确定加载消息
     let loadingMessage = '正在粘贴...';
-    if (contentType === 'files') {
+    if (contentType === 'file') {
       loadingMessage = '正在粘贴文件...';
     } else if (contentType === 'image') {
       loadingMessage = '正在粘贴图片...';
@@ -838,7 +811,6 @@ async function handleQuickTextItemPaste(text, element = null) {
 
     if (needsTranslation) {
       // 使用AI翻译并流式输入
-      console.log('开始AI翻译:', text.content, '原因:', translationCheck.reason);
       showTranslationIndicator('正在翻译...');
 
       // 定义降级回调函数
@@ -857,11 +829,6 @@ async function handleQuickTextItemPaste(text, element = null) {
         const result = await safeTranslateAndInputText(text.content, fallbackPaste);
 
         if (result.success) {
-          if (result.method === 'translation') {
-            console.log('AI翻译成功完成');
-          } else if (result.method === 'fallback') {
-            console.log('使用降级处理完成粘贴:', result.error);
-          }
 
           // 一次性粘贴：翻译成功后删除该常用文本项
           if (isOneTimePaste) {
@@ -906,7 +873,7 @@ async function handleQuickTextItemPaste(text, element = null) {
 
       // 根据内容类型显示成功消息
       let successMessage = '粘贴成功';
-      if (contentType === 'files') {
+      if (contentType === 'file') {
         successMessage = '文件粘贴成功';
       } else if (contentType === 'image') {
         successMessage = '图片粘贴成功';
@@ -942,7 +909,8 @@ async function handleQuickTextItemPaste(text, element = null) {
 
 // 显示常用文本右键菜单
 function showQuickTextContextMenu(event, text) {
-  const contentType = getContentType(text.content);
+  // 直接使用后端返回的content_type字段
+  const contentType = text.content_type || 'text';
   let menuItems = [];
 
   if (contentType === 'image') {
@@ -971,7 +939,7 @@ function showQuickTextContextMenu(event, text) {
         }
       }
     ];
-  } else if (contentType === 'files') {
+  } else if (contentType === 'file') {
     // 文件类型菜单
     menuItems = [
       {
@@ -1027,6 +995,7 @@ function showQuickTextContextMenu(event, text) {
 
   showContextMenu(event, {
     content: text.content,
+    content_type: contentType,
     items: menuItems
   });
 }
@@ -1131,6 +1100,5 @@ async function copyFilePaths(text) {
 
 // 监听格式模式变化事件
 window.addEventListener('format-mode-changed', (event) => {
-  console.log('格式模式变化，重新渲染常用文本列表');
   renderQuickTexts();
 });

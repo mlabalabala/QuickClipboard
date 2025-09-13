@@ -1,7 +1,6 @@
 // 通用右键菜单模块
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
-import { getContentType } from './clipboard.js';
 
 // 提取文本中的所有链接
 function extractLinks(text) {
@@ -236,7 +235,7 @@ export function showContextMenu(event, options) {
   const menuItems = [];
 
   // 根据内容类型添加打开链接选项
-  if (options.content && getContentType(options.content) === 'link') {
+  if (options.content && options.content_type === 'link') {
     // 提取文本中的所有链接
     const links = extractLinks(options.content);
     

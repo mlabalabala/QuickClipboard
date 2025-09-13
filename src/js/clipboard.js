@@ -22,6 +22,7 @@ import {
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
+import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -34,15 +35,15 @@ let clipboardVirtualList = null;
 
 // 生成剪贴板项目HTML字符串
 function generateClipboardItemHTML(item, index) {
-  const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
-  const contentType = isImage ? 'image' : getContentType(item.content);
+  // 直接使用后端返回的content_type字段
+  const contentType = item.content_type || 'text';
 
   let contentHTML = '';
 
   // 生成内容HTML
-  if (isImage) {
+  if (contentType === 'image') {
     contentHTML = generateImageHTML(item);
-  } else if (contentType === 'files') {
+  } else if (contentType === 'file') {
     contentHTML = generateFilesHTML(item);
   } else {
     // 检查是否有HTML内容且开启格式显示
@@ -87,7 +88,7 @@ function generateClipboardItemHTML(item, index) {
   // 生成日期时间HTML - 优先使用created_at，如果为空则使用timestamp
   // 对于文件类型，时间戳会在文件HTML内部显示，所以这里不显示
   const timeValue = item.created_at || item.created_at;
-  const timestampHTML = contentType === 'files' ? '' : `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
+  const timestampHTML = contentType === 'file' ? '' : `<div class="clipboard-timestamp">${formatTimestamp(timeValue)}</div>`;
 
   // 组合完整的HTML
   const activeClass = index === activeItemIndex ? ' active' : '';
@@ -270,48 +271,6 @@ export async function refreshClipboardHistory() {
 
 }
 
-// 获取内容类型
-export function getContentType(text) {
-  // 图片类型 - 支持新的 image: 格式和旧的 data:image/ 格式
-  if (text.startsWith('data:image/') || text.startsWith('image:')) {
-    return 'image';
-  }
-
-  // 文件类型 - 检测 files: 格式
-  if (text.startsWith('files:')) {
-    return 'files';
-  }
-
-  // 链接类型 - 更严格的URL检测
-  const trimmedText = text.trim();
-
-  // 1. 标准URL格式（必须包含协议）
-  const standardUrlPattern = /^(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+$/i;
-  if (standardUrlPattern.test(trimmedText)) {
-    return 'link';
-  }
-
-  // 2. 以www开头的URL（必须包含协议或www）
-  const wwwUrlPattern = /^www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/i;
-  if (wwwUrlPattern.test(trimmedText)) {
-    return 'link';
-  }
-
-  // 3. 检测文本中是否包含完整的URL链接
-  const containsUrlPattern = /(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+/gi;
-  if (containsUrlPattern.test(text)) {
-    return 'link';
-  }
-
-  // 4. 检测文本中是否包含www开头的完整URL
-  const containsWwwUrlPattern = /www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?/gi;
-  if (containsWwwUrlPattern.test(text)) {
-    return 'link';
-  }
-
-  // 默认为文本类型
-  return 'text';
-}
 
 // 设置活动项目
 export function setActiveItem(index) {
@@ -333,9 +292,7 @@ export function filterClipboardItems() {
 export async function addClipboardToFavorites(index) {
   try {
     const result = await invoke('add_clipboard_to_favorites', { index });
-    console.log('成功添加到常用:', result);
-
-    // 显示成功提示（可选）
+    // 显示成功提示
     showNotification('已添加到常用文本', 'success');
 
     // 返回结果，让调用者决定是否刷新常用文本列表
@@ -429,47 +386,18 @@ function getFilteredClipboardData() {
   const filterType = currentFilter;
 
   return clipboardHistory.filter((item) => {
-    // 使用新的数据结构判断类型
-    const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
-    const contentType = isImage ? 'image' : getContentType(item.content);
+    const contentType = item.content_type || 'text';
 
     // 类型筛选
-    if (filterType !== 'all' && contentType !== filterType) {
+    if (!matchesFilter(contentType, filterType)) {
       return false;
     }
 
-    // 搜索过滤：支持文本、链接和文件类型
-    if (searchTerm) {
-      let shouldShow = false;
-
-      if (contentType === 'files') {
-        // 文件类型：搜索文件名和路径
-        try {
-          const filesJson = item.content.substring(6); // 去掉 "files:" 前缀
-          const filesData = JSON.parse(filesJson);
-          const searchableText = filesData.files.map(file =>
-            `${file.name} ${file.path} ${file.file_type}`
-          ).join(' ').toLowerCase();
-          shouldShow = searchableText.includes(searchTerm);
-        } catch (error) {
-          shouldShow = false;
-        }
-      } else if (contentType === 'image') {
-        // 图片类型：暂不支持搜索
-        shouldShow = false;
-      } else {
-        // 文本和链接类型：搜索内容
-        shouldShow = item.content.toLowerCase().includes(searchTerm);
-      }
-
-      return shouldShow;
-    }
-
-    return true;
+    // 搜索筛选
+    return matchesSearch(item, searchTerm, contentType);
   });
 }
 
-// 渲染剪贴板项目
 // 异步加载文件图标和图片
 async function loadFileIcons() {
   // 加载文件图标
@@ -568,14 +496,14 @@ function handleClipboardItemContextMenu(index, event) {
 async function handleClipboardItemPaste(item, index, element = null) {
   try {
     // 检查是否需要AI翻译
-    const contentType = getContentType(item.content);
+    const contentType = item.content_type || 'text';
     const isTextContent = contentType === 'text';
     const translationCheck = isTextContent ? shouldTranslateText(item.content, 'paste') : { should: false, reason: '非文本内容' };
     const needsTranslation = translationCheck.should;
 
     // 根据内容类型确定加载消息
     let loadingMessage = '正在粘贴...';
-    if (contentType === 'files') {
+    if (contentType === 'file') {
       loadingMessage = '正在粘贴文件...';
     } else if (contentType === 'image') {
       loadingMessage = '正在粘贴图片...';
@@ -588,7 +516,6 @@ async function handleClipboardItemPaste(item, index, element = null) {
 
     if (needsTranslation) {
       // 使用AI翻译并流式输入
-      console.log('开始AI翻译:', item.content, '原因:', translationCheck.reason);
       showTranslationIndicator('正在翻译...');
 
       // 定义降级回调函数
@@ -607,11 +534,6 @@ async function handleClipboardItemPaste(item, index, element = null) {
         setActiveItem(index);
 
         if (result.success) {
-          if (result.method === 'translation') {
-            console.log('AI翻译成功完成');
-          } else if (result.method === 'fallback') {
-            console.log('使用降级处理完成粘贴:', result.error);
-          }
 
           // 一次性粘贴：翻译成功后删除该剪贴板历史项
           if (isOneTimePaste) {
@@ -648,7 +570,7 @@ async function handleClipboardItemPaste(item, index, element = null) {
 
       // 根据内容类型显示成功消息
       let successMessage = '粘贴成功';
-      if (contentType === 'files') {
+      if (contentType === 'file') {
         successMessage = '文件粘贴成功';
       } else if (contentType === 'image') {
         successMessage = '图片粘贴成功';
@@ -714,9 +636,8 @@ async function clearClipboardHistory() {
 function showClipboardContextMenu(event, item, index) {
   const menuItems = [];
 
-  // 检查内容类型
-  const isImage = item.is_image || item.content.startsWith('data:image/') || item.content.startsWith('image:');
-  const contentType = isImage ? 'image' : getContentType(item.content);
+  // 直接使用后端返回的content_type字段
+  const contentType = item.content_type || 'text';
 
   // 根据内容类型添加特有菜单项
   if (contentType === 'image') {
@@ -737,7 +658,7 @@ function showClipboardContextMenu(event, item, index) {
         }
       }
     );
-  } else if (contentType === 'files') {
+  } else if (contentType === 'file') {
     // 文件类型菜单
     menuItems.push(
       {
@@ -811,6 +732,7 @@ function showClipboardContextMenu(event, item, index) {
 
   showContextMenu(event, {
     content: item.content,
+    content_type: contentType,
     items: menuItems
   });
 }
@@ -835,7 +757,7 @@ async function openTextEditor(item, index) {
         // 获取编辑器窗口并发送数据
         const { emit } = await import('@tauri-apps/api/event');
         await emit('editor-data', editorData);
-        console.log('已发送编辑数据到文本编辑器');
+        // 编辑数据已发送
       } catch (error) {
         console.error('发送编辑数据失败:', error);
         showNotification('打开编辑器失败', 'error');
@@ -1004,8 +926,5 @@ async function copyFilePathsFromClipboard(item) {
 
 // 监听格式模式变化事件
 window.addEventListener('format-mode-changed', (event) => {
-  console.log('格式模式变化，重新渲染剪贴板列表');
   renderClipboardItems();
 });
-
-

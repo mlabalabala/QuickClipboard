@@ -39,6 +39,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use commands::*;
 pub use window_effects::*;
+pub use database::{ContentType, ClipboardItem, FavoriteItem};
 
 use tauri::Manager;
 

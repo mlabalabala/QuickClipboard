@@ -458,7 +458,7 @@ export class CustomSelect {
     }
     
     // 对于筛选选项，需要从config中获取当前筛选值
-    if (['all', 'text', 'image', 'files', 'link'].includes(childValue)) {
+    if (['all', 'text', 'image', 'file', 'link'].includes(childValue)) {
       try {
         // 根据容器ID判断是剪贴板还是常用文本筛选器
         const isClipboard = this.container.closest('#content-filter');

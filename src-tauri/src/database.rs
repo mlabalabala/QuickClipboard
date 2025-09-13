@@ -17,13 +17,67 @@ pub static DB_FILE: Lazy<PathBuf> = Lazy::new(|| {
     dir
 });
 
+// 内容类型枚举
+#[derive(Clone, Debug, PartialEq)]
+pub enum ContentType {
+    Text,      // 纯文本
+    RichText,  // 富文本(HTML)
+    Image,     // 图片
+    File,      // 文件
+    Link,      // 链接
+}
+
+// 自定义序列化，使用to_string方法
+impl Serialize for ContentType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+// 自定义反序列化，使用from_string方法
+impl<'de> Deserialize<'de> for ContentType {
+    fn deserialize<D>(deserializer: D) -> Result<ContentType, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(ContentType::from_string(&s))
+    }
+}
+
+impl ContentType {
+    pub fn to_string(&self) -> String {
+        match self {
+            ContentType::Text => "text".to_string(),
+            ContentType::RichText => "rich_text".to_string(),
+            ContentType::Image => "image".to_string(),
+            ContentType::File => "file".to_string(),
+            ContentType::Link => "link".to_string(),
+        }
+    }
+
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "text" => ContentType::Text,
+            "rich_text" => ContentType::RichText,
+            "image" => ContentType::Image,
+            "file" => ContentType::File,
+            "link" => ContentType::Link,
+            _ => ContentType::Text, // 默认为文本
+        }
+    }
+}
+
 // 剪贴板项目数据结构
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClipboardItem {
     pub id: i64,
     pub content: String,
     pub html_content: Option<String>,
-    pub is_image: bool,
+    pub content_type: ContentType,
     pub image_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
@@ -38,22 +92,22 @@ impl ClipboardItem {
             id: 0,
             content,
             html_content: None,
-            is_image: false,
+            content_type: ContentType::Text,
             image_id: None,
             created_at: timestamp,
             updated_at: timestamp,
         }
     }
 
-    pub fn new_text_with_html(content: String, html: Option<String>) -> Self {
+    pub fn new_rich_text(content: String, html: String) -> Self {
         let now = chrono::Local::now();
         let timestamp = now.timestamp();
         
         Self {
             id: 0,
             content,
-            html_content: html,
-            is_image: false,
+            html_content: Some(html),
+            content_type: ContentType::RichText,
             image_id: None,
             created_at: timestamp,
             updated_at: timestamp,
@@ -68,12 +122,43 @@ impl ClipboardItem {
             id: 0,
             content: format!("image:{}", image_id),
             html_content: None,
-            is_image: true,
+            content_type: ContentType::Image,
             image_id: Some(image_id),
             created_at: timestamp,
             updated_at: timestamp,
         }
     }
+
+    pub fn new_file(file_paths: Vec<String>) -> Self {
+        let now = chrono::Local::now();
+        let timestamp = now.timestamp();
+        
+        Self {
+            id: 0,
+            content: file_paths.join("\n"),
+            html_content: None,
+            content_type: ContentType::File,
+            image_id: None,
+            created_at: timestamp,
+            updated_at: timestamp,
+        }
+    }
+
+    pub fn new_link(url: String) -> Self {
+        let now = chrono::Local::now();
+        let timestamp = now.timestamp();
+        
+        Self {
+            id: 0,
+            content: url,
+            html_content: None,
+            content_type: ContentType::Link,
+            image_id: None,
+            created_at: timestamp,
+            updated_at: timestamp,
+        }
+    }
+
 }
 
 // 常用文本数据结构
@@ -83,7 +168,7 @@ pub struct FavoriteItem {
     pub title: String,
     pub content: String,
     pub html_content: Option<String>,
-    pub is_image: bool,
+    pub content_type: ContentType,
     pub image_id: Option<String>,
     pub group_name: String,       // 分组名称（外键引用groups表）
     pub item_order: i32,          // 组内排序
@@ -100,7 +185,7 @@ impl FavoriteItem {
             title,
             content,
             html_content: None,
-            is_image: false,
+            content_type: ContentType::Text,
             image_id: None,
             group_name,
             item_order: 0,
@@ -111,14 +196,20 @@ impl FavoriteItem {
     
     pub fn new_text_with_html(id: String, title: String, content: String, html_content: Option<String>, group_name: String) -> Self {
         let now = chrono::Local::now().timestamp();
+        let content_type = detect_content_type(&content, html_content.as_deref());
+        let image_id = if content.starts_with("image:") {
+            Some(content.strip_prefix("image:").unwrap_or("").to_string())
+        } else {
+            None
+        };
         
         Self {
             id,
             title,
             content,
             html_content,
-            is_image: false,
-            image_id: None,
+            content_type,
+            image_id,
             group_name,
             item_order: 0,
             created_at: now,
@@ -134,7 +225,7 @@ impl FavoriteItem {
             title,
             content: format!("image:{}", image_id),
             html_content: None,
-            is_image: true,
+            content_type: ContentType::Image,
             image_id: Some(image_id),
             group_name,
             item_order: 0,
@@ -179,7 +270,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content TEXT NOT NULL,
             html_content TEXT,
-            is_image BOOLEAN NOT NULL DEFAULT 0,
+            content_type TEXT NOT NULL DEFAULT 'text',
             image_id TEXT,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
@@ -194,7 +285,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             html_content TEXT,
-            is_image BOOLEAN NOT NULL DEFAULT 0,
+            content_type TEXT NOT NULL DEFAULT 'text',
             image_id TEXT,
             group_name TEXT NOT NULL DEFAULT '全部',
             item_order INTEGER NOT NULL DEFAULT 0,
@@ -248,7 +339,6 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
 }
 
 
-
 // 关闭数据库连接
 pub fn close_database_connection() -> Result<(), String> {
     let mut db_conn = DB_CONNECTION
@@ -277,7 +367,139 @@ where
     }
 }
 
+// =================== 内容类型检测函数 ===================
+
+// 智能检测内容类型
+pub fn detect_content_type(content: &str, html: Option<&str>) -> ContentType {
+    // 首先检查是否为图片标识（优先级最高，避免被其他规则误判）
+    if content.starts_with("image:") {
+        return ContentType::Image;
+    }
+    
+    // 检查是否为文件数据（以files:开头的JSON格式）
+    if content.starts_with("files:") {
+        return ContentType::File;
+    }
+    
+    // 如果有HTML内容，直接判定为富文本
+    if let Some(html_content) = html {
+        if !html_content.trim().is_empty() {
+            return ContentType::RichText;
+        }
+    }
+    
+    // 检查是否为文件路径
+    if is_file_paths(content) {
+        return ContentType::File;
+    }
+    
+    // 检查是否为URL
+    if is_url(content) {
+        return ContentType::Link;
+    }
+    
+    // 默认为纯文本
+    ContentType::Text
+}
+
+// 检查字符串是否为URL
+fn is_url(text: &str) -> bool {
+    let text = text.trim();
+    text.starts_with("http://") || 
+    text.starts_with("https://") || 
+    text.starts_with("ftp://") || 
+    text.starts_with("ftps://") ||
+    (text.contains('.') && text.split_whitespace().count() == 1 && 
+     (text.ends_with(".com") || text.ends_with(".org") || text.ends_with(".net") || 
+      text.ends_with(".edu") || text.ends_with(".gov") || text.ends_with(".cn") ||
+      text.ends_with(".io") || text.ends_with(".dev")))
+}
+
+// 检查字符串是否为文件路径
+fn is_file_paths(text: &str) -> bool {
+    // 检查Windows路径格式
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.is_empty() {
+        return false;
+    }
+    
+    // 至少一行看起来像文件路径
+    for line in &lines {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        
+        // Windows路径格式: C:\path\to\file 或 \\network\path
+        if line.len() >= 3 && (
+            (line.chars().nth(1) == Some(':') && line.chars().nth(2) == Some('\\')) ||
+            line.starts_with("\\\\")
+        ) {
+            return true;
+        }
+        
+        // Unix路径格式: /path/to/file
+        if line.starts_with('/') && line.len() > 1 {
+            return true;
+        }
+    }
+    
+    false
+}
+
 // =================== 剪贴板历史数据库操作 ===================
+
+// 智能添加剪贴板项目（根据内容自动检测类型）
+pub fn add_clipboard_item_smart(content: String, html: Option<String>) -> Result<i64, String> {
+    let content_type = detect_content_type(&content, html.as_deref());
+    
+    match content_type {
+        ContentType::Text => add_clipboard_item(content),
+        ContentType::RichText => {
+            if let Some(html_content) = html {
+                add_clipboard_rich_text(content, html_content)
+            } else {
+                add_clipboard_item(content)
+            }
+        },
+        ContentType::Link => add_clipboard_link(content),
+        ContentType::File => {
+            // 对于files:开头的内容，直接保存原始内容但标记为文件类型
+            if content.starts_with("files:") {
+                let item = ClipboardItem {
+                    id: 0,
+                    content,
+                    html_content: html,
+                    content_type: ContentType::File,
+                    image_id: None,
+                    created_at: chrono::Local::now().timestamp(),
+                    updated_at: chrono::Local::now().timestamp(),
+                };
+                
+                with_connection(|conn| {
+                    conn.execute(
+                        "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                        params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+                    )?;
+
+                    Ok(conn.last_insert_rowid())
+                })
+            } else {
+                // 传统的文件路径格式，按行分割
+                let file_paths: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+                add_clipboard_file(file_paths)
+            }
+        },
+        ContentType::Image => {
+            // 提取image_id
+            if let Some(image_id) = content.strip_prefix("image:") {
+                add_clipboard_image(image_id.to_string())
+            } else {
+                add_clipboard_item(content)
+            }
+        }
+    }
+}
 
 // 添加剪贴板项目
 pub fn add_clipboard_item(content: String) -> Result<i64, String> {
@@ -285,22 +507,65 @@ pub fn add_clipboard_item(content: String) -> Result<i64, String> {
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, is_image, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.is_image, item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
     })
 }
 
-// 添加带HTML内容的剪贴板项目
-pub fn add_clipboard_item_with_html(content: String, html: Option<String>) -> Result<i64, String> {
-    let item = ClipboardItem::new_text_with_html(content, html);
+
+// 添加富文本剪贴板项目
+pub fn add_clipboard_rich_text(content: String, html: String) -> Result<i64, String> {
+    let item = ClipboardItem::new_rich_text(content, html);
 
     with_connection(|conn| {
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, is_image, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.is_image, item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+        )?;
+
+        Ok(conn.last_insert_rowid())
+    })
+}
+
+// 添加图片剪贴板项目
+pub fn add_clipboard_image(image_id: String) -> Result<i64, String> {
+    let item = ClipboardItem::new_image(image_id);
+
+    with_connection(|conn| {
+        conn.execute(
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+        )?;
+
+        Ok(conn.last_insert_rowid())
+    })
+}
+
+// 添加文件剪贴板项目
+pub fn add_clipboard_file(file_paths: Vec<String>) -> Result<i64, String> {
+    let item = ClipboardItem::new_file(file_paths);
+
+    with_connection(|conn| {
+        conn.execute(
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+        )?;
+
+        Ok(conn.last_insert_rowid())
+    })
+}
+
+// 添加链接剪贴板项目
+pub fn add_clipboard_link(url: String) -> Result<i64, String> {
+    let item = ClipboardItem::new_link(url);
+
+    with_connection(|conn| {
+        conn.execute(
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -311,9 +576,9 @@ pub fn add_clipboard_item_with_html(content: String, html: Option<String>) -> Re
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, content, html_content, is_image, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC LIMIT {}", limit)
+            format!("SELECT id, content, html_content, content_type, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC LIMIT {}", limit)
         } else {
-            "SELECT id, content, html_content, is_image, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC".to_string()
+            "SELECT id, content, html_content, content_type, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC".to_string()
         };
 
         let mut stmt = conn.prepare(&sql)?;
@@ -322,7 +587,7 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
                 id: row.get(0)?,
                 content: row.get(1)?,
                 html_content: row.get(2).ok(),
-                is_image: row.get(3)?,
+                content_type: ContentType::from_string(&row.get::<_, String>(3).unwrap_or_default()),
                 image_id: row.get(4)?,
                 created_at: row.get(5)?,
                 updated_at: row.get(6)?,
@@ -448,8 +713,8 @@ pub fn reorder_clipboard_items(contents: &[String]) -> Result<(), String> {
 pub fn add_favorite_item(item: &FavoriteItem) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-                    "INSERT INTO favorites (id, title, content, html_content, is_image, image_id, group_name, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![item.id, item.title, item.content, item.html_content, item.is_image, item.image_id, item.group_name, item.item_order, item.created_at, item.updated_at],
+                    "INSERT INTO favorites (id, title, content, html_content, content_type, image_id, group_name, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![item.id, item.title, item.content, item.html_content, item.content_type.to_string(), item.image_id, item.group_name, item.item_order, item.created_at, item.updated_at],
         )?;
         Ok(())
     })
@@ -459,7 +724,7 @@ pub fn add_favorite_item(item: &FavoriteItem) -> Result<(), String> {
 pub fn get_all_favorite_items() -> Result<Vec<FavoriteItem>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT f.id, f.title, f.content, f.html_content, f.is_image, f.image_id, f.group_name, f.item_order, f.created_at, f.updated_at 
+            "SELECT f.id, f.title, f.content, f.html_content, f.content_type, f.image_id, f.group_name, f.item_order, f.created_at, f.updated_at 
              FROM favorites f 
              LEFT JOIN groups g ON f.group_name = g.name 
              ORDER BY COALESCE(g.order_index, 999999), f.item_order, f.updated_at DESC"
@@ -471,7 +736,7 @@ pub fn get_all_favorite_items() -> Result<Vec<FavoriteItem>, String> {
                 title: row.get(1)?,
                 content: row.get(2)?,
                 html_content: row.get(3)?,
-                is_image: row.get(4)?,
+                content_type: ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default()),
                 image_id: row.get(5)?,
                 group_name: row.get(6)?,
                 item_order: row.get(7)?,
@@ -493,7 +758,7 @@ pub fn get_all_favorite_items() -> Result<Vec<FavoriteItem>, String> {
 pub fn get_favorite_items_by_group(group_name: &str) -> Result<Vec<FavoriteItem>, String> {
     with_connection(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, html_content, is_image, image_id, group_name, item_order, created_at, updated_at FROM favorites WHERE group_name = ?1 ORDER BY item_order, updated_at DESC"
+            "SELECT id, title, content, html_content, content_type, image_id, group_name, item_order, created_at, updated_at FROM favorites WHERE group_name = ?1 ORDER BY item_order, updated_at DESC"
         )?;
 
         let rows = stmt.query_map([group_name], |row| {
@@ -502,7 +767,7 @@ pub fn get_favorite_items_by_group(group_name: &str) -> Result<Vec<FavoriteItem>
                 title: row.get(1)?,
                 content: row.get(2)?,
                 html_content: row.get(3)?,
-                is_image: row.get(4)?,
+                content_type: ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default()),
                 image_id: row.get(5)?,
                 group_name: row.get(6)?,
                 item_order: row.get(7)?,
@@ -524,8 +789,8 @@ pub fn get_favorite_items_by_group(group_name: &str) -> Result<Vec<FavoriteItem>
 pub fn update_favorite_item(item: &FavoriteItem) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute(
-            "UPDATE favorites SET title = ?1, content = ?2, html_content = ?3, is_image = ?4, image_id = ?5, group_name = ?6, item_order = ?7, updated_at = ?8 WHERE id = ?9",
-            params![item.title, item.content, item.html_content, item.is_image, item.image_id, item.group_name, item.item_order, item.updated_at, item.id],
+            "UPDATE favorites SET title = ?1, content = ?2, html_content = ?3, content_type = ?4, image_id = ?5, group_name = ?6, item_order = ?7, updated_at = ?8 WHERE id = ?9",
+            params![item.title, item.content, item.html_content, item.content_type.to_string(), item.image_id, item.group_name, item.item_order, item.updated_at, item.id],
         )?;
         Ok(())
     })
