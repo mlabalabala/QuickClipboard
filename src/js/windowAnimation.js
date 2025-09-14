@@ -130,17 +130,28 @@ async function animateHeightExpand(container) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
   
-        // ========== 阻尼弹簧公式 ==========
-        const frequency = 12;   // 震荡频率
-        const damping = 6;      // 阻尼系数
-        let raw = 1 - Math.exp(-damping * progress) * Math.cos(frequency * progress);
-  
-        // ========== 映射到安全区间 ==========
-        // 限制最大到 0.98，最后阶段平滑收敛到 1
-        let eased = Math.min(raw, 0.98);
-        if (progress > 0.9) {
-          const t = (progress - 0.9) / 0.1; // 0~1
-          eased = eased + (1 - eased) * t;
+        // ========== 改进的两阶段动画：先展开，后弹动 ==========
+        let eased;
+        if (progress < 0.6) {
+          // 前60%：smooth展开
+          const expandProgress = progress / 0.5;
+          eased = 1 - Math.pow(1 - expandProgress, 2.5); // 稍微缓和的ease-out
+        } else {
+          // 后40%：原来的阻尼弹簧效果
+          const bounceProgress = (progress - 0.4) / 0.5;
+          
+          // ========== 阻尼弹簧公式 ==========
+          const frequency = 12;   // 震荡频率
+          const damping = 6;      // 阻尼系数
+          let raw = 2 - Math.exp(-damping * bounceProgress) * Math.cos(frequency * bounceProgress);
+          
+          // ========== 映射到安全区间 ==========
+          // 限制最大到 0.98，最后阶段平滑收敛到 1
+          eased = Math.min(raw, 0.98);
+          if (bounceProgress > 0.75) { // 在弹动的后25%时间平滑收敛
+            const t = (bounceProgress - 0.75) / 0.25; // 0~1
+            eased = eased + (1 - eased) * t;
+          }
         }
   
         const currentHeight = targetHeight * eased;
@@ -148,12 +159,14 @@ async function animateHeightExpand(container) {
         // 应用样式
         container.style.height = `${currentHeight}px`;
         container.style.maxHeight = `${currentHeight}px`;
-        container.style.opacity = Math.min(progress * 1.5, 1);
+        // 快速达到可见状态，让高度动画更明显
+        container.style.opacity = Math.min(progress * 4, 1);
   
         if (footer) {
           const footerOffset = targetHeight - currentHeight;
           footer.style.transform = `translateY(${footerOffset}px)`;
-          footer.style.opacity = Math.min(progress * 1.5, 1);
+          // 快速达到可见状态，让高度动画更明显
+          footer.style.opacity = Math.min(progress * 4, 1);
         }
   
         if (progress < 1) {
