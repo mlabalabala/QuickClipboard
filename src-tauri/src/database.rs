@@ -412,36 +412,52 @@ fn is_url(text: &str) -> bool {
       text.ends_with(".io") || text.ends_with(".dev")))
 }
 
-// 检查字符串是否为文件路径
+// 检查字符串是否为文件路径（简化版本，只检查标准路径格式）
 fn is_file_paths(text: &str) -> bool {
-    // 检查Windows路径格式
+    let text = text.trim();
+    
+    // 只检查简单的文件路径模式，避免误判
     let lines: Vec<&str> = text.lines().collect();
     if lines.is_empty() {
         return false;
     }
     
-    // 至少一行看起来像文件路径
+    let mut valid_path_count = 0;
+    let total_lines = lines.len();
+    
+    // 检查每一行是否像文件路径
     for line in &lines {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
         
-        // Windows路径格式: C:\path\to\file 或 \\network\path
-        if line.len() >= 3 && (
-            (line.chars().nth(1) == Some(':') && line.chars().nth(2) == Some('\\')) ||
-            line.starts_with("\\\\")
-        ) {
-            return true;
+        // Windows绝对路径格式: C:\path\to\file
+        if line.len() >= 3 && 
+           line.chars().nth(1) == Some(':') && 
+           line.chars().nth(2) == Some('\\') &&
+           line.chars().nth(0).map_or(false, |c| c.is_ascii_alphabetic()) {
+            valid_path_count += 1;
+            continue;
         }
         
-        // Unix路径格式: /path/to/file
-        if line.starts_with('/') && line.len() > 1 {
-            return true;
+        // UNC路径格式: \\server\share\path
+        if line.starts_with("\\\\") && line.len() > 2 {
+            valid_path_count += 1;
+            continue;
+        }
+        
+        // Unix绝对路径格式: /path/to/file
+        if line.starts_with('/') && line.len() > 1 && !line.contains(' ') {
+            valid_path_count += 1;
+            continue;
         }
     }
     
-    false
+    // 需要至少80%的行看起来像文件路径，且至少有1个有效路径
+    total_lines > 0 && 
+    valid_path_count > 0 &&
+    (valid_path_count as f32 / total_lines as f32) >= 0.8
 }
 
 // =================== 剪贴板历史数据库操作 ===================
