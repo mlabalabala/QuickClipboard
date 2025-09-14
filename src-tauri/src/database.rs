@@ -663,15 +663,24 @@ pub fn clipboard_item_exists(content: &str) -> Result<Option<i64>, String> {
     })
 }
 
-// 移动剪贴板项目到最前面（更新时间戳）
+// 移动剪贴板项目到最前面（使用item_order排序）
 pub fn move_clipboard_item_to_front(id: i64) -> Result<(), String> {
     let now = chrono::Local::now();
     let new_timestamp = now.timestamp();
 
     with_connection(|conn| {
+        // 获取当前最小的item_order值，然后减1以确保移动到最前面
+        let min_order: i32 = conn.query_row(
+            "SELECT MIN(item_order) FROM clipboard",
+            [],
+            |row| row.get(0)
+        ).unwrap_or(0);
+        
+        let new_order = min_order - 1;
+        
         conn.execute(
-            "UPDATE clipboard SET updated_at = ?1 WHERE id = ?2",
-            params![new_timestamp, id],
+            "UPDATE clipboard SET item_order = ?1, updated_at = ?2 WHERE id = ?3",
+            params![new_order, new_timestamp, id],
         )?;
         Ok(())
     })
@@ -709,10 +718,10 @@ pub fn clear_clipboard_history() -> Result<(), String> {
 // 限制剪贴板历史数量
 pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
     with_connection(|conn| {
-        // 删除超出限制的旧记录
+        // 删除超出限制的记录（保留item_order最小的记录）
         conn.execute(
             "DELETE FROM clipboard WHERE id NOT IN (
-                SELECT id FROM clipboard ORDER BY created_at DESC LIMIT ?1
+                SELECT id FROM clipboard ORDER BY item_order, updated_at DESC LIMIT ?1
             )",
             params![max_count],
         )?;
