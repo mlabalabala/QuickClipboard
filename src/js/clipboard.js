@@ -317,10 +317,10 @@ export async function updateClipboardOrder(oldIndex, newIndex) {
     const targetItem = filteredData[newIndex];
 
     const originalOldIndex = clipboardHistory.findIndex(item =>
-      item.content === movedItem.text && item.created_at === movedItem.timestamp
+      item.content === movedItem.content && item.created_at === movedItem.created_at
     );
     const originalNewIndex = clipboardHistory.findIndex(item =>
-      item.content === targetItem.text && item.created_at === targetItem.timestamp
+      item.content === targetItem.content && item.created_at === targetItem.created_at
     );
 
     if (originalOldIndex === -1 || originalNewIndex === -1) {

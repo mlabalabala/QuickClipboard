@@ -79,6 +79,7 @@ pub struct ClipboardItem {
     pub html_content: Option<String>,
     pub content_type: ContentType,
     pub image_id: Option<String>,
+    pub item_order: i32,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -94,6 +95,7 @@ impl ClipboardItem {
             html_content: None,
             content_type: ContentType::Text,
             image_id: None,
+            item_order: 0,
             created_at: timestamp,
             updated_at: timestamp,
         }
@@ -109,6 +111,7 @@ impl ClipboardItem {
             html_content: Some(html),
             content_type: ContentType::RichText,
             image_id: None,
+            item_order: 0,
             created_at: timestamp,
             updated_at: timestamp,
         }
@@ -124,6 +127,7 @@ impl ClipboardItem {
             html_content: None,
             content_type: ContentType::Image,
             image_id: Some(image_id),
+            item_order: 0,
             created_at: timestamp,
             updated_at: timestamp,
         }
@@ -139,6 +143,7 @@ impl ClipboardItem {
             html_content: None,
             content_type: ContentType::File,
             image_id: None,
+            item_order: 0,
             created_at: timestamp,
             updated_at: timestamp,
         }
@@ -154,6 +159,7 @@ impl ClipboardItem {
             html_content: None,
             content_type: ContentType::Link,
             image_id: None,
+            item_order: 0,
             created_at: timestamp,
             updated_at: timestamp,
         }
@@ -272,6 +278,7 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
             html_content TEXT,
             content_type TEXT NOT NULL DEFAULT 'text',
             image_id TEXT,
+            item_order INTEGER NOT NULL DEFAULT 0,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         )",
@@ -472,16 +479,19 @@ pub fn add_clipboard_item_smart(content: String, html: Option<String>) -> Result
                     html_content: html,
                     content_type: ContentType::File,
                     image_id: None,
+                    item_order: 0,
                     created_at: chrono::Local::now().timestamp(),
                     updated_at: chrono::Local::now().timestamp(),
                 };
                 
                 with_connection(|conn| {
+                    let new_order = get_new_clipboard_order(conn);
+                    
                     conn.execute(
-                        "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                        params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+                        "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
                     )?;
-
+            
                     Ok(conn.last_insert_rowid())
                 })
             } else {
@@ -501,14 +511,33 @@ pub fn add_clipboard_item_smart(content: String, html: Option<String>) -> Result
     }
 }
 
+// 获取新项目的item_order（确保新项目总是排在最前面）
+fn get_new_clipboard_order(conn: &Connection) -> i32 {
+    // 获取当前最小的item_order
+    let min_order: i32 = conn.query_row(
+        "SELECT COALESCE(MIN(item_order), 0) FROM clipboard",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(0);
+    
+    // 如果最小值是正数或0，使用-1；如果已经是负数，继续递减
+    if min_order >= 0 {
+        -1
+    } else {
+        min_order - 1
+    }
+}
+
 // 添加剪贴板项目
 pub fn add_clipboard_item(content: String) -> Result<i64, String> {
     let item = ClipboardItem::new_text(content);
 
     with_connection(|conn| {
+        let new_order = get_new_clipboard_order(conn);
+        
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -521,9 +550,11 @@ pub fn add_clipboard_rich_text(content: String, html: String) -> Result<i64, Str
     let item = ClipboardItem::new_rich_text(content, html);
 
     with_connection(|conn| {
+        let new_order = get_new_clipboard_order(conn);
+        
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -535,9 +566,11 @@ pub fn add_clipboard_image(image_id: String) -> Result<i64, String> {
     let item = ClipboardItem::new_image(image_id);
 
     with_connection(|conn| {
+        let new_order = get_new_clipboard_order(conn);
+        
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -549,9 +582,11 @@ pub fn add_clipboard_file(file_paths: Vec<String>) -> Result<i64, String> {
     let item = ClipboardItem::new_file(file_paths);
 
     with_connection(|conn| {
+        let new_order = get_new_clipboard_order(conn);
+        
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
@@ -563,22 +598,24 @@ pub fn add_clipboard_link(url: String) -> Result<i64, String> {
     let item = ClipboardItem::new_link(url);
 
     with_connection(|conn| {
+        let new_order = get_new_clipboard_order(conn);
+        
         conn.execute(
-            "INSERT INTO clipboard (content, html_content, content_type, image_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, item.created_at, item.updated_at],
+            "INSERT INTO clipboard (content, html_content, content_type, image_id, item_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![item.content, item.html_content, item.content_type.to_string(), item.image_id, new_order, item.created_at, item.updated_at],
         )?;
 
         Ok(conn.last_insert_rowid())
     })
 }
 
-// 获取剪贴板历史（按创建时间倒序）
+// 获取剪贴板历史（按更新时间倒序，支持拖拽排序）
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, content, html_content, content_type, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC LIMIT {}", limit)
+            format!("SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC LIMIT {}", limit)
         } else {
-            "SELECT id, content, html_content, content_type, image_id, created_at, updated_at FROM clipboard ORDER BY created_at DESC".to_string()
+            "SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC".to_string()
         };
 
         let mut stmt = conn.prepare(&sql)?;
@@ -589,8 +626,9 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
                 html_content: row.get(2).ok(),
                 content_type: ContentType::from_string(&row.get::<_, String>(3).unwrap_or_default()),
                 image_id: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                item_order: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -677,6 +715,26 @@ pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
 }
 
 // 批量更新剪贴板项目的时间戳（用于重新排序）
+// 通过ID重新排序剪贴板项目（使用item_order字段）
+pub fn reorder_clipboard_items_by_ids(ids: &[i64]) -> Result<(), String> {
+    with_connection(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // 为手动排序的项目分配正数item_order（从0开始递增）
+        // 这样它们会排在新复制内容（负数item_order）的后面
+        for (index, &id) in ids.iter().enumerate() {
+            tx.execute(
+                "UPDATE clipboard SET item_order = ?1, updated_at = ?2 WHERE id = ?3",
+                params![index as i32, chrono::Local::now().timestamp(), id],
+            )?;
+        }
+
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+// 通过内容重新排序剪贴板项目（保留兼容性）
 pub fn reorder_clipboard_items(contents: &[String]) -> Result<(), String> {
     with_connection(|conn| {
         let tx = conn.unchecked_transaction()?;

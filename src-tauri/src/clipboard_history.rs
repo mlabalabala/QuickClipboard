@@ -177,12 +177,12 @@ pub fn move_item(from_index: usize, to_index: usize) -> Result<(), String> {
     let moved_item = reordered_items.remove(from_index);
     reordered_items.insert(to_index, moved_item);
 
-    let item_texts: Vec<String> = reordered_items
+    let item_ids: Vec<i64> = reordered_items
         .iter()
-        .map(|item| item.content.clone())
+        .map(|item| item.id)
         .collect();
 
-    database::reorder_clipboard_items(&item_texts)
+    database::reorder_clipboard_items_by_ids(&item_ids)
         .map_err(|e| format!("数据库重新排序失败: {}", e))?;
 
     Ok(())
