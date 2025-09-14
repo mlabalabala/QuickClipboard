@@ -82,69 +82,72 @@ export async function playWindowHideAnimation() {
  * @param {HTMLElement} container - 要动画的容器元素
  */
 async function animateHeightExpand(container) {
-  const footer = document.querySelector('.footer');
-  const groupsSidebar = document.querySelector('.groups-sidebar');
-  const isRightTitlebar = container.classList.contains('titlebar-right');
+    const footer = document.querySelector('.footer');
+    const groupsSidebar = document.querySelector('.groups-sidebar');
   
-  return new Promise((resolve) => {
-    const duration = 300; // 300ms 动画时长
-    const startTime = performance.now();
-    const targetHeight = window.innerHeight; // 100vh 的像素值
-    
-    function animate(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // 使用 ease-out 缓动函数
-      const eased = 1 - Math.pow(1 - progress, 3);
-      
-      // 计算当前高度
-      const currentHeight = targetHeight * eased;
-      
-      // 设置容器样式
-      container.style.height = `${currentHeight}px`;
-      container.style.maxHeight = `${currentHeight}px`;
-      container.style.opacity = eased;
-      
-      // 同步底部栏位置（从窗口底部向上移动）
-      if (footer) {
-        const footerOffset = targetHeight - currentHeight;
-        footer.style.transform = `translateY(${footerOffset}px)`;
-        footer.style.opacity = eased;
-      }
-      
-      // 侧边栏在动画期间保持隐藏状态
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // 动画完成，设置最终状态
-        container.style.height = '100vh';
-        container.style.maxHeight = '100vh';
-        container.style.opacity = '1';
-        container.style.overflow = 'hidden'; // 保持布局
-        
-        // 重置底部栏位置
+    return new Promise((resolve) => {
+      const duration = 600; // 稍长，给弹动留时间
+      const startTime = performance.now();
+      const targetHeight = window.innerHeight;
+  
+      function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+  
+        // ========== 阻尼弹簧公式 ==========
+        const frequency = 12;   // 震荡频率
+        const damping = 6;      // 阻尼系数
+        let raw = 1 - Math.exp(-damping * progress) * Math.cos(frequency * progress);
+  
+        // ========== 映射到安全区间 ==========
+        // 限制最大到 0.98，最后阶段平滑收敛到 1
+        let eased = Math.min(raw, 0.98);
+        if (progress > 0.9) {
+          const t = (progress - 0.9) / 0.1; // 0~1
+          eased = eased + (1 - eased) * t;
+        }
+  
+        const currentHeight = targetHeight * eased;
+  
+        // 应用样式
+        container.style.height = `${currentHeight}px`;
+        container.style.maxHeight = `${currentHeight}px`;
+        container.style.opacity = Math.min(progress * 1.5, 1);
+  
         if (footer) {
-          footer.style.transform = 'translateY(0)';
-          footer.style.opacity = '1';
+          const footerOffset = targetHeight - currentHeight;
+          footer.style.transform = `translateY(${footerOffset}px)`;
+          footer.style.opacity = Math.min(progress * 1.5, 1);
         }
-        
-        // 恢复分组侧边栏的可见性和位置（所有模式）
-        if (groupsSidebar) {
-          groupsSidebar.style.visibility = 'visible';
-          // 清除可能在动画中设置的内联样式，让CSS规则生效
-          groupsSidebar.style.right = '';
-          groupsSidebar.style.transform = '';
+  
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // 最终状态
+          container.style.height = '100vh';
+          container.style.maxHeight = '100vh';
+          container.style.opacity = '1';
+          container.style.overflow = 'hidden';
+  
+          if (footer) {
+            footer.style.transform = 'translateY(0)';
+            footer.style.opacity = '1';
+          }
+  
+          if (groupsSidebar) {
+            groupsSidebar.style.visibility = 'visible';
+            groupsSidebar.style.right = '';
+            groupsSidebar.style.transform = '';
+          }
+  
+          resolve();
         }
-        
-        resolve();
       }
-    }
-    
-    requestAnimationFrame(animate);
-  });
-}
+  
+      requestAnimationFrame(animate);
+    });
+  }
+  
 
 /**
  * 高度收起动画 - 从下到上收起
