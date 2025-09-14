@@ -44,7 +44,7 @@ function updateThumbPosition(container, thumb) {
   const thumbTop = clamp((scrollTop / (scrollHeight - clientHeight)) * maxThumbTop, 0, maxThumbTop);
 
   thumb.style.height = `${thumbHeight}px`;
-  thumb.style.top = `${2 + thumbTop}px`; 
+  thumb.style.top = `${thumbTop}px`; 
 }
 
 function bindScrollbar(container) {
