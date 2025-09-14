@@ -1632,6 +1632,17 @@ function bindAiTranslationEvents() {
 
 // =================== 数据管理功能 ===================
 
+// 刷新整个前端界面
+async function refreshAllWindows() {
+  try {
+    // 刷新所有窗口
+    await invoke('refresh_all_windows');
+    console.log('已刷新所有窗口');
+  } catch (error) {
+    console.error('刷新窗口失败:', error);
+  }
+}
+
 // 初始化数据管理功能
 function initDataManagement() {
   // 导出数据按钮
@@ -1662,25 +1673,10 @@ function initDataManagement() {
 // 处理导出数据
 async function handleExportData() {
   try {
-    // 获取导出选项
-    const options = {
-      clipboard_history: document.getElementById('export-clipboard-history')?.checked || false,
-      quick_texts: document.getElementById('export-quick-texts')?.checked || false,
-      groups: document.getElementById('export-groups')?.checked || false,
-      settings: document.getElementById('export-settings')?.checked || false,
-      images: document.getElementById('export-images')?.checked || false,
-    };
-
-    // 检查是否至少选择了一个选项
-    if (!Object.values(options).some(value => value)) {
-      showNotification('请至少选择一个导出选项', 'warning');
-      return;
-    }
-
     // 使用文件对话框选择保存位置
     const { save } = await import('@tauri-apps/plugin-dialog');
     const filePath = await save({
-      title: '导出数据',
+      title: '导出全部数据',
       defaultPath: `quickclipboard_backup_${new Date().toISOString().slice(0, 10)}.zip`,
       filters: [{
         name: 'ZIP文件',
@@ -1693,15 +1689,15 @@ async function handleExportData() {
     }
 
     // 显示进度提示
-    showNotification('正在导出数据，请稍候...', 'info');
+    showNotification('正在导出全部数据，请稍候...', 'info');
 
-    // 调用后端导出函数
+    // 调用后端导出函数（简化的选项）
     await invoke('export_data', {
       exportPath: filePath,
-      options: options
+      options: {} // 空选项，后端会导出所有数据
     });
 
-    showNotification('数据导出成功！', 'success');
+    showNotification('全部数据导出成功！', 'success');
   } catch (error) {
     console.error('导出数据失败:', error);
     showNotification(`导出数据失败: ${error}`, 'error');
@@ -1756,27 +1752,15 @@ async function handleImportData() {
     await invoke('import_data', {
       importPath: filePath,
       options: {
-        mode: importMode === 'replace' ? 'Replace' : 'Merge',
-        clipboard_history: true,
-        quick_texts: true,
-        groups: true,
-        settings: true,
-        images: true
+        mode: importMode === 'replace' ? 'Replace' : 'Merge'
+        // 简化：总是导入所有数据
       }
     });
 
-    showNotification('数据导入成功！应用将重新启动以应用更改。', 'success');
+    showNotification('数据导入成功！', 'success');
 
-    // 延迟重启整个Tauri应用程序
-    setTimeout(async () => {
-      try {
-        await invoke('restart_app');
-      } catch (error) {
-        console.error('重启应用失败:', error);
-        // 如果重启失败，回退到页面重新加载
-        window.location.reload();
-      }
-    }, 2000);
+    // 刷新所有窗口
+    await refreshAllWindows();
   } catch (error) {
     console.error('导入数据失败:', error);
     showNotification(`导入数据失败: ${error}`, 'error');
@@ -1797,18 +1781,10 @@ async function handleClearClipboardHistory() {
   try {
     showNotification('正在清空剪贴板历史...', 'info');
     await invoke('clear_clipboard_history_dm');
-    showNotification('剪贴板历史已清空，应用将重新启动。', 'success');
+    showNotification('剪贴板历史已清空！', 'success');
 
-    // 延迟重启整个Tauri应用程序
-    setTimeout(async () => {
-      try {
-        await invoke('restart_app');
-      } catch (error) {
-        console.error('重启应用失败:', error);
-        // 如果重启失败，回退到页面重新加载
-        window.location.reload();
-      }
-    }, 2000);
+    // 刷新所有窗口
+    await refreshAllWindows();
   } catch (error) {
     console.error('清空剪贴板历史失败:', error);
     showNotification(`清空剪贴板历史失败: ${error}`, 'error');
@@ -1838,18 +1814,10 @@ async function handleResetAllData() {
   try {
     showNotification('正在重置所有数据...', 'info');
     await invoke('reset_all_data');
-    showNotification('所有数据已重置，应用将重新启动。', 'success');
+    showNotification('所有数据已重置！', 'success');
 
-    // 延迟重启整个Tauri应用程序
-    setTimeout(async () => {
-      try {
-        await invoke('restart_app');
-      } catch (error) {
-        console.error('重启应用失败:', error);
-        // 如果重启失败，回退到页面重新加载
-        window.location.reload();
-      }
-    }, 2000);
+    // 刷新所有窗口
+    await refreshAllWindows();
   } catch (error) {
     console.error('重置所有数据失败:', error);
     showNotification(`重置所有数据失败: ${error}`, 'error');

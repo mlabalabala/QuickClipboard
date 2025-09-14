@@ -433,6 +433,7 @@ pub fn run() {
             commands::set_edge_hide_enabled,
             commands::is_edge_hide_enabled,
             commands::restore_edge_snap_on_startup,
+            commands::refresh_all_windows,
             commands::get_screen_size,
             commands::start_custom_drag,
             commands::stop_custom_drag,

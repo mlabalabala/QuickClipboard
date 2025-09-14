@@ -1746,3 +1746,19 @@ pub fn restore_edge_snap_on_startup(app: tauri::AppHandle) -> Result<(), String>
         Err("找不到主窗口".to_string())
     }
 }
+
+// 刷新所有窗口
+#[tauri::command]
+pub fn refresh_all_windows(app: tauri::AppHandle) -> Result<(), String> {
+    println!("刷新所有窗口");
+    
+    // 获取所有窗口并刷新
+    for (label, window) in app.webview_windows().iter() {
+        println!("刷新窗口: {}", label);
+        if let Err(e) = window.eval("window.location.reload()") {
+            println!("刷新窗口 {} 失败: {}", label, e);
+        }
+    }
+    
+    Ok(())
+}

@@ -356,6 +356,7 @@ async function initApp() {
   // 设置窗口大小和位置监听器
   setupWindowSizeAndPositionListeners();
 
+
 }
 
 // 设置窗口可见性监听器
@@ -610,4 +611,5 @@ function moveFilterTabsIndicator() {
   indicator.style.height = height + 'px';
   indicator.style.opacity = '1';
 }
+
 
