@@ -25,17 +25,30 @@ body {
   line-height: 1.5;
   font-weight: 400;
 
-  /* 初始状态 - 完全收起 */
-  transform: scaleY(0);
-  transform-origin: top center;
+  /* 初始状态 */
   opacity: 0;
+  height: 0;
+  max-height: 0;
+  overflow: hidden;
 
-  transition: all var(--transition-duration) ease;
+  transition: none;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  
+  /* 500ms后自动回退为可见状态（避免永远不可见） */
+  animation: fallbackJsShow 0.01s ease 0.5s forwards;
+}
+
+/* 回退动画 - 确保界面最终可见 */
+@keyframes fallbackJsShow {
+  to {
+    height: 100vh;
+    max-height: 100vh;
+    opacity: 1;
+  }
 }
 
 /* =================== CSS变量定义 =================== */
@@ -91,42 +104,10 @@ body {
   --blur-radius: 5px;
 }
 
-/* =================== 窗口动画 =================== */
-@keyframes scrollDown {
-  0% {
-    transform: scaleY(0);
-    opacity: 0;
-  }
-
-  30% {
-    transform: scaleY(0.3);
-    opacity: 0.3;
-  }
-
-  100% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scrollUp {
-  0% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scaleY(0);
-    opacity: 0;
-  }
-}
-
-.window-show-animation {
-  animation: scrollDown 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-}
-
-.window-hide-animation {
-  animation: scrollUp 0.2s cubic-bezier(0.755, 0.05, 0.855, 0.06) forwards;
+/* =================== 窗口动画（JavaScript控制） =================== */
+.js-animating {
+  /* 动画进行中的状态标记 */
+  overflow: hidden;
 }
 
 /* =================== 标题栏 =================== */

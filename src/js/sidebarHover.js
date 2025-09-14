@@ -98,7 +98,6 @@ function handleMouseLeave() {
 function showSidebar() {
   groupsSidebar.style.zIndex = 'var(--z-tooltip)';
   groupsSidebar.style.transform = 'translateX(0)';
-  groupsSidebar.style.right = '0';
 }
 
 // 隐藏侧边栏

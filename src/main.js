@@ -142,7 +142,9 @@ async function initApp() {
   setupCustomWindowDrag();
 
   // 设置窗口动画监听器
+  const { setupWindowAnimationListeners, setupAnimationFallback } = await import('./js/windowAnimation.js');
   setupWindowAnimationListeners();
+  setupAnimationFallback();
 
   // 等待后端初始化完成，然后获取数据
   await waitForBackendInitialization();
@@ -377,72 +379,6 @@ function setupWindowVisibilityListener() {
   });
 }
 
-// 设置窗口动画监听器
-async function setupWindowAnimationListeners() {
-  try {
-    // console.log('开始设置窗口动画监听器...');
-    const { listen } = await import('@tauri-apps/api/event');
-
-    // 监听窗口显示动画事件
-    await listen('window-show-animation', () => {
-      // console.log('收到窗口显示动画事件');
-      playWindowShowAnimation();
-    });
-
-    // 监听窗口隐藏动画事件
-    await listen('window-hide-animation', () => {
-      // console.log('收到窗口隐藏动画事件');
-      playWindowHideAnimation();
-    });
-
-    // console.log('窗口动画监听器设置完成');
-    
-    // 前端动画初始化完成后，恢复贴边隐藏状态
-    await restoreEdgeSnapOnStartup();
-  } catch (error) {
-    console.error('设置窗口动画监听器失败:', error);
-  }
-}
-
-// 恢复贴边隐藏状态
-async function restoreEdgeSnapOnStartup() {
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('restore_edge_snap_on_startup');
-  } catch (error) {
-    console.error('恢复贴边隐藏状态失败:', error);
-  }
-}
-
-// 播放窗口显示动画
-async function playWindowShowAnimation() {
-  const container = document.querySelector('body');
-  if (!container) return;
-
-  // 重置动画状态
-  container.classList.remove('window-hide-animation', 'window-show-animation');
-
-  // 强制重绘
-  container.offsetHeight;
-
-  // 添加显示动画类
-  container.classList.add('window-show-animation');
-}
-
-// 播放窗口隐藏动画
-async function playWindowHideAnimation() {
-  const container = document.querySelector('body');
-  if (!container) return;
-
-  // 重置动画状态
-  container.classList.remove('window-hide-animation', 'window-show-animation');
-
-  // 强制重绘
-  container.offsetHeight;
-
-  // 添加隐藏动画类
-  container.classList.add('window-hide-animation');
-}
 
 // 设置文件图标刷新事件监听器
 async function setupFileIconRefreshListener() {
