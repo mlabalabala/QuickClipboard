@@ -1,6 +1,9 @@
 // ==================== 窗口动画模块 ====================
 // 负责处理窗口显示/隐藏的真实高度变化动画
 
+// 全局动画开关
+let animationEnabled = true;
+
 /**
  * 播放窗口显示动画 - JavaScript控制的高度动画
  */
@@ -10,6 +13,24 @@ export async function playWindowShowAnimation() {
 
   // 标记收到了真正的动画事件，阻止回退动画
   container.style.animation = 'none';
+  
+  // 检查动画开关
+  if (!animationEnabled) {
+    // 动画禁用时直接显示
+    container.style.height = '100vh';
+    container.style.maxHeight = '100vh';
+    container.style.opacity = '1';
+    container.style.overflow = 'hidden';
+    
+    // 恢复侧边栏
+    const groupsSidebar = document.querySelector('.groups-sidebar');
+    if (groupsSidebar) {
+      groupsSidebar.style.visibility = 'visible';
+      groupsSidebar.style.right = '';
+      groupsSidebar.style.transform = '';
+    }
+    return;
+  }
   
   // 添加动画进行中的标记
   container.classList.add('js-animating');
@@ -48,6 +69,21 @@ export async function playWindowHideAnimation() {
 
   // 标记收到了真正的动画事件，阻止回退动画
   container.style.animation = 'none';
+  
+  // 检查动画开关
+  if (!animationEnabled) {
+    // 动画禁用时直接隐藏
+    container.style.height = '0';
+    container.style.maxHeight = '0';
+    container.style.opacity = '0';
+    
+    // 隐藏侧边栏
+    const groupsSidebar = document.querySelector('.groups-sidebar');
+    if (groupsSidebar) {
+      groupsSidebar.style.visibility = 'hidden';
+    }
+    return;
+  }
   
   // 添加动画进行中的标记
   container.classList.add('js-animating');
@@ -212,6 +248,98 @@ async function animateHeightCollapse(container) {
 }
 
 /**
+ * 贴边显示弹动效果 - 专门用于贴边隐藏显示时的弹动
+ * @param {string} direction - 弹动方向：'top', 'bottom', 'left', 'right'
+ */
+export async function playEdgeSnapBounceEffect(direction = 'top') {
+  const container = document.querySelector('body');
+  if (!container) return;
+
+  const groupsSidebar = document.querySelector('.groups-sidebar');
+  if (groupsSidebar) {
+    groupsSidebar.style.visibility = 'hidden';
+  }
+
+  // 检查动画开关
+  if (!animationEnabled) {
+    // 动画禁用时直接恢复侧边栏
+    if (groupsSidebar) {
+      groupsSidebar.style.visibility = 'visible';
+      groupsSidebar.style.right = '';
+      groupsSidebar.style.transform = '';
+    }
+    return;
+  }
+
+  const amplitude = 50; // 弹动幅度(px)
+  const duration = 600; // 动画时长(ms)
+  const startTime = performance.now();
+
+  // GPU 优化：提示浏览器提前准备
+  container.style.willChange = 'transform';
+
+  return new Promise((resolve) => {
+    let finished = false;
+
+    function animate(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 阻尼弹簧公式
+      const frequency = Math.PI * 4; // 两次完整震荡
+      const damping = 5;             // 阻尼系数
+      const displacement =
+        amplitude *
+        Math.exp(-damping * progress) *
+        Math.cos(frequency * progress);
+
+      // 根据贴边方向设置位移
+      let tx = 0, ty = 0;
+      switch (direction) {
+        case 'top':    ty = displacement; break;
+        case 'bottom': ty = -displacement; break;
+        case 'left':   tx = displacement; break;
+        case 'right':  tx = -displacement; break;
+      }
+
+      container.style.transform = `translate(${tx}px, ${ty}px)`;
+
+      // 恢复侧边栏
+      if (groupsSidebar && progress > 0.8) {
+        groupsSidebar.style.visibility = 'visible';
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 结束时恢复状态
+        container.style.transform = 'none';
+        container.style.willChange = 'auto';
+
+        if (groupsSidebar) {
+          groupsSidebar.style.right = '';
+          groupsSidebar.style.transform = '';
+        }
+
+        finished = true;
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(animate);
+
+    setTimeout(() => {
+      if (!finished) {
+        container.style.transform = 'none';
+        container.style.willChange = 'auto';
+        resolve();
+      }
+    }, duration + 200);
+  });
+}
+
+
+/**
  * 设置窗口动画监听器
  */
 export async function setupWindowAnimationListeners() {
@@ -229,6 +357,13 @@ export async function setupWindowAnimationListeners() {
     await listen('window-hide-animation', () => {
       // console.log('收到窗口隐藏动画事件');
       playWindowHideAnimation();
+    });
+
+    // 监听贴边弹动动画事件
+    await listen('edge-snap-bounce-animation', (event) => {
+      const direction = event.payload;
+      // console.log('收到贴边弹动动画事件:', direction);
+      playEdgeSnapBounceEffect(direction);
     });
 
     // console.log('窗口动画监听器设置完成');
@@ -267,4 +402,21 @@ export function setupAnimationFallback() {
       container.style.animation = 'none';
     }
   }, 200);
+}
+
+/**
+ * 设置动画开关状态
+ * @param {boolean} enabled - 是否启用动画
+ */
+export function setAnimationEnabled(enabled) {
+  animationEnabled = enabled;
+  console.log('窗口动画开关状态:', enabled ? '启用' : '禁用');
+}
+
+/**
+ * 获取动画开关状态
+ * @returns {boolean} 动画是否启用
+ */
+export function isAnimationEnabled() {
+  return animationEnabled;
 }
