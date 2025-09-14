@@ -16,8 +16,8 @@
   --bg-active: #f0f7ff;
 
   /* 边框颜色 */
-  --border-primary: #e8e9ea;
-  --border-secondary: #e0e0e0;
+  --border-primary: #d7d7d7;
+  --border-secondary: #c3c3c3;
   --border-hover: #d0d7de;
   --border-active: var(--primary-color);
 
@@ -108,6 +108,7 @@ body.theme-light {
 /* =================== 标签页导航 =================== */
 .theme-light .tab-navigation {
   background: var(--bg-secondary);
+  border: 1px solid var(--border-primary) !important;
 }
 
 .theme-light .tab-button {
@@ -203,7 +204,7 @@ body.theme-light {
 }
 
 .theme-light .custom-select-option.selected {
-  background-color: var(--primary-light);
+  background-color: var(--dropdown-bg);
   color: var(--primary-color);
 }
 

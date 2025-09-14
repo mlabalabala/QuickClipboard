@@ -98,7 +98,7 @@ body {
   --z-overlay: 10;
 
   /* 筛选激活 */
-  --filter-active-color: rgba(70, 135, 215, 0.8);
+  --filter-active-color: rgba(0, 114, 253, 0.8);
 
   /* 模糊度 */
   --blur-radius: 5px;
