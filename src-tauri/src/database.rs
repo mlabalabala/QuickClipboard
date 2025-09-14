@@ -314,16 +314,6 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
-    // 设置表
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            updated_at INTEGER NOT NULL
-        )",
-        [],
-    )?;
-
     // 创建索引
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_clipboard_created ON clipboard(created_at DESC)",
