@@ -267,7 +267,7 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
 
 /// 处理粘贴后的窗口状态
 fn handle_window_after_paste(window: &WebviewWindow) -> Result<(), String> {
-    let is_pinned = crate::window_management::get_window_pinned();
+    let is_pinned = crate::state_manager::is_window_pinned();
     if !is_pinned {
         // 使用专门的窗口隐藏逻辑
         crate::window_management::hide_webview_window(window.clone());

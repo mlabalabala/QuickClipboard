@@ -139,7 +139,7 @@ pub fn toggle_window_visibility(window: WebviewWindow) -> Result<(), String> {
     // 先判断是否固定，如果是固定且窗口可见就不隐藏
     #[cfg(windows)]
     {
-        if window.is_visible().unwrap_or(true) && window_management::get_window_pinned() {
+        if window.is_visible().unwrap_or(true) && crate::state_manager::is_window_pinned() {
             // 固定时不隐藏
             return Ok(());
         }
@@ -169,12 +169,13 @@ pub fn restore_last_focus() -> Result<(), String> {
 
 #[tauri::command]
 pub fn set_window_pinned(pinned: bool) -> Result<(), String> {
-    window_management::set_window_pinned(pinned)
+    crate::state_manager::set_window_pinned(pinned);
+    Ok(())
 }
 
 #[tauri::command]
 pub fn get_window_pinned() -> bool {
-    window_management::get_window_pinned()
+    crate::state_manager::is_window_pinned()
 }
 
 // 如果主窗口是自动显示的，则隐藏它
@@ -1728,13 +1729,31 @@ pub fn stop_custom_drag() -> Result<(), String> {
 #[tauri::command]
 pub fn set_edge_hide_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     use tauri::Manager;
-    let window = app.get_webview_window("main");
-    crate::edge_snap::set_edge_hide_enabled(enabled, window.as_ref())
+    
+    // 直接设置状态
+    crate::state_manager::set_edge_snap_enabled(enabled);
+    
+    // 保存到设置文件
+    let mut settings = crate::settings::get_global_settings();
+    settings.edge_hide_enabled = enabled;
+    crate::settings::update_global_settings(settings)
+        .map_err(|e| format!("保存设置失败: {}", e))?;
+    
+    // 如果关闭功能且当前窗口已隐藏，先显示窗口
+    if !enabled {
+        if let Some(window) = app.get_webview_window("main") {
+            if crate::edge_snap::is_window_edge_hidden() {
+                let _ = crate::edge_snap::show_snapped_window(&window);
+            }
+        }
+    }
+    
+    Ok(())
 }
 
 #[tauri::command]
 pub fn is_edge_hide_enabled() -> bool {
-    crate::edge_snap::is_edge_hide_enabled()
+    crate::state_manager::is_edge_snap_enabled()
 }
 
 #[tauri::command]

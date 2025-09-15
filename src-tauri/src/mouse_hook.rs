@@ -4,8 +4,6 @@ use std::sync::Mutex;
 use tauri::{ WebviewWindow};
 
 // 全局状态变量
-#[cfg(windows)]
-pub static WINDOW_PINNED_STATE: AtomicBool = AtomicBool::new(false);
 
 #[cfg(windows)]
 pub static MAIN_WINDOW_HANDLE: OnceCell<WebviewWindow> = OnceCell::new();
@@ -47,7 +45,7 @@ unsafe extern "system" fn mouse_hook_proc(
             }
         }
 
-        let is_window_pinned = WINDOW_PINNED_STATE.load(Ordering::Relaxed);
+        let is_window_pinned = crate::state_manager::is_window_pinned();
         let preview_visible = crate::preview_window::is_preview_window_visible();
         let mouse_monitoring_enabled = MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed);
 
@@ -244,17 +242,6 @@ pub fn uninstall_mouse_hook() {
     }
 }
 
-// 设置窗口固定状态
-#[cfg(windows)]
-pub fn set_window_pinned(pinned: bool) {
-    WINDOW_PINNED_STATE.store(pinned, Ordering::SeqCst);
-}
-
-// 获取窗口固定状态
-#[cfg(windows)]
-pub fn is_window_pinned() -> bool {
-    WINDOW_PINNED_STATE.load(Ordering::SeqCst)
-}
 
 // 非Windows平台的空实现
 #[cfg(not(windows))]

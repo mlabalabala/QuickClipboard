@@ -33,6 +33,7 @@ mod utils;
 mod window_effects;
 mod window_management;
 mod edge_snap;
+mod state_manager;
 mod window_drag;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -266,6 +267,9 @@ pub fn run() {
 
             // 注册托盘图标和事件
             tray::setup_tray(&app.app_handle())?;
+
+            // 初始化状态管理器
+            state_manager::init_state_manager();
 
             // 设置窗口关闭事件处理 - 隐藏到托盘而不是退出
             let main_window_clone = main_window.clone();

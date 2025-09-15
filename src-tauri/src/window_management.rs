@@ -1,4 +1,3 @@
-use crate::mouse_hook::WINDOW_PINNED_STATE;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -192,17 +191,6 @@ pub fn restore_last_focus() -> Result<(), String> {
     Ok(())
 }
 
-// 设置窗口固定状态（控制粘贴后是否隐藏窗口）
-pub fn set_window_pinned(pinned: bool) -> Result<(), String> {
-    // 更新全局固定状态
-    WINDOW_PINNED_STATE.store(pinned, Ordering::SeqCst);
-    Ok(())
-}
-
-// 获取窗口固定状态
-pub fn get_window_pinned() -> bool {
-    WINDOW_PINNED_STATE.load(Ordering::SeqCst)
-}
 
 // 检查当前前台窗口是否是自己的应用窗口
 #[cfg(windows)]

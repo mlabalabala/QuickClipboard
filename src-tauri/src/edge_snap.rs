@@ -64,57 +64,17 @@ pub fn init_edge_snap() -> Result<(), String> {
         .lock()
         .map_err(|e| format!("锁定状态失败: {}", e))?;
     state.is_enabled = settings.edge_hide_enabled;
+    
+    // 同步到状态管理器
+    crate::state_manager::set_edge_snap_enabled(settings.edge_hide_enabled);
     Ok(())
 }
 
-// 设置贴边隐藏功能开关
-pub fn set_edge_hide_enabled(enabled: bool, window: Option<&WebviewWindow>) -> Result<(), String> {
-    let mut state = EDGE_SNAP_MANAGER
-        .lock()
-        .map_err(|e| format!("锁定状态失败: {}", e))?;
-
-    // 如果关闭功能且当前窗口已隐藏，先显示窗口
-    if !enabled && state.is_hidden && state.is_snapped {
-        if let Some(win) = window {
-            drop(state); // 释放锁
-            let _ = show_snapped_window(win);
-            state = EDGE_SNAP_MANAGER
-                .lock()
-                .map_err(|e| format!("锁定状态失败: {}", e))?;
-        }
-    }
-
-    state.is_enabled = enabled;
-
-    if !enabled {
-        // 清理贴边状态
-        state.is_snapped = false;
-        state.snapped_edge = None;
-        state.original_position = None;
-        state.is_hidden = false;
-    }
-
-    // 保存到设置文件
-    let mut settings = crate::settings::get_global_settings();
-    settings.edge_hide_enabled = enabled;
-    crate::settings::update_global_settings(settings)
-        .map_err(|e| format!("保存设置失败: {}", e))?;
-
-    Ok(())
-}
-
-// 获取贴边隐藏功能开关状态
-pub fn is_edge_hide_enabled() -> bool {
-    EDGE_SNAP_MANAGER
-        .lock()
-        .map(|state| state.is_enabled)
-        .unwrap_or(false)
-}
 
 // 检查窗口是否需要吸附到边缘
 pub fn check_window_snap(window: &WebviewWindow) -> Result<(), String> {
-    // 功能开关检查
-    if !is_edge_hide_enabled() {
+    // 使用新的状态管理器检查是否应该启用贴边隐藏
+    if !crate::state_manager::should_enable_edge_hide() {
         return Ok(());
     }
 
@@ -145,12 +105,18 @@ pub fn check_window_snap(window: &WebviewWindow) -> Result<(), String> {
             state.is_snapped = true;
             state.snapped_edge = Some(edge.clone());
             state.is_hidden = false;
+            
+            // 同步到状态管理器
+            crate::state_manager::set_edge_snap_active(true);
         } else if state.is_snapped {
             // 窗口不在边缘但之前是贴边状态，清除贴边状态
             state.is_snapped = false;
             state.snapped_edge = None;
             state.original_position = None;
             state.is_hidden = false;
+            
+            // 同步到状态管理器
+            crate::state_manager::set_edge_snap_active(false);
         }
     }
 
@@ -234,6 +200,11 @@ fn get_snap_target(window: &WebviewWindow, window_rect: &RECT) -> Option<(SnapEd
 
 // 隐藏已吸附的窗口
 pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
+    // 使用新的状态管理器检查是否应该启用贴边隐藏
+    if !crate::state_manager::should_enable_edge_hide() {
+        return Ok(());
+    }
+
     let edge = {
         let state = EDGE_SNAP_MANAGER
             .lock()
@@ -352,6 +323,22 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 
+// 重新启动鼠标监听（如果窗口处于贴边状态）
+pub fn restart_mouse_monitoring_if_snapped(window: &WebviewWindow) -> Result<(), String> {
+    let is_snapped = {
+        let state = EDGE_SNAP_MANAGER
+            .lock()
+            .map_err(|e| format!("锁定状态失败: {}", e))?;
+        state.is_snapped
+    };
+    
+    if is_snapped {
+        start_mouse_monitoring(window.clone())?;
+    }
+    
+    Ok(())
+}
+
 // 启动鼠标监听
 fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
     std::thread::spawn(move || {
@@ -383,6 +370,12 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
                     state.snapped_edge.clone(),
                 )
             };
+
+            // 使用新的状态管理器检查是否应该启用贴边隐藏
+            if !crate::state_manager::should_enable_edge_hide() {
+                std::thread::sleep(Duration::from_millis(100));
+                continue;
+            }
 
             if let Some(edge) = edge {
                 // 获取窗口位置信息
@@ -611,7 +604,7 @@ pub fn restore_edge_snap_on_startup(window: &WebviewWindow) -> Result<(), String
     let settings = crate::settings::get_global_settings();
 
     // 只有在功能启用且有保存位置时才恢复
-    if !settings.edge_hide_enabled {
+    if !crate::state_manager::is_edge_snap_enabled() {
         return Ok(());
     }
 
@@ -657,11 +650,7 @@ pub fn restore_edge_snap_on_startup(window: &WebviewWindow) -> Result<(), String
 
 // 检查窗口是否处于边缘吸附状态
 pub fn is_window_edge_snapped() -> bool {
-    if let Ok(state) = EDGE_SNAP_MANAGER.lock() {
-        state.is_snapped
-    } else {
-        false
-    }
+    crate::state_manager::is_edge_snap_active()
 }
 
 // 获取窗口所在显示器的边界
