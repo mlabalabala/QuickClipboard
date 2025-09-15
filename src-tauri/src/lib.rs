@@ -126,14 +126,12 @@ pub fn run() {
         }))
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = commands::toggle_window_visibility(window);
-                }
+                let _ = commands::toggle_window_visibility(app.app_handle().clone());
             }
             "settings" => {
                 let app_handle = app.app_handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = crate::services::window_service::open_settings_window(app_handle).await;
+                    let _ = commands::open_settings_window(app_handle).await;
                 });
             }
             "quit" => {
