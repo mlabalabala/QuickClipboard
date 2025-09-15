@@ -1097,6 +1097,8 @@ body {
   border-radius: var(--border-radius-small);
   border: 0.1px solid transparent;
   transition: all var(--transition-duration) ease;
+  align-items: center;
+  justify-content: center;
 }
 
 .file-icon {
@@ -1191,7 +1193,9 @@ body {
 .file-style-icons-only .file-info {
   display: none;
 }
-
+.file-style-icons-only .file-item {
+  padding: 20px !important;
+}
 /* =================== 分组标签样式 =================== */
 .group-badge {
   position: absolute;
