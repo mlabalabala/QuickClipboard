@@ -1,4 +1,5 @@
 use crate::database::GroupInfo;
+use uuid;
 
 /// 分组服务 - 处理分组相关的业务逻辑
 pub struct GroupService;
@@ -94,7 +95,7 @@ impl GroupService {
 
         // 添加到收藏
         let favorite_item = crate::database::FavoriteItem {
-            id: "0".to_string(), // 数据库会自动分配
+            id: uuid::Uuid::new_v4().to_string(), // 生成唯一 UUID
             title: display_content,
             content: final_content,
             html_content,
