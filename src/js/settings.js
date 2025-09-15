@@ -1668,6 +1668,25 @@ function initDataManagement() {
   if (resetAllButton) {
     resetAllButton.addEventListener('click', handleResetAllData);
   }
+
+  // 存储位置管理按钮
+  const openStorageButton = document.getElementById('open-storage-folder');
+  if (openStorageButton) {
+    openStorageButton.addEventListener('click', handleOpenStorageFolder);
+  }
+
+  const changeStorageButton = document.getElementById('change-storage-location');
+  if (changeStorageButton) {
+    changeStorageButton.addEventListener('click', handleChangeStorageLocation);
+  }
+
+  const resetStorageButton = document.getElementById('reset-storage-location');
+  if (resetStorageButton) {
+    resetStorageButton.addEventListener('click', handleResetStorageLocation);
+  }
+
+  // 加载存储信息
+  loadStorageInfo();
 }
 
 // 处理导出数据
@@ -2190,6 +2209,114 @@ function addAppToFilterList(processName, appName) {
     renderAvailableAppsGrid();
 
     showNotification(`已添加 ${processName} 到应用过滤列表`, 'success');
+  }
+}
+
+// =================== 存储位置管理功能 ===================
+
+// 加载存储信息
+async function loadStorageInfo() {
+  try {
+    const storageInfo = await invoke('get_storage_info');
+    const currentPathElement = document.getElementById('current-storage-path');
+    if (currentPathElement) {
+      currentPathElement.textContent = storageInfo.current_path;
+      currentPathElement.title = storageInfo.current_path; 
+    }
+  } catch (error) {
+    console.error('获取存储信息失败:', error);
+    const currentPathElement = document.getElementById('current-storage-path');
+    if (currentPathElement) {
+      currentPathElement.textContent = '获取存储位置失败';
+    }
+  }
+}
+
+// 处理打开存储文件夹
+async function handleOpenStorageFolder() {
+  try {
+    await invoke('open_storage_folder');
+  } catch (error) {
+    console.error('打开存储文件夹失败:', error);
+    showNotification(`打开存储文件夹失败: ${error}`, 'error');
+  }
+}
+
+// 处理更改存储位置
+async function handleChangeStorageLocation() {
+  try {
+    // 使用文件夹选择对话框
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selectedPath = await open({
+      title: '选择新的数据存储位置',
+      directory: true,
+      multiple: false
+    });
+
+    if (!selectedPath) {
+      return; // 用户取消了操作
+    }
+
+    // 确认操作
+    const confirmed = await confirm(
+      '更改存储位置将迁移所有现有数据到新位置，此过程可能需要一些时间。确定继续吗？',
+      {
+        title: '确认更改存储位置',
+        type: 'warning'
+      }
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    // 显示进度提示
+    showNotification('正在迁移数据到新位置，请稍候...', 'info');
+
+    // 调用后端迁移函数
+    await invoke('set_custom_storage_location', {
+      newPath: selectedPath
+    });
+
+    // 重新加载存储信息
+    await loadStorageInfo();
+
+    showNotification('存储位置更改成功！', 'success');
+  } catch (error) {
+    console.error('更改存储位置失败:', error);
+    showNotification(`更改存储位置失败: ${error}`, 'error');
+  }
+}
+
+// 处理重置存储位置
+async function handleResetStorageLocation() {
+  try {
+    // 确认操作
+    const confirmed = await confirm(
+      '重置存储位置将把数据迁移回默认的AppData目录。确定继续吗？',
+      {
+        title: '确认重置存储位置',
+        type: 'warning'
+      }
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    // 显示进度提示
+    showNotification('正在重置存储位置，请稍候...', 'info');
+
+    // 调用后端重置函数
+    await invoke('reset_to_default_storage_location');
+
+    // 重新加载存储信息
+    await loadStorageInfo();
+
+    showNotification('存储位置已重置为默认位置！', 'success');
+  } catch (error) {
+    console.error('重置存储位置失败:', error);
+    showNotification(`重置存储位置失败: ${error}`, 'error');
   }
 }
 

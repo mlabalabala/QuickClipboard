@@ -1236,6 +1236,58 @@
 
           <div class="settings-group">
             <div class="group-header">
+              <h3>数据存储位置</h3>
+              <p>管理应用数据的存储位置</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>当前存储位置</label>
+                <span class="setting-description" id="current-storage-path">
+                  正在获取当前存储位置...
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="secondary-button" id="open-storage-folder">
+                  <i class="ti ti-folder-open"></i>
+                  打开文件夹
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>更改存储位置</label>
+                <span class="setting-description">
+                  选择新的目录存储应用数据，系统将自动迁移现有数据
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="primary-button" id="change-storage-location">
+                  <i class="ti ti-folder-plus"></i>
+                  选择新位置
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label>重置为默认位置</label>
+                <span class="setting-description">
+                  将数据存储位置重置为系统默认的AppData目录
+                </span>
+              </div>
+              <div class="setting-control">
+                <button class="secondary-button" id="reset-storage-location">
+                  <i class="ti ti-home"></i>
+                  重置位置
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="group-header">
               <h3>数据清理</h3>
               <p>清理和重置应用数据</p>
             </div>

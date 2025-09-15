@@ -20,7 +20,6 @@ impl PreviewService {
 
     /// 取消预览（不粘贴直接隐藏）
     pub fn cancel_preview() -> Result<(), String> {
-        // 这个函数是异步的，我们需要在这里处理
         tokio::spawn(async {
             let _ = crate::preview_window::cancel_preview().await;
         });

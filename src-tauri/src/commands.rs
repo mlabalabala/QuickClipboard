@@ -744,6 +744,41 @@ pub fn get_app_data_dir() -> Result<String, String> {
     crate::services::system_service::SystemService::get_app_data_dir()
 }
 
+// =================== 存储位置管理命令 ===================
+
+// 获取存储信息
+#[tauri::command]
+pub fn get_storage_info() -> Result<crate::settings::StorageInfo, String> {
+    let settings = crate::settings::get_global_settings();
+    settings.get_storage_info()
+}
+
+// 设置自定义存储位置
+#[tauri::command]
+pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle) -> Result<(), String> {
+    let mut settings = crate::settings::get_global_settings();
+    settings.set_custom_storage_path(new_path, Some(app)).await?;
+    crate::settings::update_global_settings(settings)?;
+    Ok(())
+}
+
+// 重置为默认存储位置
+#[tauri::command]
+pub async fn reset_to_default_storage_location(app: tauri::AppHandle) -> Result<(), String> {
+    let mut settings = crate::settings::get_global_settings();
+    settings.reset_to_default_storage(Some(app)).await?;
+    crate::settings::update_global_settings(settings)?;
+    Ok(())
+}
+
+// 打开存储文件夹
+#[tauri::command]
+pub async fn open_storage_folder() -> Result<(), String> {
+    let settings = crate::settings::get_global_settings();
+    let storage_path = settings.get_data_directory()?;
+    open_file_with_default_program(storage_path.to_string_lossy().to_string()).await
+}
+
 // 刷新所有文件类型项目的图标
 pub fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     crate::services::system_service::SystemService::refresh_file_icons(app_handle)

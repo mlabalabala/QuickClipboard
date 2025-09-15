@@ -8,6 +8,7 @@ mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
 mod commands;
+mod data_migration;
 mod data_manager;
 mod database;
 mod http_client;
@@ -425,6 +426,10 @@ pub fn run() {
             commands::clear_clipboard_history_dm,
             commands::reset_all_data,
             commands::get_app_data_dir,
+            commands::get_storage_info,
+            commands::set_custom_storage_location,
+            commands::reset_to_default_storage_location,
+            commands::open_storage_folder,
             commands::save_window_position,
             commands::save_window_size,
             commands::get_saved_window_position,

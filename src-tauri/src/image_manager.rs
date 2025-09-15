@@ -316,14 +316,7 @@ impl ImageManager {
 
 /// 获取应用数据目录
 fn get_app_data_dir() -> Result<PathBuf, String> {
-    // 使用本地数据目录 (AppData\Local\quickclipboard)，与其他组件保持一致
-    let app_data_dir = dirs::data_local_dir()
-        .ok_or_else(|| "无法获取本地数据目录".to_string())?
-        .join("quickclipboard");
-
-    fs::create_dir_all(&app_data_dir).map_err(|e| format!("创建应用数据目录失败: {}", e))?;
-
-    Ok(app_data_dir)
+    crate::settings::get_data_directory()
 }
 
 use once_cell::sync::Lazy;

@@ -213,7 +213,7 @@ pub fn is_current_window_own_app(_window: &tauri::WebviewWindow) -> bool {
     false
 }
 
-// 检查我们的窗口是否应该接收导航按键
+// 检查窗口是否应该接收导航按键
 #[cfg(windows)]
 pub fn should_receive_navigation_keys(window: &tauri::WebviewWindow) -> bool {
     window.is_visible().unwrap_or(false)

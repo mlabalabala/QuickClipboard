@@ -1,7 +1,7 @@
-use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use dirs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -85,6 +85,10 @@ pub struct AppSettings {
     
     // 格式设置
     pub paste_with_format: bool,      // 是否带格式粘贴和显示，true=带格式，false=纯文本
+    
+    // 数据存储设置
+    pub custom_storage_path: Option<String>, // 自定义存储路径，None表示使用默认位置
+    pub use_custom_storage: bool,            // 是否使用自定义存储路径
 }
 
 impl Default for AppSettings {
@@ -172,24 +176,41 @@ impl Default for AppSettings {
             
             // 格式设置默认值
             paste_with_format: true,                   // 默认带格式粘贴
+            
+            // 数据存储设置默认值
+            custom_storage_path: None,                 // 默认使用系统AppData目录
+            use_custom_storage: false,                 // 默认不使用自定义存储路径
         }
     }
 }
 
 impl AppSettings {
-    /// 获取设置文件路径
-    fn get_settings_file_path() -> Result<PathBuf, String> {
-        // 使用本地数据目录 (AppData\Local\quickclipboard)，与其他组件保持一致
-        let config_dir = dirs::data_local_dir()
-            .ok_or("无法获取本地数据目录")?
+    /// 获取默认的应用数据目录
+    pub fn get_default_data_directory() -> Result<PathBuf, String> {
+        let app_data_dir = dirs::data_local_dir()
+            .ok_or_else(|| "无法获取本地数据目录".to_string())?
             .join("quickclipboard");
+        
+        fs::create_dir_all(&app_data_dir).map_err(|e| format!("创建应用数据目录失败: {}", e))?;
+        Ok(app_data_dir)
+    }
 
-        // 确保配置目录存在
-        if !config_dir.exists() {
-            fs::create_dir_all(&config_dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
-        }
-
+    /// 获取设置文件路径（总是在默认位置）
+    fn get_settings_file_path() -> Result<PathBuf, String> {
+        let config_dir = Self::get_default_data_directory()?;
         Ok(config_dir.join("settings.json"))
+    }
+
+    /// 根据当前设置获取数据存储目录
+    pub fn get_data_directory(&self) -> Result<PathBuf, String> {
+        if self.use_custom_storage {
+            if let Some(custom_path) = &self.custom_storage_path {
+                let path = PathBuf::from(custom_path);
+                fs::create_dir_all(&path).map_err(|e| format!("创建自定义存储目录失败: {}", e))?;
+                return Ok(path);
+            }
+        }
+        Self::get_default_data_directory()
     }
 
     /// 从文件加载设置
@@ -534,4 +555,121 @@ pub fn update_global_settings_from_json(json: &serde_json::Value) -> Result<(), 
     let mut settings = get_global_settings();
     settings.update_from_json(json);
     update_global_settings(settings)
+}
+
+/// 获取当前数据存储目录（全局函数）
+pub fn get_data_directory() -> Result<PathBuf, String> {
+    let settings = get_global_settings();
+    settings.get_data_directory()
+}
+
+impl AppSettings {
+    /// 设置自定义存储路径并迁移数据
+    pub async fn set_custom_storage_path(&mut self, new_path: String, app: Option<tauri::AppHandle>) -> Result<(), String> {
+        let new_dir = PathBuf::from(&new_path);
+        
+        // 验证新路径
+        if !new_dir.exists() {
+            fs::create_dir_all(&new_dir).map_err(|e| format!("创建新存储目录失败: {}", e))?;
+        }
+        
+        if !new_dir.is_dir() {
+            return Err("指定的路径不是有效的目录".to_string());
+        }
+        
+        // 获取当前存储目录
+        let current_dir = self.get_data_directory()?;
+        
+        // 如果新路径与当前路径相同，无需迁移
+        if current_dir == new_dir {
+            return Ok(());
+        }
+        
+        // 先执行数据迁移
+        crate::data_migration::DataMigrationService::migrate_data(&current_dir, &new_dir, None).await?;
+        
+        // 更新设置
+        self.custom_storage_path = Some(new_path);
+        self.use_custom_storage = true;
+        
+        // 立即更新全局设置缓存，确保 get_data_directory() 返回新路径
+        {
+            let mut global_settings = GLOBAL_SETTINGS.lock().unwrap();
+            *global_settings = self.clone();
+        }
+        
+        // 设置更新后重新初始化数据库并刷新窗口
+        crate::database::reinitialize_database()
+            .map_err(|e| format!("重新初始化数据库失败: {}", e))?;
+        
+        if let Some(app_handle) = app {
+            println!("刷新所有窗口以显示新位置的数据...");
+            if let Err(e) = crate::commands::refresh_all_windows(app_handle) {
+                println!("刷新窗口失败: {}", e);
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// 重置为默认存储位置
+    pub async fn reset_to_default_storage(&mut self, app: Option<tauri::AppHandle>) -> Result<(), String> {
+        let default_dir = Self::get_default_data_directory()?;
+        let current_dir = self.get_data_directory()?;
+        
+        // 如果当前已经是默认位置，无需操作
+        if current_dir == default_dir {
+            return Ok(());
+        }
+        
+        // 先执行数据迁移
+        crate::data_migration::DataMigrationService::migrate_data(&current_dir, &default_dir, None).await?;
+        
+        // 更新设置
+        self.custom_storage_path = None;
+        self.use_custom_storage = false;
+        
+        // 立即更新全局设置缓存，确保 get_data_directory() 返回新路径
+        {
+            let mut global_settings = GLOBAL_SETTINGS.lock().unwrap();
+            *global_settings = self.clone();
+        }
+        
+        // 设置更新后重新初始化数据库并刷新窗口
+        crate::database::reinitialize_database()
+            .map_err(|e| format!("重新初始化数据库失败: {}", e))?;
+        
+        if let Some(app_handle) = app {
+            println!("刷新所有窗口以显示新位置的数据...");
+            if let Err(e) = crate::commands::refresh_all_windows(app_handle) {
+                println!("刷新窗口失败: {}", e);
+            }
+        }
+        
+        Ok(())
+    }
+    
+    
+    
+    /// 获取存储信息
+    pub fn get_storage_info(&self) -> Result<StorageInfo, String> {
+        let current_dir = self.get_data_directory()?;
+        let default_dir = Self::get_default_data_directory()?;
+        
+        Ok(StorageInfo {
+            current_path: current_dir.to_string_lossy().to_string(),
+            default_path: default_dir.to_string_lossy().to_string(),
+            is_default: !self.use_custom_storage,
+            custom_path: self.custom_storage_path.clone(),
+        })
+    }
+}
+
+/// 存储信息
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct StorageInfo {
+    pub current_path: String,
+    pub default_path: String,
+    pub is_default: bool,
+    pub custom_path: Option<String>,
 }

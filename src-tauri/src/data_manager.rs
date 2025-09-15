@@ -33,9 +33,7 @@ pub struct ExportMetadata {
 
 // 获取应用数据目录
 pub fn get_app_data_dir() -> Result<PathBuf, String> {
-    dirs::data_local_dir()
-        .map(|dir| dir.join("quickclipboard"))
-        .ok_or_else(|| "无法获取应用数据目录".to_string())
+    crate::settings::get_data_directory()
 }
 
 // 导出数据到ZIP文件
@@ -59,14 +57,16 @@ pub async fn export_data(export_path: &str, _options: ExportOptions) -> Result<(
     };
 
     // 导出数据库文件
-    let db_path = app_data_dir.join("quickclipboard.db");
+    let db_path = crate::database::get_database_path().map_err(|e| format!("获取数据库路径失败: {}", e))?;
     if db_path.exists() {
         add_file_to_zip(&mut zip, &db_path, "quickclipboard.db", zip_options)?;
         metadata.database_file = true;
     }
 
-    // 导出设置文件
-    let settings_path = app_data_dir.join("settings.json");
+    // 导出设置文件（始终从默认目录读取）
+    let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
+        .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
+    let settings_path = default_data_dir.join("settings.json");
     if settings_path.exists() {
         add_file_to_zip(&mut zip, &settings_path, "settings.json", zip_options)?;
         metadata.settings_file = true;
@@ -137,8 +137,10 @@ pub async fn reset_all_data() -> Result<(), String> {
     // 清空数据库
     crate::database::clear_all_data().map_err(|e| format!("清空数据库失败: {}", e))?;
 
-    // 删除设置文件
-    let settings_path = app_data_dir.join("settings.json");
+    // 删除设置文件（始终从默认目录删除）
+    let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
+        .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
+    let settings_path = default_data_dir.join("settings.json");
     if settings_path.exists() {
         fs::remove_file(&settings_path).map_err(|e| format!("删除设置文件失败: {}", e))?;
     }
@@ -192,8 +194,8 @@ fn extract_all_files(archive: &mut ZipArchive<fs::File>, app_data_dir: &Path) ->
 
         let file_name = file.name().to_string();
 
-        // 跳过元数据文件
-        if file_name == "metadata.json" {
+        // 跳过元数据文件和设置文件（设置文件单独处理）
+        if file_name == "metadata.json" || file_name == "settings.json" {
             continue;
         }
 
@@ -237,10 +239,12 @@ async fn merge_import_data(archive: &mut ZipArchive<fs::File>, app_data_dir: &Pa
         merge_database(&temp_db_path).await?;
     }
 
-    // 直接覆盖设置文件
+    // 直接覆盖设置文件（始终保存到默认目录）
     let temp_settings_path = temp_dir.join("settings.json");
     if temp_settings_path.exists() {
-        let target_settings_path = app_data_dir.join("settings.json");
+        let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
+            .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
+        let target_settings_path = default_data_dir.join("settings.json");
         fs::copy(&temp_settings_path, &target_settings_path)
             .map_err(|e| format!("复制设置文件失败: {}", e))?;
     }

@@ -8,14 +8,11 @@ use std::sync::{Arc, Mutex};
 pub static DB_CONNECTION: Lazy<Arc<Mutex<Option<Connection>>>> =
     Lazy::new(|| Arc::new(Mutex::new(None)));
 
-// 数据库文件路径
-pub static DB_FILE: Lazy<PathBuf> = Lazy::new(|| {
-    let mut dir = dirs::data_local_dir().unwrap_or_else(|| std::env::temp_dir());
-    dir.push("quickclipboard");
-    let _ = std::fs::create_dir_all(&dir);
-    dir.push("quickclipboard.db");
-    dir
-});
+// 动态获取数据库文件路径
+pub fn get_database_path() -> Result<PathBuf, String> {
+    let data_dir = crate::settings::get_data_directory()?;
+    Ok(data_dir.join("quickclipboard.db"))
+}
 
 // 内容类型枚举
 #[derive(Clone, Debug, PartialEq)]
@@ -252,10 +249,16 @@ pub struct GroupInfo {
 
 // 初始化数据库
 pub fn initialize_database() -> SqliteResult<()> {
-    let db_path = &*DB_FILE;
+    let db_path = get_database_path().map_err(|e| {
+        eprintln!("获取数据库路径失败: {}", e);
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CANTOPEN),
+            Some(format!("无法获取数据库路径: {}", e))
+        )
+    })?;
     println!("初始化数据库: {:?}", db_path);
 
-    let conn = Connection::open(db_path)?;
+    let conn = Connection::open(&db_path)?;
 
     // 创建表
     create_tables(&conn)?;
@@ -341,11 +344,33 @@ pub fn close_database_connection() -> Result<(), String> {
     let mut db_conn = DB_CONNECTION
         .lock()
         .map_err(|e| format!("获取数据库锁失败: {}", e))?;
-    if db_conn.is_some() {
-        *db_conn = None;
+    
+    if let Some(conn) = db_conn.take() {
+        drop(conn);
         println!("数据库连接已关闭");
+    } else {
+        println!("数据库连接已经是关闭状态");
     }
+    
     Ok(())
+}
+
+// 重新初始化数据库连接
+pub fn reinitialize_database() -> Result<(), String> {
+    // 先关闭现有连接
+    close_database_connection()?;
+    
+    // 清除连接池中的连接
+    {
+        let mut db_conn = DB_CONNECTION
+            .lock()
+            .map_err(|e| format!("获取数据库锁失败: {}", e))?;
+        *db_conn = None;
+    }
+    
+    // 重新初始化
+    initialize_database()
+        .map_err(|e| format!("重新初始化数据库失败: {}", e))
 }
 
 // 执行数据库操作的辅助函数
