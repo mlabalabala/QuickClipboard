@@ -85,6 +85,9 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
         return;
     }
     
+    // 先检查当前窗口位置，更新贴边状态
+    let _ = crate::edge_snap::check_window_snap(&window);
+    
     // 如果窗口处于贴边显示状态，点击外部应该隐藏到贴边位置
     if crate::edge_snap::is_window_edge_snapped() {
         // 使用贴边隐藏方式

@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::WebviewWindow;
 use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
@@ -55,6 +56,8 @@ lazy_static::lazy_static! {
         original_position: None,
         is_hidden: false,
     }));
+    // 鼠标监听线程控制
+    static ref MOUSE_MONITORING_ACTIVE: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 }
 
 // 初始化边缘吸附功能
@@ -131,6 +134,9 @@ pub fn check_window_snap(window: &WebviewWindow) -> Result<(), String> {
 
 // 恢复窗口到原始位置
 pub fn restore_window_from_snap(window: &WebviewWindow) -> Result<(), String> {
+    // 停止鼠标监听
+    stop_mouse_monitoring();
+    
     let mut state = EDGE_SNAP_MANAGER
         .lock()
         .map_err(|e| format!("锁定状态失败: {}", e))?;
@@ -323,6 +329,14 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 
+// 停止鼠标监听
+pub fn stop_mouse_monitoring() {
+    if MOUSE_MONITORING_ACTIVE.load(Ordering::Relaxed) {
+        println!("请求停止鼠标监听线程");
+        MOUSE_MONITORING_ACTIVE.store(false, Ordering::Relaxed);
+    }
+}
+
 // 重新启动鼠标监听（如果窗口处于贴边状态）
 pub fn restart_mouse_monitoring_if_snapped(window: &WebviewWindow) -> Result<(), String> {
     let is_snapped = {
@@ -341,7 +355,20 @@ pub fn restart_mouse_monitoring_if_snapped(window: &WebviewWindow) -> Result<(),
 
 // 启动鼠标监听
 fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
+    // 如果已有监听线程在运行，先停止它
+    if MOUSE_MONITORING_ACTIVE.load(Ordering::Relaxed) {
+        println!("停止之前的鼠标监听线程");
+        MOUSE_MONITORING_ACTIVE.store(false, Ordering::Relaxed);
+        // 等待之前的线程退出
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    
+    // 启动新的监听线程
+    MOUSE_MONITORING_ACTIVE.store(true, Ordering::Relaxed);
+    let monitoring_active = MOUSE_MONITORING_ACTIVE.clone();
+    
     std::thread::spawn(move || {
+        println!("启动新的鼠标监听线程");
         // 初始缓冲期，避免拖拽结束后的立即触发
         std::thread::sleep(Duration::from_millis(150));
 
@@ -352,6 +379,12 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
         let mut first_check = true;
 
         loop {
+            // 检查线程是否应该继续运行
+            if !monitoring_active.load(Ordering::Relaxed) {
+                println!("鼠标监听线程收到停止信号，退出");
+                break;
+            }
+            
             // 检查是否还在吸附状态
             let (is_enabled, is_snapped, is_hidden, edge) = {
                 let state = match EDGE_SNAP_MANAGER.lock() {
@@ -360,6 +393,7 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
                 };
 
                 if !state.is_enabled || !state.is_snapped {
+                    println!("贴边状态已取消，鼠标监听线程退出");
                     break;
                 }
 
@@ -446,6 +480,10 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
 
             std::thread::sleep(Duration::from_millis(50));
         }
+        
+        // 线程退出时清理状态
+        monitoring_active.store(false, Ordering::Relaxed);
+        println!("鼠标监听线程已退出");
     });
 
     Ok(())

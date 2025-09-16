@@ -75,7 +75,7 @@ async function loadAiTranslationSettings() {
 
     // 更新UI状态
     setIsAiTranslationEnabled(settings.aiTranslationEnabled);
-    updateAiTranslationButtonState();
+    // updateAiTranslationButtonState();
   } catch (error) {
     console.error('加载AI翻译设置失败:', error);
   }
