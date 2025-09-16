@@ -7,7 +7,7 @@ use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExportOptions {
-    // 简化：总是导出所有数据
+    // 导出所有数据
 }
 
 #[derive(Debug, Serialize, Deserialize)]

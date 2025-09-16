@@ -1710,7 +1710,7 @@ async function handleExportData() {
     // 显示进度提示
     showNotification('正在导出全部数据，请稍候...', 'info');
 
-    // 调用后端导出函数（简化的选项）
+    // 调用后端导出函数
     await invoke('export_data', {
       exportPath: filePath,
       options: {} // 空选项，后端会导出所有数据
@@ -1772,7 +1772,6 @@ async function handleImportData() {
       importPath: filePath,
       options: {
         mode: importMode === 'replace' ? 'Replace' : 'Merge'
-        // 简化：总是导入所有数据
       }
     });
 

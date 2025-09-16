@@ -11,11 +11,12 @@ impl AIService {
             return Err("AI配置无效，请检查API密钥等设置".to_string());
         }
 
-        // 简化实现，返回常用模型列表
-        Ok(vec![
-            "gpt-3.5-turbo".to_string(),
-            "gpt-4".to_string(),
-            "gpt-4-turbo".to_string(),
-        ])
+        let config_manager = crate::ai_config::AIConfigManager::new(ai_config)
+            .map_err(|e| format!("创建AI配置管理器失败: {}", e))?;
+
+        config_manager
+            .get_available_models()
+            .await
+            .map_err(|e| format!("获取模型列表失败: {}", e))
     }
 }

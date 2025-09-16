@@ -119,6 +119,8 @@ body {
   border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
   cursor: grab;
   z-index: var(--z-root);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 0px;
 }
 
 .title-bar:active {
@@ -260,7 +262,8 @@ body {
   box-sizing: border-box;
   border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
   cursor: grab;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-top: 0px;
 }
 
 .container:active {
@@ -2421,7 +2424,7 @@ body.dragging .title-bar {
   transition: all 0.2s ease;
 }
 
-/* Sortable 拖拽样式 - 简化并确保高层级 */
+/* Sortable 拖拽样式 */
 .sortable-ghost {
   opacity: 0.3;
   background: var(--primary-color) !important;

@@ -437,7 +437,7 @@ fn is_url(text: &str) -> bool {
       text.ends_with(".io") || text.ends_with(".dev")))
 }
 
-// 检查字符串是否为文件路径（简化版本，只检查标准路径格式）
+// 检查字符串是否为文件路径
 fn is_file_paths(text: &str) -> bool {
     let text = text.trim();
     
