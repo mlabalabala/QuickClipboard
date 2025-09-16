@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import {
-  aiTranslationButton,
   setIsAiTranslationEnabled,
   getIsAiTranslationEnabled
 } from './config.js';
@@ -35,8 +34,6 @@ export async function initAiTranslation() {
   // 加载AI翻译设置
   await loadAiTranslationSettings();
 
-  // 设置AI翻译开关事件监听
-  setupAiTranslationSwitch();
 
   // 监听设置窗口的AI翻译状态变化
   await setupAiTranslationEventListeners();
@@ -85,62 +82,61 @@ async function loadAiTranslationSettings() {
 }
 
 /**
- * 设置AI翻译开关事件监听
+ * 更新所有AI翻译按钮状态
  */
-function setupAiTranslationSwitch() {
-  if (!aiTranslationButton) {
-    console.warn('AI翻译按钮元素未找到');
-    return;
-  }
-
-  aiTranslationButton.addEventListener('click', async (event) => {
-    event.stopPropagation();
-    const currentEnabled = getIsAiTranslationEnabled();
-    const newEnabled = !currentEnabled;
-    console.log('AI翻译按钮点击，状态变化:', newEnabled);
-
-    try {
-      // 检查AI翻译配置是否有效
-      const isConfigValid = await invoke('check_ai_translation_config');
-
-      if (newEnabled && !isConfigValid) {
-        // 配置无效，显示提示
-        showAiTranslationConfigError();
-        return;
+export function updateAllAiTranslationButtons() {
+  const enabled = getIsAiTranslationEnabled();
+  
+  // 更新工具管理器中的所有AI翻译按钮
+  const toolButtons = document.querySelectorAll('[data-tool-id="ai-translation-button"]');
+  toolButtons.forEach(element => {
+    const button = element.classList.contains('unified-tool') ? element : element.querySelector('.unified-tool');
+    if (button) {
+      if (enabled) {
+        button.classList.add('active');
+        button.title = 'AI翻译 - 已开启';
+      } else {
+        button.classList.remove('active');
+        button.title = 'AI翻译 - 已关闭';
       }
-
-      // 更新本地状态
-      setIsAiTranslationEnabled(newEnabled);
-
-      // 更新按钮状态
-      updateAiTranslationButtonState();
-
-      // 保存AI翻译设置到后端
-      await saveAiTranslationSetting('aiTranslationEnabled', newEnabled);
-
-      // 发送状态变化事件给设置窗口
-      await broadcastAiTranslationStateChange(newEnabled);
-
-    } catch (error) {
-      console.error('切换AI翻译状态失败:', error);
-      // 状态切换失败，不需要恢复按钮状态，因为本地状态没有改变
     }
   });
-
-  // 初始化按钮状态
-  updateAiTranslationButtonState();
 }
 
 /**
- * 更新AI翻译按钮状态
+ * AI翻译切换逻辑（导出供工具管理器使用）
  */
-function updateAiTranslationButtonState() {
-  if (aiTranslationButton) {
-    if (getIsAiTranslationEnabled()) {
-      aiTranslationButton.classList.add('active');
-    } else {
-      aiTranslationButton.classList.remove('active');
+export async function toggleAiTranslation() {
+  const currentEnabled = getIsAiTranslationEnabled();
+  const newEnabled = !currentEnabled;
+  console.log('AI翻译按钮点击，状态变化:', newEnabled);
+
+  try {
+    // 检查AI翻译配置是否有效
+    const isConfigValid = await invoke('check_ai_translation_config');
+
+    if (newEnabled && !isConfigValid) {
+      // 配置无效，显示提示
+      showAiTranslationConfigError();
+      return false;
     }
+
+    // 更新本地状态
+    setIsAiTranslationEnabled(newEnabled);
+
+    // 更新所有按钮状态（包括工具管理器中的按钮）
+    updateAllAiTranslationButtons();
+
+    // 保存AI翻译设置到后端
+    await saveAiTranslationSetting('aiTranslationEnabled', newEnabled);
+
+    // 发送状态变化事件给设置窗口
+    await broadcastAiTranslationStateChange(newEnabled);
+
+    return true;
+  } catch (error) {
+    console.error('切换AI翻译状态失败:', error);
+    return false;
   }
 }
 
@@ -158,7 +154,7 @@ async function setupAiTranslationEventListeners() {
       setIsAiTranslationEnabled(enabled);
 
       // 更新按钮UI
-      updateAiTranslationButtonState();
+      updateAllAiTranslationButtons();
     });
 
     // 监听AI翻译设置更新

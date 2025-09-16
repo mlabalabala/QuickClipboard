@@ -24,10 +24,6 @@ export let searchInput;
 export let contentFilter;
 export let contentFilterContainer;
 export let clipboardList;
-export let pinButton;
-export let oneTimePasteButton;
-export let aiTranslationButton;
-export let formatToggleButton;
 export let quickTextsSearch;
 export let quickTextsFilter;
 export let quickTextsFilterContainer;
@@ -52,7 +48,6 @@ export let groupModalTitle;
 export let groupNameInput;
 export let groupIconSelect;
 export let quickTextGroupSelect;
-export let screenshotButton;
 // 当前设置
 export let currentSettings = {
   theme: 'system',
@@ -141,10 +136,6 @@ export function initDOMReferences() {
   contentFilter = document.querySelector('#content-filter');
   contentFilterContainer = document.querySelector('#content-filter');
   clipboardList = document.querySelector('#clipboard-list');
-  pinButton = document.querySelector('#pin-button');
-  oneTimePasteButton = document.querySelector('#one-time-paste-button');
-  aiTranslationButton = document.querySelector('#ai-translation-button');
-  formatToggleButton = document.querySelector('#format-toggle-button');
   quickTextsSearch = document.querySelector('#quick-texts-search');
   quickTextsFilter = document.querySelector('#quick-texts-filter');
   quickTextsFilterContainer = document.querySelector('#quick-texts-filter');
@@ -166,5 +157,4 @@ export function initDOMReferences() {
   groupNameInput = document.querySelector('#group-name');
   groupIconSelect = document.querySelector('#group-icon');
   quickTextGroupSelect = document.querySelector('#quick-text-group');
-  screenshotButton = document.querySelector('#screenshot-button');
 }

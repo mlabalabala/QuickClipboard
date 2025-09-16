@@ -34,7 +34,6 @@ import {
   quickTextsSearch,
   quickTextsFilter,
   quickTextsFilterContainer,
-  oneTimePasteButton,
   isOneTimePaste
 } from './js/config.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -86,11 +85,10 @@ import {
 
 
 import { initInputFocusManagement } from './js/focus.js';
-import { setupWindowControls } from './js/window.js';
 import { initGroups } from './js/groups.js';
-import { initScreenshot } from './js/screenshot.js';
 import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
+import { initToolManager } from './js/toolManager.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
 import { initSidebarHover } from './js/sidebarHover.js';
@@ -124,16 +122,6 @@ async function waitForBackendInitialization() {
   }
 }
 
-// 更新一次性粘贴按钮状态
-function updateOneTimePasteButtonState() {
-  if (oneTimePasteButton) {
-    if (isOneTimePaste) {
-      oneTimePasteButton.classList.add('active');
-    } else {
-      oneTimePasteButton.classList.remove('active');
-    }
-  }
-}
 
 // 初始化应用
 async function initApp() {
@@ -260,17 +248,6 @@ async function initApp() {
     updateFilterTabsActiveState(getActiveTabName(), getActiveTabName() === 'clipboard' ? clipboardFilter : quickTextsFilter);
   }, 200);
 
-  // 设置一次性粘贴按钮
-  if (oneTimePasteButton) {
-    oneTimePasteButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const newState = !isOneTimePaste;
-      setIsOneTimePaste(newState);
-      updateOneTimePasteButtonState();
-    });
-    // 初始化按钮状态
-    updateOneTimePasteButtonState();
-  }
 
   // 初始化AI翻译功能
   await initAiTranslation();
@@ -311,8 +288,6 @@ async function initApp() {
 
 
 
-  // 设置窗口控制按钮
-  setupWindowControls();
 
   // 监听剪贴板变化事件
   setupClipboardEventListener();
@@ -334,8 +309,9 @@ async function initApp() {
   // 初始化快捷键帮助面板
   initShortcutsHelpPanel();
 
-  // 初始化截屏功能
-  initScreenshot();
+
+  // 初始化统一工具管理器（需要在其他初始化之前）
+  initToolManager();
 
   // 初始化工具面板
   initToolsPanel();

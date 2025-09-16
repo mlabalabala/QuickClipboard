@@ -5,14 +5,11 @@ import { invoke } from '@tauri-apps/api/core';
 let toolsPanelToggle = null;
 let toolsPanel = null;
 let isPanelOpen = false;
-let formatToggleButton = null;
-let isFormatDelegationBound = false;
 
 // 初始化工具面板
 export function initToolsPanel() {
   toolsPanelToggle = document.getElementById('tools-panel-toggle');
   toolsPanel = document.getElementById('tools-panel');
-  formatToggleButton = document.getElementById('format-toggle-button');
 
   if (!toolsPanelToggle || !toolsPanel) {
     console.warn('工具面板元素未找到');
@@ -39,18 +36,6 @@ export function initToolsPanel() {
     e.stopPropagation();
   });
 
-  if (!isFormatDelegationBound) {
-    document.addEventListener('click', (e) => {
-      const target = e.target && (e.target.closest ? e.target.closest('#format-toggle-button') : null);
-      if (!target) return;
-      e.stopPropagation();
-      toggleFormatMode();
-    }, true);
-    isFormatDelegationBound = true;
-  }
-
-  // 初始化按钮状态（每次根据当前DOM重新获取并更新）
-  updateFormatToggleButton();
 
   // 键盘事件
   document.addEventListener('keydown', (e) => {
@@ -112,60 +97,16 @@ export function forceOpenPanel() {
   openPanel();
 }
 
-// 切换格式模式
-async function toggleFormatMode() {
-  const currentFormat = getPasteWithFormat();
-  const newFormat = !currentFormat;
-  
-  setPasteWithFormat(newFormat);
-  updateFormatToggleButton();
-  
-  // 保存设置到后端
-  try {
-    await invoke('save_settings', {
-      settings: {
-        pasteWithFormat: newFormat
-      }
-    });
-  } catch (error) {
-    console.error('保存格式设置失败:', error);
-  }
-  
-  // 触发列表重新渲染以应用格式变化
-  window.dispatchEvent(new CustomEvent('format-mode-changed', { 
-    detail: { withFormat: newFormat } 
-  }));
-  
-}
-
-// 更新格式切换按钮状态
-function updateFormatToggleButton() {
-  // 动态获取
-  const btn = document.getElementById('format-toggle-button');
-  if (!btn) return;
-
-  // 确保存在通用切换样式类，避免被恢复布局后丢失导致无激活样式
-  if (!btn.classList.contains('toggle-button')) {
-    btn.classList.add('toggle-button');
-  }
-
-  const withFormat = getPasteWithFormat();
-
-  if (withFormat) {
-    btn.classList.add('active');
-    btn.title = '格式切换 - 当前：带格式粘贴，点击切换到纯文本';
-  } else {
-    btn.classList.remove('active');
-    btn.title = '格式切换 - 当前：纯文本粘贴，点击切换到带格式';
-  }
-}
 
 // 获取格式模式状态（供其他模块调用）
 export function getFormatModeStatus() {
   return getPasteWithFormat();
 }
 
-// 更新格式按钮状态（供其他模块调用）
+// 更新格式按钮状态
 export function updateFormatButtonStatus() {
-  updateFormatToggleButton();
+  // 由工具管理器的 updateFormatButtonStatus() 处理
+  if (window.toolManager && window.toolManager.updateFormatButtonStatus) {
+    window.toolManager.updateFormatButtonStatus();
+  }
 }
