@@ -814,12 +814,15 @@ pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
 
 // 通过HTTP请求触发截屏
 #[tauri::command]
-pub async fn launch_external_screenshot(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn launch_external_screenshot(app: tauri::AppHandle, hide_window: Option<bool>) -> Result<(), String> {
     use tauri::Manager;
     
-    // 隐藏主窗口
-    if let Some(main_window) = app.get_webview_window("main") {
-        crate::window_management::hide_webview_window(main_window);
+    // 根据参数决定是否隐藏主窗口
+    let should_hide = hide_window.unwrap_or(false); // 默认不隐藏
+    if should_hide {
+        if let Some(main_window) = app.get_webview_window("main") {
+            crate::window_management::hide_webview_window(main_window);
+        }
     }
     
     // 触发截屏

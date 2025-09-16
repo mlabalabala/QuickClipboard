@@ -598,7 +598,8 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
                 let app_handle = window.app_handle().clone();
                 // 使用异步任务启动
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = crate::commands::launch_external_screenshot(app_handle).await {
+                    // 快捷键调用时不隐藏窗口
+                    if let Err(e) = crate::commands::launch_external_screenshot(app_handle, Some(false)).await {
                         eprintln!("截屏失败: {}", e);
                     }
                 });
