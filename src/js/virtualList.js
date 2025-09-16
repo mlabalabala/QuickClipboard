@@ -292,6 +292,24 @@ export class VirtualList {
       }
     });
 
+    // 使用事件委托处理鼠标悬停事件，同步键盘选中状态
+    contentElement.addEventListener('mouseenter', (e) => {
+      if (this.isDragging) return;
+
+      const item = e.target.closest('[data-index]');
+      if (item) {
+        const index = parseInt(item.getAttribute('data-index'));
+        if (!isNaN(index)) {
+          // 动态导入navigation模块来同步键盘选中状态
+          import('./navigation.js').then(navigationModule => {
+            navigationModule.setCurrentSelectedIndex(index);
+          }).catch(error => {
+            console.warn('同步键盘选中状态失败:', error);
+          });
+        }
+      }
+    }, true); // 使用捕获模式确保能够正确处理嵌套元素
+
     // 使用事件委托处理拖拽开始事件
     contentElement.addEventListener('dragstart', (e) => {
       const item = e.target.closest('[data-index]');
@@ -301,16 +319,30 @@ export class VirtualList {
       }
     });
 
-    // 监听滚动事件，触发图片加载
+    // 监听滚动事件，触发图片加载和管理滚动状态
     const scrollElement = document.getElementById(this.scrollId);
     if (scrollElement) {
       let scrollTimeout;
       scrollElement.addEventListener('scroll', () => {
+        // 通知导航模块正在滚动
+        import('./navigation.js').then(navigationModule => {
+          navigationModule.setScrollingState(true);
+        }).catch(error => {
+          console.warn('设置滚动状态失败:', error);
+        });
+        
         // 防抖处理，避免频繁触发
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
           this.triggerImageLoad();
-        }, 100);
+          
+          // 滚动结束，通知导航模块
+          import('./navigation.js').then(navigationModule => {
+            navigationModule.setScrollingState(false);
+          }).catch(error => {
+            console.warn('清除滚动状态失败:', error);
+          });
+        }, 150); // 增加延迟确保滚动完全停止
       });
     }
   }

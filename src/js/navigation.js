@@ -6,6 +6,10 @@ import { togglePin } from './window.js';
 let currentSelectedIndex = -1;
 let navigationMode = false;
 let currentTabItems = [];
+let isKeyboardNavigation = false; // 标记是否正在使用键盘导航
+let keyboardNavigationTimeout = null; // 键盘导航超时定时器
+let isScrolling = false; // 标记是否正在滚动
+let scrollTimeout = null; // 滚动超时定时器
 
 // 节流相关变量
 let lastNavigationTime = 0;
@@ -327,6 +331,9 @@ function navigateUp() {
   const dataLength = getCurrentTabDataLength();
   if (dataLength === 0) return;
 
+  // 设置键盘导航标记
+  setKeyboardNavigationMode();
+
   const oldIndex = currentSelectedIndex;
 
   if (currentSelectedIndex === -1) {
@@ -347,6 +354,9 @@ function navigateUp() {
 function navigateDown() {
   const dataLength = getCurrentTabDataLength();
   if (dataLength === 0) return;
+
+  // 设置键盘导航标记
+  setKeyboardNavigationMode();
 
   const oldIndex = currentSelectedIndex;
 
@@ -580,12 +590,80 @@ export function getCurrentSelectedIndex() {
   return currentSelectedIndex;
 }
 
+// 设置键盘导航模式
+function setKeyboardNavigationMode() {
+  isKeyboardNavigation = true;
+  
+  // 清除之前的超时
+  if (keyboardNavigationTimeout) {
+    clearTimeout(keyboardNavigationTimeout);
+  }
+  
+  // 2秒后清除键盘导航标记，允许鼠标悬停生效
+  keyboardNavigationTimeout = setTimeout(() => {
+    isKeyboardNavigation = false;
+  }, 2000);
+}
+
+// 设置滚动状态（用于避免滚动时的抖动）
+export function setScrollingState(scrolling) {
+  isScrolling = scrolling;
+  
+  if (scrolling) {
+    // 开始滚动时清除之前的超时
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = null;
+    }
+  } else {
+    // 滚动结束后稍作延迟再允许鼠标悬停更新，确保滚动完全停止
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
+    scrollTimeout = setTimeout(() => {
+      isScrolling = false;
+    }, 50);
+  }
+}
+
+// 设置当前选中索引（用于鼠标悬停同步）
+export function setCurrentSelectedIndex(index) {
+  if (typeof index !== 'number' || index < -1) return;
+  
+  // 如果正在键盘导航，忽略鼠标悬停
+  if (isKeyboardNavigation) {
+    return;
+  }
+  
+  const oldIndex = currentSelectedIndex;
+  currentSelectedIndex = index;
+  
+  // 如果索引发生变化，更新选择状态
+  if (oldIndex !== currentSelectedIndex && currentSelectedIndex >= 0) {
+    navigationMode = true;
+    
+    // 如果正在滚动，只更新索引，不触发视觉更新（避免滚动抖动）
+    if (isScrolling) {
+      return;
+    }
+    
+    updateSelection();
+  }
+}
+
 // 同步点击的项目到导航状态
 export function syncClickedItem(clickedElement) {
   // 从data-index属性获取真实的数据索引
   const dataIndex = parseInt(clickedElement.getAttribute('data-index'));
 
   if (!isNaN(dataIndex) && dataIndex >= 0) {
+    // 清除键盘导航标记，因为用户使用了鼠标
+    isKeyboardNavigation = false;
+    if (keyboardNavigationTimeout) {
+      clearTimeout(keyboardNavigationTimeout);
+      keyboardNavigationTimeout = null;
+    }
+    
     resetNavigation();
     currentSelectedIndex = dataIndex;
     navigationMode = true;
