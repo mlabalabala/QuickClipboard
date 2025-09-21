@@ -1,5 +1,6 @@
 import Clusterize from 'clusterize.js';
 import Sortable from 'sortablejs';
+import * as navigation from './navigation.js';
 
 /**
  * 虚拟滚动列表类
@@ -206,15 +207,9 @@ export class VirtualList {
   // 设置拖拽项为激活状态
   setDraggedItemActive(draggedElement, newIndex) {
     try {
-      // 动态导入navigation模块以避免循环依赖
-      import('./navigation.js').then(navigationModule => {
-        // 更新拖拽元素的data-index属性为新索引
-        draggedElement.setAttribute('data-index', newIndex.toString());
-        // 调用navigation模块的syncClickedItem函数设置激活状态
-        navigationModule.syncClickedItem(draggedElement);
-      }).catch(error => {
-        console.warn('设置拖拽项激活状态失败:', error);
-      });
+      // 更新拖拽元素的data-index属性为新索引
+      draggedElement.setAttribute('data-index', newIndex.toString());
+      navigation.syncClickedItem(draggedElement);
     } catch (error) {
       console.warn('设置拖拽项激活状态失败:', error);
     }
@@ -300,12 +295,7 @@ export class VirtualList {
       if (item) {
         const index = parseInt(item.getAttribute('data-index'));
         if (!isNaN(index)) {
-          // 动态导入navigation模块来同步键盘选中状态
-          import('./navigation.js').then(navigationModule => {
-            navigationModule.setCurrentSelectedIndex(index);
-          }).catch(error => {
-            console.warn('同步键盘选中状态失败:', error);
-          });
+          navigation.setCurrentSelectedIndex(index);
         }
       }
     }, true); // 使用捕获模式确保能够正确处理嵌套元素
@@ -325,11 +315,7 @@ export class VirtualList {
       let scrollTimeout;
       scrollElement.addEventListener('scroll', () => {
         // 通知导航模块正在滚动
-        import('./navigation.js').then(navigationModule => {
-          navigationModule.setScrollingState(true);
-        }).catch(error => {
-          console.warn('设置滚动状态失败:', error);
-        });
+        navigation.setScrollingState(true);
         
         // 防抖处理，避免频繁触发
         clearTimeout(scrollTimeout);
@@ -337,11 +323,7 @@ export class VirtualList {
           this.triggerImageLoad();
           
           // 滚动结束，通知导航模块
-          import('./navigation.js').then(navigationModule => {
-            navigationModule.setScrollingState(false);
-          }).catch(error => {
-            console.warn('清除滚动状态失败:', error);
-          });
+          navigation.setScrollingState(false);
         }, 150); // 增加延迟确保滚动完全停止
       });
     }
