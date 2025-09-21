@@ -19,6 +19,12 @@ let isUpdating = false;
 let clickSyncSetup = false;
 let preserveNavigationOnUpdate = false;
 
+// 鼠标悬停优化变量
+let hoverDebounceTimeout = null;
+let lastHoverIndex = -1;
+let cachedTabItems = null;
+let cacheInvalidationTimeout = null;
+
 // 分组侧边栏状态
 let isGroupSidebarVisible = false;
 let ctrlPressed = false;
@@ -288,6 +294,28 @@ function getCurrentTabItems() {
   return [];
 }
 
+// 获取当前标签页的项目列表（带缓存优化）
+function getCurrentTabItemsOptimized() {
+  // 如果缓存有效，直接返回缓存
+  if (cachedTabItems && cachedTabItems.length > 0) {
+    return cachedTabItems;
+  }
+  
+  // 否则重新查询并缓存
+  cachedTabItems = getCurrentTabItems();
+  
+  // 设置缓存失效定时器（100ms后清除缓存，确保DOM更新后能获取到最新元素）
+  if (cacheInvalidationTimeout) {
+    clearTimeout(cacheInvalidationTimeout);
+  }
+  cacheInvalidationTimeout = setTimeout(() => {
+    cachedTabItems = null;
+    cacheInvalidationTimeout = null;
+  }, 100);
+  
+  return cachedTabItems;
+}
+
 // 获取当前标签页的数据长度
 function getCurrentTabDataLength() {
   const activeTab = document.querySelector('.tab-content.active');
@@ -389,16 +417,20 @@ function updateSelection() {
   }
 
   requestAnimationFrame(() => {
-    // 首先检查目标元素是否已经在DOM中
-    const items = getCurrentTabItems();
+    // 使用缓存的DOM查询结果
+    const items = getCurrentTabItemsOptimized();
     let targetElementExists = false;
+    let targetElement = null;
 
-    items.forEach((item) => {
+    // 优化：只遍历一次，同时检查存在性和获取元素
+    for (const item of items) {
       const dataIndex = parseInt(item.getAttribute('data-index'));
       if (dataIndex === currentSelectedIndex) {
         targetElementExists = true;
+        targetElement = item;
+        break;
       }
-    });
+    }
 
     // 只有当目标元素不存在时才滚动
     let didScroll = false;
@@ -408,19 +440,32 @@ function updateSelection() {
 
     // 定义更新选择状态的函数
     const updateSelectionState = () => {
-      const items = getCurrentTabItems();
+      const items = getCurrentTabItemsOptimized();
       let selectedItem = null;
 
-      // 清除所有选择状态并查找目标项
-      items.forEach((item) => {
+      // 批量处理DOM更新，减少重排重绘
+      const toAdd = [];
+      const toRemove = [];
+
+      // 优化：预先分类需要添加和移除类的元素
+      for (const item of items) {
         const dataIndex = parseInt(item.getAttribute('data-index'));
+        const hasSelected = item.classList.contains('keyboard-selected');
+        
         if (dataIndex === currentSelectedIndex) {
-          item.classList.add('keyboard-selected');
+          if (!hasSelected) {
+            toAdd.push(item);
+          }
           selectedItem = item;
-        } else {
-          item.classList.remove('keyboard-selected');
+        } else if (hasSelected) {
+          toRemove.push(item);
         }
-      });
+      }
+
+      // 批量移除类
+      toRemove.forEach(item => item.classList.remove('keyboard-selected'));
+      // 批量添加类
+      toAdd.forEach(item => item.classList.add('keyboard-selected'));
 
       // 如果找到了选中的元素但不在视口内，进行微调滚动
       if (selectedItem && !isElementInViewport(selectedItem)) {
@@ -543,10 +588,29 @@ async function hideWindow() {
   }
 }
 
+// 清除DOM缓存
+function clearDOMCache() {
+  cachedTabItems = null;
+  lastHoverIndex = -1;
+  
+  if (cacheInvalidationTimeout) {
+    clearTimeout(cacheInvalidationTimeout);
+    cacheInvalidationTimeout = null;
+  }
+  
+  if (hoverDebounceTimeout) {
+    clearTimeout(hoverDebounceTimeout);
+    hoverDebounceTimeout = null;
+  }
+}
+
 // 重置导航状态
 export function resetNavigation() {
   currentSelectedIndex = -1;
   navigationMode = false;
+  
+  // 清除DOM缓存和相关定时器
+  clearDOMCache();
 
   const items = getCurrentTabItems();
   items.forEach(item => {
@@ -561,6 +625,9 @@ export function onTabSwitch() {
 
 // 当列表内容更新时重置导航
 export function onListUpdate() {
+  // 列表更新时清除DOM缓存，确保获取最新的DOM元素
+  clearDOMCache();
+  
   // 如果设置了保持导航状态，跳过重置逻辑
   if (preserveNavigationOnUpdate) {
     preserveNavigationOnUpdate = false;
@@ -635,20 +702,37 @@ export function setCurrentSelectedIndex(index) {
     return;
   }
   
-  const oldIndex = currentSelectedIndex;
-  currentSelectedIndex = index;
+  // 如果索引没有变化，直接返回避免不必要的处理
+  if (index === lastHoverIndex) {
+    return;
+  }
   
-  // 如果索引发生变化，更新选择状态
-  if (oldIndex !== currentSelectedIndex && currentSelectedIndex >= 0) {
-    navigationMode = true;
+  lastHoverIndex = index;
+  
+  // 清除之前的防抖定时器
+  if (hoverDebounceTimeout) {
+    clearTimeout(hoverDebounceTimeout);
+  }
+  
+  // 使用防抖来减少频繁的更新操作
+  hoverDebounceTimeout = setTimeout(() => {
+    const oldIndex = currentSelectedIndex;
+    currentSelectedIndex = index;
     
-    // 如果正在滚动，只更新索引，不触发视觉更新（避免滚动抖动）
-    if (isScrolling) {
-      return;
+    // 如果索引发生变化，更新选择状态
+    if (oldIndex !== currentSelectedIndex && currentSelectedIndex >= 0) {
+      navigationMode = true;
+      
+      // 如果正在滚动，只更新索引，不触发视觉更新（避免滚动抖动）
+      if (isScrolling) {
+        return;
+      }
+      
+      updateSelection();
     }
     
-    updateSelection();
-  }
+    hoverDebounceTimeout = null;
+  }, 10); // 10ms的防抖延迟，既能避免频繁调用又不影响用户体验
 }
 
 // 同步点击的项目到导航状态

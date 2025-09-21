@@ -23,6 +23,10 @@ export class VirtualList {
 
     // 维护当前行高状态
     this.currentRowHeightSetting = localStorage.getItem('app-row-height') || 'medium';
+    
+    // 鼠标悬停优化
+    this.hoverDebounceTimeout = null;
+    this.lastHoverTarget = null;
 
     this.init();
   }
@@ -293,12 +297,40 @@ export class VirtualList {
 
       const item = e.target.closest('[data-index]');
       if (item) {
+        // 如果是同一个元素，直接返回避免重复处理
+        if (this.lastHoverTarget === item) {
+          return;
+        }
+        
+        this.lastHoverTarget = item;
         const index = parseInt(item.getAttribute('data-index'));
+        
         if (!isNaN(index)) {
-          navigation.setCurrentSelectedIndex(index);
+          // 清除之前的防抖定时器
+          if (this.hoverDebounceTimeout) {
+            clearTimeout(this.hoverDebounceTimeout);
+          }
+          
+          // 使用较短的防抖延迟，既能避免频繁调用又不影响响应性
+          this.hoverDebounceTimeout = setTimeout(() => {
+            navigation.setCurrentSelectedIndex(index);
+            this.hoverDebounceTimeout = null;
+          }, 5); // 5ms防抖延迟
         }
       }
     }, true); // 使用捕获模式确保能够正确处理嵌套元素
+    
+    // 添加鼠标离开事件，清理状态
+    contentElement.addEventListener('mouseleave', (e) => {
+      if (this.isDragging) return;
+      
+      // 清除防抖定时器和缓存
+      if (this.hoverDebounceTimeout) {
+        clearTimeout(this.hoverDebounceTimeout);
+        this.hoverDebounceTimeout = null;
+      }
+      this.lastHoverTarget = null;
+    }, true);
 
     // 使用事件委托处理拖拽开始事件
     contentElement.addEventListener('dragstart', (e) => {
