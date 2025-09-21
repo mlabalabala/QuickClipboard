@@ -31,7 +31,6 @@ impl ImageService {
             return Err("无效的图片内容格式".to_string());
         };
 
-        // 简单返回原始图片数据（缩略图功能需要具体实现）
         Ok(data_url)
     }
 
@@ -64,45 +63,6 @@ impl ImageService {
         Ok(())
     }
 
-    /// 从网络获取图片并转换为data URL
-    pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
-        use base64::{engine::general_purpose, Engine as _};
-
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
-
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| format!("请求失败: {}", e))?;
-
-        if !response.status().is_success() {
-            return Err(format!("HTTP请求失败: {}", response.status()));
-        }
-
-        // 获取Content-Type
-        let content_type = response
-            .headers()
-            .get("content-type")
-            .and_then(|ct| ct.to_str().ok())
-            .unwrap_or("image/png")
-            .to_string();
-
-        // 下载图片数据
-        let image_data = response
-            .bytes()
-            .await
-            .map_err(|e| format!("下载图片数据失败: {}", e))?;
-
-        // 转换为base64
-        let base64_data = general_purpose::STANDARD.encode(&image_data);
-        let data_url = format!("data:{};base64,{}", content_type, base64_data);
-
-        Ok(data_url)
-    }
 
     /// 获取图片文件路径
     pub fn get_image_file_path(content: String) -> Result<String, String> {

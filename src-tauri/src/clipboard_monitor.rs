@@ -339,6 +339,7 @@ fn try_get_windows_clipboard_html() -> Option<String> {
                         if !ptr.is_null() {
                             let data_slice = std::slice::from_raw_parts(ptr as *const u8, size);
                             if let Ok(html_string) = std::str::from_utf8(data_slice) {
+                                // 仅提取片段，统一图片内联在入库时处理
                                 result = Some(extract_html_fragment(html_string));
                             }
                             let _ = GlobalUnlock(hglobal);
@@ -397,6 +398,7 @@ fn extract_html_fragment(html_format: &str) -> String {
     // 如果都没找到，返回原始内容
     html_format.to_string()
 }
+
 
 // 获取剪贴板内容（文本、HTML、图片或文件）
 fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<String>)> {

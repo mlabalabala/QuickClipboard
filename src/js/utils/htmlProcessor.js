@@ -150,19 +150,10 @@ if (!window.handleImageError) {
   };
 }
 
-// 代理失败后回退处理
+// 图片错误处理
 if (!window.handleHtmlImageError) {
-  window.handleHtmlImageError = async function(imgElement) {
-    try {
-      const src = imgElement.getAttribute('src');
-      if (src && /^https?:\/\//i.test(src) && !imgElement.hasAttribute('data-proxied')) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const dataUrl = await invoke('fetch_image_as_data_url', { url: src });
-        imgElement.setAttribute('data-proxied', 'true');
-        imgElement.src = dataUrl;
-        return;
-      }
-    } catch (_) {}
+  window.handleHtmlImageError = function(imgElement) {
+    // 直接使用占位图，所有图片都应该已经是dataURL格式
     window.handleImageError(imgElement);
   };
 }

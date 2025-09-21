@@ -578,7 +578,9 @@ pub fn add_clipboard_item(content: String) -> Result<i64, String> {
 
 // 添加富文本剪贴板项目
 pub fn add_clipboard_rich_text(content: String, html: String) -> Result<i64, String> {
-    let item = ClipboardItem::new_rich_text(content, html);
+    // 在存储前统一处理HTML中的所有图片URL，转换为dataURL
+    let processed_html = crate::database_image_utils::normalize_html_images(&html);
+    let item = ClipboardItem::new_rich_text(content, processed_html);
 
     with_connection(|conn| {
         let new_order = get_new_clipboard_order(conn);

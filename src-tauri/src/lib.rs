@@ -11,6 +11,7 @@ mod commands;
 mod data_migration;
 mod data_manager;
 mod database;
+mod database_image_utils;
 mod http_client;
 mod screenshot_service;
 mod file_handler;
@@ -393,7 +394,6 @@ pub fn run() {
             restart_as_admin,
             is_backend_initialized,
             send_system_notification,
-            commands::fetch_image_as_data_url,
             send_startup_notification,
 
             commands::test_ai_translation,

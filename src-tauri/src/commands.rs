@@ -479,13 +479,6 @@ pub fn get_app_version(app: tauri::AppHandle) -> Result<serde_json::Value, Strin
     Ok(version_info)
 }
 
-// =================== 网络图片代理 ===================
-
-/// 通过后端下载网络图片并返回 data URL（用于绕过部分站点的热链/跨域限制）
-#[tauri::command]
-pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
-    crate::services::image_service::ImageService::fetch_image_as_data_url(url).await
-}
 
 // =================== 管理员权限相关命令 ===================
 
