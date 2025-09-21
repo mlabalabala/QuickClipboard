@@ -2,26 +2,12 @@
 
 #[cfg(windows)]
 pub fn windows_paste() -> bool {
-    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         GetAsyncKeyState, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
         KEYEVENTF_KEYUP, VK_CONTROL, VK_V,
     };
-    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SendMessageW, WM_PASTE};
 
     unsafe {
-        // 确保当前窗口有焦点
-        let hwnd = GetForegroundWindow();
-        if hwnd == HWND(0) {
-            println!("无法获取前台窗口");
-            return false;
-        }
-
-        // 优先尝试 WM_PASTE
-        let res = SendMessageW(hwnd, WM_PASTE, WPARAM(0), LPARAM(0));
-        if res.0 != 0 {
-            return true;
-        }
 
         // 判断 Ctrl 当前是否已按下
         let ctrl_pressed = (GetAsyncKeyState(VK_CONTROL.0 as i32) & 0x8000u16 as i16) != 0;
