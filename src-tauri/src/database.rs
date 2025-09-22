@@ -410,16 +410,10 @@ pub fn detect_content_type(content: &str, html: Option<&str>) -> ContentType {
         }
     }
     
-    // 检查是否为文件路径
-    if is_file_paths(content) {
-        return ContentType::File;
-    }
-    
     // 检查是否为URL
     if is_url(content) {
         return ContentType::Link;
     }
-    
     // 默认为纯文本
     ContentType::Text
 }
