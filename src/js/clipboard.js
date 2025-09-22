@@ -77,7 +77,13 @@ function generateClipboardItemHTML(item, index) {
 
   // 生成序号和快捷键
   const numberHTML = `<div class="clipboard-number">${index + 1}</div>`;
-  const shortcutHTML = index < 9 ?
+  
+  // 只在正常列表状态（非搜索、非筛选）下显示快捷键提示
+  const isSearching = searchInput && searchInput.value.trim() !== '';
+  const isFiltering = currentFilter !== 'all';
+  const shouldShowShortcut = !isSearching && !isFiltering && index < 9;
+  
+  const shortcutHTML = shouldShowShortcut ?
     `<div class="clipboard-index">Ctrl+${index + 1}</div>` : '';
 
   // 生成操作按钮
