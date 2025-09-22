@@ -40,6 +40,62 @@ export function highlightMultipleSearchTerms(text, searchTerms, highlightClass =
 }
 
 /**
+ * 高亮HTML内容中的搜索关键字
+ */
+export function highlightMultipleSearchTermsInHTML(htmlContent, searchTerms, highlightClass = 'search-highlight') {
+  if (!searchTerms || searchTerms.length === 0 || !htmlContent) {
+    return htmlContent;
+  }
+
+  // 创建临时DOM元素来解析HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+
+  // 递归处理文本节点
+  function highlightTextNodes(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent;
+      if (text && text.trim()) {
+        let highlightedText = text;
+        
+        // 按长度排序搜索词，避免短词覆盖长词
+        const sortedTerms = [...searchTerms].sort((a, b) => b.length - a.length);
+        
+        sortedTerms.forEach(term => {
+          if (term.trim()) {
+            const regex = new RegExp(`(${term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            highlightedText = highlightedText.replace(regex, `<span class="${highlightClass}">$1</span>`);
+          }
+        });
+
+        // 如果文本被修改了，替换原节点
+        if (highlightedText !== text) {
+          const wrapper = document.createElement('span');
+          wrapper.innerHTML = highlightedText;
+          
+          // 将wrapper的所有子节点插入到原位置
+          const parent = node.parentNode;
+          const fragment = document.createDocumentFragment();
+          while (wrapper.firstChild) {
+            fragment.appendChild(wrapper.firstChild);
+          }
+          parent.replaceChild(fragment, node);
+        }
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      // 递归处理子节点（从后往前，避免索引问题）
+      const children = Array.from(node.childNodes);
+      for (let i = children.length - 1; i >= 0; i--) {
+        highlightTextNodes(children[i]);
+      }
+    }
+  }
+
+  highlightTextNodes(tempDiv);
+  return tempDiv.innerHTML;
+}
+
+/**
  * 高亮多个搜索关键字并返回位置信息
  */
 export function highlightMultipleSearchTermsWithPosition(text, searchTerms, highlightClass = 'search-highlight') {

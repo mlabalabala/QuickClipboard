@@ -20,7 +20,7 @@ import {
   hideTranslationIndicator
 } from './aiTranslation.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
-import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
+import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
 import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 
@@ -54,7 +54,7 @@ function generateClipboardItemHTML(item, index) {
 
       // 对HTML内容应用搜索高亮
       if (searchTerms.length > 0) {
-        displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
+        displayHTML = highlightMultipleSearchTermsInHTML(displayHTML, searchTerms);
       }
 
       // 处理HTML内容中的图片

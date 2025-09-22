@@ -20,7 +20,7 @@ import { loadImageById } from './clipboard.js';
 import { showAlertModal, showConfirmModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
-import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, getCurrentSearchTerms } from './utils/highlight.js';
+import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
 import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { VirtualList } from './virtualList.js';
@@ -53,7 +53,7 @@ function generateQuickTextItemHTML(text, index) {
       
       // 对HTML内容应用搜索高亮
       if (searchTerms.length > 0) {
-        displayHTML = highlightMultipleSearchTerms(displayHTML, searchTerms);
+        displayHTML = highlightMultipleSearchTermsInHTML(displayHTML, searchTerms);
       }
       
       // 处理HTML内容中的图片，添加错误处理和安全属性
