@@ -45,7 +45,7 @@ const NOTIFICATION_CONFIG = {
   defaults: {
     duration: 3000,
     maxWidth: '300px',
-    zIndex: 999999999
+    zIndex: 999999999999999
   }
 };
 
