@@ -540,9 +540,16 @@ function bindToggleShortcutEvents() {
   if (shortcutInput) {
     let isRecording = false;
 
-    shortcutInput.addEventListener('focus', () => {
+    shortcutInput.addEventListener('focus', async () => {
       if (!isRecording) {
-        startRecording();
+        // 先禁用后端监听，再开始录制
+        try {
+          await invoke('set_shortcut_recording', { recording: true });
+          startRecording();
+        } catch (err) {
+          console.error('设置快捷键录制状态失败:', err);
+          startRecording(); // 即使失败也继续录制
+        }
       }
     });
 
@@ -602,6 +609,10 @@ function bindToggleShortcutEvents() {
       if (window.setShortcutRecording) {
         window.setShortcutRecording(false);
       }
+      // 通知后端恢复快捷键监听
+      invoke('set_shortcut_recording', { recording: false }).catch(err => {
+        console.error('设置快捷键录制状态失败:', err);
+      });
     }
   }
 
@@ -751,9 +762,16 @@ function bindPreviewShortcutEvents() {
   if (shortcutInput) {
     let isRecording = false;
 
-    shortcutInput.addEventListener('focus', () => {
+    shortcutInput.addEventListener('focus', async () => {
       if (!isRecording) {
-        startRecording();
+        // 先禁用后端监听，再开始录制
+        try {
+          await invoke('set_shortcut_recording', { recording: true });
+          startRecording();
+        } catch (err) {
+          console.error('设置快捷键录制状态失败:', err);
+          startRecording(); // 即使失败也继续录制
+        }
       }
     });
 
@@ -800,6 +818,7 @@ function bindPreviewShortcutEvents() {
       if (window.setShortcutRecording) {
         window.setShortcutRecording(true);
       }
+      // 后端状态已在focus事件中设置，这里不再重复调用
     }
 
     function stopRecording() {
@@ -810,14 +829,21 @@ function bindPreviewShortcutEvents() {
       if (window.setShortcutRecording) {
         window.setShortcutRecording(false);
       }
+      // 通知后端恢复快捷键监听
+      invoke('set_shortcut_recording', { recording: false }).catch(err => {
+        console.error('设置快捷键录制状态失败:', err);
+      });
     }
   }
 
   if (clearButton) {
     clearButton.addEventListener('click', () => {
-      shortcutInput.value = '';
-      settings.previewShortcut = '';
+      // 恢复到默认快捷键而不是清空
+      const defaultShortcut = defaultSettings.previewShortcut;
+      shortcutInput.value = defaultShortcut;
+      settings.previewShortcut = defaultShortcut;
       saveSettings();
+      console.log('预览快捷键已恢复为默认值:', defaultShortcut);
     });
   }
 
@@ -877,9 +903,16 @@ function bindScreenshotShortcutEvents() {
   if (shortcutInput) {
     let isRecording = false;
 
-    shortcutInput.addEventListener('focus', () => {
+    shortcutInput.addEventListener('focus', async () => {
       if (!isRecording) {
-        startRecording();
+        // 先禁用后端监听，再开始录制
+        try {
+          await invoke('set_shortcut_recording', { recording: true });
+          startRecording();
+        } catch (err) {
+          console.error('设置快捷键录制状态失败:', err);
+          startRecording(); // 即使失败也继续录制
+        }
       }
     });
 
@@ -926,6 +959,7 @@ function bindScreenshotShortcutEvents() {
       if (window.setShortcutRecording) {
         window.setShortcutRecording(true);
       }
+      // 后端状态已在focus事件中设置，这里不再重复调用
     }
 
     function stopRecording() {
@@ -936,14 +970,21 @@ function bindScreenshotShortcutEvents() {
       if (window.setShortcutRecording) {
         window.setShortcutRecording(false);
       }
+      // 通知后端恢复快捷键监听
+      invoke('set_shortcut_recording', { recording: false }).catch(err => {
+        console.error('设置快捷键录制状态失败:', err);
+      });
     }
   }
 
   if (clearButton) {
     clearButton.addEventListener('click', () => {
-      shortcutInput.value = '';
-      settings.screenshot_shortcut = '';
+      // 恢复到默认快捷键而不是清空
+      const defaultShortcut = defaultSettings.screenshotShortcut;
+      shortcutInput.value = defaultShortcut;
+      settings.screenshot_shortcut = defaultShortcut;
       saveSettings();
+      console.log('截屏快捷键已恢复为默认值:', defaultShortcut);
     });
   }
 }

@@ -272,10 +272,15 @@
         <div class="settings-section" id="shortcuts-section">
           <div class="section-header">
             <h2>快捷键设置</h2>
-            <p>自定义全局快捷键</p>
+            <p>自定义所有快捷键</p>
           </div>
 
+          <!-- 全局快捷键 -->
           <div class="settings-group">
+            <div class="group-header">
+              <h3>全局快捷键</h3>
+              <p>在任何应用程序中都可以使用的快捷键</p>
+            </div>
             <div class="setting-item">
               <div class="setting-info">
                 <label class="setting-label">显示/隐藏窗口</label>
@@ -306,6 +311,44 @@
 
             <div class="setting-item">
               <div class="setting-info">
+                <label class="setting-label">显示预览窗口</label>
+                <p class="setting-description">设置显示预览窗口的全局快捷键</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="preview-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" id="clear-preview-shortcut" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">截屏快捷键</label>
+                <p class="setting-description">设置全局截屏快捷键</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="screenshot-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" id="clear-screenshot-shortcut" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 数字快捷键设置 -->
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>数字快捷键</h3>
+              <p>使用数字键快速操作剪贴板项目</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
                 <label class="setting-label">启用数字快捷键</label>
                 <p class="setting-description">使用 Ctrl+数字 快速复制剪贴板项目</p>
               </div>
@@ -315,6 +358,14 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- 鼠标快捷键设置 -->
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>鼠标快捷键</h3>
+              <p>使用鼠标操作快速访问功能</p>
             </div>
 
             <div class="setting-item">
@@ -335,7 +386,7 @@
           <div class="settings-group">
             <div class="group-header">
               <h3>剪贴板窗口快捷键</h3>
-              <p>自定义剪贴板窗口内的操作快捷键</p>
+              <p>在剪贴板窗口内使用的操作快捷键</p>
             </div>
 
             <div class="setting-item">
@@ -941,20 +992,6 @@
               </div>
             </div>
 
-            <div class="setting-item">
-              <div class="setting-info">
-                <label class="setting-label">预览快捷键</label>
-                <p class="setting-description">设置显示预览窗口的全局快捷键</p>
-              </div>
-              <div class="setting-control">
-                <div class="shortcut-input-group">
-                  <input type="text" id="preview-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
-                  <button class="shortcut-clear-btn" id="clear-preview-shortcut">
-                    <i class="ti ti-x"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
 
             <div class="setting-item">
               <div class="setting-info">
@@ -1038,20 +1075,6 @@
               </div>
             </div>
 
-            <div class="setting-item">
-              <div class="setting-info">
-                <label class="setting-label">截屏快捷键</label>
-                <p class="setting-description">设置全局截屏快捷键</p>
-              </div>
-              <div class="setting-control">
-                <div class="shortcut-input-group">
-                  <input type="text" id="screenshot-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
-                  <button class="shortcut-clear-btn" id="clear-screenshot-shortcut">
-                    <i class="ti ti-x"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
 
             <div class="setting-item" style="display: none;">
               <div class="setting-info">

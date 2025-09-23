@@ -568,6 +568,11 @@ fn handle_ai_translation_cancel_change(last_state: &KeyState, current_state: &Ke
 }
 // 处理截屏快捷键变化
 fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyState) {
+    // 如果正在录制快捷键，跳过处理
+    if crate::global_state::SHORTCUT_RECORDING.load(std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    
     // 获取当前设置的截屏快捷键
     let settings = crate::settings::get_global_settings();
 

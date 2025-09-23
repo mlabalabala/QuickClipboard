@@ -4,6 +4,8 @@ import { listen } from '@tauri-apps/api/event';
 // 快捷键显示映射
 const SHORTCUT_DISPLAY_MAP = {
   toggleShortcut: 'global-toggle-shortcut-display',
+  previewShortcut: 'preview-shortcut-display',
+  screenshot_shortcut: 'screenshot-shortcut-display',
   navigateUpShortcut: 'navigate-shortcut-display',
   navigateDownShortcut: 'navigate-shortcut-display',
   tabLeftShortcut: 'tab-shortcut-display',

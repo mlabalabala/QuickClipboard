@@ -442,6 +442,7 @@ pub fn run() {
             commands::restore_edge_snap_on_startup,
             commands::refresh_all_windows,
             commands::get_screen_size,
+            commands::set_shortcut_recording,
             commands::start_custom_drag,
             commands::stop_custom_drag,
             commands::launch_external_screenshot,

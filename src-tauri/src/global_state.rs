@@ -30,6 +30,10 @@ pub static PREVIEW_SHORTCUT_HELD: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 pub static PREVIEW_CANCELLED_BY_USER: AtomicBool = AtomicBool::new(false);
 
+// 快捷键录制状态（当设置页面正在录制快捷键时为true）
+#[cfg(windows)]
+pub static SHORTCUT_RECORDING: AtomicBool = AtomicBool::new(false);
+
 // 预览窗口快捷键配置
 #[cfg(windows)]
 #[derive(Debug, Clone)]

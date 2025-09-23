@@ -6,6 +6,7 @@ use tauri::Manager;
 use crate::admin_privileges;
 use crate::clipboard_history::{self, ClipboardItem};
 use crate::database::{FavoriteItem, GroupInfo};
+use std::sync::atomic::Ordering;
 
 #[derive(Deserialize)]
 pub struct GroupParams {
@@ -913,4 +914,11 @@ pub fn refresh_all_windows(app: tauri::AppHandle) -> Result<(), String> {
     }
     
             Ok(())
+}
+
+// 设置快捷键录制状态
+#[tauri::command]
+pub fn set_shortcut_recording(recording: bool) -> Result<(), String> {
+    crate::global_state::SHORTCUT_RECORDING.store(recording, Ordering::SeqCst);
+    Ok(())
 }
