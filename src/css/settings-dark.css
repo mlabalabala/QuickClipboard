@@ -756,14 +756,6 @@ body.theme-dark {
   color: var(--text-secondary);
 }
 
-.theme-dark .shortcut-clear {
-  color: var(--text-secondary);
-}
-
-.theme-dark .shortcut-clear:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 /* =================== 系统集成 =================== */
 @media (prefers-color-scheme: dark) {

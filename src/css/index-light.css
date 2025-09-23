@@ -578,14 +578,6 @@ body.theme-light {
   border-color: var(--border-secondary);
 }
 
-.theme-light .shortcut-clear {
-  color: var(--text-secondary);
-}
-
-.theme-light .shortcut-clear:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 /* =================== 音效相关 =================== */
 .theme-light .sound-input,

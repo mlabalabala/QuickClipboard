@@ -632,14 +632,6 @@ body.theme-dark {
   border-color: var(--border-secondary);
 }
 
-.theme-dark .shortcut-clear {
-  color: var(--text-secondary);
-}
-
-.theme-dark .shortcut-clear:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 /* =================== 音效相关 =================== */
 .theme-dark .sound-input,

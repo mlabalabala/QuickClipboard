@@ -544,7 +544,7 @@ function bindSettingEvents() {
 // 绑定显示/隐藏窗口快捷键事件
 function bindToggleShortcutEvents() {
   const shortcutInput = document.getElementById('toggle-shortcut');
-  const clearButton = document.querySelector('.shortcut-clear');
+  const clearButton = document.querySelector('.sound-reset-btn');
 
   if (shortcutInput) {
     let isRecording = false;
@@ -680,7 +680,7 @@ function bindClipboardShortcutEvents() {
 
   shortcutConfigs.forEach(config => {
     const shortcutInput = document.getElementById(config.id);
-    const clearButton = shortcutInput?.parentElement?.querySelector('.shortcut-clear');
+    const clearButton = shortcutInput?.parentElement?.querySelector('.sound-reset-btn');
 
     if (shortcutInput) {
       let isRecording = false;
