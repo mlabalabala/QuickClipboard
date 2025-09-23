@@ -365,17 +365,21 @@ pub fn clear_sound_cache() -> Result<(), String> {
         cache.clear();
     }
 
-    // 清理文件缓存
+    // 清理音效缓存目录
     if let Ok(cache_dir) = get_cache_dir() {
         if cache_dir.exists() {
             std::fs::remove_dir_all(&cache_dir).map_err(|e| format!("清理缓存目录失败: {}", e))?;
-
-            // 重新创建缓存目录
             create_dir_all(&cache_dir).map_err(|e| format!("重新创建缓存目录失败: {}", e))?;
         }
     }
 
-    println!("音效缓存已清理");
+    // 重新初始化内置音效文件
+    if let Err(e) = crate::services::sound_service::SoundService::initialize_builtin_sounds() {
+        eprintln!("重新初始化内置音效失败: {}", e);
+    }
+
+    println!("音效缓存已清理，内置音效已重新初始化");
     Ok(())
 }
+
 

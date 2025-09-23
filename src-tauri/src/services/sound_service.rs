@@ -23,12 +23,10 @@ impl SoundService {
                     .map_err(|e| format!("创建音效目录失败: {}", e))?;
             }
             
-            // 如果文件不存在，则写入内置音效
-            if !target_path.exists() {
-                std::fs::write(&target_path, sound_data)
-                    .map_err(|e| format!("写入内置音效文件失败: {}", e))?;
-                println!("已初始化内置音效文件: {}", target_path.display());
-            }
+            // 直接覆盖内置音效文件，确保使用最新版本
+            std::fs::write(&target_path, sound_data)
+                .map_err(|e| format!("写入内置音效文件失败: {}", e))?;
+            println!("已初始化内置音效文件: {}", target_path.display());
         }
         
         Ok(())
