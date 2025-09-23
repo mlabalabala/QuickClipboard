@@ -1,5 +1,4 @@
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
-use tauri::WebviewWindow;
 use once_cell::sync::OnceCell;
 
 // 全局状态管理器

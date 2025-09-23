@@ -79,12 +79,17 @@ impl WindowService {
                 tauri::WebviewUrl::App("settings.html".into()),
             )
             .title("设置 - 快速剪贴板")
-            .inner_size(900.0, 650.0)
+            .inner_size(900.0, 630.0)
             .min_inner_size(800.0, 600.0)
             .center()
-            .resizable(true)
-            .maximizable(true)
-            .decorations(false) // 去除标题栏
+            .resizable(false)
+            .maximizable(false)
+            .decorations(false)
+            .transparent(false)
+            .always_on_top(true)
+            .skip_taskbar(false)
+            .visible(true)
+            .focused(true)
             .build()
             .map_err(|e| format!("创建设置窗口失败: {}", e))?;
 

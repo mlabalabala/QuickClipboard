@@ -35,25 +35,6 @@
         "visibleOnAllWorkspaces": true
       },
       {
-        "label": "settings",
-        "title": "设置 - 快速剪贴板",
-        "url": "settings.html",
-        "width": 900,
-        "height": 630,
-        "minWidth": 800,
-        "minHeight": 600,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": false,
-        "skipTaskbar": false,
-        "center": true,
-        "visible": false,
-        "resizable": false,
-        "focus": true,
-        "maximizable": false,
-        "dragDropEnabled": false
-      },
-      {
         "label": "preview",
         "title": "快速预览",
         "url": "preview.html",
