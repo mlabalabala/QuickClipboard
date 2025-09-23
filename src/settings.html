@@ -330,6 +330,164 @@
               </div>
             </div>
           </div>
+
+          <!-- 剪贴板窗口快捷键设置 -->
+          <div class="settings-group">
+            <div class="group-header">
+              <h3>剪贴板窗口快捷键</h3>
+              <p>自定义剪贴板窗口内的操作快捷键</p>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">向上导航</label>
+                <p class="setting-description">在剪贴板项目列表中向上移动选择</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="navigate-up-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">向下导航</label>
+                <p class="setting-description">在剪贴板项目列表中向下移动选择</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="navigate-down-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">切换标签页（左）</label>
+                <p class="setting-description">切换到左侧标签页（剪贴板/常用文本）</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="tab-left-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">切换标签页（右）</label>
+                <p class="setting-description">切换到右侧标签页（剪贴板/常用文本）</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="tab-right-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">聚焦搜索框</label>
+                <p class="setting-description">将光标定位到搜索输入框</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="focus-search-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">隐藏窗口</label>
+                <p class="setting-description">隐藏剪贴板窗口</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="hide-window-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">执行选中项目</label>
+                <p class="setting-description">粘贴当前选中的剪贴板项目</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="execute-item-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">切换到上一个分组</label>
+                <p class="setting-description">在常用文本中切换到上一个分组</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="previous-group-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">切换到下一个分组</label>
+                <p class="setting-description">在常用文本中切换到下一个分组</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="next-group-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">切换窗口固定状态</label>
+                <p class="setting-description">切换剪贴板窗口的固定/取消固定状态</p>
+              </div>
+              <div class="setting-control">
+                <div class="shortcut-input-group">
+                  <input type="text" id="toggle-pin-shortcut" placeholder="点击设置快捷键" class="shortcut-input" readonly>
+                  <button class="shortcut-clear" title="恢复默认">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 剪贴板设置 -->

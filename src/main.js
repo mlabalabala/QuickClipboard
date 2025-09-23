@@ -20,6 +20,7 @@ import { initThemeManager } from './js/themeManager.js';
 import './js/fileIconUtils.js';
 import './js/utils/htmlProcessor.js';
 import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
+import { initShortcutDisplay } from './js/shortcutDisplay.js';
 import { invoke } from '@tauri-apps/api/core';
 import {
   initDOMReferences,
@@ -145,6 +146,9 @@ async function initApp() {
 
   // 初始化设置管理器
   await initializeSettingsManager();
+
+  // 初始化快捷键显示
+  await initShortcutDisplay();
 
   // 更新快捷键显示
   updateShortcutDisplay();

@@ -92,6 +92,17 @@ const defaultSettings = {
   previewScrollSound: true,
   previewScrollSoundPath: 'sounds/roll.mp3',
   previewShortcut: 'Ctrl+`',
+  // 剪贴板窗口快捷键设置
+  navigateUpShortcut: 'ArrowUp',
+  navigateDownShortcut: 'ArrowDown',
+  tabLeftShortcut: 'ArrowLeft',
+  tabRightShortcut: 'ArrowRight',
+  focusSearchShortcut: 'Tab',
+  hideWindowShortcut: 'Escape',
+  executeItemShortcut: 'Ctrl+Enter',
+  previousGroupShortcut: 'Ctrl+ArrowUp',
+  nextGroupShortcut: 'Ctrl+ArrowDown',
+  togglePinShortcut: 'Ctrl+P',
   // AI翻译设置
   aiTranslationEnabled: false,
   aiApiKey: '',
@@ -209,6 +220,27 @@ async function initializeUI() {
   document.getElementById('preview-auto-paste').checked = settings.previewAutoPaste;
   document.getElementById('preview-scroll-sound').checked = settings.previewScrollSound;
   document.getElementById('preview-scroll-sound-path').value = settings.previewScrollSoundPath;
+
+  // 剪贴板窗口快捷键设置
+  const clipboardShortcutInputs = [
+    { id: 'navigate-up-shortcut', key: 'navigateUpShortcut' },
+    { id: 'navigate-down-shortcut', key: 'navigateDownShortcut' },
+    { id: 'tab-left-shortcut', key: 'tabLeftShortcut' },
+    { id: 'tab-right-shortcut', key: 'tabRightShortcut' },
+    { id: 'focus-search-shortcut', key: 'focusSearchShortcut' },
+    { id: 'hide-window-shortcut', key: 'hideWindowShortcut' },
+    { id: 'execute-item-shortcut', key: 'executeItemShortcut' },
+    { id: 'previous-group-shortcut', key: 'previousGroupShortcut' },
+    { id: 'next-group-shortcut', key: 'nextGroupShortcut' },
+    { id: 'toggle-pin-shortcut', key: 'togglePinShortcut' }
+  ];
+
+  clipboardShortcutInputs.forEach(({ id, key }) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.value = settings[key] || defaultSettings[key];
+    }
+  });
 
   // 截屏设置
   document.getElementById('screenshot-enabled').checked = settings.screenshot_enabled;
@@ -383,6 +415,9 @@ function bindEvents() {
 
   // 快捷键设置
   bindToggleShortcutEvents();
+
+  // 剪贴板窗口快捷键设置
+  bindClipboardShortcutEvents();
 
   // 音效设置事件
   bindSoundEvents();
@@ -593,6 +628,106 @@ function bindToggleShortcutEvents() {
         button.style.color = '';
       }, 500);
     });
+  });
+}
+
+// 绑定剪贴板窗口快捷键事件
+function bindClipboardShortcutEvents() {
+  const shortcutConfigs = [
+    { id: 'navigate-up-shortcut', key: 'navigateUpShortcut', default: 'ArrowUp' },
+    { id: 'navigate-down-shortcut', key: 'navigateDownShortcut', default: 'ArrowDown' },
+    { id: 'tab-left-shortcut', key: 'tabLeftShortcut', default: 'ArrowLeft' },
+    { id: 'tab-right-shortcut', key: 'tabRightShortcut', default: 'ArrowRight' },
+    { id: 'focus-search-shortcut', key: 'focusSearchShortcut', default: 'Tab' },
+    { id: 'hide-window-shortcut', key: 'hideWindowShortcut', default: 'Escape' },
+    { id: 'execute-item-shortcut', key: 'executeItemShortcut', default: 'Ctrl+Enter' },
+    { id: 'previous-group-shortcut', key: 'previousGroupShortcut', default: 'Ctrl+ArrowUp' },
+    { id: 'next-group-shortcut', key: 'nextGroupShortcut', default: 'Ctrl+ArrowDown' },
+    { id: 'toggle-pin-shortcut', key: 'togglePinShortcut', default: 'Ctrl+P' }
+  ];
+
+  shortcutConfigs.forEach(config => {
+    const shortcutInput = document.getElementById(config.id);
+    const clearButton = shortcutInput?.parentElement?.querySelector('.shortcut-clear');
+
+    if (shortcutInput) {
+      let isRecording = false;
+
+      shortcutInput.addEventListener('focus', () => {
+        if (!isRecording) {
+          startRecording();
+        }
+      });
+
+      shortcutInput.addEventListener('keydown', (e) => {
+        if (!isRecording) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const key = e.key;
+        const modifiers = [];
+
+        if (e.ctrlKey) modifiers.push('Ctrl');
+        if (e.shiftKey) modifiers.push('Shift');
+        if (e.altKey) modifiers.push('Alt');
+        if (e.metaKey) modifiers.push('Win');
+
+        // 忽略单独的修饰键
+        if (['Control', 'Shift', 'Alt', 'Meta', 'OS'].includes(key)) {
+          return;
+        }
+
+        // 构建快捷键字符串
+        let keyName = key;
+        // 特殊键名处理
+        if (key === 'ArrowUp') keyName = 'ArrowUp';
+        else if (key === 'ArrowDown') keyName = 'ArrowDown';
+        else if (key === 'ArrowLeft') keyName = 'ArrowLeft';
+        else if (key === 'ArrowRight') keyName = 'ArrowRight';
+        else if (key === 'Escape') keyName = 'Escape';
+        else if (key === 'Tab') keyName = 'Tab';
+        else if (key === 'Enter') keyName = 'Enter';
+        else keyName = key.toUpperCase();
+
+        const shortcut = [...modifiers, keyName].join('+');
+        shortcutInput.value = shortcut;
+        settings[config.key] = shortcut;
+
+        stopRecording();
+        saveSettings();
+      });
+
+      shortcutInput.addEventListener('blur', () => {
+        if (isRecording) {
+          stopRecording();
+        }
+      });
+
+      function startRecording() {
+        isRecording = true;
+        shortcutInput.classList.add('recording');
+        shortcutInput.placeholder = '请按下快捷键组合...';
+        shortcutInput.value = '';
+      }
+
+      function stopRecording() {
+        isRecording = false;
+        shortcutInput.classList.remove('recording');
+        shortcutInput.placeholder = '点击设置快捷键';
+      }
+
+      // 清除/恢复默认按钮
+      if (clearButton) {
+        clearButton.addEventListener('click', () => {
+          const defaultShortcut = config.default;
+          shortcutInput.value = defaultShortcut;
+          settings[config.key] = defaultShortcut;
+          saveSettings();
+          console.log(`${config.key} 已恢复为默认值:`, defaultShortcut);
+        });
+      }
+    }
   });
 }
 

@@ -86,6 +86,18 @@ pub struct AppSettings {
     // 格式设置
     pub paste_with_format: bool,      // 是否带格式粘贴和显示，true=带格式，false=纯文本
     
+    // 剪贴板窗口快捷键设置
+    pub navigate_up_shortcut: String,      // 向上导航快捷键
+    pub navigate_down_shortcut: String,    // 向下导航快捷键
+    pub tab_left_shortcut: String,         // 左切换标签快捷键
+    pub tab_right_shortcut: String,        // 右切换标签快捷键
+    pub focus_search_shortcut: String,     // 聚焦搜索框快捷键
+    pub hide_window_shortcut: String,      // 隐藏窗口快捷键
+    pub execute_item_shortcut: String,     // 执行选中项目快捷键
+    pub previous_group_shortcut: String,   // 上一个分组快捷键
+    pub next_group_shortcut: String,       // 下一个分组快捷键
+    pub toggle_pin_shortcut: String,       // 切换固定状态快捷键
+    
     // 数据存储设置
     pub custom_storage_path: Option<String>, // 自定义存储路径，None表示使用默认位置
     pub use_custom_storage: bool,            // 是否使用自定义存储路径
@@ -176,6 +188,18 @@ impl Default for AppSettings {
             
             // 格式设置默认值
             paste_with_format: true,                   // 默认带格式粘贴
+            
+            // 剪贴板窗口快捷键设置默认值
+            navigate_up_shortcut: "ArrowUp".to_string(),
+            navigate_down_shortcut: "ArrowDown".to_string(),
+            tab_left_shortcut: "ArrowLeft".to_string(),
+            tab_right_shortcut: "ArrowRight".to_string(),
+            focus_search_shortcut: "Tab".to_string(),
+            hide_window_shortcut: "Escape".to_string(),
+            execute_item_shortcut: "Ctrl+Enter".to_string(),
+            previous_group_shortcut: "Ctrl+ArrowUp".to_string(),
+            next_group_shortcut: "Ctrl+ArrowDown".to_string(),
+            toggle_pin_shortcut: "Ctrl+P".to_string(),
             
             // 数据存储设置默认值
             custom_storage_path: None,                 // 默认使用系统AppData目录
@@ -313,6 +337,16 @@ impl AppSettings {
             "titleBarPosition":self.title_bar_position,
             "edgeHideEnabled":self.edge_hide_enabled,
             "pasteWithFormat":self.paste_with_format,
+            "navigateUpShortcut":self.navigate_up_shortcut,
+            "navigateDownShortcut":self.navigate_down_shortcut,
+            "tabLeftShortcut":self.tab_left_shortcut,
+            "tabRightShortcut":self.tab_right_shortcut,
+            "focusSearchShortcut":self.focus_search_shortcut,
+            "hideWindowShortcut":self.hide_window_shortcut,
+            "executeItemShortcut":self.execute_item_shortcut,
+            "previousGroupShortcut":self.previous_group_shortcut,
+            "nextGroupShortcut":self.next_group_shortcut,
+            "togglePinShortcut":self.toggle_pin_shortcut,
         })
     }
 
@@ -521,6 +555,38 @@ impl AppSettings {
         // 格式设置
         if let Some(v) = json.get("pasteWithFormat").and_then(|v| v.as_bool()) {
             self.paste_with_format = v;
+        }
+        
+        // 剪贴板窗口快捷键设置
+        if let Some(v) = json.get("navigateUpShortcut").and_then(|v| v.as_str()) {
+            self.navigate_up_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("navigateDownShortcut").and_then(|v| v.as_str()) {
+            self.navigate_down_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("tabLeftShortcut").and_then(|v| v.as_str()) {
+            self.tab_left_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("tabRightShortcut").and_then(|v| v.as_str()) {
+            self.tab_right_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("focusSearchShortcut").and_then(|v| v.as_str()) {
+            self.focus_search_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("hideWindowShortcut").and_then(|v| v.as_str()) {
+            self.hide_window_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("executeItemShortcut").and_then(|v| v.as_str()) {
+            self.execute_item_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("previousGroupShortcut").and_then(|v| v.as_str()) {
+            self.previous_group_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("nextGroupShortcut").and_then(|v| v.as_str()) {
+            self.next_group_shortcut = v.to_string();
+        }
+        if let Some(v) = json.get("togglePinShortcut").and_then(|v| v.as_str()) {
+            self.toggle_pin_shortcut = v.to_string();
         }
     }
 }

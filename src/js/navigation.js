@@ -38,33 +38,10 @@ let isFirstLaunch = false;
 // 初始化导航系统
 export async function initNavigation() {
   try {
-    // 监听导航按键事件
-    await listen('navigation-key-pressed', (event) => {
-      const { key } = event.payload;
 
-      // 处理Ctrl组合键
-      if (key.startsWith('Ctrl')) {
-        handleCtrlCombination(key);
-        return;
-      }
-
-      // 对于方向键使用节流，其他按键立即执行
-      if (key === 'ArrowUp' || key === 'ArrowDown') {
-        handleThrottledNavigation(key);
-      } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
-        // 左右方向键用于切换标签页，立即执行
-        handleTabSwitch(key);
-      } else {
-        // 立即执行非导航按键
-        switch (key) {
-          case 'Escape':
-            hideWindow();
-            break;
-          case 'Tab':
-            focusSearchBox();
-            break;
-        }
-      }
+    // 监听导航动作事件
+    await listen('navigation-action', (event) => {
+      handleNavigationAction(event.payload);
     });
 
     // 设置点击同步
@@ -76,6 +53,47 @@ export async function initNavigation() {
     console.error('初始化导航系统失败:', error);
   }
 }
+
+// 处理导航动作事件
+  function handleNavigationAction(actionEvent) {
+    const action = actionEvent.action;
+    
+  switch (action) {
+    case 'navigate-up':
+      handleThrottledNavigation('up');
+      break;
+    case 'navigate-down':
+      handleThrottledNavigation('down');
+      break;
+    case 'tab-left':
+      handleTabSwitch('left');
+      break;
+    case 'tab-right':
+      handleTabSwitch('right');
+      break;
+    case 'focus-search':
+      focusSearchBox();
+      break;
+    case 'hide-window':
+      hideWindow();
+      break;
+    case 'execute-item':
+      executeCurrentItem();
+      break;
+    case 'previous-group':
+      switchToPreviousGroup();
+      showGroupSidebarTemporarily();
+      break;
+    case 'next-group':
+      switchToNextGroup();
+      showGroupSidebarTemporarily();
+      break;
+    case 'toggle-pin':
+      togglePin();
+      break;
+  }
+}
+
 
 // 节流处理导航按键
 function handleThrottledNavigation(key) {
@@ -104,42 +122,17 @@ function executeNavigation(key) {
   lastNavigationTime = Date.now();
 
   switch (key) {
+    case 'up':
     case 'ArrowUp':
       navigateUp();
       break;
+    case 'down':
     case 'ArrowDown':
       navigateDown();
       break;
   }
 }
 
-// 处理Ctrl组合键
-function handleCtrlCombination(key) {
-  switch (key) {
-    case 'CtrlEnter':
-      // Ctrl+Enter：执行当前选中项目
-      executeCurrentItem();
-      break;
-    case 'CtrlArrowUp':
-      // Ctrl+上方向键：切换到上一个分组并临时显示分组列表
-      switchToPreviousGroup();
-      showGroupSidebarTemporarily();
-      break;
-    case 'CtrlArrowDown':
-      // Ctrl+下方向键：切换到下一个分组并临时显示分组列表
-      switchToNextGroup();
-      showGroupSidebarTemporarily();
-      break;
-    case 'CtrlP':
-      // Ctrl+P：切换窗口固定状态
-      togglePin();
-      break;
-    case 'CtrlArrowLeft':
-    case 'CtrlArrowRight':
-      // Ctrl+左右方向键：暂时不处理，避免与标签页切换冲突
-      break;
-  }
-}
 
 // 临时显示分组侧边栏1秒
 let groupSidebarTimer = null;
@@ -264,10 +257,10 @@ function handleTabSwitch(key) {
   if (currentTabIndex === -1) return;
 
   let nextTabIndex;
-  if (key === 'ArrowLeft') {
+  if (key === 'left' || key === 'ArrowLeft') {
     // 向左切换，循环到最后一个
     nextTabIndex = currentTabIndex === 0 ? tabs.length - 1 : currentTabIndex - 1;
-  } else if (key === 'ArrowRight') {
+  } else if (key === 'right' || key === 'ArrowRight') {
     // 向右切换，循环到第一个
     nextTabIndex = currentTabIndex === tabs.length - 1 ? 0 : currentTabIndex + 1;
   }

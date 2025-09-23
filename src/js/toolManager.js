@@ -289,7 +289,7 @@ function initializeToolStates() {
 }
 
 // 更新工具状态显示
-function updateToolState(toolId, state) {
+export function updateToolState(toolId, state) {
   const tool = TOOL_REGISTRY[toolId];
   if (!tool) return;
   
