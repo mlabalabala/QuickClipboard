@@ -547,7 +547,7 @@ async function executeCurrentItem() {
 }
 
 // 聚焦搜索框
-async function focusSearchBox() {
+export async function focusSearchBox() {
   const activeTab = document.querySelector('.tab-content.active');
   if (!activeTab) return;
 

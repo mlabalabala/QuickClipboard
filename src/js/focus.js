@@ -87,3 +87,37 @@ export async function restoreFocus() {
     console.error('恢复焦点失败:', error);
   }
 }
+
+// 自动聚焦搜索框（根据设置）
+export async function autoFocusSearchIfEnabled() {
+  try {
+    // 获取设置
+    const settings = await invoke('get_settings');
+    
+    if (!settings.autoFocusSearch) {
+      return false; // 如果没有启用自动聚焦，返回false
+    }
+    
+    // 使用 navigation.js 中的 focusSearchBox 函数
+    const { focusSearchBox } = await import('./navigation.js');
+    await focusSearchBox();
+    return true;
+  } catch (error) {
+    console.error('自动聚焦搜索框失败:', error);
+    return false;
+  }
+}
+
+// 移除搜索框焦点
+export function blurSearchInputs() {
+  const searchInputs = [
+    document.getElementById('search-input'),
+    document.getElementById('quick-texts-search')
+  ];
+  
+  searchInputs.forEach(input => {
+    if (input && document.activeElement === input) {
+      input.blur();
+    }
+  });
+}

@@ -263,6 +263,13 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     settings.edge_snap_position = Some((hide_x, hide_y));
     let _ = crate::settings::update_global_settings(settings);
 
+    // 发送贴边隐藏事件给前端
+    {
+        use tauri::Emitter;
+        let _ = window.emit("edge-snap-hide-animation", ());
+        // println!("发送贴边隐藏动画事件 (webview)");
+    }
+
     Ok(())
 }
 

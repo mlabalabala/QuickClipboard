@@ -106,6 +106,8 @@ const defaultSettings = {
   previousGroupShortcut: 'Ctrl+ArrowUp',
   nextGroupShortcut: 'Ctrl+ArrowDown',
   togglePinShortcut: 'Ctrl+P',
+  // 窗口行为设置
+  autoFocusSearch: false,
   // AI翻译设置
   aiTranslationEnabled: false,
   aiApiKey: '',
@@ -290,6 +292,9 @@ async function initializeUI() {
   
   // 贴边隐藏设置
   document.getElementById('edge-hide-enabled').checked = settings.edgeHideEnabled !== undefined ? settings.edgeHideEnabled : true;
+  
+  // 自动聚焦搜索框设置
+  document.getElementById('auto-focus-search').checked = settings.autoFocusSearch !== undefined ? settings.autoFocusSearch : false;
 
   // 应用黑白名单设置
   document.getElementById('app-filter-enabled').checked = settings.appFilterEnabled || false;
@@ -485,7 +490,7 @@ function bindSettingEvents() {
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
-    'title-bar-position', 'edge-hide-enabled'
+    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search'
   ];
 
   settingInputs.forEach(id => {

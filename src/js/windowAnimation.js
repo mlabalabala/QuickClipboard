@@ -1,6 +1,8 @@
 // ==================== 窗口动画模块 ====================
 // 负责处理窗口显示/隐藏的真实高度变化动画
 
+import { invoke } from '@tauri-apps/api/core';
+
 // 全局动画开关
 let animationEnabled = true;
 
@@ -361,22 +363,35 @@ export async function setupWindowAnimationListeners() {
     const { listen } = await import('@tauri-apps/api/event');
 
     // 监听窗口显示动画事件
-    await listen('window-show-animation', () => {
+    await listen('window-show-animation', async () => {
       // console.log('收到窗口显示动画事件');
       playWindowShowAnimation();
+      
+      // 检查是否需要自动聚焦搜索框
+      await handleAutoFocusSearch(true);
     });
 
     // 监听窗口隐藏动画事件
-    await listen('window-hide-animation', () => {
+    await listen('window-hide-animation', async () => {
       // console.log('收到窗口隐藏动画事件');
       playWindowHideAnimation();
+      
+      // 窗口隐藏时移除搜索框焦点
+      await handleAutoFocusSearch(false);
     });
 
-    // 监听贴边弹动动画事件
-    await listen('edge-snap-bounce-animation', (event) => {
+    // 监听贴边弹动动画事件（贴边显示）
+    await listen('edge-snap-bounce-animation', async (event) => {
       const direction = event.payload;
       // console.log('收到贴边弹动动画事件:', direction);
       playEdgeSnapBounceEffect(direction);
+      await handleAutoFocusSearch(true);
+    });
+
+    // 监听贴边隐藏事件
+    await listen('edge-snap-hide-animation', async () => {
+      // console.log('收到贴边隐藏动画事件');
+      await handleAutoFocusSearch(false);
     });
 
     // console.log('窗口动画监听器设置完成');
@@ -385,6 +400,37 @@ export async function setupWindowAnimationListeners() {
     await restoreEdgeSnapOnStartup();
   } catch (error) {
     console.error('设置窗口动画监听器失败:', error);
+  }
+}
+
+/**
+ * 处理自动聚焦搜索框
+ * @param {boolean} isShowing - true表示窗口显示，false表示窗口隐藏
+ */
+async function handleAutoFocusSearch(isShowing) {
+  try {
+    if (isShowing) {
+      // 窗口显示时，延迟一点时间再聚焦，确保动画完成
+      setTimeout(async () => {
+        try {
+          // 使用 focus.js 中的自动聚焦函数
+          const { autoFocusSearchIfEnabled } = await import('./focus.js');
+          await autoFocusSearchIfEnabled();
+        } catch (error) {
+          console.error('自动聚焦搜索框失败:', error);
+        }
+      }, 300); // 延迟300ms，等待动画完成
+    } else {
+      // 窗口隐藏时，移除所有搜索框的焦点
+      try {
+        const { blurSearchInputs } = await import('./focus.js');
+        blurSearchInputs();
+      } catch (error) {
+        console.error('移除搜索框焦点失败:', error);
+      }
+    }
+  } catch (error) {
+    console.error('处理自动聚焦搜索框失败:', error);
   }
 }
 
