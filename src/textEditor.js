@@ -375,7 +375,7 @@ async function loadGroups() {
     // 添加分组选项
     groups.forEach(group => {
       const option = document.createElement('option');
-      option.value = group.id;
+      option.value = group.name;
       option.textContent = group.name;
       groupSelect.appendChild(option);
     });
@@ -459,8 +459,8 @@ async function handleSave() {
         return;
       }
 
-      // 确保分组ID不为空，如果为空则使用原来的分组ID或默认值
-      finalGroupId = newGroupId || originalData.groupId || 'all';
+      // 确保分组名称不为空，如果为空则使用原来的分组或默认值
+      finalGroupId = newGroupId || originalData.groupId || '全部';
 
       console.log('保存常用文本:', {
         id: originalData.id,
@@ -474,7 +474,7 @@ async function handleSave() {
         id: originalData.id,
         title: newTitle,
         content: newContent,
-        groupId: finalGroupId
+        groupName: finalGroupId
       });
 
       // 通知主窗口刷新常用文本

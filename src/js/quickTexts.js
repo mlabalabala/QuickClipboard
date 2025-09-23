@@ -404,13 +404,13 @@ export async function saveQuickText() {
           id: editingQuickTextId,
           title,
           content,
-          group_name: null
+          groupName: null
         });
       } else {
         await invoke('add_quick_text', {
           title,
           content,
-          group_name: null
+          groupName: null
         });
       }
       hideQuickTextModal();
@@ -973,11 +973,11 @@ function showQuickTextContextMenu(event, text) {
       }
     ];
   } else {
-    // 文本和链接类型菜单
+    // 文本、链接和富文本类型菜单
     menuItems = [
       {
         icon: 'ti-edit',
-        text: '编辑',
+        text: contentType === 'rich_text' ? '编辑纯文本' : '编辑',
         onClick: () => {
           editQuickText(text);
         }

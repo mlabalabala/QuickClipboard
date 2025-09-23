@@ -125,7 +125,10 @@ impl FileOperationService {
 
             if !output.status.success() {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                return Err(format!("打开文件位置失败: {}", error_msg));
+                if !error_msg.trim().is_empty() {
+                    eprintln!("Explorer 命令警告: {}", error_msg);
+                }
+                // 不返回错误
             }
         }
 

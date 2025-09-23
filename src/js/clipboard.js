@@ -691,11 +691,11 @@ function showClipboardContextMenu(event, item, index) {
         }
       }
     );
-  } else if (contentType === 'text' || contentType === 'link') {
-    // 文本和链接类型菜单
+  } else if (contentType === 'text' || contentType === 'link' || contentType === 'rich_text') {
+    // 文本、链接和富文本类型菜单
     menuItems.push({
       icon: 'ti-edit',
-      text: '编辑',
+      text: contentType === 'rich_text' ? '编辑纯文本' : '编辑',
       onClick: async () => {
         await openTextEditor(item, index);
       }
