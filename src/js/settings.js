@@ -13,6 +13,7 @@ import {
   saveAIConfig
 } from './aiConfig.js';
 import { settingsSearch } from './settingsSearch.js';
+import { initDisableBrowserShortcuts } from './utils/disableBrowserShortcuts.js';
 
 // =================== 启动横幅 ===================
 function printSettingsBanner() {
@@ -42,6 +43,9 @@ let settings = {};
 document.addEventListener('DOMContentLoaded', async () => {
   // 输出启动横幅
   printSettingsBanner();
+
+  // 禁用浏览器默认快捷键
+  initDisableBrowserShortcuts();
 
   // 初始化主题管理器
   const { initThemeManager } = await import('./themeManager.js');
@@ -584,12 +588,20 @@ function bindToggleShortcutEvents() {
       shortcutInput.classList.add('recording');
       shortcutInput.placeholder = '请按下快捷键组合...';
       shortcutInput.value = '';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(true);
+      }
     }
 
     function stopRecording() {
       isRecording = false;
       shortcutInput.classList.remove('recording');
       shortcutInput.placeholder = '点击设置快捷键';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(false);
+      }
     }
   }
 
@@ -784,12 +796,20 @@ function bindPreviewShortcutEvents() {
       shortcutInput.classList.add('recording');
       shortcutInput.placeholder = '请按下快捷键组合...';
       shortcutInput.value = '';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(true);
+      }
     }
 
     function stopRecording() {
       isRecording = false;
       shortcutInput.classList.remove('recording');
       shortcutInput.placeholder = '点击设置快捷键';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(false);
+      }
     }
   }
 
@@ -902,12 +922,20 @@ function bindScreenshotShortcutEvents() {
       shortcutInput.classList.add('recording');
       shortcutInput.placeholder = '请按下快捷键组合...';
       shortcutInput.value = '';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(true);
+      }
     }
 
     function stopRecording() {
       isRecording = false;
       shortcutInput.classList.remove('recording');
       shortcutInput.placeholder = '点击设置快捷键';
+      // 通知全局禁用系统
+      if (window.setShortcutRecording) {
+        window.setShortcutRecording(false);
+      }
     }
   }
 

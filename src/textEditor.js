@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Window } from '@tauri-apps/api/window';
 import { showNotification } from './js/notificationManager.js';
+import { initDisableBrowserShortcuts } from './js/utils/disableBrowserShortcuts.js';
 document.addEventListener('contextmenu', function (e) {
   e.preventDefault();
 });
@@ -31,6 +32,9 @@ let statusText;
 // 初始化应用
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('文本编辑器初始化...');
+
+  // 禁用浏览器默认快捷键
+  initDisableBrowserShortcuts();
 
   // 初始化DOM引用
   initDOMReferences();

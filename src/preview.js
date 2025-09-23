@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { createFileIconElement } from './js/fileIconUtils.js';
+import { initDisableBrowserShortcuts } from './js/utils/disableBrowserShortcuts.js';
 
 // =================== 启动横幅 ===================
 function printPreviewBanner() {
@@ -77,6 +78,9 @@ async function loadPreviewSettings() {
 document.addEventListener('DOMContentLoaded', async () => {
   // 输出启动横幅
   printPreviewBanner();
+
+  // 禁用浏览器默认快捷键
+  initDisableBrowserShortcuts();
 
   // console.log('预览窗口开始初始化');
   previewList = document.getElementById('preview-list');
@@ -529,6 +533,9 @@ function showEmptyState() {
 
 // 页面加载完成后初始化
 window.addEventListener('DOMContentLoaded', async () => {
+  // 禁用浏览器默认快捷键
+  initDisableBrowserShortcuts();
+
   // 初始化主题管理器
   const { initThemeManager } = await import('./js/themeManager.js');
   initThemeManager();
