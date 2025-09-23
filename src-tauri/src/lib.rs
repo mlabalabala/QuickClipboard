@@ -187,6 +187,11 @@ pub fn run() {
             // #[cfg(windows)]
             // memory_manager::start_memory_trim_scheduler();
 
+            // 初始化内置音效文件
+            if let Err(e) = services::sound_service::SoundService::initialize_builtin_sounds() {
+                eprintln!("初始化内置音效文件失败: {}", e);
+            }
+
             // 初始化音效管理器
             if let Err(_e) = sound_manager::initialize_sound_manager() {
                 // 静默处理错误
@@ -258,7 +263,7 @@ pub fn run() {
                 volume: (app_settings.sound_volume / 100.0) as f32,
                 copy_sound_path: app_settings.copy_sound_path,
                 paste_sound_path: app_settings.paste_sound_path,
-                preset: app_settings.sound_preset,
+                preset: "default".to_string(),
             };
             sound_manager::update_sound_settings(sound_settings);
 

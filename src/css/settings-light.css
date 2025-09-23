@@ -415,14 +415,16 @@
 }
 
 .theme-light .sound-browse-btn,
-.theme-light .sound-test-btn {
+.theme-light .sound-test-btn,
+.theme-light .sound-reset-btn {
   background: var(--bg-primary);
   border-color: var(--border-secondary);
   color: var(--text-secondary);
 }
 
 .theme-light .sound-browse-btn:hover,
-.theme-light .sound-test-btn:hover {
+.theme-light .sound-test-btn:hover,
+.theme-light .sound-reset-btn:hover {
   background: var(--bg-secondary);
   border-color: var(--primary-color);
   color: var(--primary-color);

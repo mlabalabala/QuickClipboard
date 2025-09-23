@@ -644,14 +644,16 @@ body.theme-dark {
 /* =================== 音效相关 =================== */
 .theme-dark .sound-input,
 .theme-dark .sound-browse-btn,
-.theme-dark .sound-test-btn {
+.theme-dark .sound-test-btn,
+.theme-dark .sound-reset-btn {
   background: transparent !important;
   color: var(--text-secondary) !important;
   border-color: var(--border-secondary);
 }
 
 .theme-dark .sound-browse-btn:hover,
-.theme-dark .sound-test-btn:hover {
+.theme-dark .sound-test-btn:hover,
+.theme-dark .sound-reset-btn:hover {
   background: var(--bg-secondary) !important;
   border-color: var(--primary-color);
   color: var(--primary-color) !important;

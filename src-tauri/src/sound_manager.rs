@@ -87,55 +87,23 @@ impl SoundManager {
     fn resolve_sound_path(sound_path: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         let path = Path::new(sound_path);
 
-        // 如果是绝对路径，直接使用
-        if path.is_absolute() {
+        // 如果是绝对路径且文件存在，直接使用
+        if path.is_absolute() && path.exists() {
             return Ok(path.to_path_buf());
         }
 
-        // 相对路径：尝试多个可能的位置
-        let mut possible_paths = Vec::new();
-
-        // 1. 相对于当前工作目录
-        possible_paths.push(std::env::current_dir()?.join(sound_path));
-
-        // 2. 相对于可执行文件目录
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                possible_paths.push(exe_dir.join(sound_path));
-
-                // 3. 相对于可执行文件目录的上级目录（开发模式）
-                if let Some(parent_dir) = exe_dir.parent() {
-                    possible_paths.push(parent_dir.join(sound_path));
-
-                    // 4. 相对于项目根目录（开发模式下的src-tauri的上级目录）
-                    if let Some(project_root) = parent_dir.parent() {
-                        possible_paths.push(project_root.join(sound_path));
-                    }
-                }
-
-                // 5. Tauri打包后的资源目录（Windows）
-                // 在打包后，资源文件位于可执行文件同目录下的sounds文件夹
-                possible_paths.push(exe_dir.join(sound_path));
+        // 统一使用应用数据目录作为音效文件的基础路径
+        match crate::data_manager::get_app_data_dir() {
+            Ok(app_data_dir) => {
+                let sound_file_path = app_data_dir.join(sound_path);
+                Ok(sound_file_path)
+            }
+            Err(e) => {
+                eprintln!("获取应用数据目录失败: {}", e);
+                // 如果获取应用数据目录失败，回退到原始路径
+                Ok(path.to_path_buf())
             }
         }
-
-        // 6. 尝试从环境变量获取项目根目录
-        if let Ok(cargo_manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-            let manifest_dir = Path::new(&cargo_manifest_dir);
-            if let Some(project_root) = manifest_dir.parent() {
-                possible_paths.push(project_root.join(sound_path));
-            }
-        }
-
-        // 查找第一个存在的文件
-        for candidate_path in &possible_paths {
-            if candidate_path.exists() {
-                return Ok(candidate_path.clone());
-            }
-        }
-
-        // 如果都不存在，返回相对于当前目录的路径
-        Ok(possible_paths[0].clone())
     }
 
     fn play_network_sound(url: &str, volume: f32) -> Result<(), Box<dyn std::error::Error>> {

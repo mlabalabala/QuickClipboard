@@ -26,7 +26,6 @@ pub struct AppSettings {
     pub sound_volume: f64,
     pub copy_sound_path: String,
     pub paste_sound_path: String,
-    pub sound_preset: String,
 
     // 截屏设置
     pub screenshot_enabled: bool,
@@ -127,7 +126,6 @@ impl Default for AppSettings {
             sound_volume: 50.0,
             copy_sound_path: "".to_string(),
             paste_sound_path: "".to_string(),
-            sound_preset: "default".to_string(),
 
             // 截屏设置默认值
             screenshot_enabled: true,
@@ -301,7 +299,6 @@ impl AppSettings {
             "soundVolume": self.sound_volume,
             "copySoundPath": self.copy_sound_path,
             "pasteSoundPath": self.paste_sound_path,
-            "soundPreset": self.sound_preset,
             "screenshot_enabled": self.screenshot_enabled,
             "screenshot_shortcut": self.screenshot_shortcut,
             "screenshot_quality": self.screenshot_quality,
@@ -413,9 +410,6 @@ impl AppSettings {
         }
         if let Some(v) = json.get("pasteSoundPath").and_then(|v| v.as_str()) {
             self.paste_sound_path = v.to_string();
-        }
-        if let Some(v) = json.get("soundPreset").and_then(|v| v.as_str()) {
-            self.sound_preset = v.to_string();
         }
 
         // 截屏设置

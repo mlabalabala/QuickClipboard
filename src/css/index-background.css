@@ -711,14 +711,16 @@ body.theme-background {
 /* =================== 音效相关 =================== */
 .theme-background .sound-input,
 .theme-background .sound-browse-btn,
-.theme-background .sound-test-btn {
+.theme-background .sound-test-btn,
+.theme-background .sound-reset-btn {
     background: var(--bg-primary) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-secondary);
 }
 
 .theme-background .sound-browse-btn:hover,
-.theme-background .sound-test-btn:hover {
+.theme-background .sound-test-btn:hover,
+.theme-background .sound-reset-btn:hover {
     background: var(--bg-secondary) !important;
     border-color: var(--primary-color);
     color: var(--primary-color) !important;

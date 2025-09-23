@@ -590,14 +590,16 @@ body.theme-light {
 /* =================== 音效相关 =================== */
 .theme-light .sound-input,
 .theme-light .sound-browse-btn,
-.theme-light .sound-test-btn {
+.theme-light .sound-test-btn,
+.theme-light .sound-reset-btn {
   background: var(--bg-primary) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-secondary);
 }
 
 .theme-light .sound-browse-btn:hover,
-.theme-light .sound-test-btn:hover {
+.theme-light .sound-test-btn:hover,
+.theme-light .sound-reset-btn:hover {
   background: var(--bg-secondary) !important;
   border-color: var(--primary-color);
   color: var(--primary-color) !important;

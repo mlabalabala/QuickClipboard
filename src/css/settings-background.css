@@ -482,14 +482,16 @@ div {
 }
 
 .theme-background .sound-browse-btn,
-.theme-background .sound-test-btn {
+.theme-background .sound-test-btn,
+.theme-background .sound-reset-btn {
     background: var(--bg-primary);
     border-color: var(--border-secondary);
     color: var(--text-secondary);
 }
 
 .theme-background .sound-browse-btn:hover,
-.theme-background .sound-test-btn:hover {
+.theme-background .sound-test-btn:hover,
+.theme-background .sound-reset-btn:hover {
     background: var(--bg-secondary);
     border-color: var(--primary-color);
     color: var(--primary-color);

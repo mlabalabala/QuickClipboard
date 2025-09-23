@@ -1,7 +1,38 @@
 /// 音效服务 - 处理音效播放和管理相关的业务逻辑
 pub struct SoundService;
 
+/// 内置音效文件列表
+const BUILTIN_SOUNDS: &[(&str, &[u8])] = &[
+    ("sounds/copy.mp3", include_bytes!("../../../sounds/copy.mp3")),
+    ("sounds/paste.mp3", include_bytes!("../../../sounds/paste.mp3")),
+    ("sounds/roll.mp3", include_bytes!("../../../sounds/roll.mp3")),
+];
+
 impl SoundService {
+    /// 初始化内置音效文件到应用数据目录
+    pub fn initialize_builtin_sounds() -> Result<(), String> {
+        let app_data_dir = crate::data_manager::get_app_data_dir()
+            .map_err(|e| format!("获取应用数据目录失败: {}", e))?;
+
+        for (sound_path, sound_data) in BUILTIN_SOUNDS {
+            let target_path = app_data_dir.join(sound_path);
+            
+            // 确保目录存在
+            if let Some(parent_dir) = target_path.parent() {
+                std::fs::create_dir_all(parent_dir)
+                    .map_err(|e| format!("创建音效目录失败: {}", e))?;
+            }
+            
+            // 如果文件不存在，则写入内置音效
+            if !target_path.exists() {
+                std::fs::write(&target_path, sound_data)
+                    .map_err(|e| format!("写入内置音效文件失败: {}", e))?;
+                println!("已初始化内置音效文件: {}", target_path.display());
+            }
+        }
+        
+        Ok(())
+    }
     /// 测试音效播放
     pub async fn test_sound(sound_path: String, volume: f32, sound_type: Option<String>) -> Result<(), String> {
         let volume_normalized = volume / 100.0; // 将0-100转换为0.0-1.0
@@ -11,17 +42,30 @@ impl SoundService {
         let sound_type_clone = sound_type.clone();
         
         tokio::spawn(async move {
-            // 检查文件是否存在
-            let effective_path = if std::path::Path::new(&sound_path_clone).exists() {
-                sound_path_clone
+            // 处理空路径的情况，使用默认音效文件
+            let actual_sound_path = if sound_path_clone.is_empty() {
+                match sound_type_clone.as_deref() {
+                    Some("copy") => "sounds/copy.mp3".to_string(),
+                    Some("paste") => "sounds/paste.mp3".to_string(),
+                    Some("preview-scroll") => "sounds/roll.mp3".to_string(),
+                    _ => "sounds/copy.mp3".to_string(), // 默认使用复制音效
+                }
             } else {
-                // 如果文件不存在，使用应用数据目录下的音效文件
+                sound_path_clone
+            };
+
+            // 统一使用应用数据目录作为音效文件的基础路径
+            let effective_path = if std::path::Path::new(&actual_sound_path).is_absolute() && std::path::Path::new(&actual_sound_path).exists() {
+                // 如果是绝对路径且文件存在，直接使用
+                actual_sound_path
+            } else {
+                // 否则，统一在应用数据目录中查找
                 match crate::data_manager::get_app_data_dir() {
                     Ok(app_data_dir) => {
-                        let sound_file_path = app_data_dir.join(&sound_path_clone);
+                        let sound_file_path = app_data_dir.join(&actual_sound_path);
                         sound_file_path.to_string_lossy().to_string()
                     }
-                    Err(_) => sound_path_clone,
+                    Err(_) => actual_sound_path,
                 }
             };
 
@@ -29,7 +73,7 @@ impl SoundService {
             if let Err(e) = 
                 crate::sound_manager::SoundManager::play_sound_sync(&effective_path, volume_normalized)
             {
-                eprintln!("测试音效失败: {}", e);
+                eprintln!("测试音效失败: {} (路径: {})", e, effective_path);
                 // 如果文件播放失败，回退到代码生成的音效
                 
                 // 根据音效类型生成不同频率的提示音

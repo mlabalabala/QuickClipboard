@@ -419,14 +419,16 @@ body.theme-dark {
 }
 
 .theme-dark .sound-browse-btn,
-.theme-dark .sound-test-btn {
+.theme-dark .sound-test-btn,
+.theme-dark .sound-reset-btn {
   background: var(--dropdown-bg);
   border-color: var(--border-secondary);
   color: var(--text-secondary);
 }
 
 .theme-dark .sound-browse-btn:hover,
-.theme-dark .sound-test-btn:hover {
+.theme-dark .sound-test-btn:hover,
+.theme-dark .sound-reset-btn:hover {
   background: var(--bg-hover);
   border-color: var(--primary-color);
   color: var(--primary-color);

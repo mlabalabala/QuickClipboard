@@ -120,7 +120,7 @@ impl SettingsService {
             volume: (app_settings.sound_volume / 100.0) as f32, // 转换为0.0-1.0范围
             copy_sound_path: app_settings.copy_sound_path.clone(),
             paste_sound_path: app_settings.paste_sound_path.clone(),
-            preset: app_settings.sound_preset.clone(),
+            preset: "default".to_string(),
         };
         crate::sound_manager::update_sound_settings(sound_settings);
 

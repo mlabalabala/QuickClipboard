@@ -85,7 +85,6 @@ const defaultSettings = {
   soundVolume: 50,
   copySoundPath: '',
   pasteSoundPath: '',
-  soundPreset: 'default',
   screenshotEnabled: true,
   screenshotShortcut: 'Ctrl+Shift+A',
   screenshotQuality: 85,
@@ -215,7 +214,6 @@ async function initializeUI() {
   document.getElementById('sound-volume').value = settings.soundVolume;
   document.getElementById('copy-sound-path').value = settings.copySoundPath;
   document.getElementById('paste-sound-path').value = settings.pasteSoundPath;
-  document.getElementById('sound-preset').value = settings.soundPreset;
 
   // 预览窗口设置
   document.getElementById('preview-enabled').checked = settings.previewEnabled;
@@ -478,7 +476,7 @@ function bindSettingEvents() {
     'auto-start', 'start-hidden', 'show-startup-notification', 'history-limit',
     'number-shortcuts', 'clipboard-monitor',
     'ignore-duplicates', 'save-images', 'show-image-preview',
-    'sound-enabled', 'copy-sound-path', 'paste-sound-path', 'sound-preset',
+    'sound-enabled', 'copy-sound-path', 'paste-sound-path',
     'preview-enabled', 'preview-shortcut', 'preview-items-count', 'preview-auto-paste',
     'preview-scroll-sound', 'preview-scroll-sound-path',
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
@@ -1025,13 +1023,26 @@ function bindSoundEvents() {
     saveSettings();
   });
 
-  // 预设选择
-  const presetSelect = document.getElementById('sound-preset');
-  presetSelect.addEventListener('change', (e) => {
-    const preset = e.target.value;
-    settings.soundPreset = preset;
-    applyPreset(preset);
+  // 恢复默认音效按钮
+  document.getElementById('reset-copy-sound').addEventListener('click', () => {
+    settings.copySoundPath = '';
+    document.getElementById('copy-sound-path').value = '';
     saveSettings();
+    showNotification('已恢复默认复制音效', 'success');
+  });
+
+  document.getElementById('reset-paste-sound').addEventListener('click', () => {
+    settings.pasteSoundPath = '';
+    document.getElementById('paste-sound-path').value = '';
+    saveSettings();
+    showNotification('已恢复默认粘贴音效', 'success');
+  });
+
+  document.getElementById('reset-preview-scroll-sound').addEventListener('click', () => {
+    settings.previewScrollSoundPath = 'sounds/roll.mp3';
+    document.getElementById('preview-scroll-sound-path').value = settings.previewScrollSoundPath;
+    saveSettings();
+    showNotification('已恢复默认滚动音效', 'success');
   });
 
   // 浏览音效文件按钮
@@ -1205,23 +1216,6 @@ function updateAiInputSpeedDisplay(speed) {
   }
 }
 
-// 应用音效预设
-function applyPreset(preset) {
-  const presets = {
-    default: {
-      copy: 'sounds/copy.mp3', // 使用sounds文件夹中的音效文件
-      paste: 'sounds/paste.mp3'
-    }
-  };
-
-  if (preset && presets[preset]) {
-    settings.copySoundPath = presets[preset].copy;
-    settings.pasteSoundPath = presets[preset].paste;
-
-    document.getElementById('copy-sound-path').value = settings.copySoundPath;
-    document.getElementById('paste-sound-path').value = settings.pasteSoundPath;
-  }
-}
 
 // 浏览音效文件
 async function browseSoundFile(type) {

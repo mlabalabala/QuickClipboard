@@ -891,7 +891,8 @@ input:checked+.toggle-slider:before {
 }
 
 .sound-browse-btn,
-.sound-test-btn {
+.sound-test-btn,
+.sound-reset-btn {
   padding: var(--padding-sm) 10px;
   border: 1px solid transparent;
   border-radius: var(--border-radius);
@@ -903,13 +904,15 @@ input:checked+.toggle-slider:before {
 }
 
 .sound-browse-btn:hover,
-.sound-test-btn:hover {
+.sound-test-btn:hover,
+.sound-reset-btn:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
 .sound-browse-btn i,
-.sound-test-btn i {
+.sound-test-btn i,
+.sound-reset-btn i {
   font-size: 16px;
 }
 
