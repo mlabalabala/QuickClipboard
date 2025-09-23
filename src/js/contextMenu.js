@@ -1,28 +1,7 @@
 // 通用右键菜单模块
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
-
-// 提取文本中的所有链接
-function extractLinks(text) {
-  const links = [];
-  
-  // 1. 提取标准URL格式（包含协议）
-  const standardUrlPattern = /(https?:\/\/|ftp:\/\/|mailto:|tel:)[^\s]+/gi;
-  let match;
-  while ((match = standardUrlPattern.exec(text)) !== null) {
-    links.push(match[0]);
-  }
-  
-  // 2. 提取www开头的URL（不包含协议）
-  const wwwUrlPattern = /www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([\/\w\-._~:/?#[\]@!$&'()*+,;=]*)?/gi;
-  while ((match = wwwUrlPattern.exec(text)) !== null) {
-    // 为www开头的链接添加https://协议
-    links.push('https://' + match[0]);
-  }
-  
-  // 去重
-  return [...new Set(links)];
-}
+import { extractAllLinks } from './utils/linkUtils.js';
 
 // 创建链接选择对话框
 function createLinkSelectionDialog(links, callback) {
@@ -234,10 +213,13 @@ export function showContextMenu(event, options) {
 
   const menuItems = [];
 
-  // 根据内容类型添加打开链接选项
-  if (options.content && options.content_type === 'link') {
-    // 提取文本中的所有链接
-    const links = extractLinks(options.content);
+  // 检测并添加打开链接选项
+  if (options.content) {
+    // 使用统一的链接提取工具函数
+    const links = extractAllLinks({
+      content: options.content,
+      html_content: options.html_content
+    });
     
     if (links.length === 1) {
       // 只有一个链接，直接显示打开选项

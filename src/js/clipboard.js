@@ -23,6 +23,7 @@ import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
 import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
+import { isLinkContent } from './utils/linkUtils.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -32,6 +33,7 @@ const thumbnailCache = new Map();
 
 // 虚拟列表实例
 let clipboardVirtualList = null;
+
 
 // 生成剪贴板项目HTML字符串
 function generateClipboardItemHTML(item, index) {
@@ -47,8 +49,8 @@ function generateClipboardItemHTML(item, index) {
     contentHTML = generateFilesHTML(item);
   } else {
     // 检查是否有HTML内容且开启格式显示
-    if (item.html_content && pasteWithFormat) {
-      // 有HTML内容且开启格式显示，直接渲染HTML
+    if (item.html_content && pasteWithFormat && !isLinkContent(item)) {
+      // 有HTML内容且开启格式显示，但不是纯链接内容，直接渲染HTML
       const searchTerms = getCurrentSearchTerms();
       let displayHTML = item.html_content;
 
@@ -395,7 +397,7 @@ function getFilteredClipboardData() {
     const contentType = item.content_type || 'text';
 
     // 类型筛选
-    if (!matchesFilter(contentType, filterType)) {
+    if (!matchesFilter(contentType, filterType, item)) {
       return false;
     }
 
@@ -738,6 +740,7 @@ function showClipboardContextMenu(event, item, index) {
 
   showContextMenu(event, {
     content: item.content,
+    html_content: item.html_content,
     content_type: contentType,
     items: menuItems
   });

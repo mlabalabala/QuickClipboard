@@ -644,7 +644,7 @@ function getFilteredQuickTextsData() {
     const contentType = text.content_type || 'text';
 
     // 类型筛选
-    if (!matchesFilter(contentType, filterType)) {
+    if (!matchesFilter(contentType, filterType, text)) {
       return false;
     }
 
@@ -995,6 +995,7 @@ function showQuickTextContextMenu(event, text) {
 
   showContextMenu(event, {
     content: text.content,
+    html_content: text.html_content,
     content_type: contentType,
     items: menuItems
   });

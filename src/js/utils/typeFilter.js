@@ -1,5 +1,8 @@
+// 类型筛选和搜索工具函数
+import { itemContainsLinks } from './linkUtils.js';
+
 // 类型筛选工具函数
-export function matchesFilter(contentType, filterType) {
+export function matchesFilter(contentType, filterType, item = null) {
   if (filterType === 'all') {
     return true;
   }
@@ -7,6 +10,17 @@ export function matchesFilter(contentType, filterType) {
   // 将rich_text也归类到text筛选器中
   if (filterType === 'text' && (contentType === 'text' || contentType === 'rich_text')) {
     return true;
+  }
+  
+  // 特殊处理：link筛选器应该包含所有包含链接的内容
+  if (filterType === 'link') {
+    if (contentType === 'link') {
+      return true;
+    }
+      // 检查任何类型的内容是否包含链接
+      if (item && itemContainsLinks(item)) {
+        return true;
+      }
   }
   
   return contentType === filterType;
@@ -44,6 +58,22 @@ export function matchesSearch(item, searchTerm, contentType) {
     // 文本、富文本和链接类型：搜索内容和标题
     const contentMatch = item.content.toLowerCase().includes(term);
     const titleMatch = item.title ? item.title.toLowerCase().includes(term) : false;
-    return contentMatch || titleMatch;
+    
+    // 如果有HTML内容，也搜索HTML中的纯文本内容
+    let htmlTextMatch = false;
+    if (item.html_content) {
+      try {
+        // 创建临时DOM元素来提取HTML中的纯文本
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = item.html_content;
+        const htmlText = tempDiv.textContent || tempDiv.innerText || '';
+        htmlTextMatch = htmlText.toLowerCase().includes(term);
+      } catch (error) {
+        // 如果解析HTML失败，忽略HTML内容搜索
+        htmlTextMatch = false;
+      }
+    }
+    
+    return contentMatch || titleMatch || htmlTextMatch;
   }
 }
