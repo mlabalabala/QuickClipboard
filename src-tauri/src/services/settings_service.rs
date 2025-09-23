@@ -109,6 +109,8 @@ impl SettingsService {
         // 6. 数字快捷键设置
         #[cfg(windows)]
         crate::global_state::set_number_shortcuts_enabled(app_settings.number_shortcuts);
+        #[cfg(windows)]
+        crate::global_state::update_number_shortcuts_modifier(&app_settings.number_shortcuts_modifier);
 
         // 7. 预览窗口快捷键设置
         #[cfg(windows)]

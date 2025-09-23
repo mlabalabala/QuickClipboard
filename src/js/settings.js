@@ -201,6 +201,7 @@ async function initializeUI() {
     console.log('设置快捷键显示值:', settings.toggleShortcut);
   }
   document.getElementById('number-shortcuts').checked = settings.numberShortcuts;
+  document.getElementById('number-shortcuts-modifier').value = settings.numberShortcutsModifier || 'Ctrl';
   document.getElementById('clipboard-monitor').checked = settings.clipboardMonitor;
   document.getElementById('ignore-duplicates').checked = settings.ignoreDuplicates;
   document.getElementById('save-images').checked = settings.saveImages;
@@ -479,7 +480,7 @@ function bindEvents() {
 function bindSettingEvents() {
   const settingInputs = [
     'auto-start', 'start-hidden', 'show-startup-notification', 'history-limit',
-    'number-shortcuts', 'clipboard-monitor',
+    'number-shortcuts', 'number-shortcuts-modifier', 'clipboard-monitor',
     'ignore-duplicates', 'save-images', 'show-image-preview',
     'sound-enabled', 'copy-sound-path', 'paste-sound-path',
     'preview-enabled', 'preview-shortcut', 'preview-items-count', 'preview-auto-paste',

@@ -86,6 +86,12 @@ export async function updateAllShortcutDisplays() {
       toggleShortcutElement.textContent = `${settings.toggleShortcut}: 显示/隐藏`;
     }
     
+    // 更新数字快捷键显示
+    const numberShortcutElement = document.querySelector('#footer .shortcuts-info span:nth-child(2)');
+    if (numberShortcutElement && settings.numberShortcutsModifier) {
+      numberShortcutElement.textContent = `${settings.numberShortcutsModifier}+数字: 粘贴对应历史`;
+    }
+    
     // 更新导航快捷键 (上下键)
     updateShortcutDisplay('navigate-shortcut-display', 
       settings.navigateUpShortcut, 
@@ -105,6 +111,11 @@ export async function updateAllShortcutDisplays() {
     updateShortcutDisplay('previous-group-shortcut-display', settings.previousGroupShortcut);
     updateShortcutDisplay('next-group-shortcut-display', settings.nextGroupShortcut);
     updateShortcutDisplay('toggle-pin-shortcut-display', settings.togglePinShortcut);
+    
+    // 更新帮助面板中的数字快捷键显示
+    if (settings.numberShortcutsModifier) {
+      updateShortcutDisplay('number-shortcut-display', settings.numberShortcutsModifier + '+1-9');
+    }
     
   } catch (error) {
     console.error('更新快捷键显示失败:', error);

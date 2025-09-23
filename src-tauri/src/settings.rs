@@ -16,6 +16,7 @@ pub struct AppSettings {
     pub background_image_path: String,
     pub toggle_shortcut: String,
     pub number_shortcuts: bool,
+    pub number_shortcuts_modifier: String,
     pub clipboard_monitor: bool,
     pub ignore_duplicates: bool,
     pub save_images: bool,
@@ -119,6 +120,7 @@ impl Default for AppSettings {
             background_image_path: "".to_string(),
             toggle_shortcut: "Win+V".to_string(),
             number_shortcuts: true,
+            number_shortcuts_modifier: "Ctrl".to_string(),
             clipboard_monitor: true,
             ignore_duplicates: true,
             save_images: true,
@@ -297,6 +299,7 @@ impl AppSettings {
             "backgroundImagePath": self.background_image_path,
             "toggleShortcut": self.toggle_shortcut,
             "numberShortcuts": self.number_shortcuts,
+            "numberShortcutsModifier": self.number_shortcuts_modifier,
             "clipboardMonitor": self.clipboard_monitor,
             "ignoreDuplicates": self.ignore_duplicates,
             "saveImages": self.save_images,
@@ -391,6 +394,9 @@ impl AppSettings {
         }
         if let Some(v) = json.get("numberShortcuts").and_then(|v| v.as_bool()) {
             self.number_shortcuts = v;
+        }
+        if let Some(v) = json.get("numberShortcutsModifier").and_then(|v| v.as_str()) {
+            self.number_shortcuts_modifier = v.to_string();
         }
         if let Some(v) = json.get("clipboardMonitor").and_then(|v| v.as_bool()) {
             self.clipboard_monitor = v;

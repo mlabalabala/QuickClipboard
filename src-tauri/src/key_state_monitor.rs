@@ -427,7 +427,25 @@ fn check_shortcut_combo(state: &KeyState, config: &crate::global_state::PreviewS
 fn handle_number_shortcuts_change(last_state: &KeyState, current_state: &KeyState) {
     use crate::global_state::*;
 
-    if !NUMBER_SHORTCUTS_ENABLED.load(Ordering::SeqCst) || !current_state.ctrl {
+    if !NUMBER_SHORTCUTS_ENABLED.load(Ordering::SeqCst) {
+        return;
+    }
+
+    // 获取当前配置的修饰键
+    let modifier = get_number_shortcuts_modifier();
+    
+    // 检查修饰键是否匹配
+    let modifier_matches = match modifier.as_str() {
+        "Ctrl" => current_state.ctrl && !current_state.shift && !current_state.alt && !current_state.win,
+        "Alt" => !current_state.ctrl && !current_state.shift && current_state.alt && !current_state.win,
+        "Shift" => !current_state.ctrl && current_state.shift && !current_state.alt && !current_state.win,
+        "Ctrl+Shift" => current_state.ctrl && current_state.shift && !current_state.alt && !current_state.win,
+        "Ctrl+Alt" => current_state.ctrl && !current_state.shift && current_state.alt && !current_state.win,
+        "Alt+Shift" => !current_state.ctrl && current_state.shift && current_state.alt && !current_state.win,
+        _ => current_state.ctrl && !current_state.shift && !current_state.alt && !current_state.win, // 默认为Ctrl
+    };
+
+    if !modifier_matches {
         return;
     }
 

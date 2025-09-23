@@ -351,13 +351,30 @@
             <div class="setting-item">
               <div class="setting-info">
                 <label class="setting-label">启用数字快捷键</label>
-                <p class="setting-description">使用 Ctrl+数字 快速复制剪贴板项目</p>
+                <p class="setting-description">使用数字快捷键快速复制剪贴板项目</p>
               </div>
               <div class="setting-control">
                 <label class="toggle-switch">
                   <input type="checkbox" id="number-shortcuts">
                   <span class="toggle-slider"></span>
                 </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">数字快捷键修饰键</label>
+                <p class="setting-description">选择数字快捷键的修饰键组合</p>
+              </div>
+              <div class="setting-control">
+                <select id="number-shortcuts-modifier" class="setting-select">
+                  <option value="Ctrl">Ctrl + 数字</option>
+                  <option value="Alt">Alt + 数字</option>
+                  <option value="Shift">Shift + 数字</option>
+                  <option value="Ctrl+Shift">Ctrl + Shift + 数字</option>
+                  <option value="Ctrl+Alt">Ctrl + Alt + 数字</option>
+                  <option value="Alt+Shift">Alt + Shift + 数字</option>
+                </select>
               </div>
             </div>
           </div>
