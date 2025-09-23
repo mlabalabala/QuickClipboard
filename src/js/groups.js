@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { setCurrentTab } from './config.js';
-import { showAlertModal, showConfirmModal, showNotification } from './notificationManager.js';
+import { showAlertModal, showNotification } from './notificationManager.js';
+import { showConfirmModal } from './ui.js';
 
 // 分组相关的全局状态
 let groups = [];

@@ -17,7 +17,8 @@ import {
   pasteWithFormat
 } from './config.js';
 import { loadImageById } from './clipboard.js';
-import { showAlertModal, showConfirmModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
+import { showAlertModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
+import { showConfirmModal } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
