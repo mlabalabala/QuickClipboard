@@ -183,6 +183,17 @@ async function initApp() {
 
   // 数据获取完成后自动更新显示（refreshClipboardHistory和refreshQuickTexts内部会调用render函数）
   await dataPromise;
+
+  // 从localStorage恢复筛选状态到config.js
+  const savedClipboardFilter = localStorage.getItem('clipboard-current-filter') || 'all';
+  setCurrentFilter(savedClipboardFilter);
+  const savedQuickTextsFilter = localStorage.getItem('quicktexts-current-filter') || 'all';
+  setCurrentQuickTextsFilter(savedQuickTextsFilter);
+
+  // 根据持久化的筛选状态，在初始加载时就过滤列表
+  filterClipboardItems();
+  filterQuickTexts();
+
   // 数据渲染后刷新外置滚动条
   if (window.refreshExternalScrollbars) window.refreshExternalScrollbars();
 
