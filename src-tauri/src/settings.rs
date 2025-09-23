@@ -58,6 +58,7 @@ pub struct AppSettings {
 
     // 鼠标设置
     pub mouse_middle_button_enabled: bool,
+    pub mouse_middle_button_modifier: String,
 
     // 动画设置
     pub clipboard_animation_enabled: bool, // 剪贴板显示/隐藏动画开关
@@ -164,6 +165,7 @@ impl Default for AppSettings {
 
             // 鼠标设置默认值
             mouse_middle_button_enabled: true, // 默认启用鼠标中键显示剪贴板
+            mouse_middle_button_modifier: "None".to_string(), // 默认单独中键，无修饰键
 
             // 动画设置默认值
             clipboard_animation_enabled: true, // 默认启用剪贴板显示/隐藏动画
@@ -331,6 +333,7 @@ impl AppSettings {
             "aiNewlineMode": self.ai_newline_mode,
             "aiOutputMode": self.ai_output_mode,
             "mouseMiddleButtonEnabled": self.mouse_middle_button_enabled,
+            "mouseMiddleButtonModifier": self.mouse_middle_button_modifier,
             "clipboardAnimationEnabled": self.clipboard_animation_enabled,
             "autoScrollToTopOnShow": self.auto_scroll_to_top_on_show,
             "windowPositionMode":self.window_position_mode,
@@ -501,6 +504,9 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
         {
             self.mouse_middle_button_enabled = v;
+        }
+        if let Some(v) = json.get("mouseMiddleButtonModifier").and_then(|v| v.as_str()) {
+            self.mouse_middle_button_modifier = v.to_string();
         }
         if let Some(v) = json
             .get("clipboardAnimationEnabled")

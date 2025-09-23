@@ -389,13 +389,31 @@
             <div class="setting-item">
               <div class="setting-info">
                 <label class="setting-label">启用鼠标中键显示剪贴板</label>
-                <p class="setting-description">点击鼠标中键快速显示/隐藏剪贴板窗口</p>
+                <p class="setting-description">使用鼠标中键快速显示/隐藏剪贴板窗口</p>
               </div>
               <div class="setting-control">
                 <label class="toggle-switch">
                   <input type="checkbox" id="mouse-middle-button-enabled">
                   <span class="toggle-slider"></span>
                 </label>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">鼠标中键修饰键</label>
+                <p class="setting-description">选择鼠标中键的修饰键组合</p>
+              </div>
+              <div class="setting-control">
+                <select id="mouse-middle-button-modifier" class="setting-select">
+                  <option value="None">单独中键</option>
+                  <option value="Ctrl">Ctrl + 中键</option>
+                  <option value="Alt">Alt + 中键</option>
+                  <option value="Shift">Shift + 中键</option>
+                  <option value="Ctrl+Shift">Ctrl + Shift + 中键</option>
+                  <option value="Ctrl+Alt">Ctrl + Alt + 中键</option>
+                  <option value="Alt+Shift">Alt + Shift + 中键</option>
+                </select>
               </div>
             </div>
           </div>

@@ -3,6 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{ WebviewWindow};
 
+#[cfg(windows)]
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_MENU, VK_SHIFT};
+
 // 全局状态变量
 
 #[cfg(windows)]
@@ -22,6 +25,32 @@ static MOUSE_MONITORING_REQUESTS: std::sync::LazyLock<Mutex<std::collections::Ha
     std::sync::LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
 
 // =================== 鼠标监听功能 ===================
+
+// 检查鼠标中键修饰键是否匹配
+#[cfg(windows)]
+fn check_mouse_modifier_match(modifier: &str) -> bool {
+    unsafe {
+        let ctrl_pressed = (GetAsyncKeyState(VK_CONTROL.0 as i32) & 0x8000u16 as i16) != 0;
+        let alt_pressed = (GetAsyncKeyState(VK_MENU.0 as i32) & 0x8000u16 as i16) != 0;
+        let shift_pressed = (GetAsyncKeyState(VK_SHIFT.0 as i32) & 0x8000u16 as i16) != 0;
+
+        match modifier {
+            "None" => !ctrl_pressed && !alt_pressed && !shift_pressed,
+            "Ctrl" => ctrl_pressed && !alt_pressed && !shift_pressed,
+            "Alt" => !ctrl_pressed && alt_pressed && !shift_pressed,
+            "Shift" => !ctrl_pressed && !alt_pressed && shift_pressed,
+            "Ctrl+Shift" => ctrl_pressed && !alt_pressed && shift_pressed,
+            "Ctrl+Alt" => ctrl_pressed && alt_pressed && !shift_pressed,
+            "Alt+Shift" => !ctrl_pressed && alt_pressed && shift_pressed,
+            _ => !ctrl_pressed && !alt_pressed && !shift_pressed, // 默认为无修饰键
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn check_mouse_modifier_match(_modifier: &str) -> bool {
+    true // 非Windows平台总是返回true
+}
 
 #[cfg(windows)]
 unsafe extern "system" fn mouse_hook_proc(
@@ -55,15 +84,18 @@ unsafe extern "system" fn mouse_hook_proc(
                 // 鼠标中键点击事件：全局监听
                 let settings = crate::settings::get_global_settings();
                 if settings.mouse_middle_button_enabled {
-                    // 在新线程中切换窗口显示状态，避免阻塞钩子
-                    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                        let window_clone = window.clone();
-                        std::thread::spawn(move || {
-                            crate::window_management::show_webview_window(window_clone);
-                        });
+                    // 检查修饰键是否匹配
+                    if check_mouse_modifier_match(&settings.mouse_middle_button_modifier) {
+                        // 在新线程中切换窗口显示状态，避免阻塞钩子
+                        if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+                            let window_clone = window.clone();
+                            std::thread::spawn(move || {
+                                crate::window_management::show_webview_window(window_clone);
+                            });
+                        }
+                        // 拦截鼠标中键事件，防止传递给其他应用
+                        return windows::Win32::Foundation::LRESULT(1);
                     }
-                    // 拦截鼠标中键事件，防止传递给其他应用
-                    return windows::Win32::Foundation::LRESULT(1);
                 }
             }
             WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
