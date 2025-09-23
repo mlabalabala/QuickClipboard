@@ -297,6 +297,10 @@ async function initializeUI() {
   
   // 自动聚焦搜索框设置
   document.getElementById('auto-focus-search').checked = settings.autoFocusSearch !== undefined ? settings.autoFocusSearch : false;
+  
+  // 侧边栏悬停延迟设置
+  const sidebarHoverDelay = settings.sidebarHoverDelay !== undefined ? settings.sidebarHoverDelay : 0.5;
+  document.getElementById('sidebar-hover-delay').value = sidebarHoverDelay;
 
   // 应用黑白名单设置
   document.getElementById('app-filter-enabled').checked = settings.appFilterEnabled || false;
@@ -492,7 +496,7 @@ function bindSettingEvents() {
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'mouse-middle-button-modifier', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
-    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search'
+    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search', 'sidebar-hover-delay'
   ];
 
   settingInputs.forEach(id => {
@@ -1224,6 +1228,7 @@ function updateAiInputSpeedDisplay(speed) {
 }
 
 
+
 // 浏览音效文件
 async function browseSoundFile(type) {
   try {
@@ -1667,6 +1672,33 @@ function bindAiTranslationEvents() {
       settings.aiInputSpeed = speed;
       updateAiInputSpeedDisplay(speed);
       saveSettings();
+    });
+  }
+
+  // 侧边栏悬停延迟输入框
+  const sidebarHoverDelayInput = document.getElementById('sidebar-hover-delay');
+  if (sidebarHoverDelayInput) {
+    sidebarHoverDelayInput.addEventListener('change', async (e) => {
+      let delay = parseFloat(e.target.value);
+      
+      // 验证范围和有效性
+      if (isNaN(delay) || delay < 0) {
+        delay = 0;
+        e.target.value = delay;
+      } else if (delay > 10) {
+        delay = 10;
+        e.target.value = delay;
+      }
+      
+      settings.sidebarHoverDelay = delay;
+      saveSettings();
+      
+      try {
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit('sidebar-hover-delay-changed', { delay: delay });
+      } catch (error) {
+        console.error('发送侧边栏悬停延迟更新事件失败:', error);
+      }
     });
   }
 

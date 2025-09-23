@@ -608,6 +608,24 @@ input:checked+.toggle-slider:before {
   font-family: monospace;
 }
 
+/* 数字输入框样式 */
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--margin-sm);
+}
+
+.number-input {
+  min-width: 80px !important;
+  text-align: center;
+}
+
+.input-unit {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .setting-textarea {
   padding: var(--padding-sm) var(--margin-md);
   border: 1px solid transparent;

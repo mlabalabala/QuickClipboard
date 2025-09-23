@@ -83,6 +83,7 @@ pub struct AppSettings {
     
     // 窗口行为设置
     pub auto_focus_search: bool, // 窗口显示时是否自动聚焦搜索框
+    pub sidebar_hover_delay: f64, // 侧边栏悬停延迟时间（秒）
     
     // 标题栏位置设置
     pub title_bar_position: String,   // 标题栏位置：top(上), bottom(下), left(左), right(右)
@@ -190,6 +191,7 @@ impl Default for AppSettings {
             
             // 窗口行为设置默认值
             auto_focus_search: false,                  // 默认不自动聚焦搜索框
+            sidebar_hover_delay: 0.5,                  // 默认0.5秒悬停延迟
             
             // 标题栏位置设置默认值
             title_bar_position: "top".to_string(),    // 默认标题栏位置在上方
@@ -346,6 +348,7 @@ impl AppSettings {
             "titleBarPosition":self.title_bar_position,
             "edgeHideEnabled":self.edge_hide_enabled,
             "autoFocusSearch":self.auto_focus_search,
+            "sidebarHoverDelay":self.sidebar_hover_delay,
             "pasteWithFormat":self.paste_with_format,
             "navigateUpShortcut":self.navigate_up_shortcut,
             "navigateDownShortcut":self.navigate_down_shortcut,
@@ -568,6 +571,10 @@ impl AppSettings {
         // 窗口行为设置
         if let Some(v) = json.get("autoFocusSearch").and_then(|v| v.as_bool()) {
             self.auto_focus_search = v;
+        }
+        if let Some(v) = json.get("sidebarHoverDelay").and_then(|v| v.as_f64()) {
+            // 确保延迟时间在有效范围内 (0-10秒)
+            self.sidebar_hover_delay = v.max(0.0).min(10.0);
         }
         
         // 格式设置
