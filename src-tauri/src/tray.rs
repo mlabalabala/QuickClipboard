@@ -1,8 +1,10 @@
 use image::GenericImageView;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem, MenuEvent},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Emitter,
+    AppHandle, Manager,
 };
 
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -28,16 +30,29 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let app_handle = app.clone();
+    let last_click_time = Arc::new(Mutex::new(Instant::now() - Duration::from_millis(1000)));
+    
     let _tray = TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
         .tooltip("快速剪贴板")
         .icon(icon)
-        .menu_on_left_click(false)
+        .show_menu_on_left_click(false)
         .on_tray_icon_event(move |_tray, event| {
             if let TrayIconEvent::Click { button, .. } = event {
                 if button == tauri::tray::MouseButton::Left {
+                    // 防抖检查：如果距离上次点击时间少于200ms，则忽略
+                    let now = Instant::now();
+                    let mut last_time = last_click_time.lock().unwrap();
+                    
+                    if now.duration_since(*last_time) < Duration::from_millis(50) {
+                        return;
+                    }
+                    
+                    *last_time = now;
+                    drop(last_time); // 释放锁
+                    
                     if let Some(window) = app_handle.get_webview_window("main") {
-                        crate::window_management::show_webview_window(window);
+                        crate::window_management::toggle_webview_window_visibility(window);
                     }
                 }
             }
