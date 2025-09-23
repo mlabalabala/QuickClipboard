@@ -1102,6 +1102,7 @@ body {
   transition: all var(--transition-duration) ease;
   align-items: center;
   justify-content: center;
+  position: relative; /* 为提示信息定位 */
 }
 
 .file-icon {
@@ -1139,6 +1140,56 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 不存在的文件样式 */
+.file-item.file-not-exist {
+  opacity: 0.8;
+  cursor: not-allowed;
+  pointer-events: none; /* 禁止点击等交互 */
+}
+
+/* 详细模式下的样式 */
+.file-style-detailed .file-item.file-not-exist .file-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-error, #ff4d4f);
+}
+
+.file-style-detailed .file-item.file-not-exist::after {
+  content: '源文件不存在';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--color-text-error, #ff4d4f);
+  background-color: var(--color-bg-error-light, rgba(255, 77, 79, 0.1));
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* 仅图标模式下的样式 */
+.file-style-icons-only .file-item.file-not-exist {
+  position: relative; /* 确保伪元素可以定位 */
+  border: 2px dashed #ff4d4f;
+  box-shadow: 0 0 5px rgba(255, 77, 79, 0.3);
+}
+
+.file-style-icons-only .file-item.file-not-exist::after {
+  content: '🚫'; 
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 14px;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .file-more {

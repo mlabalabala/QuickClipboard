@@ -922,3 +922,9 @@ pub fn set_shortcut_recording(recording: bool) -> Result<(), String> {
     crate::global_state::SHORTCUT_RECORDING.store(recording, Ordering::SeqCst);
     Ok(())
 }
+
+// 检查文件是否存在
+#[tauri::command]
+pub fn file_exists(path: String) -> bool {
+    std::path::Path::new(&path).exists()
+}

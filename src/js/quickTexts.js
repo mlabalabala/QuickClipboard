@@ -215,7 +215,7 @@ function generateQuickTextFilesHTML(text) {
       const iconHTML = generateFileIconHTML(file, 'medium');
       const fileSize = formatFileSize(file.size || 0);
       filesHTML += `
-        <div class="file-item">
+        <div class="file-item" data-path="${escapeHtml(file.path)}">
           ${iconHTML}
           <div class="file-info">
             <div class="file-name">${escapeHtml(file.name)} <span class="file-size">${fileSize}</span></div>
@@ -741,6 +741,26 @@ async function loadFileIcons() {
   }
 }
 
+// 检查文件是否存在并更新UI
+async function checkFilesExistence() {
+  const fileItems = document.querySelectorAll('#quick-texts-list .file-item[data-path]');
+  for (const item of fileItems) {
+    const path = item.dataset.path;
+    if (path) {
+      try {
+        const exists = await invoke('file_exists', { path });
+        if (!exists) {
+          item.classList.add('file-not-exist');
+        } else {
+          item.classList.remove('file-not-exist');
+        }
+      } catch (error) {
+        console.warn(`检查文件是否存在失败: ${path}`, error);
+      }
+    }
+  }
+}
+
 export function renderQuickTexts() {
   if (!quickTextsVirtualList) {
     initQuickTextsVirtualList();
@@ -749,9 +769,10 @@ export function renderQuickTexts() {
     quickTextsVirtualList.updateData(filteredData);
   }
 
-  // 异步加载文件图标
+  // 异步加载文件图标和检查文件是否存在
   setTimeout(() => {
     loadFileIcons();
+    checkFilesExistence();
   }, 0);
 
   // 通知导航模块列表已更新

@@ -455,7 +455,8 @@ pub fn run() {
             commands::launch_external_screenshot,
             commands::launch_external_screenshot_process,
             commands::get_image_file_path,
-            commands::pin_image_to_screen
+            commands::pin_image_to_screen,
+            commands::file_exists
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
