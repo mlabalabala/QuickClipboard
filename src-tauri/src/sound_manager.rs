@@ -6,38 +6,9 @@ use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-// 音效播放限流器 - 防止大量并发播放导致崩溃
-static ACTIVE_SOUND_COUNT: AtomicUsize = AtomicUsize::new(0);
-const MAX_CONCURRENT_SOUNDS: usize = 3; // 最大同时播放音效数量
-
-// 音效播放计数器管理 - RAII模式确保计数器正确管理
-struct SoundPlayGuard;
-
-impl SoundPlayGuard {
-    fn new() -> Option<Self> {
-        let current = ACTIVE_SOUND_COUNT.load(Ordering::Relaxed);
-        if current >= MAX_CONCURRENT_SOUNDS {
-            // println!(
-            //     "音效播放已达到最大并发数量 ({}), 跳过播放",
-            //     MAX_CONCURRENT_SOUNDS
-            // );
-            return None;
-        }
-
-        ACTIVE_SOUND_COUNT.fetch_add(1, Ordering::Relaxed);
-        Some(SoundPlayGuard)
-    }
-}
-
-impl Drop for SoundPlayGuard {
-    fn drop(&mut self) {
-        ACTIVE_SOUND_COUNT.fetch_sub(1, Ordering::Relaxed);
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SoundSettings {
@@ -307,12 +278,6 @@ pub fn play_copy_sound() {
             let volume = settings.volume;
 
             thread::spawn(move || {
-                // 使用限流器防止过多并发播放
-                let _guard = match SoundPlayGuard::new() {
-                    Some(guard) => guard,
-                    None => return, // 达到最大并发数，跳过播放
-                };
-
                 let effective_path = if sound_path.is_empty() {
                     // 使用默认复制音效文件
                     "sounds/copy.mp3".to_string()
@@ -328,7 +293,6 @@ pub fn play_copy_sound() {
                         eprintln!("播放默认复制音效也失败: {}", e2);
                     }
                 }
-                // _guard 在这里自动释放，计数器减1
             });
         }
     }
@@ -341,12 +305,6 @@ pub fn play_paste_sound() {
             let volume = settings.volume;
 
             thread::spawn(move || {
-                // 使用限流器防止过多并发播放
-                let _guard = match SoundPlayGuard::new() {
-                    Some(guard) => guard,
-                    None => return, // 达到最大并发数，跳过播放
-                };
-
                 let effective_path = if sound_path.is_empty() {
                     // 使用默认粘贴音效文件
                     "sounds/paste.mp3".to_string()
@@ -362,7 +320,6 @@ pub fn play_paste_sound() {
                         eprintln!("播放默认粘贴音效也失败: {}", e2);
                     }
                 }
-                // _guard 在这里自动释放，计数器减1
             });
         }
     }
@@ -381,12 +338,6 @@ pub fn play_scroll_sound() {
             let volume = settings.volume;
 
             thread::spawn(move || {
-                // 使用限流器防止过多并发播放
-                let _guard = match SoundPlayGuard::new() {
-                    Some(guard) => guard,
-                    None => return, // 达到最大并发数，跳过播放
-                };
-
                 let effective_path = if sound_path.is_empty() {
                     // 使用默认滚动音效文件
                     "sounds/roll.mp3".to_string()
@@ -402,7 +353,6 @@ pub fn play_scroll_sound() {
                         eprintln!("播放默认滚动音效也失败: {}", e2);
                     }
                 }
-                // _guard 在这里自动释放，计数器减1
             });
         }
     }
@@ -429,7 +379,3 @@ pub fn clear_sound_cache() -> Result<(), String> {
     Ok(())
 }
 
-// 获取当前活跃音效播放数量
-pub fn get_active_sound_count() -> usize {
-    ACTIVE_SOUND_COUNT.load(Ordering::Relaxed)
-}

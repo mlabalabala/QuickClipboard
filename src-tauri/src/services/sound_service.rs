@@ -113,15 +113,14 @@ impl SoundService {
 
     /// 获取当前活跃音效播放数量
     pub fn get_active_sound_count() -> usize {
-        crate::sound_manager::get_active_sound_count()
+        0
     }
 
     /// 获取音效状态信息
     pub fn get_sound_status() -> Result<serde_json::Value, String> {
-        let active_count = crate::sound_manager::get_active_sound_count();
         Ok(serde_json::json!({
-            "active_sounds": active_count,
-            "max_concurrent": 3
+            "active_sounds": 0,
+            "max_concurrent": "unlimited"
         }))
     }
 }
