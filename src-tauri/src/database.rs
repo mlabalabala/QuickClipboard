@@ -640,7 +640,12 @@ pub fn add_clipboard_link(url: String) -> Result<i64, String> {
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
         let sql = if let Some(limit) = limit {
-            format!("SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC LIMIT {}", limit)
+            // 如果限制数量非常大（≥999999），直接无限制
+            if limit >= 999999 {
+                "SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC".to_string()
+            } else {
+                format!("SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC LIMIT {}", limit)
+            }
         } else {
             "SELECT id, content, html_content, content_type, image_id, item_order, created_at, updated_at FROM clipboard ORDER BY item_order, updated_at DESC".to_string()
         };
@@ -738,6 +743,11 @@ pub fn clear_clipboard_history() -> Result<(), String> {
 
 // 限制剪贴板历史数量
 pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
+    // 如果无限，不执行删除操作
+    if max_count >= 999999 {
+        return Ok(());
+    }
+    
     with_connection(|conn| {
         // 删除超出限制的记录（保留item_order最小的记录）
         conn.execute(
