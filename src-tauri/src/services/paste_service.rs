@@ -30,7 +30,11 @@ pub async fn paste_content(
 }
 
 /// 粘贴文本内容
-pub async fn paste_text_with_html(text_content: String, html_content: Option<String>, window: &WebviewWindow) -> Result<(), String> {
+pub async fn paste_text_with_html(
+    text_content: String,
+    html_content: Option<String>,
+    window: &WebviewWindow,
+) -> Result<(), String> {
     // 检查是否需要翻译
     let settings = crate::settings::get_global_settings();
     let should_translate = crate::ai_translator::is_translation_config_valid(&settings)
@@ -63,7 +67,6 @@ pub async fn paste_text_with_html(text_content: String, html_content: Option<Str
     paste_text_without_translation_internal_with_html(text_content, html_content, window).await
 }
 
-
 /// 粘贴文本内容
 async fn paste_text_without_translation_internal_with_html(
     text_content: String,
@@ -79,11 +82,14 @@ async fn paste_text_without_translation_internal_with_html(
 
     // 将文本设置到剪贴板（不添加到历史记录，避免重复）
     let result = if use_html {
-        crate::clipboard_content::set_clipboard_content_no_history_with_html(text_content, html_content)
+        crate::clipboard_content::set_clipboard_content_no_history_with_html(
+            text_content,
+            html_content,
+        )
     } else {
         crate::clipboard_content::set_clipboard_content_no_history(text_content)
     };
-    
+
     if let Err(e) = result {
         crate::clipboard_monitor::end_pasting_operation();
         return Err(e);
@@ -231,7 +237,12 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
         .map(|path| path.to_string())
         .collect();
 
-    if file_paths.is_empty() {
+    let valid_file_paths: Vec<String> = file_paths
+        .into_iter()
+        .filter(|path| std::path::Path::new(path).exists())
+        .collect();
+
+    if valid_file_paths.is_empty() {
         return Err("没有找到有效的文件路径".to_string());
     }
 
@@ -239,7 +250,7 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
     crate::clipboard_monitor::start_pasting_operation();
 
     // 设置剪贴板文件
-    if let Err(e) = crate::file_handler::set_clipboard_files(&file_paths) {
+    if let Err(e) = crate::file_handler::set_clipboard_files(&valid_file_paths) {
         crate::clipboard_monitor::end_pasting_operation();
         return Err(e);
     }
