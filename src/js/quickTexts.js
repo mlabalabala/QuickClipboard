@@ -480,20 +480,11 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
       return;
     }
 
-    // 找到移动项目在全部数据中的实际索引
-    const allQuickTexts = quickTexts;
-    const actualOldIndex = allQuickTexts.findIndex(item => item.id === movedItem.id);
-    
-    if (actualOldIndex === -1) {
-      console.error('在全部数据中找不到要移动的项目');
-      return;
-    }
-
     // 在"全部"分组中，检查是否跨分组拖拽
     const currentGroupId = getCurrentGroupId();
     if (currentGroupId === '全部') {
-          const movedItemGroupId = movedItem.group_name || '全部';
-    const targetItemGroupId = targetItem ? (targetItem.group_name || '全部') : movedItemGroupId;
+      const movedItemGroupId = movedItem.group_name || '全部';
+      const targetItemGroupId = targetItem ? (targetItem.group_name || '全部') : movedItemGroupId;
 
       if (movedItemGroupId !== targetItemGroupId) {
         // 跨分组拖拽：将项目移动到目标分组并排序到正确位置
@@ -507,27 +498,11 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
             groupName: targetItemGroupId
           });
 
-          // 刷新数据以获取最新的分组内容
-          await refreshQuickTexts();
-
-          // 如果需要在分组内排序到特定位置
-          if (targetPositionInGroup > 0) {
-            // 获取目标分组的所有项目
-            const targetGroupTexts = await invoke('get_quick_texts_by_group', {
-              groupName: targetItemGroupId
-            });
-
-            // 找到刚移动的项目在目标分组中的当前位置（应该是第一个）
-            const currentIndex = targetGroupTexts.findIndex(t => t.id === movedItem.id);
-
-            if (currentIndex !== -1 && currentIndex !== targetPositionInGroup) {
-              // 使用现有的move_quick_text_item命令在分组内排序
-              await invoke('move_quick_text_item', {
-                itemIndex: actualOldIndex,
-                toIndex: targetPositionInGroup
-              });
-            }
-          }
+          // 在目标分组内排序到特定位置
+          await invoke('move_quick_text_item', {
+            itemId: movedItem.id,
+            toIndex: targetPositionInGroup
+          });
 
           // 显示成功提示
           const { getGroups } = await import('./groups.js');
@@ -548,9 +523,16 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
     }
 
     // 同分组内的排序
+    const movedItemGroupId = movedItem.group_name || '全部';
+    let targetIndexInGroup = newIndex;
+
+    if (currentGroupId === '全部') {
+      targetIndexInGroup = calculateTargetPositionInGroup(filteredData, newIndex, movedItemGroupId);
+    }
+
     await invoke('move_quick_text_item', {
-      itemIndex: actualOldIndex,
-      toIndex: newIndex
+      itemId: movedItem.id,
+      toIndex: targetIndexInGroup
     });
 
     await refreshQuickTexts();

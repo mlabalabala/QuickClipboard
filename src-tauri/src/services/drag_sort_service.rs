@@ -8,8 +8,8 @@ impl DragSortService {
     }
 
     /// 移动常用文本到指定位置
-    pub fn move_quick_text_item(item_index: usize, to_index: usize) -> Result<(), String> {
-        crate::quick_texts::move_quick_text_within_group(item_index, to_index)
+    pub fn move_quick_text_item(item_id: String, to_index: usize) -> Result<(), String> {
+        crate::quick_texts::move_quick_text_within_group(&item_id, to_index)
     }
 
     /// 重新排序剪贴板历史（保留兼容性）
