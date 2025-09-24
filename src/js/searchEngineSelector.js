@@ -207,13 +207,9 @@ function showSearchEngineDropdown(triggerElement, searchText, onSearch) {
             const success = removeCustomSearchEngine(engine.id);
             if (success) {
               showNotification(`已删除搜索引擎：${engine.name}`, 'success');
-              // 刷新下拉菜单
+              // 关闭下拉菜单，不重新显示
               dropdown.remove();
               triggerElement.classList.remove('active');
-              // 重新显示菜单
-              setTimeout(() => {
-                showSearchEngineDropdown(triggerElement, searchText, onSearch);
-              }, 100);
             } else {
               showNotification('删除搜索引擎失败', 'error');
             }
