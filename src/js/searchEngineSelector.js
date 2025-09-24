@@ -8,7 +8,7 @@ import {
   removeCustomSearchEngine 
 } from './searchEngineManager.js';
 import { showConfirmModal } from './ui.js';
-import { invoke } from '@tauri-apps/api/core';
+import { addMultipleInputsFocusManagement } from './focus.js';
 
 // 创建搜索引擎图标元素
 function createSearchEngineIcon(engine) {
@@ -80,37 +80,10 @@ function createCustomSearchEngineDialog(callback) {
   
   // 为输入框添加焦点管理
   const inputs = [nameInput, urlInput, faviconInput];
-  inputs.forEach(input => {
-    if (input) {
-      // 获得焦点时临时启用窗口焦点
-      input.addEventListener('focus', async () => {
-        try {
-          await invoke('focus_clipboard_window');
-        } catch (error) {
-          console.error('启用窗口焦点失败:', error);
-        }
-      });
-
-      // 失去焦点时恢复工具窗口模式
-      input.addEventListener('blur', async () => {
-        try {
-          await invoke('restore_last_focus');
-        } catch (error) {
-          console.error('恢复工具窗口模式失败:', error);
-        }
-      });
-    }
-  });
+  addMultipleInputsFocusManagement(inputs);
   
   // 取消按钮事件
-  const closeDialog = async () => {
-    // 恢复焦点
-    try {
-      await invoke('restore_last_focus');
-    } catch (error) {
-      console.error('恢复焦点失败:', error);
-    }
-    
+  const closeDialog = () => {
     dialog.remove();
     overlay.remove();
   };
@@ -119,7 +92,7 @@ function createCustomSearchEngineDialog(callback) {
   overlay.addEventListener('click', closeDialog);
   
   // 确认按钮事件
-  confirmBtn.addEventListener('click', async () => {
+  confirmBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
     const url = urlInput.value.trim();
     const favicon = faviconInput.value.trim();
@@ -142,7 +115,7 @@ function createCustomSearchEngineDialog(callback) {
     try {
       const engine = addCustomSearchEngine({ name, url, favicon });
       callback(engine);
-      await closeDialog();
+      closeDialog();
       showNotification(`已添加自定义搜索引擎：${name}`, 'success');
     } catch (error) {
       showNotification('添加搜索引擎失败：' + error.message, 'error');
@@ -164,14 +137,8 @@ function createCustomSearchEngineDialog(callback) {
   document.body.appendChild(dialog);
   
   // 聚焦到第一个输入框
-  setTimeout(async () => {
-    try {
-      await invoke('focus_clipboard_window');
-      nameInput.focus();
-    } catch (error) {
-      console.error('启用窗口焦点失败:', error);
-      nameInput.focus(); // 即使失败也要聚焦
-    }
+  setTimeout(() => {
+    nameInput.focus();
   }, 0);
 }
 

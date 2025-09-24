@@ -7,6 +7,83 @@ import {
   groupNameInput
 } from './config.js';
 
+// 焦点状态管理
+let currentFocusState = 'normal'; // 'normal' | 'focused'
+let focusDebounceTimer = null;
+let blurDebounceTimer = null;
+const FOCUS_DEBOUNCE_DELAY = 50; // 50ms 防抖延迟
+
+// 防抖的焦点启用函数
+async function debouncedEnableFocus() {
+  // 清除可能存在的blur定时器
+  if (blurDebounceTimer) {
+    clearTimeout(blurDebounceTimer);
+    blurDebounceTimer = null;
+  }
+  
+  // 如果已经是focused状态，不需要重复调用
+  if (currentFocusState === 'focused') {
+    return;
+  }
+  
+  // 清除之前的focus定时器
+  if (focusDebounceTimer) {
+    clearTimeout(focusDebounceTimer);
+  }
+  
+  focusDebounceTimer = setTimeout(async () => {
+    try {
+      await invoke('focus_clipboard_window');
+      currentFocusState = 'focused';
+    } catch (error) {
+      console.error('启用窗口焦点失败:', error);
+    }
+    focusDebounceTimer = null;
+  }, FOCUS_DEBOUNCE_DELAY);
+}
+
+// 防抖的焦点恢复函数
+async function debouncedRestoreFocus() {
+  // 清除可能存在的focus定时器
+  if (focusDebounceTimer) {
+    clearTimeout(focusDebounceTimer);
+    focusDebounceTimer = null;
+  }
+  
+  // 如果已经是normal状态，不需要重复调用
+  if (currentFocusState === 'normal') {
+    return;
+  }
+  
+  // 清除之前的blur定时器
+  if (blurDebounceTimer) {
+    clearTimeout(blurDebounceTimer);
+  }
+  
+  blurDebounceTimer = setTimeout(async () => {
+    // 再次检查是否有其他输入框获得焦点
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (
+      activeElement.tagName === 'INPUT' || 
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.contentEditable === 'true'
+    );
+    
+    // 如果有其他输入框获得焦点，不恢复
+    if (isInputFocused) {
+      return;
+    }
+    
+    try {
+      await invoke('restore_last_focus');
+      currentFocusState = 'normal';
+    } catch (error) {
+      console.error('恢复工具窗口模式失败:', error);
+    }
+    blurDebounceTimer = null;
+  }, FOCUS_DEBOUNCE_DELAY);
+}
+
 // 初始化输入框焦点管理
 export function initInputFocusManagement() {
   // 获取所有需要管理焦点的输入框
@@ -20,22 +97,14 @@ export function initInputFocusManagement() {
 
   inputElements.forEach(input => {
     if (input) {
-      // 获得焦点时临时启用窗口焦点
-      input.addEventListener('focus', async () => {
-        try {
-          await invoke('focus_clipboard_window');
-        } catch (error) {
-          console.error('启用窗口焦点失败:', error);
-        }
+      // 获得焦点时临时启用窗口焦点（使用防抖）
+      input.addEventListener('focus', () => {
+        debouncedEnableFocus();
       });
 
-      // 失去焦点时恢复工具窗口模式
-      input.addEventListener('blur', async () => {
-        try {
-          await invoke('restore_last_focus');
-        } catch (error) {
-          console.error('恢复工具窗口模式失败:', error);
-        }
+      // 失去焦点时恢复工具窗口模式（使用防抖）
+      input.addEventListener('blur', () => {
+        debouncedRestoreFocus();
       });
     }
   });
@@ -118,6 +187,30 @@ export function blurSearchInputs() {
   searchInputs.forEach(input => {
     if (input && document.activeElement === input) {
       input.blur();
+    }
+  });
+}
+
+// 为动态创建的输入框添加焦点管理
+export function addInputFocusManagement(inputElement) {
+  if (!inputElement) return;
+  
+  // 获得焦点时临时启用窗口焦点（使用防抖）
+  inputElement.addEventListener('focus', () => {
+    debouncedEnableFocus();
+  });
+
+  // 失去焦点时恢复工具窗口模式（使用防抖）
+  inputElement.addEventListener('blur', () => {
+    debouncedRestoreFocus();
+  });
+}
+
+// 批量为多个输入框添加焦点管理
+export function addMultipleInputsFocusManagement(inputElements) {
+  inputElements.forEach(input => {
+    if (input) {
+      addInputFocusManagement(input);
     }
   });
 }
