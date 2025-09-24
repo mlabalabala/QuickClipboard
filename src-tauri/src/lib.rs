@@ -136,6 +136,59 @@ pub fn run() {
                     let _ = commands::open_settings_window(app_handle).await;
                 });
             }
+            "toggle-hotkeys" => {
+                #[cfg(windows)]
+                {
+                    let hook_enabled = crate::shortcut_interceptor::is_interception_enabled();
+                    let poll_enabled = crate::key_state_monitor::is_polling_active();
+
+                    if hook_enabled || poll_enabled {
+                        crate::shortcut_interceptor::disable_shortcut_interception();
+                        crate::key_state_monitor::stop_keyboard_polling_system();
+                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                            let _ = item.set_text("启用快捷键");
+                        }
+                    } else {
+                        crate::shortcut_interceptor::enable_shortcut_interception();
+                        crate::key_state_monitor::start_keyboard_polling_system();
+                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                            let _ = item.set_text("禁用快捷键");
+                        }
+                    }
+                }
+            }
+            "toggle-clipboard-monitor" => {
+                let new_enabled = !crate::clipboard_history::is_monitoring_enabled();
+                crate::clipboard_history::set_monitoring_enabled(new_enabled);
+                // 持久化到设置
+                let mut app_settings = crate::settings::get_global_settings();
+                app_settings.clipboard_monitor = new_enabled;
+                let _ = crate::settings::update_global_settings(app_settings);
+                // 广播设置变更，确保主窗口与设置窗口同步
+                if let Some(main_window) = app.get_webview_window("main") {
+                    use tauri::Emitter;
+                    let _ = main_window.emit(
+                        "settings-changed",
+                        crate::settings::get_global_settings().to_json(),
+                    );
+                }
+                if let Some(settings_window) = app.get_webview_window("settings") {
+                    use tauri::Emitter;
+                    let _ = settings_window.emit(
+                        "settings-changed",
+                        crate::settings::get_global_settings().to_json(),
+                    );
+                }
+                if let Some(item) = crate::tray::TOGGLE_MONITOR_ITEM.get() {
+                    let _ = item.set_text(if new_enabled { "禁用剪贴板监听" } else { "启用剪贴板监听" });
+                }
+            }
+            "restart" => {
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = commands::restart_app(app_handle).await;
+                });
+            }
             "quit" => {
                 app.exit(0);
             }

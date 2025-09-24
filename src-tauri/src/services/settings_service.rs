@@ -176,9 +176,16 @@ impl SettingsService {
         }
 
         // 3. 通知前端设置已更改
+        use tauri::Emitter;
         if let Some(main_window) = app_handle.get_webview_window("main") {
-            use tauri::Emitter;
             let _ = main_window.emit("settings-changed", app_settings.to_json());
+        }
+        if let Some(settings_window) = app_handle.get_webview_window("settings") {
+            let _ = settings_window.emit("settings-changed", app_settings.to_json());
+        }
+        // 同步托盘“剪贴板监听”菜单文案
+        if let Some(item) = crate::tray::TOGGLE_MONITOR_ITEM.get() {
+            let _ = item.set_text(if app_settings.clipboard_monitor { "禁用剪贴板监听" } else { "启用剪贴板监听" });
         }
 
         Ok(())

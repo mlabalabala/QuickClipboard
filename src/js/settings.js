@@ -57,6 +57,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
   await initializeUI();
   bindEvents();
+  // 来自托盘或其他窗口的设置变更同步到设置界面
+  try {
+    await listen('settings-changed', (event) => {
+      const newSettings = event?.payload || {};
+      // 同步剪贴板监听开关
+      if (typeof newSettings.clipboardMonitor === 'boolean') {
+        settings.clipboardMonitor = newSettings.clipboardMonitor;
+        const el = document.getElementById('clipboard-monitor');
+        if (el && el.checked !== newSettings.clipboardMonitor) {
+          el.checked = newSettings.clipboardMonitor;
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('监听设置变更事件失败:', e);
+  }
   setupWindowEvents();
   
   // 初始化搜索功能

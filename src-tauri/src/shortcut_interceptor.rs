@@ -407,6 +407,18 @@ pub fn enable_shortcut_interception() {
     SHORTCUT_INTERCEPTION_ENABLED.store(true, Ordering::SeqCst);
 }
 
+// 禁用快捷键拦截
+#[cfg(windows)]
+pub fn disable_shortcut_interception() {
+    SHORTCUT_INTERCEPTION_ENABLED.store(false, Ordering::SeqCst);
+}
+
+// 查询快捷键拦截是否启用
+#[cfg(windows)]
+pub fn is_interception_enabled() -> bool {
+    SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::SeqCst)
+}
+
 // 更新要拦截的快捷键
 #[cfg(windows)]
 pub fn update_shortcut_to_intercept(shortcut: &str) {

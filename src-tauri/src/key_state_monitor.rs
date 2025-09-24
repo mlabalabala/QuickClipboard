@@ -166,6 +166,21 @@ pub fn start_keyboard_polling_system() {
     }
 }
 
+// 停止基于轮询的备用快捷键系统
+pub fn stop_keyboard_polling_system() {
+    POLLING_ACTIVE.store(false, Ordering::SeqCst);
+    if let Ok(mut handle) = POLLING_THREAD_HANDLE.lock() {
+        if let Some(join_handle) = handle.take() {
+            let _ = join_handle.join();
+        }
+    }
+}
+
+// 查询备用快捷键系统是否处于活动状态
+pub fn is_polling_active() -> bool {
+    POLLING_ACTIVE.load(Ordering::SeqCst)
+}
+
 // 获取当前按键状态
 fn get_current_key_state() -> KeyState {
     unsafe {
