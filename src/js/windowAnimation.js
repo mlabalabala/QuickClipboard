@@ -7,6 +7,43 @@ import { invoke } from '@tauri-apps/api/core';
 let animationEnabled = true;
 
 /**
+ * 关闭所有打开的菜单
+ */
+async function closeAllOpenMenus() {
+  try {
+    // 关闭右键菜单
+    const { hideContextMenu } = await import('./contextMenu.js');
+    hideContextMenu();
+    
+    // 关闭搜索引擎下拉菜单
+    const searchEngineDropdown = document.querySelector('.search-engine-dropdown-menu');
+    if (searchEngineDropdown) {
+      searchEngineDropdown.remove();
+    }
+    
+    // 移除搜索引擎下拉按钮的激活状态
+    const activeDropdownBtns = document.querySelectorAll('.search-dropdown-btn.active');
+    activeDropdownBtns.forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    // 关闭自定义搜索引擎对话框
+    const customSearchDialog = document.querySelector('.custom-search-dialog');
+    if (customSearchDialog) {
+      customSearchDialog.remove();
+    }
+    
+    // 关闭对话框遮罩层
+    const dialogOverlay = document.querySelector('.dialog-overlay');
+    if (dialogOverlay) {
+      dialogOverlay.remove();
+    }
+  } catch (error) {
+    console.error('关闭菜单时出错:', error);
+  }
+}
+
+/**
  * 播放窗口显示动画 - JavaScript控制的高度动画
  */
 export async function playWindowShowAnimation() {
@@ -374,6 +411,10 @@ export async function setupWindowAnimationListeners() {
     // 监听窗口隐藏动画事件
     await listen('window-hide-animation', async () => {
       // console.log('收到窗口隐藏动画事件');
+      
+      // 在动画开始前关闭所有打开的菜单
+      await closeAllOpenMenus();
+      
       playWindowHideAnimation();
       
       // 窗口隐藏时移除搜索框焦点
@@ -391,6 +432,10 @@ export async function setupWindowAnimationListeners() {
     // 监听贴边隐藏事件
     await listen('edge-snap-hide-animation', async () => {
       // console.log('收到贴边隐藏动画事件');
+      
+      // 在隐藏前关闭所有打开的菜单
+      await closeAllOpenMenus();
+      
       await handleAutoFocusSearch(false);
     });
 

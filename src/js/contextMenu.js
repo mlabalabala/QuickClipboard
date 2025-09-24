@@ -2,12 +2,13 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';
+import { searchWithEngine } from './searchEngineManager.js';
+import { createSearchEngineSelector } from './searchEngineSelector.js';
 
 // 在浏览器中搜索文本
-async function searchTextInBrowser(text) {
+async function searchTextInBrowser(text, engineId = null) {
   try {
-    const query = encodeURIComponent(text);
-    const url = `https://www.bing.com/search?q=${query}`;
+    const url = searchWithEngine(text, engineId);
     await openUrl(url);
     showNotification('已在浏览器中搜索选中文本', 'success', 2000);
   } catch (error) {
@@ -274,8 +275,8 @@ export function showContextMenu(event, options) {
   // 添加浏览器搜索选项
   if (plainTextForSearch && (options.content_type === 'text' || options.content_type === 'rich_text')) {
     appendSeparatorIfNeeded(menuItems);
-    const searchItem = createMenuItem('ti-search', '在浏览器中搜索', async () => {
-      await searchTextInBrowser(plainTextForSearch);
+    const searchItem = createSearchEngineSelector(plainTextForSearch, async (engineId) => {
+      await searchTextInBrowser(plainTextForSearch, engineId);
       menu.remove();
     });
     menuItems.push(searchItem);
