@@ -3,6 +3,19 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';
 
+// 在浏览器中搜索文本
+async function searchTextInBrowser(text) {
+  try {
+    const query = encodeURIComponent(text);
+    const url = `https://www.bing.com/search?q=${query}`;
+    await openUrl(url);
+    showNotification('已在浏览器中搜索选中文本', 'success', 2000);
+  } catch (error) {
+    console.error('搜索失败:', error);
+    showNotification('在浏览器中搜索失败', 'error');
+  }
+}
+
 // 创建链接选择对话框
 function createLinkSelectionDialog(links, callback) {
   // 移除已存在的对话框
@@ -181,6 +194,20 @@ function createSeparator() {
   return separator;
 }
 
+// 根据需要添加分隔线
+function appendSeparatorIfNeeded(menuItems) {
+  if (menuItems.length === 0) {
+    return;
+  }
+
+  const lastItem = menuItems[menuItems.length - 1];
+  if (lastItem && lastItem.classList && lastItem.classList.contains('context-menu-separator')) {
+    return;
+  }
+
+  menuItems.push(createSeparator());
+}
+
 // 隐藏当前显示的右键菜单
 export function hideContextMenu() {
   const existingMenu = document.querySelector('.context-menu');
@@ -212,9 +239,10 @@ export function showContextMenu(event, options) {
   `;
 
   const menuItems = [];
+  const plainTextForSearch = typeof options.content === 'string' ? options.content.trim() : '';
 
   // 检测并添加打开链接选项
-  if (options.content) {
+  if (options.content || options.html_content) {
     // 使用统一的链接提取工具函数
     const links = extractAllLinks({
       content: options.content,
@@ -243,12 +271,20 @@ export function showContextMenu(event, options) {
     }
   }
 
+  // 添加浏览器搜索选项
+  if (plainTextForSearch && (options.content_type === 'text' || options.content_type === 'rich_text')) {
+    appendSeparatorIfNeeded(menuItems);
+    const searchItem = createMenuItem('ti-search', '在浏览器中搜索', async () => {
+      await searchTextInBrowser(plainTextForSearch);
+      menu.remove();
+    });
+    menuItems.push(searchItem);
+  }
+
   // 添加自定义菜单项
   if (options.items && options.items.length > 0) {
     // 如果已经有链接菜单项，添加分隔线
-    if (menuItems.length > 0) {
-      menuItems.push(createSeparator());
-    }
+    appendSeparatorIfNeeded(menuItems);
 
     options.items.forEach(item => {
       if (item.type === 'separator') {
