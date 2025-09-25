@@ -120,7 +120,7 @@ static HEARTBEAT_FAILURE_COUNT: AtomicU32 = AtomicU32::new(0);
 /// 最大失败次数，超过此数值将重启截屏程序
 const MAX_HEARTBEAT_FAILURES: u32 = 3;
 /// 心跳间隔（秒）
-const HEARTBEAT_INTERVAL_SECONDS: u64 = 5;
+const HEARTBEAT_INTERVAL_SECONDS: u64 = 2;
 
 /// 启动心跳检测服务
 pub fn start_heartbeat_service(app_handle: tauri::AppHandle) {

@@ -254,6 +254,9 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     )?;
     EDGE_SNAP_MANAGER.lock().unwrap().is_hidden = true;
 
+    #[cfg(windows)]
+    crate::mouse_hook::release_mouse_monitoring("main_window");
+
     // 禁用导航按键，避免影响用户在其他应用中的操作
     #[cfg(windows)]
     crate::shortcut_interceptor::disable_navigation_keys();
@@ -329,6 +332,9 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
         200,
     )?;
     EDGE_SNAP_MANAGER.lock().unwrap().is_hidden = false;
+
+    #[cfg(windows)]
+    crate::mouse_hook::request_mouse_monitoring("main_window");
 
     // 重新启用导航按键
     #[cfg(windows)]
@@ -513,7 +519,7 @@ fn check_mouse_near_edge(
         let monitor_bottom = get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
-        let trigger_distance = 30;
+        let trigger_distance = 10;
         let (win_x, win_y, win_width, win_height) = window_rect;
 
         // 检查鼠标是否在窗口内或接近对应边缘

@@ -14,6 +14,8 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
             // 贴边显示失败，恢复到正常状态并继续执行正常显示
             let _ = crate::edge_snap::restore_window_from_snap(&window);
         } else {
+            #[cfg(windows)]
+            crate::mouse_hook::request_mouse_monitoring("main_window");
             // 贴边显示成功，直接返回
             return;
         }
@@ -81,6 +83,9 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
 pub fn hide_webview_window(window: tauri::WebviewWindow) {
     // 检查是否处于边缘吸附隐藏状态
     if crate::edge_snap::is_window_edge_hidden() {
+        // 如果窗口已经处于贴边隐藏状态，确保停止鼠标监听
+        #[cfg(windows)]
+        crate::mouse_hook::release_mouse_monitoring("edge_snap");
         // 窗口已经处于贴边隐藏状态，不需要再次隐藏
         return;
     }
@@ -94,6 +99,8 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
         if let Err(_) = crate::edge_snap::hide_snapped_window(&window) {
             // 贴边隐藏失败，使用正常隐藏
         } else {
+            #[cfg(windows)]
+            crate::mouse_hook::release_mouse_monitoring("edge_snap");
             // 贴边隐藏成功，直接返回
             return;
         }

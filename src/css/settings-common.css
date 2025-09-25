@@ -1581,14 +1581,14 @@ textarea:focus {
 
 .mode-option input[type="radio"]:checked+.mode-card {
   border-color: var(--primary-color);
-  background-color: var(--primary-light);
+  background-color: var(--bg-primary);
   /* color: var(--primary-color); */
   box-shadow: 0 0 0 2px var(--primary-color);
 }
 
 .mode-option input[type="radio"]:checked+.mode-card:hover {
   border-color: var(--primary-hover);
-  background-color: var(--primary-light);
+  /* background-color: var(--primary-light); */
   box-shadow: 0 0 0 2px var(--primary-hover), var(--shadow-light);
 }
 

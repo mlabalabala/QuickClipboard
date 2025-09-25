@@ -28,15 +28,22 @@ impl ScreenshotService {
         
         println!("启动外部截屏程序: {}", screenshot_exe.display());
         
-        // 启动外部截屏程序
+        // 获取当前进程ID
+        let current_pid = std::process::id();
+        
+        // 启动外部截屏程序，传递主程序进程ID
         let mut command = Command::new(&screenshot_exe);
         command.current_dir(&external_apps_dir);
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         
+        // 添加命令行参数：传递主程序进程ID
+        command.arg("--parent-pid");
+        command.arg(current_pid.to_string());
+
         match command.spawn() {
             Ok(mut child) => {
-                println!("外部截屏程序已启动，PID: {:?}", child.id());
+                println!("外部截屏程序已启动，PID: {:?}，主程序PID: {}", child.id(), current_pid);
                 
                 // 读取子程序的输出来获取端口信息
                 if let Some(stdout) = child.stdout.take() {
@@ -84,3 +91,4 @@ impl ScreenshotService {
         }
     }
 }
+
