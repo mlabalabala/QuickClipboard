@@ -33,7 +33,9 @@ let currentSettings = {
   // 显示行为
   autoScrollToTopOnShow: false,
   // 格式设置
-  pasteWithFormat: true // 是否带格式粘贴和显示，true=带格式，false=纯文本
+  pasteWithFormat: true, // 是否带格式粘贴和显示，true=带格式，false=纯文本
+  // 图片粘贴策略
+  imageDataPriorityApps: []
 };
 
 // 初始化设置管理器
@@ -90,6 +92,14 @@ function applySettings(settings) {
   // 应用动画设置
   if (settings.clipboardAnimationEnabled !== undefined) {
     applyAnimationSettings(settings.clipboardAnimationEnabled);
+  }
+
+  if (Array.isArray(settings.imageDataPriorityApps)) {
+    try {
+      window.__imageDataPriorityApps = settings.imageDataPriorityApps;
+    } catch (error) {
+      console.warn('记录图像数据优先应用失败:', error);
+    }
   }
 
   // 设置显示后滚动行为

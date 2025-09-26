@@ -151,7 +151,9 @@ const defaultSettings = {
   // 应用黑白名单设置
   appFilterEnabled: false,
   appFilterMode: 'blacklist',
-  appFilterList: []
+  appFilterList: [],
+  // 图片粘贴策略
+  imageDataPriorityApps: []
 };
 
 // 加载设置
@@ -328,6 +330,11 @@ async function initializeUI() {
   const appFilterListTextarea = document.getElementById('app-filter-list');
   if (appFilterListTextarea) {
     appFilterListTextarea.value = (settings.appFilterList || []).join('\n');
+  }
+
+  const imageDataPriorityApps = document.getElementById('image-data-priority-apps');
+  if (imageDataPriorityApps) {
+    imageDataPriorityApps.value = (settings.imageDataPriorityApps || []).join('\n');
   }
 
   updateAppFilterStatus();
@@ -512,7 +519,8 @@ function bindSettingEvents() {
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'mouse-middle-button-modifier', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
-    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search', 'sidebar-hover-delay'
+    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search', 'sidebar-hover-delay',
+    'image-data-priority-apps'
   ];
 
   settingInputs.forEach(id => {
@@ -536,6 +544,13 @@ function bindSettingEvents() {
         } else if (element.type === 'select-one' && (id === 'preview-items-count' || id === 'ai-input-speed' || id === 'history-limit')) {
           settings[key] = parseInt(element.value);
           console.log(`特殊处理整数设置: ${id} -> ${key} = ${settings[key]} (原始值: ${element.value})`);
+        } else if (id === 'image-data-priority-apps') {
+          const lines = element.value
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => line.toLowerCase());
+          settings.imageDataPriorityApps = lines;
         } else {
           settings[key] = element.value;
         }

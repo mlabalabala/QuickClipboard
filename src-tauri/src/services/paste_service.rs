@@ -155,18 +155,29 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             use crate::clipboard_content::{
                 data_url_to_bgra_and_png, set_windows_clipboard_image_with_file,
             };
+            use crate::utils::window_utils::get_active_window_process_name;
+            let settings = crate::settings::get_global_settings();
+            let prefers_image_data = get_active_window_process_name()
+                .map(|process| {
+                    settings
+                        .image_data_priority_apps
+                        .iter()
+                        .any(|app| process.contains(&app.to_lowercase()))
+                })
+                .unwrap_or(false);
             let (bgra, png_bytes, width, height) =
                 data_url_to_bgra_and_png(&image_data).map_err(|e| {
                     crate::clipboard_monitor::end_pasting_operation();
                     e
                 })?;
-            if let Err(e) = set_windows_clipboard_image_with_file(
-                &bgra,
-                &png_bytes,
-                width,
-                height,
-                Some(&image_info.file_path),
-            ) {
+            let file_path = if prefers_image_data {
+                None
+            } else {
+                Some(image_info.file_path.as_str())
+            };
+            if let Err(e) =
+                set_windows_clipboard_image_with_file(&bgra, &png_bytes, width, height, file_path)
+            {
                 crate::clipboard_monitor::end_pasting_operation();
                 return Err(e);
             }
