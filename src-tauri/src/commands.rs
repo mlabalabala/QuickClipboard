@@ -826,6 +826,12 @@ pub async fn launch_external_screenshot(app: tauri::AppHandle, hide_window: Opti
     Ok(())
 }
 
+// 启动内置截屏窗口
+#[tauri::command]
+pub fn start_builtin_screenshot(app: tauri::AppHandle) -> Result<(), String> {
+    crate::screenshot_window::ScreenshotWindowManager::show_screenshot_window(&app)
+}
+
 // 启动外部截屏程序进程
 #[tauri::command]
 pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), String> {

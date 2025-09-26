@@ -3,13 +3,7 @@ use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::WebviewWindow;
 use windows::Win32::Foundation::{POINT, RECT};
-use windows::Win32::Graphics::Gdi::{
-    GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
-};
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN,
-    SM_YVIRTUALSCREEN,
-};
+use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 
 // 边缘吸附配置
 #[derive(Debug, Clone)]
@@ -154,32 +148,19 @@ pub fn restore_window_from_snap(window: &WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 
-// 获取虚拟桌面尺寸
+// 获取虚拟桌面尺寸（screen_utils）
 pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
-    #[cfg(windows)]
-    {
-        unsafe {
-            let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-            let y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-            let w = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-            let h = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-            Ok((x, y, w, h))
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        Ok((0, 0, 1920, 1080))
-    }
+    crate::screen_utils::ScreenUtils::get_virtual_screen_size()
 }
 
-// 检查是否需要吸附到边缘
+// 检查是否需要吸附到边缘（通用边界信息）
 fn get_snap_target(window: &WebviewWindow, window_rect: &RECT) -> Option<(SnapEdge, i32, i32)> {
     let snap_distance = EDGE_SNAP_CONFIG.snap_distance;
 
-    // 获取边界信息
-    let virtual_desktop = crate::window_drag::get_virtual_screen_size().ok()?;
+    // 使用通用函数获取边界信息
+    let virtual_desktop = crate::screen_utils::ScreenUtils::get_virtual_screen_size().ok()?;
     let (vx, vy, vw, vh) = virtual_desktop;
-    let monitor_bottom = get_monitor_bounds(window)
+    let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
         .map(|(_, my, _, mh)| my + mh)
         .unwrap_or(vy + vh);
 
@@ -228,9 +209,9 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     let hide_offset = EDGE_SNAP_CONFIG.hide_offset;
     let window_rect = get_window_rect(window)?;
     let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-    let monitor_bottom = get_monitor_bounds(window)
-        .map(|(_, my, _, mh)| my + mh)
-        .unwrap_or(vy + vh);
+        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+            .map(|(_, my, _, mh)| my + mh)
+            .unwrap_or(vy + vh);
 
     let window_width = window_rect.right - window_rect.left;
     let window_height = window_rect.bottom - window_rect.top;
@@ -294,9 +275,9 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
 
     let window_rect = get_window_rect(window)?;
     let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-    let monitor_bottom = get_monitor_bounds(window)
-        .map(|(_, my, _, mh)| my + mh)
-        .unwrap_or(vy + vh);
+        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+            .map(|(_, my, _, mh)| my + mh)
+            .unwrap_or(vy + vh);
 
     let window_width = window_rect.right - window_rect.left;
     let window_height = window_rect.bottom - window_rect.top;
@@ -399,7 +380,7 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
             }
             
             // 检查是否还在吸附状态
-            let (is_enabled, is_snapped, is_hidden, edge) = {
+            let (is_hidden, edge) = {
                 let state = match EDGE_SNAP_MANAGER.lock() {
                     Ok(s) => s,
                     Err(_) => break,
@@ -411,8 +392,6 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
                 }
 
                 (
-                    state.is_enabled,
-                    state.is_snapped,
                     state.is_hidden,
                     state.snapped_edge.clone(),
                 )
@@ -516,7 +495,7 @@ fn check_mouse_near_edge(
         }
 
         let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-        let monitor_bottom = get_monitor_bounds(window)
+        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
         let trigger_distance = 10;
@@ -704,39 +683,3 @@ pub fn is_window_edge_snapped() -> bool {
     crate::state_manager::is_edge_snap_active()
 }
 
-// 获取窗口所在显示器的边界
-#[cfg(windows)]
-fn get_monitor_bounds(window: &WebviewWindow) -> Result<(i32, i32, i32, i32), String> {
-    use windows::Win32::Foundation::HWND;
-
-    let hwnd = HWND(
-        window
-            .hwnd()
-            .map_err(|e| format!("获取窗口句柄失败: {}", e))?
-            .0 as isize,
-    );
-
-    unsafe {
-        let hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        let mut monitor_info = MONITORINFO {
-            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
-            rcMonitor: RECT::default(),
-            rcWork: RECT::default(),
-            dwFlags: 0,
-        };
-
-        if GetMonitorInfoW(hmonitor, &mut monitor_info).as_bool() {
-            // 成功获取显示器信息
-        } else {
-            return Err("获取显示器信息失败".to_string());
-        }
-
-        let monitor_rect = monitor_info.rcMonitor;
-        Ok((
-            monitor_rect.left,
-            monitor_rect.top,
-            monitor_rect.right - monitor_rect.left,
-            monitor_rect.bottom - monitor_rect.top,
-        ))
-    }
-}

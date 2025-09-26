@@ -1,0 +1,160 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, sans-serif;
+    background: transparent;
+    user-select: none;
+    cursor: crosshair;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    border: 10px solid red;
+}
+
+.screenshot-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.mask-layers {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.mask-top, .mask-bottom, .mask-left, .mask-right {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.mask-top {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+}
+
+.mask-bottom {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+}
+
+.mask-left {
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+}
+
+.mask-right {
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 100%;
+}
+
+body:not(.has-selection) .mask-top {
+    height: 100%;
+}
+
+.selection-area {
+    position: absolute;
+    border: 2px solid #007bff;
+    background: transparent;
+    display: none;
+    z-index: 2;
+    cursor: move;
+    /* box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8); */
+}
+
+.toolbar {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    z-index: 4;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-2px);
+}
+
+.toolbar button {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.15s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.toolbar button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.toolbar button:active {
+    transform: translateY(0);
+}
+
+.toolbar button.cancel {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.toolbar button.cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.info-text {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 4;
+}
+
+.selection-info {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 3;
+    pointer-events: none;
+}

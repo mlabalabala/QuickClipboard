@@ -3,11 +3,8 @@ use std::time::Duration;
 use tauri::WebviewWindow;
 use windows::Win32::Foundation::{POINT, HWND};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, SetWindowPos, GetSystemMetrics,
-    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
-    HWND_TOP, SWP_NOSIZE, SWP_NOZORDER
+    GetCursorPos, SetWindowPos, HWND_TOP, SWP_NOSIZE, SWP_NOZORDER
 };
-use windows::Win32::Graphics::Gdi::{MonitorFromWindow, GetMonitorInfoW, MONITORINFO, MONITOR_DEFAULTTONEAREST};
 
 // 自定义拖拽状态
 #[derive(Debug, Clone)]
@@ -148,58 +145,16 @@ fn start_drag_monitoring_thread() {
     });
 }
 
-// 获取虚拟桌面尺寸
+// 获取虚拟桌面尺寸（screen_utils）
 pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
-    #[cfg(windows)]
-    {
-        unsafe {
-            let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-            let y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-            let w = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-            let h = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-            Ok((x, y, w, h))
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        Ok((0, 0, 1920, 1080))
-    }
+    crate::screen_utils::ScreenUtils::get_virtual_screen_size()
 }
 
-// 获取窗口所在显示器的边界
+// 获取窗口所在显示器的边界（screen_utils）
 #[cfg(windows)]
-fn get_monitor_bounds_for_drag(window: &WebviewWindow) -> Result<(i32, i32, i32, i32), String> {
-    use windows::Win32::Foundation::HWND;
-    
-    let hwnd = HWND(window.hwnd().map_err(|e| format!("获取窗口句柄失败: {}", e))?.0 as isize);
-    
-    unsafe {
-        let hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        let mut monitor_info = MONITORINFO {
-            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
-            rcMonitor: windows::Win32::Foundation::RECT::default(),
-            rcWork: windows::Win32::Foundation::RECT::default(),
-            dwFlags: 0,
-        };
-        
-        if GetMonitorInfoW(hmonitor, &mut monitor_info).as_bool() {
-            let monitor_rect = monitor_info.rcMonitor;
-            Ok((
-                monitor_rect.left,
-                monitor_rect.top,
-                monitor_rect.right - monitor_rect.left,
-                monitor_rect.bottom - monitor_rect.top,
-            ))
-        } else {
-            Err("获取显示器信息失败".to_string())
-        }
-    }
-}
-
-// 应用磁性吸附和边界限制
 fn apply_magnetic_snap_and_bounds(
     mut x: i32, mut y: i32, 
-    vx: i32, vy: i32, vw: i32, vh: i32,
+    _vx: i32, _vy: i32, _vw: i32, _vh: i32,
     window: &WebviewWindow
 ) -> (i32, i32) {
     const MAGNETIC_DISTANCE: i32 = 40;
@@ -207,18 +162,31 @@ fn apply_magnetic_snap_and_bounds(
     if let Ok(window_size) = window.outer_size() {
         let pw = window_size.width as i32;
         let ph = window_size.height as i32;
-        let monitor_bottom = get_monitor_bounds_for_drag(window).map(|(_, my, _, mh)| my + mh).unwrap_or(vy + vh);
         
-        // 磁性吸附：左右上用虚拟桌面，下用当前显示器
-        if (x - vx).abs() <= MAGNETIC_DISTANCE { x = vx; }
-        else if ((vx + vw) - (x + pw)).abs() <= MAGNETIC_DISTANCE { x = vx + vw - pw; }
+        // 使用通用物理像素边界约束
+        let (constrained_x, constrained_y) = 
+            crate::screen_utils::ScreenUtils::constrain_to_physical_bounds(x, y, pw, ph, window)
+                .unwrap_or((x, y));
         
-        if (y - vy).abs() <= MAGNETIC_DISTANCE { y = vy; }
-        else if (monitor_bottom - (y + ph)).abs() <= MAGNETIC_DISTANCE { y = monitor_bottom - ph; }
-        
-        // 边界限制：只限制上下边界，允许跨屏拖拽
-        if y + ph > vy + vh { y = vy + vh - ph; }
-        if y < vy { y = vy; }
+        // 应用磁性吸附（在约束后的位置基础上）
+        if let Ok(virtual_screen) = crate::screen_utils::ScreenUtils::get_virtual_screen_size() {
+            let (vx, vy, vw, vh) = virtual_screen;
+            let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+                .map(|(_, my, _, mh)| my + mh)
+                .unwrap_or(vy + vh);
+            
+            // 磁性吸附检查
+            if (constrained_x - vx).abs() <= MAGNETIC_DISTANCE { x = vx; }
+            else if ((vx + vw) - (constrained_x + pw)).abs() <= MAGNETIC_DISTANCE { x = vx + vw - pw; }
+            else { x = constrained_x; }
+            
+            if (constrained_y - vy).abs() <= MAGNETIC_DISTANCE { y = vy; }
+            else if (monitor_bottom - (constrained_y + ph)).abs() <= MAGNETIC_DISTANCE { y = monitor_bottom - ph; }
+            else { y = constrained_y; }
+        } else {
+            x = constrained_x;
+            y = constrained_y;
+        }
     }
     
     (x, y)

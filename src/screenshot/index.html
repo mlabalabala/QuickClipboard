@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>截屏窗口</title>
+    <link rel="stylesheet" href="../assets/icons/icons-webfont/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="screenshot.css">
+</head>
+<body>
+    <!-- 遮罩层容器 -->
+    <div class="mask-layers" id="maskLayers">
+        <div class="mask-top" id="maskTop"></div>
+        <div class="mask-bottom" id="maskBottom"></div>
+        <div class="mask-left" id="maskLeft"></div>
+        <div class="mask-right" id="maskRight"></div>
+    </div>
+    
+    <!-- 截屏覆盖层 -->
+    <div class="screenshot-overlay" id="overlay"></div>
+    
+    <!-- 选择区域 -->
+    <div class="selection-area" id="selectionArea">
+        <div class="selection-info" id="selectionInfo">0 × 0</div>
+    </div>
+
+    <!-- 提示信息 -->
+    <div class="info-text" id="infoText">
+        拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭
+        <br><small>红框=主显示器，绿框=副显示器</small>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar" id="toolbar">
+        <button id="confirmBtn" title="确认截屏">
+            <i class="ti ti-check"></i>
+        </button>
+        <button id="cancelBtn" class="cancel" title="取消截屏">
+            <i class="ti ti-x"></i>
+        </button>
+    </div>
+
+    <!-- 引入截屏脚本 -->
+    <script src="screenshot.js"></script>
+</body>
+</html>

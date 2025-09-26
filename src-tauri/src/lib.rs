@@ -23,6 +23,7 @@ mod mouse_hook;
 mod paste_utils;
 mod preview_window;
 mod quick_texts;
+mod screenshot_window;
 
 mod memory_manager;
 mod services;
@@ -37,6 +38,7 @@ mod window_management;
 mod edge_snap;
 mod state_manager;
 mod window_drag;
+mod screen_utils;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -252,6 +254,11 @@ pub fn run() {
 
             // 初始化预览窗口
             preview_window::init_preview_window();
+
+            // 初始化截屏窗口
+            if let Err(e) = crate::screenshot_window::ScreenshotWindowManager::init_screenshot_window(app.handle()) {
+                println!("截屏窗口初始化失败: {}", e);
+            }
 
             // 加载并应用设置
             // println!("正在加载应用设置...");
@@ -509,7 +516,17 @@ pub fn run() {
             commands::launch_external_screenshot_process,
             commands::get_image_file_path,
             commands::pin_image_to_screen,
-            commands::file_exists
+            commands::file_exists,
+            
+            // 截屏窗口相关命令
+            crate::screenshot_window::show_screenshot_window,
+            crate::screenshot_window::hide_screenshot_window,
+            crate::screenshot_window::toggle_screenshot_window,
+            crate::screenshot_window::is_screenshot_window_visible,
+            crate::screenshot_window::get_all_monitors,
+            crate::screenshot_window::get_css_monitors,
+            crate::screenshot_window::constrain_selection_bounds,
+            commands::start_builtin_screenshot
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

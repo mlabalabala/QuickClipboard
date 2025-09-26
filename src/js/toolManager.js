@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { setPasteWithFormat, getPasteWithFormat, setIsPinned, isPinned, setIsOneTimePaste, isOneTimePaste, setIsAiTranslationEnabled, isAiTranslationEnabled } from './config.js';
 import { openSettingsWindow } from './window.js';
-import { startNativeScreenshot } from './screenshot.js';
+import { startScreenshot } from './screenshot.js';
 import { toggleAiTranslation, updateAllAiTranslationButtons } from './aiTranslation.js';
 
 // 工具注册表 - 单一数据源
@@ -96,7 +96,7 @@ const TOOL_ACTIONS = {
   },
   
   takeScreenshot: () => {
-    startNativeScreenshot();
+    startScreenshot();
   },
   
   toggleOneTimePaste: (toolId) => {
