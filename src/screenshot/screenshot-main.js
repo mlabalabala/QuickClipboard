@@ -10,6 +10,8 @@ import { MaskManager } from './managers/mask-manager.js';
 import { EventManager } from './managers/event-manager.js';
 import { BackgroundManager } from './managers/background-manager.js';
 import { ExportManager } from './managers/export-manager.js';
+import { EditLayerManager } from './managers/edit-layer-manager.js';
+import { ToolManager } from './managers/tool-manager.js';
 
 export class ScreenshotController {
     constructor() {
@@ -22,9 +24,14 @@ export class ScreenshotController {
         this.eventManager = new EventManager();
         this.backgroundManager = new BackgroundManager();
         this.exportManager = new ExportManager();
+        this.editLayerManager = new EditLayerManager();
+        this.toolManager = new ToolManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
+        this.exportManager.setEditLayerManager(this.editLayerManager);
+        this.editLayerManager.setBackgroundManager(this.backgroundManager);
+        this.toolManager.setEditLayerManager(this.editLayerManager);
         
         this.initializeManagers();
         this.loadMonitorInfo();
@@ -79,6 +86,7 @@ export class ScreenshotController {
         // 工具栏管理器回调
         this.toolbarManager.setOnConfirm(() => this.confirmScreenshot());
         this.toolbarManager.setOnCancel(() => this.cancelScreenshot());
+        this.toolbarManager.setOnToolSelect((toolName) => this.handleToolSelect(toolName));
     }
 
     /**
@@ -233,11 +241,14 @@ export class ScreenshotController {
                 this.backgroundManager.init();
             }
 
-            await this.backgroundManager.loadScreenshot({ 
-                width: payload.width, 
-                height: payload.height, 
-                image_url: payload.image_url 
-            });
+                await this.backgroundManager.loadScreenshot({ 
+                    width: payload.width, 
+                    height: payload.height, 
+                    image_url: payload.image_url 
+                });
+                
+                // 初始化编辑层
+                this.editLayerManager.init();
         } catch (error) {
             console.error('处理截屏数据失败:', error);
         }
@@ -251,6 +262,23 @@ export class ScreenshotController {
     }
 
     /**
+     * 处理工具选择
+     */
+    handleToolSelect(toolName) {
+        if (toolName) {
+            // 激活工具
+            this.toolManager.activateTool(toolName);
+            // 更新工具栏按钮状态
+            this.toolbarManager.setActiveTool(toolName);
+        } else {
+            // 取消激活工具
+            this.toolManager.deactivateTool();
+            // 清除工具栏按钮状态
+            this.toolbarManager.setActiveTool(null);
+        }
+    }
+
+    /**
      * 确认截屏
      */
     async confirmScreenshot() {
@@ -261,7 +289,7 @@ export class ScreenshotController {
             this.toolbarManager.hide();
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // 使用导出管理器复制选区到剪贴板
+            // 使用导出管理器复制选区到剪贴板（自动合并编辑层）
             await this.exportManager.copySelectionToClipboard(selection);
             
             // 关闭窗口
@@ -276,6 +304,10 @@ export class ScreenshotController {
      */
     async cancelScreenshot() {
         try {
+            // 清理工具状态
+            this.toolManager.deactivateTool();
+            this.toolbarManager.setActiveTool(null);
+            
             await ScreenshotAPI.hideWindow();
         } catch (error) {
             console.error('隐藏窗口失败:', error);

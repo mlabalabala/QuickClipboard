@@ -14,6 +14,8 @@ export class EventManager {
         this.onSelectionEnd = null;
         this.onRightClick = null;
         this.onKeyDown = null;
+        this.onWindowFocus = null;
+        this.onWindowBlur = null;
         
         this.initEvents();
     }

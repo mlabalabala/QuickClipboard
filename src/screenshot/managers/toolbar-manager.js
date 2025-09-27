@@ -10,10 +10,13 @@ export class ToolbarManager {
         this.toolbar = document.getElementById('toolbar');
         this.confirmBtn = document.getElementById('confirmBtn');
         this.cancelBtn = document.getElementById('cancelBtn');
+        this.brushBtn = document.getElementById('brushBtn');
         
-        // 工具栏尺寸
-        this.toolbarWidth = 32 * 2 + 4 * 2 + 4; // 76px
+        // 工具栏尺寸 (更新为包含新按钮的尺寸)
+        this.toolbarWidth = 32 * 3 + 4 * 3 + 4 + 5; // 画笔 + 分隔符 + 确认 + 取消
         this.toolbarHeight = 32 + 4 * 2; // 40px
+        
+        this.currentTool = null;
         
         this.initEvents();
     }
@@ -21,6 +24,17 @@ export class ToolbarManager {
     initEvents() {
         this.confirmBtn.addEventListener('click', () => this.onConfirm?.());
         this.cancelBtn.addEventListener('click', () => this.onCancel?.());
+        
+        // 通用工具按钮事件处理
+        const toolButtons = this.toolbar.querySelectorAll('.tool-btn');
+        toolButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const toolName = e.currentTarget.dataset.tool;
+                if (toolName) {
+                    this.handleToolClick(toolName);
+                }
+            });
+        });
     }
 
     /**
@@ -83,6 +97,58 @@ export class ToolbarManager {
      */
     setOnCancel(callback) {
         this.onCancel = callback;
+    }
+
+    /**
+     * 设置工具选择回调
+     */
+    setOnToolSelect(callback) {
+        this.onToolSelect = callback;
+    }
+
+    /**
+     * 处理工具按钮点击
+     */
+    handleToolClick(toolName) {
+        // 切换工具状态
+        if (this.currentTool === toolName) {
+            // 取消当前工具
+            this.setActiveTool(null);
+        } else {
+            // 激活新工具
+            this.setActiveTool(toolName);
+        }
+
+        // 调用回调
+        if (this.onToolSelect) {
+            this.onToolSelect(this.currentTool);
+        }
+    }
+
+    /**
+     * 设置激活的工具
+     */
+    setActiveTool(toolName) {
+        // 清除所有工具按钮的激活状态
+        const toolButtons = this.toolbar.querySelectorAll('.tool-btn');
+        toolButtons.forEach(btn => btn.classList.remove('active'));
+
+        this.currentTool = toolName;
+
+        // 设置当前工具按钮为激活状态
+        if (toolName) {
+            const activeButton = this.toolbar.querySelector(`[data-tool="${toolName}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+        }
+    }
+
+    /**
+     * 获取当前激活的工具
+     */
+    getCurrentTool() {
+        return this.currentTool;
     }
 
     /**
