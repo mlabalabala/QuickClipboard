@@ -9,6 +9,7 @@ import { ToolbarManager } from './managers/toolbar-manager.js';
 import { MaskManager } from './managers/mask-manager.js';
 import { EventManager } from './managers/event-manager.js';
 import { BackgroundManager } from './managers/background-manager.js';
+import { ExportManager } from './managers/export-manager.js';
 
 export class ScreenshotController {
     constructor() {
@@ -20,6 +21,10 @@ export class ScreenshotController {
         this.maskManager = new MaskManager();
         this.eventManager = new EventManager();
         this.backgroundManager = new BackgroundManager();
+        this.exportManager = new ExportManager();
+        
+        // 设置管理器之间的引用关系
+        this.exportManager.setBackgroundManager(this.backgroundManager);
         
         this.initializeManagers();
         this.loadMonitorInfo();
@@ -256,8 +261,8 @@ export class ScreenshotController {
             this.toolbarManager.hide();
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // 执行截屏
-            await ScreenshotAPI.captureScreen(selection);
+            // 使用导出管理器复制选区到剪贴板
+            await this.exportManager.copySelectionToClipboard(selection);
             
             // 关闭窗口
             await ScreenshotAPI.hideWindow();

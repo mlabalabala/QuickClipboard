@@ -58,10 +58,4 @@ export class ScreenshotAPI {
         return await invoke('hide_screenshot_window');
     }
 
-    /**
-     * 执行截屏操作
-     */
-    static async captureScreen(selection) {
-        return { success: true };
-    }
 }

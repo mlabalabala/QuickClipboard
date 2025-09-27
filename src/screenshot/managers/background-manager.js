@@ -72,6 +72,9 @@ export class BackgroundManager {
         return new Promise((resolve, reject) => {
             const img = new Image();
             
+            // 设置跨域属性，避免Canvas污染
+            img.crossOrigin = 'anonymous';
+            
             img.onload = () => {
                 this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
                 resolve();

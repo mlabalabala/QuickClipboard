@@ -172,7 +172,7 @@ pub fn get_css_monitors(
     crate::screen_utils::ScreenUtils::get_css_monitors(scale_factor)
 }
 
-/// 约束选区位置到合适的显示器边界内（复用贴边隐藏的边界逻辑）
+/// 约束选区位置到合适的显示器边界内
 #[tauri::command]
 pub fn constrain_selection_bounds(
     window: tauri::WebviewWindow,
@@ -189,7 +189,7 @@ pub fn constrain_selection_bounds(
     let physical_width = (width * scale_factor) as i32;
     let physical_height = (height * scale_factor) as i32;
 
-    // 使用物理像素边界约束（复用窗口拖拽逻辑）
+    // 使用物理像素边界约束
     let (constrained_physical_x, constrained_physical_y) =
         crate::screen_utils::ScreenUtils::constrain_to_physical_bounds(
             physical_x,
@@ -243,7 +243,7 @@ pub struct ScreenshotCapture {
 }
 
 impl ScreenshotWindowManager {
-    /// GDI截屏方案（简洁可靠）
+    /// GDI截屏方案
     fn capture_screenshot_sync() -> Result<ScreenshotCapture, String> {
         let (x, y, w, h) = crate::screen_utils::ScreenUtils::get_virtual_screen_size()?;
         unsafe { Self::capture_with_gdi(x, y, w, h) }
@@ -330,7 +330,7 @@ impl ScreenshotWindowManager {
         })
     }
 
-    /// 创建BMP文件（直接从BGRA像素数据）
+    /// 创建BMP文件
     fn create_bmp_from_bgra(pixel_data: &[u8], width: u32, height: u32) -> Vec<u8> {
         let pixel_data_size = pixel_data.len() as u32;
         let file_size = 54 + pixel_data_size; // 54字节BMP头 + 像素数据
@@ -357,7 +357,7 @@ impl ScreenshotWindowManager {
         bmp_data.extend_from_slice(&0u32.to_le_bytes());      // 调色板颜色数
         bmp_data.extend_from_slice(&0u32.to_le_bytes());      // 重要颜色数
         
-        // 直接添加BGRA像素数据（无需任何转换！）
+        // 直接添加BGRA像素数据
         bmp_data.extend_from_slice(pixel_data);
         
         bmp_data
@@ -392,6 +392,9 @@ impl ScreenshotWindowManager {
             Content-Type: image/bmp\r\n\
             Content-Length: {}\r\n\
             Access-Control-Allow-Origin: *\r\n\
+            Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
+            Access-Control-Allow-Headers: *\r\n\
+            Cache-Control: no-cache\r\n\
             Connection: close\r\n\
             \r\n",
             image_data.len()
