@@ -12,7 +12,7 @@ body {
     overflow: hidden;
     width: 100vw;
     height: 100vh;
-    border: 10px solid red;
+    /* border: 10px solid red; */
 }
 
 .screenshot-overlay {
@@ -78,6 +78,77 @@ body:not(.has-selection) .mask-top {
     z-index: 2;
     cursor: move;
     /* box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8); */
+}
+
+/* 拖拽节点样式 */
+.resize-handle {
+    position: absolute;
+    background: #007bff;
+    border: 1px solid #ffffff;
+    width: 8px;
+    height: 8px;
+    box-sizing: border-box;
+    z-index: 3;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 角节点 */
+.resize-handle-nw {
+    top: -5px;
+    left: -5px;
+    cursor: nw-resize;
+}
+
+.resize-handle-ne {
+    top: -5px;
+    right: -5px;
+    cursor: ne-resize;
+}
+
+.resize-handle-se {
+    bottom: -5px;
+    right: -5px;
+    cursor: se-resize;
+}
+
+.resize-handle-sw {
+    bottom: -5px;
+    left: -5px;
+    cursor: sw-resize;
+}
+
+/* 边中点节点 */
+.resize-handle-n {
+    top: -5px;
+    left: 50%;
+    /* width: 10%; */
+    transform: translateX(-50%);
+    cursor: n-resize;
+}
+
+.resize-handle-e {
+    right: -5px;
+    top: 50%;
+    /* height: 10%; */
+    transform: translateY(-50%);
+    cursor: e-resize;
+}
+
+.resize-handle-s {
+    bottom: -5px;
+    left: 50%;
+    /* width: 10%; */
+    transform: translateX(-50%);
+    cursor: s-resize;
+}
+
+.resize-handle-w {
+    left: -5px;
+    top: 50%;
+    /* height: 10%; */
+    transform: translateY(-50%);
+    cursor: w-resize;
 }
 
 .toolbar {

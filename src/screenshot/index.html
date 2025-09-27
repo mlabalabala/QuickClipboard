@@ -22,12 +22,21 @@
     <!-- 选择区域 -->
     <div class="selection-area" id="selectionArea">
         <div class="selection-info" id="selectionInfo">0 × 0</div>
+        
+        <!-- 8个拖拽节点 -->
+        <div class="resize-handle resize-handle-nw" data-direction="nw"></div>
+        <div class="resize-handle resize-handle-n" data-direction="n"></div>
+        <div class="resize-handle resize-handle-ne" data-direction="ne"></div>
+        <div class="resize-handle resize-handle-e" data-direction="e"></div>
+        <div class="resize-handle resize-handle-se" data-direction="se"></div>
+        <div class="resize-handle resize-handle-s" data-direction="s"></div>
+        <div class="resize-handle resize-handle-sw" data-direction="sw"></div>
+        <div class="resize-handle resize-handle-w" data-direction="w"></div>
     </div>
 
     <!-- 提示信息 -->
     <div class="info-text" id="infoText">
         拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭
-        <br><small>红框=主显示器，绿框=副显示器</small>
     </div>
 
     <!-- 工具栏 -->
@@ -41,6 +50,6 @@
     </div>
 
     <!-- 引入截屏脚本 -->
-    <script src="screenshot.js"></script>
+    <script type="module" src="screenshot-main.js"></script>
 </body>
 </html>

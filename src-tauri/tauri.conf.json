@@ -85,7 +85,8 @@
         "default",
         "settings",
         "preview",
-        "text-editor"
+        "text-editor",
+        "screenshot"
       ]
     }
   },
