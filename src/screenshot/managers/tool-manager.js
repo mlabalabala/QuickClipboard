@@ -170,8 +170,7 @@ export class ToolManager {
         const coords = this.editLayerManager.screenToCanvasCoords(e.clientX, e.clientY);
         const ctx = this.editLayerManager.getContext();
 
-        // 保存状态（用于撤销）
-        this.editLayerManager.saveState();
+        // 将在绘制完成后保存状态
 
         // 调用工具的开始绘制方法
         if (this.currentTool.startDrawing) {
@@ -213,27 +212,11 @@ export class ToolManager {
         if (this.currentTool.endDrawing) {
             this.currentTool.endDrawing(ctx, coords.x, coords.y, e);
         }
+
+        // 绘制完成后保存状态到历史管理器
+        this.editLayerManager.saveState(`使用${this.currentTool.name}工具绘制`);
     }
 
-    /**
-     * 撤销操作
-     */
-    undo() {
-        if (this.editLayerManager) {
-            return this.editLayerManager.undo();
-        }
-        return false;
-    }
-
-    /**
-     * 重做操作
-     */
-    redo() {
-        if (this.editLayerManager) {
-            return this.editLayerManager.redo();
-        }
-        return false;
-    }
 
     /**
      * 清除所有编辑内容

@@ -77,6 +77,19 @@ export class EventManager {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             this.onKeyDown?.('enter');
+        } else if (e.ctrlKey || e.metaKey) {
+            // 处理Ctrl/Cmd组合键
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    this.onKeyDown?.('ctrl+shift+z'); // 重做
+                } else {
+                    this.onKeyDown?.('ctrl+z'); // 撤销
+                }
+            } else if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                this.onKeyDown?.('ctrl+y'); // 重做
+            }
         }
     }
 

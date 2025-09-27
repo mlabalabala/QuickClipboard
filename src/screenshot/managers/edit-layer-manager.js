@@ -3,16 +3,19 @@
  * 负责管理截屏上的编辑内容（画笔、文字、标注等）
  */
 
+import { HistoryManager } from './history-manager.js';
+
 export class EditLayerManager {
     constructor() {
         this.canvas = null;
         this.ctx = null;
         this.backgroundManager = null;
         
-        // 编辑历史记录
-        this.history = [];
-        this.historyIndex = -1;
-        this.maxHistory = 20;
+        // 历史管理器
+        this.historyManager = new HistoryManager();
+        
+        // 历史状态回调
+        this.onHistoryChange = null;
     }
 
     /**
@@ -41,6 +44,18 @@ export class EditLayerManager {
         document.body.appendChild(this.canvas);
         
         this.updateCanvasSize();
+        
+        // 设置历史管理器回调
+        this.historyManager.setOnHistoryChange((historyState) => {
+            if (this.onHistoryChange) {
+                this.onHistoryChange(historyState);
+            }
+        });
+        
+        // 保存初始状态（空白画布）
+        if (this.ctx) {
+            this.historyManager.saveState(this.ctx, '初始状态');
+        }
     }
 
     /**
@@ -51,6 +66,13 @@ export class EditLayerManager {
         if (backgroundManager?.canvas) {
             this.updateCanvasSize();
         }
+    }
+
+    /**
+     * 设置历史状态改变回调
+     */
+    setOnHistoryChange(callback) {
+        this.onHistoryChange = callback;
     }
 
     /**
@@ -97,63 +119,41 @@ export class EditLayerManager {
 
     /**
      * 保存当前状态到历史记录
+     * @param {string} description - 操作描述
      */
-    saveState() {
-        if (!this.canvas) return;
-
-        // 删除当前位置之后的历史记录
-        this.history = this.history.slice(0, this.historyIndex + 1);
-
-        // 保存当前Canvas状态
-        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        this.history.push(imageData);
-
-        // 限制历史记录数量
-        if (this.history.length > this.maxHistory) {
-            this.history.shift();
-        } else {
-            this.historyIndex++;
-        }
+    saveState(description = '') {
+        if (!this.ctx) return;
+        this.historyManager.saveState(this.ctx, description);
     }
 
     /**
      * 撤销上一步操作
      */
     undo() {
-        if (this.historyIndex > 0) {
-            this.historyIndex--;
-            const imageData = this.history[this.historyIndex];
-            this.ctx.putImageData(imageData, 0, 0);
-            return true;
-        }
-        return false;
+        if (!this.ctx) return false;
+        return this.historyManager.undo(this.ctx);
     }
 
     /**
      * 重做下一步操作
      */
     redo() {
-        if (this.historyIndex < this.history.length - 1) {
-            this.historyIndex++;
-            const imageData = this.history[this.historyIndex];
-            this.ctx.putImageData(imageData, 0, 0);
-            return true;
-        }
-        return false;
+        if (!this.ctx) return false;
+        return this.historyManager.redo(this.ctx);
     }
 
     /**
      * 检查是否可以撤销
      */
     canUndo() {
-        return this.historyIndex > 0;
+        return this.historyManager.canUndo();
     }
 
     /**
      * 检查是否可以重做
      */
     canRedo() {
-        return this.historyIndex < this.history.length - 1;
+        return this.historyManager.canRedo();
     }
 
     /**
@@ -224,8 +224,7 @@ export class EditLayerManager {
         }
         this.canvas = null;
         this.ctx = null;
-        this.history = [];
-        this.historyIndex = -1;
+        this.historyManager.clear();
     }
 
     /**

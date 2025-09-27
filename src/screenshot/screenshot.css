@@ -219,6 +219,26 @@ body:not(.has-selection) .mask-top {
     color: white;
 }
 
+.toolbar button.history-btn {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.toolbar button.history-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.toolbar button.history-btn:disabled {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.toolbar button.history-btn:disabled:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: none;
+}
+
 .toolbar-separator {
     width: 1px;
     height: 24px;

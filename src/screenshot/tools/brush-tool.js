@@ -16,9 +16,8 @@ export class BrushTool {
         this.lineCap = 'round';
         this.lineJoin = 'round';
         
-        // 当前路径数据（用于撤销等功能）
+        // 当前路径数据
         this.currentPath = [];
-        this.allPaths = [];
     }
 
     /**
@@ -103,87 +102,18 @@ export class BrushTool {
         
         this.isDrawing = false;
         
-        // 保存完整路径
-        if (this.currentPath.length > 0) {
-            this.allPaths.push([...this.currentPath]);
-        }
+        // 路径绘制完成
         
         this.currentPath = [];
     }
 
-    /**
-     * 重绘所有路径（用于撤销重做等操作）
-     */
-    redrawAllPaths(ctx) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
-        for (const path of this.allPaths) {
-            this.redrawPath(ctx, path);
-        }
-    }
 
     /**
-     * 重绘单个路径
-     */
-    redrawPath(ctx, path) {
-        if (path.length === 0) return;
-
-        // 设置路径样式
-        const startPoint = path[0];
-        if (startPoint.options) {
-            ctx.strokeStyle = startPoint.options.color;
-            ctx.lineWidth = startPoint.options.width;
-            ctx.lineCap = startPoint.options.lineCap;
-            ctx.lineJoin = startPoint.options.lineJoin;
-        }
-
-        ctx.beginPath();
-        
-        for (let i = 0; i < path.length; i++) {
-            const point = path[i];
-            
-            if (point.type === 'start') {
-                ctx.moveTo(point.x, point.y);
-            } else if (point.type === 'line') {
-                ctx.lineTo(point.toX, point.toY);
-            }
-        }
-        
-        ctx.stroke();
-    }
-
-    /**
-     * 撤销上一步绘制
-     */
-    undo() {
-        if (this.allPaths.length > 0) {
-            this.allPaths.pop();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 清除所有绘制
+     * 清除当前绘制状态
      */
     clear() {
-        this.allPaths = [];
         this.currentPath = [];
         this.isDrawing = false;
-    }
-
-    /**
-     * 获取所有路径数据（用于导出）
-     */
-    getAllPaths() {
-        return this.allPaths;
-    }
-
-    /**
-     * 设置路径数据（用于导入）
-     */
-    setAllPaths(paths) {
-        this.allPaths = paths || [];
     }
 
     /**

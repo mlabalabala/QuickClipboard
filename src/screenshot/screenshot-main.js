@@ -87,6 +87,13 @@ export class ScreenshotController {
         this.toolbarManager.setOnConfirm(() => this.confirmScreenshot());
         this.toolbarManager.setOnCancel(() => this.cancelScreenshot());
         this.toolbarManager.setOnToolSelect((toolName) => this.handleToolSelect(toolName));
+        this.toolbarManager.setOnUndo(() => this.handleUndo());
+        this.toolbarManager.setOnRedo(() => this.handleRedo());
+        
+        // 编辑层历史状态回调
+        this.editLayerManager.setOnHistoryChange((historyState) => {
+            this.toolbarManager.updateHistoryButtons(historyState.canUndo, historyState.canRedo);
+        });
     }
 
     /**
@@ -171,6 +178,12 @@ export class ScreenshotController {
             if (selection) {
                 this.confirmScreenshot();
             }
+        } else if (key === 'ctrl+z') {
+            // Ctrl+Z 撤销
+            this.handleUndo();
+        } else if (key === 'ctrl+y' || key === 'ctrl+shift+z') {
+            // Ctrl+Y 或 Ctrl+Shift+Z 重做
+            this.handleRedo();
         }
     }
 
@@ -275,6 +288,26 @@ export class ScreenshotController {
             this.toolManager.deactivateTool();
             // 清除工具栏按钮状态
             this.toolbarManager.setActiveTool(null);
+        }
+    }
+
+    /**
+     * 处理撤销操作
+     */
+    handleUndo() {
+        const success = this.editLayerManager.undo();
+        if (success) {
+            console.log('撤销操作成功');
+        }
+    }
+
+    /**
+     * 处理重做操作
+     */
+    handleRedo() {
+        const success = this.editLayerManager.redo();
+        if (success) {
+            console.log('重做操作成功');
         }
     }
 

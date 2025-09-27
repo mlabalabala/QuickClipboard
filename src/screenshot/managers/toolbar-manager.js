@@ -11,9 +11,12 @@ export class ToolbarManager {
         this.confirmBtn = document.getElementById('confirmBtn');
         this.cancelBtn = document.getElementById('cancelBtn');
         this.brushBtn = document.getElementById('brushBtn');
+        this.undoBtn = document.getElementById('undoBtn');
+        this.redoBtn = document.getElementById('redoBtn');
         
         // 工具栏尺寸 (更新为包含新按钮的尺寸)
-        this.toolbarWidth = 32 * 3 + 4 * 3 + 4 + 5; // 画笔 + 分隔符 + 确认 + 取消
+        // 画笔 + 分隔符 + 撤销 + 重做 + 分隔符 + 确认 + 取消
+        this.toolbarWidth = 32 * 5 + 4 * 6 + 2 * 3; // 5个按钮 + 6个间距 + 2个分隔符
         this.toolbarHeight = 32 + 4 * 2; // 40px
         
         this.currentTool = null;
@@ -24,6 +27,8 @@ export class ToolbarManager {
     initEvents() {
         this.confirmBtn.addEventListener('click', () => this.onConfirm?.());
         this.cancelBtn.addEventListener('click', () => this.onCancel?.());
+        this.undoBtn.addEventListener('click', () => this.onUndo?.());
+        this.redoBtn.addEventListener('click', () => this.onRedo?.());
         
         // 通用工具按钮事件处理
         const toolButtons = this.toolbar.querySelectorAll('.tool-btn');
@@ -107,6 +112,20 @@ export class ToolbarManager {
     }
 
     /**
+     * 设置撤销回调
+     */
+    setOnUndo(callback) {
+        this.onUndo = callback;
+    }
+
+    /**
+     * 设置重做回调
+     */
+    setOnRedo(callback) {
+        this.onRedo = callback;
+    }
+
+    /**
      * 处理工具按钮点击
      */
     handleToolClick(toolName) {
@@ -156,5 +175,26 @@ export class ToolbarManager {
      */
     isVisible() {
         return this.toolbar.classList.contains('visible');
+    }
+
+    /**
+     * 更新历史按钮状态
+     * @param {boolean} canUndo - 是否可以撤销
+     * @param {boolean} canRedo - 是否可以重做
+     */
+    updateHistoryButtons(canUndo, canRedo) {
+        if (this.undoBtn) {
+            this.undoBtn.disabled = !canUndo;
+        }
+        if (this.redoBtn) {
+            this.redoBtn.disabled = !canRedo;
+        }
+    }
+
+    /**
+     * 重置历史按钮状态（禁用所有）
+     */
+    resetHistoryButtons() {
+        this.updateHistoryButtons(false, false);
     }
 }
