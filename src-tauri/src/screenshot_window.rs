@@ -1,14 +1,5 @@
-use windows::core::Interface;
-use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIFactory1, IDXGIAdapter1, IDXGIOutput, IDXGIOutput1};
-use windows::Win32::Graphics::Direct3D11::{
-    D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
-    D3D11_TEXTURE2D_DESC, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ,
-    D3D11_CREATE_DEVICE_FLAG, D3D11_SDK_VERSION, D3D11_MAPPED_SUBRESOURCE, D3D11_MAP_READ
-};
-use windows::Win32::Graphics::Direct3D::{D3D_DRIVER_TYPE_UNKNOWN, D3D_FEATURE_LEVEL_11_0};
 use windows::Win32::Graphics::Gdi::{GetDC, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject, BitBlt, GetDIBits, DeleteDC, ReleaseDC, DeleteObject, BITMAPINFOHEADER, BITMAPINFO, BI_RGB, DIB_RGB_COLORS, SRCCOPY};
 use windows::Win32::UI::WindowsAndMessaging::GetDesktopWindow;
-use windows::Win32::System::Com::{CoInitialize, CoUninitialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 use std::io::Write;
@@ -252,122 +243,13 @@ pub struct ScreenshotCapture {
 }
 
 impl ScreenshotWindowManager {
-    /// DXGI高性能截屏，GDI回退（最快方案）
+    /// GDI截屏方案（简洁可靠）
     fn capture_screenshot_sync() -> Result<ScreenshotCapture, String> {
-        unsafe {
-            let _ = CoInitialize(None);
-            
-            // 首先尝试DXGI（最快）
-            let result = Self::capture_with_dxgi().or_else(|dxgi_err| {
-                // DXGI失败，使用GDI回退
-                eprintln!("DXGI截屏失败: {}, 尝试GDI回退", dxgi_err);
-                let (x, y, w, h) = crate::screen_utils::ScreenUtils::get_virtual_screen_size()?;
-                Self::capture_with_gdi(x, y, w, h)
-            });
-            
-            CoUninitialize();
-            result
-        }
+        let (x, y, w, h) = crate::screen_utils::ScreenUtils::get_virtual_screen_size()?;
+        unsafe { Self::capture_with_gdi(x, y, w, h) }
     }
 
-    /// 使用DXGI进行截屏并封装为BMP
-    unsafe fn capture_with_dxgi() -> Result<ScreenshotCapture, String> {
-        // 创建DXGI工厂
-        let factory: IDXGIFactory1 = CreateDXGIFactory1().map_err(|e| format!("创建DXGI工厂失败: {}", e))?;
-
-        // 枚举适配器
-        let adapter: IDXGIAdapter1 = factory.EnumAdapters1(0).map_err(|e| format!("枚举适配器失败: {}", e))?;
-
-        // 创建D3D11设备
-        let mut device: Option<ID3D11Device> = None;
-        let mut context: Option<ID3D11DeviceContext> = None;
-        
-        D3D11CreateDevice(
-            &adapter,
-            D3D_DRIVER_TYPE_UNKNOWN,
-            None,
-            D3D11_CREATE_DEVICE_FLAG(0),
-            Some(&[D3D_FEATURE_LEVEL_11_0]),
-            D3D11_SDK_VERSION,
-            Some(&mut device),
-            None,
-            Some(&mut context)
-        ).map_err(|e| format!("创建D3D11设备失败: {}", e))?;
-
-        let device = device.unwrap();
-        let context = context.unwrap();
-
-        // 获取输出
-        let output: IDXGIOutput = adapter.EnumOutputs(0).map_err(|e| format!("枚举输出失败: {}", e))?;
-        let output1: IDXGIOutput1 = output.cast().map_err(|e| format!("转换输出接口失败: {}", e))?;
-
-        // 复制桌面
-        let duplication = output1.DuplicateOutput(&device).map_err(|e| format!("创建桌面复制失败: {}", e))?;
-
-        // 获取一帧
-        let mut frame_info = Default::default();
-        let mut desktop_resource = None;
-        
-        duplication.AcquireNextFrame(0, &mut frame_info, &mut desktop_resource)
-            .map_err(|e| format!("获取桌面帧失败: {}", e))?;
-
-        let desktop_texture: ID3D11Texture2D = desktop_resource.unwrap()
-            .cast().map_err(|e| format!("转换桌面纹理失败: {}", e))?;
-
-        // 获取纹理描述
-        let mut desc = D3D11_TEXTURE2D_DESC::default();
-        desktop_texture.GetDesc(&mut desc);
-
-        // 创建CPU可访问的纹理
-        desc.Usage = D3D11_USAGE_STAGING;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ.0 as u32;
-        desc.BindFlags = 0;
-
-        let mut cpu_texture: Option<ID3D11Texture2D> = None;
-        device.CreateTexture2D(&desc, None, Some(&mut cpu_texture))
-            .map_err(|e| format!("创建CPU纹理失败: {}", e))?;
-        let cpu_texture = cpu_texture.unwrap();
-
-        // 复制纹理数据
-        context.CopyResource(&cpu_texture, &desktop_texture);
-
-        // 映射纹理获取像素数据
-        let mut mapped = D3D11_MAPPED_SUBRESOURCE::default();
-        context.Map(&cpu_texture, 0, D3D11_MAP_READ, 0, Some(&mut mapped))
-            .map_err(|e| format!("映射纹理失败: {}", e))?;
-
-        // 复制像素数据
-        let pixel_count = (desc.Width * desc.Height) as usize;
-        let mut pixel_data: Vec<u8> = Vec::with_capacity(pixel_count * 4);
-
-        let src_data = std::slice::from_raw_parts(
-            mapped.pData as *const u8,
-            mapped.RowPitch as usize * desc.Height as usize
-        );
-
-        for y in 0..desc.Height {
-            let row_start = (y * mapped.RowPitch) as usize;
-            let row_end = row_start + (desc.Width * 4) as usize;
-            pixel_data.extend_from_slice(&src_data[row_start..row_end]);
-        }
-
-        // 取消映射
-        context.Unmap(&cpu_texture, 0);
-
-        // 释放帧
-        duplication.ReleaseFrame().ok();
-
-        // 封装为BMP格式
-        let bmp_data = Self::create_bmp_from_bgra(&pixel_data, desc.Width, desc.Height);
-
-        Ok(ScreenshotCapture {
-            data: bmp_data,
-            width: desc.Width,
-            height: desc.Height,
-        })
-    }
-
-    /// GDI回退截屏方案
+    /// GDI截屏方案
     unsafe fn capture_with_gdi(x: i32, y: i32, width: i32, height: i32) -> Result<ScreenshotCapture, String> {
         let desktop_wnd = GetDesktopWindow();
         let desktop_dc = GetDC(desktop_wnd);
