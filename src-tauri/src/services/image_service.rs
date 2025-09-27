@@ -79,9 +79,8 @@ impl ImageService {
         }
     }
 
-    /// 将图片固定到屏幕
-    pub async fn pin_image_to_screen(content: String) -> Result<(), String> {
-        let image_path = Self::get_image_file_path(content)?;
-        crate::screenshot_service::pin_image_to_screen(&image_path).await
+    /// 将图片固定到屏幕（已废弃，不再支持外部截屏程序）
+    pub async fn pin_image_to_screen(_content: String) -> Result<(), String> {
+        Err("钉图片功能已移除，不再支持外部截屏程序".to_string())
     }
 }

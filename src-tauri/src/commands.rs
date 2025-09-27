@@ -804,38 +804,12 @@ pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
     Ok(settings.saved_window_size)
 }
 
-// =================== 外部截屏程序命令 ===================
-
-// 通过HTTP请求触发截屏
-#[tauri::command]
-pub async fn launch_external_screenshot(app: tauri::AppHandle, hide_window: Option<bool>) -> Result<(), String> {
-    use tauri::Manager;
-    
-    // 根据参数决定是否隐藏主窗口
-    let should_hide = hide_window.unwrap_or(false); // 默认不隐藏
-    if should_hide {
-        if let Some(main_window) = app.get_webview_window("main") {
-            crate::window_management::hide_webview_window(main_window);
-        }
-    }
-    
-    // 触发截屏
-    crate::screenshot_service::trigger_screenshot().await
-        .map_err(|e| format!("截屏请求失败: {}", e))?;
-    
-    Ok(())
-}
+// =================== 内置截屏程序命令 ===================
 
 // 启动内置截屏窗口
 #[tauri::command]
 pub fn start_builtin_screenshot(app: tauri::AppHandle) -> Result<(), String> {
     crate::screenshot_window::ScreenshotWindowManager::show_screenshot_window(&app)
-}
-
-// 启动外部截屏程序进程
-#[tauri::command]
-pub fn launch_external_screenshot_process(app: tauri::AppHandle) -> Result<(), String> {
-    crate::services::screenshot_service::ScreenshotService::launch_external_screenshot_process(app)
 }
 
 // =================== 边缘吸附相关命令 ===================

@@ -855,15 +855,9 @@ export async function getClipboardFiles() {
   }
 }
 
-// 钉图片到屏幕
+// 钉图片到屏幕（已废弃）
 async function pinImageToScreen(item) {
-  try {
-    await invoke('pin_image_to_screen', { content: item.content });
-    showNotification('图片已钉到屏幕', 'success');
-  } catch (error) {
-    console.error('钉图片到屏幕失败:', error);
-    showNotification('钉图片失败', 'error');
-  }
+  showNotification('钉图片功能已移除，不再支持外部截屏程序', 'warning');
 }
 
 

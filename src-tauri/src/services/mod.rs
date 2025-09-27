@@ -15,4 +15,3 @@ pub mod file_operation_service;
 pub mod image_service;
 pub mod ai_service;
 pub mod preview_service;
-pub mod screenshot_service;

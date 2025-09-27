@@ -1009,13 +1009,7 @@ function showQuickTextContextMenu(event, text) {
 
 // 钉图片到屏幕
 async function pinImageToScreen(text) {
-  try {
-    await invoke('pin_image_to_screen', { content: text.content });
-    showNotification('图片已钉到屏幕', 'success');
-  } catch (error) {
-    console.error('钉图片到屏幕失败:', error);
-    showNotification('钉图片失败', 'error');
-  }
+  showNotification('钉图片功能已移除，不再支持外部截屏程序', 'warning');
 }
 
 // 另存为图片

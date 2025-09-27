@@ -12,8 +12,6 @@ mod data_migration;
 mod data_manager;
 mod database;
 mod database_image_utils;
-mod http_client;
-mod screenshot_service;
 mod file_handler;
 mod global_state;
 mod groups;
@@ -375,17 +373,6 @@ pub fn run() {
                 let _ = send_startup_notification_internal(&app_handle);
             });
 
-            // 启动外部截屏程序
-            let app_handle_screenshot = app.handle().clone();
-            std::thread::spawn(move || {
-                // 等待一小段时间确保应用完全启动
-                std::thread::sleep(std::time::Duration::from_millis(1500));
-                
-                // 启动外部截屏程序进程（仅启动进程，不触发截屏）
-                if let Err(e) = commands::launch_external_screenshot_process(app_handle_screenshot) {
-                    println!("启动外部截屏程序失败: {}", e);
-                }
-            });
 
             // 初始化边缘吸附功能
             let _ = crate::edge_snap::init_edge_snap();
@@ -512,8 +499,6 @@ pub fn run() {
             commands::set_shortcut_recording,
             commands::start_custom_drag,
             commands::stop_custom_drag,
-            commands::launch_external_screenshot,
-            commands::launch_external_screenshot_process,
             commands::get_image_file_path,
             commands::pin_image_to_screen,
             commands::file_exists,

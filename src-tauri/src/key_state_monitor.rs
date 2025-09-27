@@ -634,13 +634,10 @@ fn handle_screenshot_shortcut_change(last_state: &KeyState, current_state: &KeyS
         if !last_combo && current_combo {
             if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
                 let app_handle = window.app_handle().clone();
-                // 使用异步任务启动
-                tauri::async_runtime::spawn(async move {
-                    // 快捷键调用时不隐藏窗口
-                    if let Err(e) = crate::commands::launch_external_screenshot(app_handle, Some(false)).await {
-                        eprintln!("截屏失败: {}", e);
-                    }
-                });
+                // 启动内置截屏
+                if let Err(e) = crate::commands::start_builtin_screenshot(app_handle) {
+                    eprintln!("截屏失败: {}", e);
+                }
             }
         }
     }
