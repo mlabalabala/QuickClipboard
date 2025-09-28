@@ -57,6 +57,9 @@ export class ScreenshotController {
         this.loadMonitorInfo();
         this.showInitialInfo();
         
+        // 设置全局引用，供工具使用
+        window.screenshotController = this;
+        
         console.log('ScreenshotController: 初始化完成');
     }
 
@@ -170,6 +173,9 @@ export class ScreenshotController {
             const selection = this.selectionManager.getSelection();
             if (selection) {
                 this.toolbarManager.show(selection);
+                
+                // 默认激活选择工具
+                this.handleToolSelect('selection');
             }
         }
     }

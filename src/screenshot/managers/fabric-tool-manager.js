@@ -6,6 +6,7 @@
 import { FabricBrushTool } from '../tools/fabric-brush-tool.js';
 import { FabricTextTool } from '../tools/fabric-text-tool.js';
 import { FabricRectangleTool, FabricCircleTool, FabricArrowTool } from '../tools/fabric-shape-tool.js';
+import { FabricSelectionTool } from '../tools/fabric-selection-tool.js';
 
 export class FabricToolManager {
     constructor() {
@@ -23,6 +24,7 @@ export class FabricToolManager {
      */
     initTools() {
         // 注册各种工具
+        this.registerTool(new FabricSelectionTool());  // 选择工具放在第一个
         this.registerTool(new FabricBrushTool());
         this.registerTool(new FabricTextTool());
         this.registerTool(new FabricRectangleTool());
@@ -100,6 +102,24 @@ export class FabricToolManager {
     }
 
     /**
+     * 切换到选择工具并选中指定对象
+     */
+    switchToSelectionTool(objectToSelect = null) {
+        // 激活选择工具
+        this.activateTool('selection');
+        
+        // 更新工具栏按钮状态
+        if (window.screenshotController && window.screenshotController.toolbarManager) {
+            window.screenshotController.toolbarManager.setActiveTool('selection');
+        }
+        
+        // 如果指定了要选中的对象，则选中它
+        if (objectToSelect && this.currentTool && this.currentTool.selectObject) {
+            this.currentTool.selectObject(objectToSelect);
+        }
+    }
+
+    /**
      * 获取当前激活的工具
      */
     getCurrentTool() {
@@ -145,7 +165,10 @@ export class FabricToolManager {
      * 删除选中的对象
      */
     deleteSelected() {
-        if (this.editLayerManager && this.editLayerManager.deleteSelected) {
+        // 优先使用当前工具的删除方法（如选择工具）
+        if (this.currentTool && this.currentTool.deleteSelected) {
+            this.currentTool.deleteSelected();
+        } else if (this.editLayerManager && this.editLayerManager.deleteSelected) {
             this.editLayerManager.deleteSelected();
         }
     }

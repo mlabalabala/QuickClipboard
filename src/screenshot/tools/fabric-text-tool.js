@@ -53,8 +53,12 @@ export class FabricTextTool {
         this.fabricCanvas = editLayerManager.getFabricCanvas();
         this.isActive = true;
         
-        // 确保不在绘画模式
-        editLayerManager.disableDrawingMode();
+        // 确保不在绘画模式，禁用选择功能专注于创建
+        this.fabricCanvas.isDrawingMode = false;
+        this.fabricCanvas.selection = false;
+        this.fabricCanvas.forEachObject((obj) => {
+            obj.selectable = false;
+        });
         
         // 设置光标
         document.body.style.cursor = 'text';
@@ -81,6 +85,16 @@ export class FabricTextTool {
         
         this.fabricCanvas = null;
         this.editLayerManager = null;
+    }
+
+    /**
+     * 切换到选择工具并选中指定对象
+     */
+    switchToSelectionTool(objectToSelect) {
+        // 通过全局事件或工具管理器切换工具
+        if (window.screenshotController && window.screenshotController.toolManager) {
+            window.screenshotController.toolManager.switchToSelectionTool(objectToSelect);
+        }
     }
 
     /**
@@ -115,12 +129,9 @@ export class FabricTextTool {
         });
 
         this.fabricCanvas.add(textObj);
-        this.fabricCanvas.setActiveObject(textObj);
         
-        // 进入编辑模式
-        textObj.enterEditing();
-        
-        this.fabricCanvas.renderAll();
+        // 设置为可选择
+        textObj.selectable = true;
         
         // 延迟保存状态，避免与Fabric事件冲突
         setTimeout(() => {
@@ -128,6 +139,15 @@ export class FabricTextTool {
                 this.editLayerManager.saveState('添加文本');
             }
         }, 50);
+        
+        // 切换到选择工具并选中新创建的文本，然后进入编辑模式
+        this.switchToSelectionTool(textObj);
+        
+        // 延迟进入编辑模式，确保选择工具已经激活
+        setTimeout(() => {
+            textObj.enterEditing();
+            this.fabricCanvas.renderAll();
+        }, 100);
         
         return textObj;
     }

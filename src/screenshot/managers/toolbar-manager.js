@@ -10,6 +10,7 @@ export class ToolbarManager {
         this.toolbar = document.getElementById('toolbar');
         this.confirmBtn = document.getElementById('confirmBtn');
         this.cancelBtn = document.getElementById('cancelBtn');
+        this.selectionBtn = document.getElementById('selectionBtn');
         this.brushBtn = document.getElementById('brushBtn');
         this.textBtn = document.getElementById('textBtn');
         this.rectangleBtn = document.getElementById('rectangleBtn');
@@ -18,14 +19,24 @@ export class ToolbarManager {
         this.undoBtn = document.getElementById('undoBtn');
         this.redoBtn = document.getElementById('redoBtn');
         
-        // 工具栏尺寸 (更新为包含新按钮的尺寸)
-        // 画笔 + 文本 + 矩形 + 圆形 + 箭头 + 分隔符 + 撤销 + 重做 + 分隔符 + 确认 + 取消
-        this.toolbarWidth = 32 * 9 + 4 * 10 + 2 * 3; // 9个按钮 + 10个间距 + 2个分隔符
-        this.toolbarHeight = 32 + 4 * 2; // 40px
-        
         this.currentTool = null;
         
         this.initEvents();
+    }
+
+    /**
+     * 获取工具栏实际尺寸
+     */
+    getToolbarDimensions() {
+        if (!this.toolbar) {
+            return { width: 400, height: 40 }; // 默认值
+        }
+        
+        const rect = this.toolbar.getBoundingClientRect();
+        return {
+            width: rect.width || 400,
+            height: rect.height || 40
+        };
     }
 
     initEvents() {
@@ -52,15 +63,22 @@ export class ToolbarManager {
     show(selectionRect) {
         if (!selectionRect) return;
         
+        // 显示工具栏以获取准确尺寸（临时显示）
+        this.toolbar.style.visibility = 'hidden';
+        this.toolbar.classList.add('visible');
+        
+        // 获取工具栏实际尺寸
+        const { width: toolbarWidth, height: toolbarHeight } = this.getToolbarDimensions();
+        
         const { left, top, width, height } = selectionRect;
         
         // 计算工具栏位置：选区右下角，右对齐
-        let toolbarLeft = left + width - this.toolbarWidth;
+        let toolbarLeft = left + width - toolbarWidth;
         let toolbarTop = top + height + 8; // 选区下方8px
         
         // 使用前端边界约束（同步、快速）
         const constrainedBounds = boundsConstraint.constrain(
-            toolbarLeft, toolbarTop, this.toolbarWidth, this.toolbarHeight
+            toolbarLeft, toolbarTop, toolbarWidth, toolbarHeight
         );
         
         toolbarLeft = constrainedBounds.x;
@@ -68,10 +86,10 @@ export class ToolbarManager {
         
         // 如果约束后的位置与预期差距太大，说明下方空间不足，尝试上方
         if (toolbarTop < top + height + 4) {
-            const upperToolbarTop = top - this.toolbarHeight - 8;
+            const upperToolbarTop = top - toolbarHeight - 8;
             const upperBounds = boundsConstraint.constrain(
-                left + width - this.toolbarWidth, upperToolbarTop,
-                this.toolbarWidth, this.toolbarHeight
+                left + width - toolbarWidth, upperToolbarTop,
+                toolbarWidth, toolbarHeight
             );
             
             // 如果上方位置更合适，使用上方
@@ -81,10 +99,10 @@ export class ToolbarManager {
             }
         }
         
-        // 设置工具栏位置并显示
+        // 设置工具栏位置并正常显示
         this.toolbar.style.left = toolbarLeft + 'px';
         this.toolbar.style.top = toolbarTop + 'px';
-        this.toolbar.classList.add('visible');
+        this.toolbar.style.visibility = 'visible';
     }
 
     /**
@@ -201,4 +219,5 @@ export class ToolbarManager {
     resetHistoryButtons() {
         this.updateHistoryButtons(false, false);
     }
+
 }

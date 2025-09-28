@@ -126,28 +126,28 @@ export class FabricBrushTool {
     }
 
     /**
-     * 清除当前绘制状态（兼容旧接口）
+     * 清除当前绘制状态
      */
     clear() {
         // Fabric.js自动管理绘制状态，无需手动清理
     }
 
     /**
-     * 开始绘制（兼容旧接口 - 实际由Fabric.js处理）
+     * 开始绘制
      */
     startDrawing(ctx, x, y) {
         // 由Fabric.js的绘画模式自动处理
     }
 
     /**
-     * 继续绘制（兼容旧接口 - 实际由Fabric.js处理）
+     * 继续绘制
      */
     draw(ctx, x, y) {
         // 由Fabric.js的绘画模式自动处理
     }
 
     /**
-     * 结束绘制（兼容旧接口 - 实际由Fabric.js处理）
+     * 结束绘制
      */
     endDrawing() {
         // 由Fabric.js的绘画模式自动处理

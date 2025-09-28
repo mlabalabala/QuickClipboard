@@ -55,8 +55,12 @@ export class FabricShapeTool {
         this.fabricCanvas = editLayerManager.getFabricCanvas();
         this.isActive = true;
         
-        // 确保不在绘画模式
-        editLayerManager.disableDrawingMode();
+        // 确保不在绘画模式，禁用选择功能专注于创建
+        this.fabricCanvas.isDrawingMode = false;
+        this.fabricCanvas.selection = false;
+        this.fabricCanvas.forEachObject((obj) => {
+            obj.selectable = false;
+        });
         
         // 设置光标
         document.body.style.cursor = 'crosshair';
@@ -93,13 +97,20 @@ export class FabricShapeTool {
     }
 
     /**
+     * 切换到选择工具并选中指定对象
+     */
+    switchToSelectionTool(objectToSelect) {
+        // 通过全局事件或工具管理器切换工具
+        if (window.screenshotController && window.screenshotController.toolManager) {
+            window.screenshotController.toolManager.switchToSelectionTool(objectToSelect);
+        }
+    }
+
+    /**
      * 处理鼠标按下事件
      */
     handleMouseDown(e) {
         if (!this.isActive || !this.fabricCanvas) return;
-        
-        // 如果点击的是已存在的对象，不创建新形状
-        if (e.target && e.target !== this.fabricCanvas) return;
         
         const pointer = this.fabricCanvas.getPointer(e.e);
         this.startPoint = { x: pointer.x, y: pointer.y };
@@ -108,8 +119,9 @@ export class FabricShapeTool {
         // 创建初始形状
         this.currentShape = this.createShape(pointer.x, pointer.y, 1, 1);
         if (this.currentShape) {
+            // 新形状不可选择，避免创建过程中出现选择框
+            this.currentShape.selectable = false;
             this.fabricCanvas.add(this.currentShape);
-            this.fabricCanvas.setActiveObject(this.currentShape);
             this.fabricCanvas.renderAll();
         }
     }
@@ -146,14 +158,21 @@ export class FabricShapeTool {
             
             if (shouldRemove) {
                 this.fabricCanvas.remove(this.currentShape);
-                this.fabricCanvas.renderAll();
             } else {
-                // 形状创建完成，延迟保存历史状态，避免与Fabric事件冲突
+                // 形状创建成功，使其可选择
+                this.currentShape.selectable = true;
+                
+                // 延迟保存历史状态，避免与Fabric事件冲突
                 setTimeout(() => {
                     if (this.editLayerManager && this.editLayerManager.saveState) {
                         this.editLayerManager.saveState(`添加${this.shapeType}`);
                     }
                 }, 50);
+                
+                // 切换到选择工具并选中刚创建的形状
+                setTimeout(() => {
+                    this.switchToSelectionTool(this.currentShape);
+                }, 100);
             }
         }
         
