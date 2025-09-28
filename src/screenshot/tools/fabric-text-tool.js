@@ -44,6 +44,80 @@ export class FabricTextTool {
     }
 
     /**
+     * 应用参数变化（来自子工具栏）
+     */
+    applyParameter(paramName, value) {
+        switch (paramName) {
+            case 'color':
+                this.textOptions.color = value;
+                break;
+            case 'opacity':
+                // 透明度需要转换并应用到颜色
+                this.applyOpacity(value);
+                break;
+            case 'fontSize':
+                this.textOptions.fontSize = value;
+                break;
+            case 'fontFamily':
+                this.textOptions.fontFamily = value;
+                break;
+            case 'fontWeight':
+                this.textOptions.fontWeight = value ? 'bold' : 'normal';
+                break;
+            case 'fontStyle':
+                this.textOptions.fontStyle = value ? 'italic' : 'normal';
+                break;
+        }
+        
+        // 如果有活动的文本对象，立即应用更改
+        this.applyToActiveText();
+    }
+
+    /**
+     * 应用透明度设置
+     */
+    applyOpacity(opacityPercent) {
+        const opacity = opacityPercent / 100;
+        
+        // 如果颜色是十六进制格式，转换为rgba格式
+        let color = this.textOptions.color;
+        if (color.startsWith('#')) {
+            const hex = color.slice(1);
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            color = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        } else if (color.startsWith('rgb(')) {
+            // rgb格式转换为rgba
+            color = color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
+        } else if (color.startsWith('rgba(')) {
+            // 替换现有的alpha值
+            color = color.replace(/,\s*[\d.]+\s*\)$/, `, ${opacity})`);
+        }
+        
+        this.textOptions.color = color;
+    }
+
+    /**
+     * 将当前参数应用到活动的文本对象
+     */
+    applyToActiveText() {
+        if (!this.fabricCanvas) return;
+        
+        const activeObject = this.fabricCanvas.getActiveObject();
+        if (activeObject && activeObject.type === 'text') {
+            activeObject.set({
+                fontFamily: this.textOptions.fontFamily,
+                fontSize: this.textOptions.fontSize,
+                fill: this.textOptions.color,
+                fontWeight: this.textOptions.fontWeight,
+                fontStyle: this.textOptions.fontStyle
+            });
+            this.fabricCanvas.renderAll();
+        }
+    }
+
+    /**
      * 工具激活时的处理
      */
     onActivate(editLayerManager) {
@@ -63,9 +137,27 @@ export class FabricTextTool {
         // 设置光标
         document.body.style.cursor = 'text';
         
+        // 从子工具栏获取当前参数值
+        this.syncParametersFromSubToolbar();
+        
         // 添加点击事件监听器
         if (this.fabricCanvas) {
             this.fabricCanvas.on('mouse:down', this.handleCanvasClick);
+        }
+    }
+
+    /**
+     * 从子工具栏同步参数值
+     */
+    syncParametersFromSubToolbar() {
+        if (window.screenshotController && window.screenshotController.subToolbarManager) {
+            const subToolbar = window.screenshotController.subToolbarManager;
+            const toolParams = subToolbar.getToolParameters('text');
+            
+            // 应用所有参数
+            for (const [paramName, value] of Object.entries(toolParams)) {
+                this.applyParameter(paramName, value);
+            }
         }
     }
 

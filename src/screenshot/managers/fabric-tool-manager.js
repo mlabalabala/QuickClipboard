@@ -113,6 +113,11 @@ export class FabricToolManager {
             window.screenshotController.toolbarManager.setActiveTool('selection');
         }
         
+        // 更新子工具栏状态 - 选择工具不显示参数，隐藏子工具栏
+        if (window.screenshotController && window.screenshotController.subToolbarManager) {
+            window.screenshotController.subToolbarManager.hide();
+        }
+        
         // 如果指定了要选中的对象，则选中它
         if (objectToSelect && this.currentTool && this.currentTool.selectObject) {
             this.currentTool.selectObject(objectToSelect);

@@ -45,6 +45,79 @@ export class FabricBrushTool {
     }
 
     /**
+     * 应用参数变化（来自子工具栏）
+     */
+    applyParameter(paramName, value) {
+        switch (paramName) {
+            case 'color':
+                this.brushOptions.color = value;
+                break;
+            case 'opacity':
+                // 透明度需要转换为0-1的值，并作为颜色的alpha通道
+                this.applyOpacity(value);
+                break;
+            case 'brushSize':
+                this.brushOptions.width = value;
+                break;
+            case 'brushType':
+                // 根据笔刷类型调整设置
+                this.setBrushType(value);
+                break;
+        }
+        
+        // 应用设置到画布
+        this.applyBrushOptions();
+    }
+
+    /**
+     * 应用透明度设置
+     */
+    applyOpacity(opacityPercent) {
+        const opacity = opacityPercent / 100;
+        
+        // 如果颜色是十六进制格式，转换为rgba格式
+        let color = this.brushOptions.color;
+        if (color.startsWith('#')) {
+            const hex = color.slice(1);
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            color = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        } else if (color.startsWith('rgb(')) {
+            // rgb格式转换为rgba
+            color = color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
+        } else if (color.startsWith('rgba(')) {
+            // 替换现有的alpha值
+            color = color.replace(/,\s*[\d.]+\s*\)$/, `, ${opacity})`);
+        }
+        
+        this.brushOptions.color = color;
+    }
+
+    /**
+     * 设置笔刷类型
+     */
+    setBrushType(type) {
+        switch (type) {
+            case 'pencil':
+                // 铅笔：清晰、硬边
+                this.brushOptions.shadowBlur = 0;
+                this.brushOptions.strokeLineCap = 'square';
+                break;
+            case 'brush':
+                // 画笔：柔和、圆边
+                this.brushOptions.shadowBlur = 0;
+                this.brushOptions.strokeLineCap = 'round';
+                break;
+            case 'marker':
+                // 马克笔：半透明、柔和边缘
+                this.brushOptions.shadowBlur = 2;
+                this.brushOptions.strokeLineCap = 'round';
+                break;
+        }
+    }
+
+    /**
      * 应用画笔选项到Fabric Canvas
      */
     applyBrushOptions() {
@@ -72,6 +145,9 @@ export class FabricBrushTool {
         
         this.fabricCanvas = editLayerManager.getFabricCanvas();
         
+        // 从子工具栏获取当前参数值
+        this.syncParametersFromSubToolbar();
+        
         // 启用绘画模式
         editLayerManager.enableDrawingMode(this.brushOptions);
         
@@ -80,6 +156,21 @@ export class FabricBrushTool {
         
         // 应用画笔选项
         this.applyBrushOptions();
+    }
+
+    /**
+     * 从子工具栏同步参数值
+     */
+    syncParametersFromSubToolbar() {
+        if (window.screenshotController && window.screenshotController.subToolbarManager) {
+            const subToolbar = window.screenshotController.subToolbarManager;
+            const toolParams = subToolbar.getToolParameters('brush');
+            
+            // 应用所有参数
+            for (const [paramName, value] of Object.entries(toolParams)) {
+                this.applyParameter(paramName, value);
+            }
+        }
     }
 
     /**

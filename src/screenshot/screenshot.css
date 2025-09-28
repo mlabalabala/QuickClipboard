@@ -246,6 +246,399 @@ body:not(.has-selection) .mask-top {
     margin: 4px 2px;
 }
 
+/* 子工具栏样式 */
+.sub-toolbar {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    z-index: 5;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    max-width: 90vw;
+    flex-wrap: wrap;
+}
+
+.sub-toolbar.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-2px);
+}
+
+/* 参数项容器 */
+.param-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* 颜色选择器 */
+.param-color {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.param-color::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: currentColor;
+    opacity: 0.3;
+    z-index: 1;
+}
+
+.param-color i {
+    position: relative;
+    z-index: 2;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.param-color:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+/* 滑块容器 */
+.param-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 8px;
+    border-radius: 6px;
+    min-width: 120px;
+}
+
+.param-slider-container i {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+}
+
+/* 滑块样式 */
+.param-slider {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.param-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: rgba(67, 149, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.param-slider::-webkit-slider-thumb:hover {
+    background: rgba(67, 149, 255, 1);
+    transform: scale(1.1);
+}
+
+.param-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: rgba(67, 149, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+}
+
+.param-slider::-moz-range-thumb:hover {
+    background: rgba(67, 149, 255, 1);
+    transform: scale(1.1);
+}
+
+/* 数值显示 */
+.param-value {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    min-width: 36px;
+    text-align: right;
+    font-weight: 500;
+}
+
+/* 选择器按钮 */
+.param-select {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.param-select:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+/* 开关按钮 */
+.param-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.param-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+}
+
+.param-toggle.active {
+    background: rgba(67, 149, 255, 0.8);
+    color: white;
+    border-color: rgba(67, 149, 255, 0.9);
+}
+
+.param-toggle.active:hover {
+    background: rgba(67, 149, 255, 0.9);
+}
+
+/* 颜色选择面板 */
+.color-picker-panel {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    padding: 12px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 220px;
+}
+
+.color-picker-panel.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.color-section-title {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 预设颜色网格 */
+.color-presets {
+    margin-bottom: 16px;
+}
+
+.color-presets-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+}
+
+.color-preset-item {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.color-preset-item:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.color-preset-item:active {
+    transform: scale(0.95);
+}
+
+/* 白色特殊处理 */
+.color-preset-item[style*="#ffffff"], 
+.color-preset-item[style*="#fff"] {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 自定义颜色区域 */
+.color-custom {
+    margin-bottom: 16px;
+}
+
+.color-custom-input {
+    width: 100%;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.color-custom-input:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.color-custom-input:focus {
+    outline: none;
+    border-color: rgba(67, 149, 255, 0.8);
+    box-shadow: 0 0 0 3px rgba(67, 149, 255, 0.2);
+}
+
+/* 透明度控制 */
+.color-opacity {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-opacity-slider {
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(255, 255, 255, 1) 100%
+    );
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.color-opacity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: rgba(67, 149, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-opacity-slider::-webkit-slider-thumb:hover {
+    background: rgba(67, 149, 255, 1);
+    transform: scale(1.1);
+}
+
+.color-opacity-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: rgba(67, 149, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-opacity-slider::-moz-range-thumb:hover {
+    background: rgba(67, 149, 255, 1);
+    transform: scale(1.1);
+}
+
+.color-opacity-value {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    min-width: 40px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .sub-toolbar {
+        padding: 3px;
+        gap: 4px;
+    }
+    
+    .param-slider-container {
+        min-width: 100px;
+        padding: 4px 6px;
+    }
+    
+    .param-color,
+    .param-select,
+    .param-toggle {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    .color-picker-panel {
+        min-width: 200px;
+        padding: 10px;
+    }
+    
+    .color-presets-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .color-preset-item {
+        width: 24px;
+        height: 24px;
+    }
+}
+
 .info-text {
     position: fixed;
     top: 20px;

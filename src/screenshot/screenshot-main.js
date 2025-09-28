@@ -12,6 +12,7 @@ window.fabric = fabric;
 import { ScreenshotAPI } from './api/screenshot-api.js';
 import { SelectionManager } from './managers/selection-manager.js';
 import { ToolbarManager } from './managers/toolbar-manager.js';
+import { SubToolbarManager } from './managers/sub-toolbar-manager.js';
 import { MaskManager } from './managers/mask-manager.js';
 import { EventManager } from './managers/event-manager.js';
 import { BackgroundManager } from './managers/background-manager.js';
@@ -40,6 +41,7 @@ export class ScreenshotController {
         // 初始化各个管理器
         this.selectionManager = new SelectionManager();
         this.toolbarManager = new ToolbarManager();
+        this.subToolbarManager = new SubToolbarManager();
         this.maskManager = new MaskManager();
         this.eventManager = new EventManager();
         this.backgroundManager = new BackgroundManager();
@@ -52,6 +54,11 @@ export class ScreenshotController {
         this.exportManager.setEditLayerManager(this.editLayerManager);
         this.editLayerManager.setBackgroundManager(this.backgroundManager);
         this.toolManager.setEditLayerManager(this.editLayerManager);
+        
+        // 设置子工具栏参数变化回调
+        this.subToolbarManager.onParameterChange((toolName, paramName, value) => {
+            this.handleParameterChange(toolName, paramName, value);
+        });
         
         this.initializeManagers();
         this.loadMonitorInfo();
@@ -129,11 +136,11 @@ export class ScreenshotController {
         
         if (action === 'select') {
             this.eventManager.hideInfoText();
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         } else if (action === 'move') {
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         } else if (action === 'resize') {
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         }
     }
 
@@ -148,17 +155,17 @@ export class ScreenshotController {
                 this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height);
             }
             // 只在选择过程中隐藏工具栏
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         } else if (this.selectionManager.isMovingState) {
             // 完全按照原版：直接调用，不等待！
             this.selectionManager.moveSelection(x, y, this.maskManager);
             // 只在移动过程中隐藏工具栏
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         } else if (this.selectionManager.isResizingState) {
             // 调整大小模式
             this.selectionManager.resizeSelection(x, y, this.maskManager);
             // 只在调整过程中隐藏工具栏
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
         }
         // 如果既不在选择也不在移动状态，就不要隐藏工具栏
     }
@@ -174,8 +181,21 @@ export class ScreenshotController {
             if (selection) {
                 this.toolbarManager.show(selection);
                 
+                // 如果有激活的工具，显示对应的子工具栏
+                const currentTool = this.toolbarManager.getCurrentTool();
+                if (currentTool) {
+                    this.showSubToolbarForTool(currentTool);
+                }
             }
         }
+    }
+
+    /**
+     * 隐藏所有工具栏（主工具栏和子工具栏）
+     */
+    hideAllToolbars() {
+        this.toolbarManager.hide();
+        this.subToolbarManager.hide();
     }
 
     /**
@@ -313,11 +333,53 @@ export class ScreenshotController {
             this.toolManager.activateTool(toolName);
             // 更新工具栏按钮状态
             this.toolbarManager.setActiveTool(toolName);
+            // 显示工具参数栏
+            this.showSubToolbarForTool(toolName);
         } else {
             // 取消激活工具
             this.toolManager.deactivateTool();
             // 清除工具栏按钮状态
             this.toolbarManager.setActiveTool(null);
+            // 隐藏参数栏
+            this.subToolbarManager.hide();
+        }
+    }
+
+    /**
+     * 为指定工具显示子工具栏
+     */
+    showSubToolbarForTool(toolName) {
+        const selection = this.selectionManager.getSelection();
+        if (selection && this.toolbarManager.isVisible()) {
+            // 获取主工具栏位置和尺寸
+            const mainToolbarRect = this.toolbarManager.toolbar.getBoundingClientRect();
+            const mainToolbarPosition = {
+                left: mainToolbarRect.left,
+                top: mainToolbarRect.top,
+                width: mainToolbarRect.width,
+                height: mainToolbarRect.height
+            };
+            
+            // 显示对应工具的参数栏，传递选区信息用于智能定位
+            this.subToolbarManager.showForTool(toolName, mainToolbarPosition, selection);
+        }
+    }
+
+    /**
+     * 处理参数变化
+     */
+    handleParameterChange(toolName, paramName, value) {
+        // 将参数应用到当前工具
+        const currentTool = this.toolManager.getCurrentTool();
+        if (currentTool && currentTool.applyParameter) {
+            currentTool.applyParameter(paramName, value);
+        }
+        
+        // 如果是公共参数，应用到编辑层管理器
+        if (paramName === 'color' || paramName === 'opacity') {
+            if (this.editLayerManager.applyParameter) {
+                this.editLayerManager.applyParameter(paramName, value);
+            }
         }
     }
 
@@ -374,7 +436,7 @@ export class ScreenshotController {
         if (!selection) return;
         
         try {
-            this.toolbarManager.hide();
+            this.hideAllToolbars();
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // 使用导出管理器复制选区到剪贴板（自动合并编辑层）
@@ -407,7 +469,7 @@ export class ScreenshotController {
      */
     clearSelection() {
         this.selectionManager.clearSelection();
-        this.toolbarManager.hide();
+        this.hideAllToolbars();
         this.maskManager.resetToFullscreen();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }
@@ -417,7 +479,7 @@ export class ScreenshotController {
      */
     reset() {
         this.selectionManager.reset();
-        this.toolbarManager.hide();
+        this.hideAllToolbars();
         this.maskManager.clear();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }
