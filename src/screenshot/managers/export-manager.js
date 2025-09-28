@@ -37,7 +37,7 @@ export class ExportManager {
             }
 
             // 创建选区Canvas（会自动合并编辑层内容）
-            const selectionCanvas = this.createSelectionCanvas(backgroundCanvas, selection);
+            const selectionCanvas = await this.createSelectionCanvas(backgroundCanvas, selection);
             
             // 转换为PNG格式的Blob
             const blob = await this.canvasToBlob(selectionCanvas);
@@ -56,9 +56,9 @@ export class ExportManager {
      * 创建选区Canvas
      * @param {HTMLCanvasElement} sourceCanvas - 源Canvas
      * @param {Object} selection - 选区信息
-     * @returns {HTMLCanvasElement} - 选区Canvas
+     * @returns {Promise<HTMLCanvasElement>} - 选区Canvas
      */
-    createSelectionCanvas(sourceCanvas, selection) {
+    async createSelectionCanvas(sourceCanvas, selection) {
         // 计算Canvas实际尺寸与显示尺寸的比例
         const canvasRect = sourceCanvas.getBoundingClientRect();
         const scaleX = sourceCanvas.width / canvasRect.width;
@@ -82,29 +82,47 @@ export class ExportManager {
         selectionCanvas.height = actualHeight;
         const selectionCtx = selectionCanvas.getContext('2d');
 
-        // 从背景Canvas复制选区部分（使用实际坐标）
-        selectionCtx.drawImage(
-            sourceCanvas,
-            actualLeft, actualTop, actualWidth, actualHeight,  // 源区域（Canvas实际坐标）
-            0, 0, actualWidth, actualHeight  // 目标区域
-        );
-
-        // 如果有编辑层内容，也绘制到选区Canvas上
+        // 获取合并后的完整Canvas
+        let fullCanvas = sourceCanvas;
         if (this.editLayerManager && this.editLayerManager.hasContent()) {
-            const editCanvas = this.editLayerManager.canvas;
-            if (editCanvas) {
-                try {
-                    selectionCtx.drawImage(
-                        editCanvas,
-                        actualLeft, actualTop, actualWidth, actualHeight,  // 源区域
-                        0, 0, actualWidth, actualHeight  // 目标区域
-                    );
-                    console.log('编辑层内容已合并到选区');
-                } catch (error) {
-                    console.error('合并编辑层到选区失败:', error);
+            try {
+                const mergeResult = this.editLayerManager.mergeWithBackground();
+                if (mergeResult instanceof Promise) {
+                    fullCanvas = await mergeResult;
+                } else {
+                    fullCanvas = mergeResult;
+                }
+                console.log('已合并编辑层内容');
+            } catch (error) {
+                console.warn('合并编辑层失败，使用背景层:', error);
+                // 如果Fabric方式失败，尝试原来的方式
+                const editCanvas = this.editLayerManager.getCanvas?.() || this.editLayerManager.canvas;
+                if (editCanvas) {
+                    try {
+                        selectionCtx.drawImage(
+                            sourceCanvas,
+                            actualLeft, actualTop, actualWidth, actualHeight,
+                            0, 0, actualWidth, actualHeight
+                        );
+                        selectionCtx.drawImage(
+                            editCanvas,
+                            actualLeft, actualTop, actualWidth, actualHeight,
+                            0, 0, actualWidth, actualHeight
+                        );
+                        return selectionCanvas;
+                    } catch (drawError) {
+                        console.error('传统绘制方式也失败:', drawError);
+                    }
                 }
             }
         }
+
+        // 从完整Canvas复制选区部分
+        selectionCtx.drawImage(
+            fullCanvas,
+            actualLeft, actualTop, actualWidth, actualHeight,  // 源区域（Canvas实际坐标）
+            0, 0, actualWidth, actualHeight  // 目标区域
+        );
 
         return selectionCanvas;
     }

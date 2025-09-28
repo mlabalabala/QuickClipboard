@@ -3,6 +3,12 @@
  * 整合所有子模块，协调截屏功能的各个部分
  */
 
+// 引入Fabric.js
+import * as fabric from 'fabric';
+
+// 设置全局fabric
+window.fabric = fabric;
+
 import { ScreenshotAPI } from './api/screenshot-api.js';
 import { SelectionManager } from './managers/selection-manager.js';
 import { ToolbarManager } from './managers/toolbar-manager.js';
@@ -10,12 +16,26 @@ import { MaskManager } from './managers/mask-manager.js';
 import { EventManager } from './managers/event-manager.js';
 import { BackgroundManager } from './managers/background-manager.js';
 import { ExportManager } from './managers/export-manager.js';
-import { EditLayerManager } from './managers/edit-layer-manager.js';
-import { ToolManager } from './managers/tool-manager.js';
+import { FabricEditLayerManager } from './managers/fabric-edit-layer-manager.js';
+import { FabricToolManager } from './managers/fabric-tool-manager.js';
 
 export class ScreenshotController {
     constructor() {
         this.monitors = [];
+        
+        // 确保Fabric.js已加载
+        if (typeof fabric === 'undefined') {
+            console.error('ScreenshotController: Fabric.js 未加载，等待加载...');
+            // 延迟初始化，等待Fabric.js加载
+            setTimeout(() => this.initializeManagers(), 100);
+            return;
+        }
+        
+        this.initializeController();
+    }
+    
+    initializeController() {
+        console.log('ScreenshotController: 开始初始化，Fabric.js 版本:', fabric.version);
         
         // 初始化各个管理器
         this.selectionManager = new SelectionManager();
@@ -24,8 +44,8 @@ export class ScreenshotController {
         this.eventManager = new EventManager();
         this.backgroundManager = new BackgroundManager();
         this.exportManager = new ExportManager();
-        this.editLayerManager = new EditLayerManager();
-        this.toolManager = new ToolManager();
+        this.editLayerManager = new FabricEditLayerManager();
+        this.toolManager = new FabricToolManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -36,6 +56,8 @@ export class ScreenshotController {
         this.initializeManagers();
         this.loadMonitorInfo();
         this.showInitialInfo();
+        
+        console.log('ScreenshotController: 初始化完成');
     }
 
     /**
@@ -179,11 +201,15 @@ export class ScreenshotController {
                 this.confirmScreenshot();
             }
         } else if (key === 'ctrl+z') {
-            // Ctrl+Z 撤销
-            this.handleUndo();
+            // Ctrl+Z 撤销 - 但要检查是否正在编辑文本
+            if (this.canUseKeyboardShortcuts()) {
+                this.handleUndo();
+            }
         } else if (key === 'ctrl+y' || key === 'ctrl+shift+z') {
-            // Ctrl+Y 或 Ctrl+Shift+Z 重做
-            this.handleRedo();
+            // Ctrl+Y 或 Ctrl+Shift+Z 重做 - 但要检查是否正在编辑文本
+            if (this.canUseKeyboardShortcuts()) {
+                this.handleRedo();
+            }
         }
     }
 
@@ -294,21 +320,46 @@ export class ScreenshotController {
     /**
      * 处理撤销操作
      */
-    handleUndo() {
-        const success = this.editLayerManager.undo();
-        if (success) {
-            console.log('撤销操作成功');
+    async handleUndo() {
+        try {
+            await this.editLayerManager.undo();
+        } catch (error) {
+            console.error('撤销操作失败:', error);
         }
     }
 
     /**
      * 处理重做操作
      */
-    handleRedo() {
-        const success = this.editLayerManager.redo();
-        if (success) {
-            console.log('重做操作成功');
+    async handleRedo() {
+        try {
+            await this.editLayerManager.redo();
+        } catch (error) {
+            console.error('重做操作失败:', error);
         }
+    }
+
+    /**
+     * 检查是否可以使用键盘快捷键
+     */
+    canUseKeyboardShortcuts() {
+        // 使用工具管理器的方法检查
+        if (this.toolManager && this.toolManager.canUseKeyboardShortcuts) {
+            return this.toolManager.canUseKeyboardShortcuts();
+        }
+        
+        // 传统方式检查（兼容性）
+        if (this.editLayerManager && this.editLayerManager.getFabricCanvas) {
+            const canvas = this.editLayerManager.getFabricCanvas();
+            if (canvas) {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject && activeObject.type === 'text' && activeObject.isEditing) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
     }
 
     /**

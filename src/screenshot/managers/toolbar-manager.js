@@ -11,12 +11,16 @@ export class ToolbarManager {
         this.confirmBtn = document.getElementById('confirmBtn');
         this.cancelBtn = document.getElementById('cancelBtn');
         this.brushBtn = document.getElementById('brushBtn');
+        this.textBtn = document.getElementById('textBtn');
+        this.rectangleBtn = document.getElementById('rectangleBtn');
+        this.circleBtn = document.getElementById('circleBtn');
+        this.arrowBtn = document.getElementById('arrowBtn');
         this.undoBtn = document.getElementById('undoBtn');
         this.redoBtn = document.getElementById('redoBtn');
         
         // 工具栏尺寸 (更新为包含新按钮的尺寸)
-        // 画笔 + 分隔符 + 撤销 + 重做 + 分隔符 + 确认 + 取消
-        this.toolbarWidth = 32 * 5 + 4 * 6 + 2 * 3; // 5个按钮 + 6个间距 + 2个分隔符
+        // 画笔 + 文本 + 矩形 + 圆形 + 箭头 + 分隔符 + 撤销 + 重做 + 分隔符 + 确认 + 取消
+        this.toolbarWidth = 32 * 9 + 4 * 10 + 2 * 3; // 9个按钮 + 10个间距 + 2个分隔符
         this.toolbarHeight = 32 + 4 * 2; // 40px
         
         this.currentTool = null;
