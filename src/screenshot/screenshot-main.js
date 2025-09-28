@@ -174,8 +174,6 @@ export class ScreenshotController {
             if (selection) {
                 this.toolbarManager.show(selection);
                 
-                // 默认激活选择工具
-                this.handleToolSelect('selection');
             }
         }
     }

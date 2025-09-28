@@ -108,8 +108,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../sounds": "sounds",
-      "external_apps": "external_apps"
+      "../sounds": "sounds"
     },
     "windows": {
       "nsis": {
