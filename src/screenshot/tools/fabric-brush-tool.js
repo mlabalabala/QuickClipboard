@@ -1,15 +1,15 @@
 /**
  * Fabric.js画笔工具
- * 基于Fabric.js的画笔工具实现
  */
+import { getCanvas, applyOpacity, getToolParams } from './common-utils.js';
 
 export class FabricBrushTool {
     constructor() {
         this.name = 'brush';
         this.fabricCanvas = null;
         
-        // 画笔参数
-        this.brushOptions = {
+        // 统一参数结构
+        this.options = {
             color: '#ff0000',
             width: 3,
             shadowColor: '',
@@ -28,71 +28,40 @@ export class FabricBrushTool {
      * 设置画笔参数
      */
     setOptions(options) {
-        if (options.color !== undefined) this.brushOptions.color = options.color;
-        if (options.width !== undefined) this.brushOptions.width = options.width;
-        if (options.shadowColor !== undefined) this.brushOptions.shadowColor = options.shadowColor;
-        if (options.shadowBlur !== undefined) this.brushOptions.shadowBlur = options.shadowBlur;
-        
-        // 立即应用到Fabric Canvas
+        Object.assign(this.options, options);
         this.applyBrushOptions();
     }
 
     /**
-     * 获取当前画笔参数
+     * 获取当前参数
      */
     getOptions() {
-        return { ...this.brushOptions };
+        return { ...this.options };
     }
 
     /**
-     * 应用参数变化（来自子工具栏）
+     * 应用参数变化
      */
     applyParameter(paramName, value) {
         switch (paramName) {
             case 'color':
-                this.brushOptions.color = value;
+                this.options.color = value;
                 break;
             case 'opacity':
-                // 透明度需要转换为0-1的值，并作为颜色的alpha通道
-                this.applyOpacity(value);
+                this.options.color = applyOpacity(this.options.color, value);
                 break;
             case 'brushSize':
-                this.brushOptions.width = value;
+                this.options.width = value;
                 break;
             case 'brushType':
-                // 根据笔刷类型调整设置
                 this.setBrushType(value);
                 break;
         }
         
-        // 应用设置到画布
         this.applyBrushOptions();
+        this.applyToActivePath();
     }
 
-    /**
-     * 应用透明度设置
-     */
-    applyOpacity(opacityPercent) {
-        const opacity = opacityPercent / 100;
-        
-        // 如果颜色是十六进制格式，转换为rgba格式
-        let color = this.brushOptions.color;
-        if (color.startsWith('#')) {
-            const hex = color.slice(1);
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            color = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        } else if (color.startsWith('rgb(')) {
-            // rgb格式转换为rgba
-            color = color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
-        } else if (color.startsWith('rgba(')) {
-            // 替换现有的alpha值
-            color = color.replace(/,\s*[\d.]+\s*\)$/, `, ${opacity})`);
-        }
-        
-        this.brushOptions.color = color;
-    }
 
     /**
      * 设置笔刷类型
@@ -100,40 +69,39 @@ export class FabricBrushTool {
     setBrushType(type) {
         switch (type) {
             case 'pencil':
-                // 铅笔：清晰、硬边
-                this.brushOptions.shadowBlur = 0;
-                this.brushOptions.strokeLineCap = 'square';
-                break;
-            case 'brush':
-                // 画笔：柔和、圆边
-                this.brushOptions.shadowBlur = 0;
-                this.brushOptions.strokeLineCap = 'round';
+                this.options.strokeLineCap = 'square';
                 break;
             case 'marker':
-                // 马克笔：半透明、柔和边缘
-                this.brushOptions.shadowBlur = 2;
-                this.brushOptions.strokeLineCap = 'round';
+                this.options.shadowBlur = 2;
                 break;
+            default:
+                this.options.strokeLineCap = 'round';
         }
     }
 
-    /**
-     * 应用画笔选项到Fabric Canvas
-     */
     applyBrushOptions() {
-        if (!this.fabricCanvas) return;
+        const canvas = getCanvas(this);
+        if (!canvas?.freeDrawingBrush) return;
         
-        const brush = this.fabricCanvas.freeDrawingBrush;
-        if (!brush) return;
+        const brush = canvas.freeDrawingBrush;
+        brush.color = this.options.color;
+        brush.width = this.options.width;
+        if (this.options.shadowBlur) brush.shadowBlur = this.options.shadowBlur;
+    }
+
+    /**
+     * 应用参数到选中的路径对象
+     */
+    applyToActivePath() {
+        const canvas = getCanvas(this);
+        const activeObject = canvas?.getActiveObject();
         
-        brush.color = this.brushOptions.color;
-        brush.width = this.brushOptions.width;
-        
-        if (this.brushOptions.shadowColor) {
-            brush.shadowColor = this.brushOptions.shadowColor;
-        }
-        if (this.brushOptions.shadowBlur) {
-            brush.shadowBlur = this.brushOptions.shadowBlur;
+        if (activeObject?.type === 'path') {
+            activeObject.set({
+                stroke: this.options.color,
+                strokeWidth: this.options.width
+            });
+            canvas.renderAll();
         }
     }
 
@@ -170,14 +138,9 @@ export class FabricBrushTool {
      * 从子工具栏同步参数值
      */
     syncParametersFromSubToolbar() {
-        if (window.screenshotController && window.screenshotController.subToolbarManager) {
-            const subToolbar = window.screenshotController.subToolbarManager;
-            const toolParams = subToolbar.getToolParameters('brush');
-            
-            // 应用所有参数
-            for (const [paramName, value] of Object.entries(toolParams)) {
-                this.applyParameter(paramName, value);
-            }
+        const params = getToolParams('brush');
+        for (const [name, value] of Object.entries(params)) {
+            this.applyParameter(name, value);
         }
     }
 
@@ -210,45 +173,11 @@ export class FabricBrushTool {
         this.setOptions({ width });
     }
 
-    /**
-     * 获取画笔颜色
-     */
     getColor() {
-        return this.brushOptions.color;
+        return this.options.color;
     }
 
-    /**
-     * 获取画笔宽度
-     */
     getWidth() {
-        return this.brushOptions.width;
-    }
-
-    /**
-     * 清除当前绘制状态
-     */
-    clear() {
-        // Fabric.js自动管理绘制状态，无需手动清理
-    }
-
-    /**
-     * 开始绘制
-     */
-    startDrawing(ctx, x, y) {
-        // 由Fabric.js的绘画模式自动处理
-    }
-
-    /**
-     * 继续绘制
-     */
-    draw(ctx, x, y) {
-        // 由Fabric.js的绘画模式自动处理
-    }
-
-    /**
-     * 结束绘制
-     */
-    endDrawing() {
-        // 由Fabric.js的绘画模式自动处理
+        return this.options.width;
     }
 }

@@ -128,6 +128,11 @@ export class ScreenshotController {
         this.editLayerManager.setOnHistoryChange((historyState) => {
             this.toolbarManager.updateHistoryButtons(historyState.canUndo, historyState.canRedo);
         });
+        
+        // 编辑层活动对象变化回调
+        this.editLayerManager.setOnActiveObjectChange((objectInfo) => {
+            this.handleActiveObjectChange(objectInfo);
+        });
     }
 
     /**
@@ -212,6 +217,75 @@ export class ScreenshotController {
         } else {
             // 没有选区时：关闭截屏窗口
             this.cancelScreenshot();
+        }
+    }
+
+    /**
+     * 处理活动对象变化
+     */
+    handleActiveObjectChange(objectInfo) {
+        const { activeObject, objects, type } = objectInfo;
+        
+        if (!activeObject || !type) {
+            // 没有选中对象，隐藏子工具栏
+            this.subToolbarManager.hide();
+            return;
+        }
+        
+        // 映射对象类型到工具名称，然后显示子工具栏
+        const toolName = this.mapObjectTypeToToolName(type);
+        if (toolName) {
+            const selectionRect = this.getActiveObjectBounds(activeObject);
+            this.showSubToolbarForTool(toolName, selectionRect);
+        } else {
+            this.subToolbarManager.hide();
+        }
+    }
+
+    /**
+     * 映射对象类型到工具名称
+     */
+    mapObjectTypeToToolName(objectType) {
+        switch (objectType) {
+            case 'brush':
+                return 'brush';
+            case 'text':
+                return 'text';
+            case 'arrow':
+                return 'arrow';
+            case 'rectangle':
+            case 'circle':
+            case 'ellipse':           // 椭圆
+            case 'triangle':          // 三角形
+            case 'diamond':           // 菱形
+            case '5-gon':             // 五边形
+            case '6-gon':             // 六边形
+            case 'star':              // 星形
+            case 'shape-arrow':       // 形状工具中的箭头形状
+                return 'shape';
+            case 'selection':
+            default:
+                return null; // 多选或未知类型
+        }
+    }
+
+    /**
+     * 获取活动对象的边界
+     */
+    getActiveObjectBounds(activeObject) {
+        if (!activeObject) return null;
+        
+        try {
+            const bounds = activeObject.getBoundingRect();
+            return {
+                left: bounds.left,
+                top: bounds.top,
+                width: bounds.width,
+                height: bounds.height
+            };
+        } catch (error) {
+            console.warn('获取对象边界失败:', error);
+            return null;
         }
     }
 
@@ -350,8 +424,10 @@ export class ScreenshotController {
     /**
      * 为指定工具显示子工具栏
      */
-    showSubToolbarForTool(toolName) {
-        const selection = this.selectionManager.getSelection();
+    showSubToolbarForTool(toolName, selectionRect = null) {
+        // 如果没有提供选区信息，从选择管理器获取
+        const selection = selectionRect || this.selectionManager.getSelection();
+        
         if (selection && this.toolbarManager.isVisible()) {
             // 获取主工具栏位置和尺寸
             const mainToolbarRect = this.toolbarManager.toolbar.getBoundingClientRect();
@@ -371,7 +447,14 @@ export class ScreenshotController {
      * 处理参数变化
      */
     handleParameterChange(toolName, paramName, value) {
-        // 将参数应用到当前工具
+        // 优先根据工具名称找到对应的工具来处理参数变化
+        const targetTool = this.toolManager.getTool(toolName);
+        if (targetTool && targetTool.applyParameter) {
+            targetTool.applyParameter(paramName, value);
+            return;
+        }
+        
+        // 如果没找到对应工具，尝试应用到当前工具
         const currentTool = this.toolManager.getCurrentTool();
         if (currentTool && currentTool.applyParameter) {
             currentTool.applyParameter(paramName, value);

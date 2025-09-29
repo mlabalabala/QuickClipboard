@@ -1,7 +1,7 @@
 /**
  * Fabric.js文本工具
- * 基于Fabric.js的文本工具实现
  */
+import { getCanvas, applyOpacity, getToolParams } from './common-utils.js';
 
 export class FabricTextTool {
     constructor() {
@@ -9,9 +9,10 @@ export class FabricTextTool {
         this.fabricCanvas = null;
         this.editLayerManager = null;
         this.isActive = false;
+        this.editCompleteTimeout = null;
         
-        // 文本参数
-        this.textOptions = {
+        // 统一参数结构
+        this.options = {
             fontFamily: 'Arial',
             fontSize: 20,
             color: '#000000',
@@ -20,7 +21,6 @@ export class FabricTextTool {
             textAlign: 'left'
         };
         
-        // 绑定事件处理器
         this.handleCanvasClick = this.handleCanvasClick.bind(this);
     }
 
@@ -28,92 +28,55 @@ export class FabricTextTool {
      * 设置文本参数
      */
     setOptions(options) {
-        if (options.fontFamily !== undefined) this.textOptions.fontFamily = options.fontFamily;
-        if (options.fontSize !== undefined) this.textOptions.fontSize = options.fontSize;
-        if (options.color !== undefined) this.textOptions.color = options.color;
-        if (options.fontWeight !== undefined) this.textOptions.fontWeight = options.fontWeight;
-        if (options.fontStyle !== undefined) this.textOptions.fontStyle = options.fontStyle;
-        if (options.textAlign !== undefined) this.textOptions.textAlign = options.textAlign;
+        Object.assign(this.options, options);
     }
 
-    /**
-     * 获取当前文本参数
-     */
     getOptions() {
-        return { ...this.textOptions };
+        return { ...this.options };
     }
 
-    /**
-     * 应用参数变化（来自子工具栏）
-     */
     applyParameter(paramName, value) {
         switch (paramName) {
             case 'color':
-                this.textOptions.color = value;
+                this.options.color = value;
                 break;
             case 'opacity':
-                // 透明度需要转换并应用到颜色
-                this.applyOpacity(value);
+                this.options.color = applyOpacity(this.options.color, value);
                 break;
             case 'fontSize':
-                this.textOptions.fontSize = value;
+                this.options.fontSize = value;
                 break;
             case 'fontFamily':
-                this.textOptions.fontFamily = value;
+                this.options.fontFamily = value;
                 break;
             case 'fontWeight':
-                this.textOptions.fontWeight = value ? 'bold' : 'normal';
+                this.options.fontWeight = value ? 'bold' : 'normal';
                 break;
             case 'fontStyle':
-                this.textOptions.fontStyle = value ? 'italic' : 'normal';
+                this.options.fontStyle = value ? 'italic' : 'normal';
                 break;
         }
         
-        // 如果有活动的文本对象，立即应用更改
         this.applyToActiveText();
     }
 
-    /**
-     * 应用透明度设置
-     */
-    applyOpacity(opacityPercent) {
-        const opacity = opacityPercent / 100;
-        
-        // 如果颜色是十六进制格式，转换为rgba格式
-        let color = this.textOptions.color;
-        if (color.startsWith('#')) {
-            const hex = color.slice(1);
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            color = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        } else if (color.startsWith('rgb(')) {
-            // rgb格式转换为rgba
-            color = color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
-        } else if (color.startsWith('rgba(')) {
-            // 替换现有的alpha值
-            color = color.replace(/,\s*[\d.]+\s*\)$/, `, ${opacity})`);
-        }
-        
-        this.textOptions.color = color;
-    }
 
     /**
-     * 将当前参数应用到活动的文本对象
+     * 应用参数到选中的文本对象
      */
     applyToActiveText() {
-        if (!this.fabricCanvas) return;
+        const canvas = getCanvas(this);
+        const activeObject = canvas?.getActiveObject();
         
-        const activeObject = this.fabricCanvas.getActiveObject();
-        if (activeObject && activeObject.type === 'text') {
+        if (activeObject && (activeObject.type === 'text' || activeObject.type === 'i-text' || activeObject.type === 'textbox')) {
             activeObject.set({
-                fontFamily: this.textOptions.fontFamily,
-                fontSize: this.textOptions.fontSize,
-                fill: this.textOptions.color,
-                fontWeight: this.textOptions.fontWeight,
-                fontStyle: this.textOptions.fontStyle
+                fontFamily: this.options.fontFamily,
+                fontSize: this.options.fontSize,
+                fill: this.options.color,
+                fontWeight: this.options.fontWeight,
+                fontStyle: this.options.fontStyle
             });
-            this.fabricCanvas.renderAll();
+            canvas.renderAll();
         }
     }
 
@@ -159,14 +122,9 @@ export class FabricTextTool {
      * 从子工具栏同步参数值
      */
     syncParametersFromSubToolbar() {
-        if (window.screenshotController && window.screenshotController.subToolbarManager) {
-            const subToolbar = window.screenshotController.subToolbarManager;
-            const toolParams = subToolbar.getToolParameters('text');
-            
-            // 应用所有参数
-            for (const [paramName, value] of Object.entries(toolParams)) {
-                this.applyParameter(paramName, value);
-            }
+        const params = getToolParams('text');
+        for (const [name, value] of Object.entries(params)) {
+            this.applyParameter(name, value);
         }
     }
 
@@ -184,16 +142,79 @@ export class FabricTextTool {
             this.fabricCanvas.off('mouse:down', this.handleCanvasClick);
         }
         
+        // 清理编辑完成超时定时器
+        if (this.editCompleteTimeout) {
+            clearTimeout(this.editCompleteTimeout);
+            this.editCompleteTimeout = null;
+        }
+        
         this.fabricCanvas = null;
         this.editLayerManager = null;
+    }
+
+    /**
+     * 进入文本编辑模式
+     */
+    enterTextEditMode(textObj) {
+        try {
+            // 进入编辑模式
+            if (typeof textObj.enterEdit === 'function') {
+                textObj.enterEdit();
+            } else if (typeof textObj.enterEditing === 'function') {
+                textObj.enterEditing();
+            } else {
+                textObj.isEditing = true;
+                if (typeof textObj.initHiddenTextarea === 'function') {
+                    textObj.initHiddenTextarea();
+                }
+            }
+            
+            // 全选文本
+            setTimeout(() => {
+                if (textObj.isEditing) {
+                    if (typeof textObj.selectAll === 'function') {
+                        textObj.selectAll();
+                    } else {
+                        textObj.selectionStart = 0;
+                        textObj.selectionEnd = textObj.text ? textObj.text.length : 0;
+                    }
+                    this.fabricCanvas.renderAll();
+                }
+            }, 50);
+            
+        } catch (error) {
+            // 编辑失败时静默处理
+        }
+    }
+
+    /**
+     * 设置编辑完成监听器
+     */
+    setupEditCompleteListener(textObj) {
+        const onEditingExited = () => {
+            this.switchToSelectionTool(textObj);
+            textObj.off('editing:exited', onEditingExited);
+            if (this.editCompleteTimeout) {
+                clearTimeout(this.editCompleteTimeout);
+                this.editCompleteTimeout = null;
+            }
+        };
+        
+        textObj.on('editing:exited', onEditingExited);
+        
+        // 超时保护机制
+        this.editCompleteTimeout = setTimeout(() => {
+            textObj.off('editing:exited', onEditingExited);
+            this.switchToSelectionTool(textObj);
+            this.editCompleteTimeout = null;
+        }, 30000);
     }
 
     /**
      * 切换到选择工具并选中指定对象
      */
     switchToSelectionTool(objectToSelect) {
-        // 通过全局事件或工具管理器切换工具
-        if (window.screenshotController && window.screenshotController.toolManager) {
+        if (window.screenshotController?.toolManager) {
             window.screenshotController.toolManager.switchToSelectionTool(objectToSelect);
         }
     }
@@ -217,17 +238,19 @@ export class FabricTextTool {
     addTextAt(x, y) {
         if (!this.fabricCanvas || !this.editLayerManager) return null;
         
-        const textObj = new fabric.Text('输入文本', {
+        const textObj = new fabric.IText('输入文本', {
             left: x,
             top: y,
-            fontFamily: this.textOptions.fontFamily,
-            fontSize: this.textOptions.fontSize,
-            fill: this.textOptions.color,
-            fontWeight: this.textOptions.fontWeight,
-            fontStyle: this.textOptions.fontStyle,
-            textAlign: this.textOptions.textAlign,
+            fontFamily: this.options.fontFamily,
+            fontSize: this.options.fontSize,
+            fill: this.options.color,
+            fontWeight: this.options.fontWeight,
+            fontStyle: this.options.fontStyle,
+            textAlign: this.options.textAlign,
+            selectable: true,
             editable: true
         });
+        textObj.customType = 'text';
         textObj.historyAddReason = '添加文本';
 
         this.fabricCanvas.add(textObj);
@@ -235,21 +258,20 @@ export class FabricTextTool {
         // 设置为可选择
         textObj.selectable = true;
         
-        // 延迟保存状态，避免与Fabric事件冲突
+        // 设置为活动对象并进入编辑模式
+        this.fabricCanvas.setActiveObject(textObj);
+        
         setTimeout(() => {
-            if (this.editLayerManager && this.editLayerManager.requestHistorySave) {
-                this.editLayerManager.requestHistorySave('添加文本', { immediate: true });
-            }
+            this.enterTextEditMode(textObj);
+            this.setupEditCompleteListener(textObj);
         }, 50);
         
-        // 切换到选择工具并选中新创建的文本，然后进入编辑模式
-        this.switchToSelectionTool(textObj);
-        
-        // 延迟进入编辑模式，确保选择工具已经激活
+        // 保存历史状态
         setTimeout(() => {
-            textObj.enterEditing();
-            this.fabricCanvas.renderAll();
-        }, 100);
+            if (this.editLayerManager?.requestHistorySave) {
+                this.editLayerManager.requestHistorySave('添加文本', { immediate: true });
+            }
+        }, 200);
         
         return textObj;
     }
@@ -289,24 +311,11 @@ export class FabricTextTool {
         this.setOptions({ fontStyle });
     }
 
-    /**
-     * 获取字体
-     */
-    getFont() {
-        return this.textOptions.fontFamily;
-    }
-
-    /**
-     * 获取字体大小
-     */
-    getFontSize() {
-        return this.textOptions.fontSize;
-    }
-
-    /**
-     * 获取文本颜色
-     */
     getColor() {
-        return this.textOptions.color;
+        return this.options.color;
+    }
+
+    getFontSize() {
+        return this.options.fontSize;
     }
 }

@@ -23,6 +23,7 @@ export class FabricEditLayerManager {
         // 回调函数
         this.onHistoryChange = null;
         this.onObjectModified = null;
+        this.onActiveObjectChange = null;
         
         // 绘画模式状态
         this.isDrawingMode = false;
@@ -82,6 +83,12 @@ export class FabricEditLayerManager {
         const notifyChange = (e) => this.isLoadingFromHistory ? null : this.onObjectModified?.(e);
         this.fabricCanvas.on('object:modified', notifyChange);
         this.fabricCanvas.on('object:moving', notifyChange);
+
+        // 活动对象变化事件
+        const emitActiveObject = () => this.emitActiveObjectChange();
+        this.fabricCanvas.on('selection:created', emitActiveObject);
+        this.fabricCanvas.on('selection:updated', emitActiveObject);
+        this.fabricCanvas.on('selection:cleared', emitActiveObject);
     }
 
     /**
@@ -99,6 +106,71 @@ export class FabricEditLayerManager {
      */
     setOnHistoryChange(callback) {
         this.onHistoryChange = callback;
+    }
+
+    /**
+     * 设置活动对象变化回调
+     */
+    setOnActiveObjectChange(callback) {
+        this.onActiveObjectChange = callback;
+    }
+
+    /**
+     * 发出活动对象变化事件
+     */
+    emitActiveObjectChange() {
+        if (!this.fabricCanvas || this.isLoadingFromHistory) return;
+        
+        const active = this.fabricCanvas.getActiveObject();
+        const objects = active ? (active.type === 'activeSelection' ? active._objects || [] : [active]) : [];
+        const objectType = this.getObjectType(active);
+        
+        this.onActiveObjectChange?.({
+            activeObject: active,
+            objects,
+            type: objectType
+        });
+    }
+
+    /**
+     * 获取对象类型
+     */
+    getObjectType(obj) {
+        if (!obj) return null;
+        
+        // 检查自定义类型
+        if (obj.customType) {
+            // 特殊处理形状工具的箭头
+            if (obj.customType === 'shape-arrow') {
+                return 'shape-arrow';
+            }
+            return obj.customType;
+        }
+        
+        // 检查Fabric内置类型
+        switch (obj.type) {
+            case 'text':
+            case 'i-text':
+            case 'textbox':
+                return 'text';
+            case 'path':
+                // 画笔绘制的路径
+                return 'brush';
+            case 'rect':
+                return 'rectangle';
+            case 'circle':
+                return 'circle';
+            case 'arrow':
+                return 'arrow';
+            case 'activeSelection':
+                // 多选时，返回第一个对象的类型
+                if (obj._objects && obj._objects.length > 0) {
+                    return this.getObjectType(obj._objects[0]);
+                }
+                return 'selection';
+            default:
+                return obj.type || 'unknown';
+        }
     }
 
     /**

@@ -220,4 +220,11 @@ export class ToolbarManager {
         this.updateHistoryButtons(false, false);
     }
 
+    /**
+     * 获取工具栏元素
+     */
+    getElement() {
+        return this.toolbar;
+    }
+
 }

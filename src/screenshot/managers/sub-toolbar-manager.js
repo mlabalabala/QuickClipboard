@@ -136,13 +136,19 @@ export class SubToolbarManager {
             // 形状工具参数（几何形状：矩形、圆形、箭头形状）
             shape: {
                 shapeType: {
-                    type: 'select',
+                    type: 'shape-panel',
                     label: '形状类型',
                     default: 'rectangle',
                     options: [
                         { value: 'rectangle', label: '矩形', icon: 'ti ti-square' },
                         { value: 'circle', label: '圆形', icon: 'ti ti-circle' },
-                        { value: 'arrow', label: '箭头形状', icon: 'ti ti-arrow-right' }
+                        { value: 'ellipse', label: '椭圆', icon: 'ti ti-oval' },
+                        { value: 'arrow', label: '箭头', icon: 'ti ti-arrow-right' },
+                        { value: 'triangle', label: '三角形', icon: 'ti ti-triangle' },
+                        { value: 'diamond', label: '菱形', icon: 'ti ti-diamonds' },
+                        { value: 'pentagon', label: '五边形', icon: 'ti ti-pentagon' },
+                        { value: 'hexagon', label: '六边形', icon: 'ti ti-hexagon' },
+                        { value: 'star', label: '星形', icon: 'ti ti-star' }
                     ],
                     icon: 'ti ti-shapes'
                 },
@@ -204,12 +210,16 @@ export class SubToolbarManager {
      * 显示指定工具的参数工具栏
      */
     showForTool(toolName, mainToolbarPosition, selectionRect = null) {
-        if (!toolName || toolName === 'selection') {
+        if (!toolName) {
             this.hide();
             return;
         }
         
         this.currentTool = toolName;
+        
+        // 尝试从活动对象同步参数
+        this.syncParametersFromActiveObject(toolName);
+        
         this.createSubToolbar();
         this.renderToolParameters(toolName);
         this.positionSubToolbar(mainToolbarPosition, selectionRect);
@@ -282,6 +292,9 @@ export class SubToolbarManager {
                 break;
             case 'select':
                 wrapper.appendChild(this.createSelect(toolName, paramName, config));
+                break;
+            case 'shape-panel':
+                wrapper.appendChild(this.createShapePanel(toolName, paramName, config));
                 break;
             case 'toggle':
                 wrapper.appendChild(this.createToggle(toolName, paramName, config));
@@ -360,30 +373,191 @@ export class SubToolbarManager {
         button.className = 'param-select';
         button.title = config.label;
         
-        const currentValue = this.getParameter(toolName, paramName);
-        const currentOption = config.options.find(opt => opt.value === currentValue);
+        // 获取当前值并更新显示
+        const updateButtonDisplay = () => {
+            const currentValue = this.getParameter(toolName, paramName);
+            const currentOption = config.options.find(opt => opt.value === currentValue);
+            
+            if (currentOption && currentOption.icon) {
+                button.innerHTML = `<i class="${currentOption.icon}"></i>`;
+            } else {
+                button.innerHTML = `<i class="${config.icon}"></i>`;
+            }
+        };
         
-        if (currentOption && currentOption.icon) {
-            button.innerHTML = `<i class="${currentOption.icon}"></i>`;
-        } else {
-            button.innerHTML = `<i class="${config.icon}"></i>`;
-        }
+        // 初始显示
+        updateButtonDisplay();
         
         // 点击事件 - 循环切换选项
         button.addEventListener('click', () => {
-            const currentIndex = config.options.findIndex(opt => opt.value === currentValue);
+            // 每次点击时重新获取当前值，而不是使用闭包中的固定值
+            const actualCurrentValue = this.getParameter(toolName, paramName);
+            const currentIndex = config.options.findIndex(opt => opt.value === actualCurrentValue);
             const nextIndex = (currentIndex + 1) % config.options.length;
             const nextOption = config.options[nextIndex];
             
             this.setParameter(toolName, paramName, nextOption.value);
             
-            // 更新图标
-            if (nextOption.icon) {
-                button.innerHTML = `<i class="${nextOption.icon}"></i>`;
-            }
+            // 更新显示
+            updateButtonDisplay();
         });
         
         return button;
+    }
+
+    /**
+     * 创建形状选择面板
+     */
+    createShapePanel(toolName, paramName, config) {
+        const container = document.createElement('div');
+        container.className = 'param-shape-panel';
+        
+        // 当前选中的形状按钮
+        const currentButton = document.createElement('button');
+        currentButton.className = 'param-shape-current';
+        currentButton.title = config.label;
+        
+        // 更新当前按钮显示
+        const updateCurrentButton = () => {
+            const currentValue = this.getParameter(toolName, paramName);
+            const currentOption = config.options.find(opt => opt.value === currentValue);
+            
+            if (currentOption && currentOption.icon) {
+                currentButton.innerHTML = `<i class="${currentOption.icon}"></i>`;
+                currentButton.title = `当前形状: ${currentOption.label}`;
+            } else {
+                currentButton.innerHTML = `<i class="${config.icon}"></i>`;
+                currentButton.title = config.label;
+            }
+        };
+        
+        // 初始显示
+        updateCurrentButton();
+        
+        // 创建形状选择面板
+        const shapePanel = document.createElement('div');
+        shapePanel.className = 'shape-selection-panel';
+        shapePanel.style.display = 'none';
+        shapePanel.style.visibility = 'hidden'; // 额外确保隐藏
+        
+        // 创建形状选项网格
+        const shapeGrid = document.createElement('div');
+        shapeGrid.className = 'shape-grid';
+        
+        config.options.forEach(option => {
+            const shapeItem = document.createElement('button');
+            shapeItem.className = 'shape-item';
+            shapeItem.innerHTML = `<i class="${option.icon}"></i>`;
+            shapeItem.title = option.label;
+            shapeItem.dataset.value = option.value;
+            
+            // 标记当前选中的形状
+            const currentValue = this.getParameter(toolName, paramName);
+            if (option.value === currentValue) {
+                shapeItem.classList.add('active');
+            }
+            
+            // 点击选择形状
+            shapeItem.addEventListener('click', () => {
+                this.setParameter(toolName, paramName, option.value);
+                updateCurrentButton();
+                
+                // 更新活跃状态
+                shapeGrid.querySelectorAll('.shape-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                shapeItem.classList.add('active');
+                
+                // 隐藏面板
+                this.hideShapePanel(shapePanel);
+            });
+            
+            shapeGrid.appendChild(shapeItem);
+        });
+        
+        shapePanel.appendChild(shapeGrid);
+        
+        // 点击当前按钮显示/隐藏面板
+        currentButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            // 隐藏其他可能打开的面板
+            document.querySelectorAll('.shape-selection-panel').forEach(panel => {
+                if (panel !== shapePanel) {
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // 切换当前面板
+            if (shapePanel.style.display === 'none') {
+                this.showShapePanel(shapePanel, currentButton);
+            } else {
+                this.hideShapePanel(shapePanel);
+            }
+        });
+        
+        container.appendChild(currentButton);
+        // 将面板直接添加到body中以避免父容器限制
+        document.body.appendChild(shapePanel);
+        
+        // 点击外部隐藏面板
+        document.addEventListener('click', (e) => {
+            if (!container.contains(e.target)) {
+                this.hideShapePanel(shapePanel);
+            }
+        });
+        
+        return container;
+    }
+
+    /**
+     * 显示形状选择面板
+     */
+    showShapePanel(panel, button) {
+        panel.style.display = 'block';
+        panel.style.visibility = 'visible';
+        
+        const buttonRect = button.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        
+        // 优先在按钮下方显示
+        let left = buttonRect.left;
+        let top = buttonRect.bottom + 4;
+        
+        // 使用边界约束工具
+        const constrainedBounds = boundsConstraint.constrain(
+            left, top, panelRect.width, panelRect.height
+        );
+        
+        left = constrainedBounds.x;
+        top = constrainedBounds.y;
+        
+        // 如果约束后位置与预期差距太大，说明下方空间不足，尝试上方
+        if (top < buttonRect.bottom + 4 - 10) { // 允许一些误差
+            const upperTop = buttonRect.top - panelRect.height - 4;
+            const upperBounds = boundsConstraint.constrain(
+                buttonRect.left, upperTop, panelRect.width, panelRect.height
+            );
+            
+            // 如果上方位置更合适，使用上方
+            if (upperBounds.y >= upperTop - 10) {
+                left = upperBounds.x;
+                top = upperBounds.y;
+            }
+        }
+        
+        panel.style.position = 'fixed';
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+        panel.style.zIndex = '10000';
+    }
+
+    /**
+     * 隐藏形状选择面板
+     */
+    hideShapePanel(panel) {
+        panel.style.display = 'none';
+        panel.style.visibility = 'hidden';
     }
 
     /**
@@ -627,20 +801,26 @@ export class SubToolbarManager {
         let left = buttonRect.left;
         let top = buttonRect.bottom + 4;
         
-        // 确保不超出屏幕边界
-        if (left + panelRect.width > window.innerWidth) {
-            left = window.innerWidth - panelRect.width - 8;
-        }
-        if (left < 8) {
-            left = 8;
-        }
+        // 使用边界约束工具
+        const constrainedBounds = boundsConstraint.constrain(
+            left, top, panelRect.width, panelRect.height
+        );
         
-        if (top + panelRect.height > window.innerHeight) {
-            // 下方空间不足，改为上方
-            top = buttonRect.top - panelRect.height - 4;
-        }
-        if (top < 8) {
-            top = 8;
+        left = constrainedBounds.x;
+        top = constrainedBounds.y;
+        
+        // 如果约束后位置与预期差距太大，说明下方空间不足，尝试上方
+        if (top < buttonRect.bottom + 4 - 10) { // 允许一些误差
+            const upperTop = buttonRect.top - panelRect.height - 4;
+            const upperBounds = boundsConstraint.constrain(
+                buttonRect.left, upperTop, panelRect.width, panelRect.height
+            );
+            
+            // 如果上方位置更合适，使用上方
+            if (upperBounds.y >= upperTop - 10) {
+                left = upperBounds.x;
+                top = upperBounds.y;
+            }
         }
         
         this.colorPicker.style.left = left + 'px';
@@ -710,14 +890,39 @@ export class SubToolbarManager {
         const toolParams = this.parameters.get(paramKey) || {};
         const commonParams = this.parameters.get('common') || {};
         
-        return toolParams[paramName] !== undefined ? 
-               toolParams[paramName] : commonParams[paramName];
+        let value = toolParams[paramName] !== undefined ? 
+                   toolParams[paramName] : commonParams[paramName];
+        
+        // 如果没有找到值，使用配置中的默认值
+        if (value === undefined) {
+            const toolConfig = this.toolConfigs[paramKey] || {};
+            const paramConfig = toolConfig[paramName];
+            if (paramConfig && paramConfig.default !== undefined) {
+                value = paramConfig.default;
+            }
+        }
+        
+        return value;
     }
 
     /**
      * 设置参数值
      */
     setParameter(toolName, paramName, value) {
+        this.setParameterInternal(toolName, paramName, value, true);
+    }
+
+    /**
+     * 静默设置参数值（不触发回调）
+     */
+    setParameterSilent(toolName, paramName, value) {
+        this.setParameterInternal(toolName, paramName, value, false);
+    }
+
+    /**
+     * 内部参数设置方法
+     */
+    setParameterInternal(toolName, paramName, value, triggerCallback = true) {
         // 确定参数属于哪个类别
         const isCommonParam = this.toolConfigs.common && this.toolConfigs.common[paramName];
         
@@ -743,8 +948,10 @@ export class SubToolbarManager {
         // 更新依赖参数的显示状态
         this.updateDependentParameters(toolName, paramName);
         
-        // 触发回调
-        this.triggerParameterChange(toolName, paramName, value);
+        // 根据需要触发回调
+        if (triggerCallback) {
+            this.triggerParameterChange(toolName, paramName, value);
+        }
     }
 
     /**
@@ -782,6 +989,160 @@ export class SubToolbarManager {
         if (globalCallback) {
             globalCallback(toolName, paramName, value);
         }
+    }
+
+    /**
+     * 从活动对象同步参数（如果有选中对象）
+     */
+    syncParametersFromActiveObject(toolName) {
+        // 尝试获取fabricCanvas和活动对象
+        if (!window.screenshotController?.editLayerManager) return;
+        
+        const fabricCanvas = window.screenshotController.editLayerManager.getFabricCanvas();
+        if (!fabricCanvas) return;
+        
+        const activeObject = fabricCanvas.getActiveObject();
+        if (!activeObject) return;
+        
+        try {
+            // 根据对象类型提取属性
+            const properties = this.extractObjectProperties(activeObject, toolName);
+            
+            // 静默设置参数（不触发回调）
+            for (const [paramName, value] of Object.entries(properties)) {
+                this.setParameterSilent(toolName, paramName, value);
+            }
+        } catch (error) {
+            console.warn('同步对象属性失败:', error);
+        }
+    }
+
+    /**
+     * 从对象中提取属性
+     */
+    extractObjectProperties(obj, toolName) {
+        const properties = {};
+        
+        // 通用属性：透明度
+        properties.opacity = Math.round((obj.opacity || 1) * 100);
+        
+        switch (toolName) {
+            case 'brush':
+                // 画笔路径：stroke 颜色
+                if (obj.stroke) {
+                    properties.color = obj.stroke;
+                }
+                if (obj.strokeWidth) {
+                    properties.brushSize = obj.strokeWidth;
+                }
+                break;
+                
+            case 'text':
+                // 文本对象：fill 颜色，字体属性
+                if (obj.fill) {
+                    properties.color = obj.fill;
+                }
+                if (obj.fontSize) {
+                    properties.fontSize = obj.fontSize;
+                }
+                if (obj.fontFamily) {
+                    properties.fontFamily = obj.fontFamily;
+                }
+                if (obj.fontWeight) {
+                    properties.fontWeight = obj.fontWeight === 'bold';
+                }
+                if (obj.fontStyle) {
+                    properties.fontStyle = obj.fontStyle === 'italic';
+                }
+                break;
+                
+            case 'arrow':
+                // 箭头对象：stroke 颜色，线条粗细
+                if (obj.stroke) {
+                    properties.color = obj.stroke;
+                }
+                if (obj.strokeWidth) {
+                    properties.strokeWidth = obj.strokeWidth;
+                }
+                // 如果是自定义箭头对象，还可以提取箭头特定属性
+                if (obj.arrowOptions) {
+                    if (obj.arrowOptions.arrowHeadSize) {
+                        properties.arrowHeadSize = obj.arrowOptions.arrowHeadSize;
+                    }
+                    if (obj.arrowOptions.arrowStyle) {
+                        properties.arrowStyle = obj.arrowOptions.arrowStyle;
+                    }
+                }
+                break;
+                
+            case 'shape':
+                // 形状对象：边框和填充
+                if (obj.stroke) {
+                    properties.color = obj.stroke;
+                }
+                if (obj.strokeWidth) {
+                    properties.strokeWidth = obj.strokeWidth;
+                }
+                if (obj.fill && obj.fill !== 'transparent') {
+                    properties.filled = true;
+                    properties.fillColor = obj.fill;
+                } else {
+                    properties.filled = false;
+                }
+                
+                // 根据对象的自定义类型确定形状类型
+                if (obj.customType) {
+                    switch (obj.customType) {
+                        case 'rectangle':
+                            properties.shapeType = 'rectangle';
+                            break;
+                        case 'circle':
+                            properties.shapeType = 'circle';
+                            break;
+                        case 'ellipse':
+                            properties.shapeType = 'ellipse';
+                            break;
+                        case 'triangle':
+                            properties.shapeType = 'triangle';
+                            break;
+                        case 'diamond':
+                            properties.shapeType = 'diamond';
+                            break;
+                        case '5-gon':
+                            properties.shapeType = 'pentagon';
+                            break;
+                        case '6-gon':
+                            properties.shapeType = 'hexagon';
+                            break;
+                        case 'star':
+                            properties.shapeType = 'star';
+                            break;
+                        case 'shape-arrow':
+                            properties.shapeType = 'arrow';
+                            break;
+                    }
+                } else if (obj.type) {
+                    // 根据Fabric.js内置类型推断
+                    switch (obj.type) {
+                        case 'rect':
+                            properties.shapeType = 'rectangle';
+                            break;
+                        case 'circle':
+                            properties.shapeType = 'circle';
+                            break;
+                        case 'ellipse':
+                            properties.shapeType = 'ellipse';
+                            break;
+                        case 'polygon':
+                            // 多边形默认为三角形，如果需要更精确识别需要额外信息
+                            properties.shapeType = 'triangle';
+                            break;
+                    }
+                }
+                break;
+        }
+        
+        return properties;
     }
 
     /**

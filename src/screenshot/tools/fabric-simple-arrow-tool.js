@@ -1,10 +1,9 @@
 /**
- * Fabric.js 标准箭头工具
- * 按照最佳实践实现，解决常见问题
+ * Fabric.js 箭头工具
  */
-
 import * as fabric from 'fabric';
 import { classRegistry as fabricClassRegistry } from 'fabric';
+import { getCanvas, applyOpacity, getToolParams } from './common-utils.js';
 
 // 修复1：直接继承 fabric.Path，统一坐标系
 export class Arrow extends fabric.Path {
@@ -519,15 +518,17 @@ export class FabricSimpleArrowTool {
         this.isDrawing = false;
         this.startPoint = null;
         this.previewArrow = null;
-        this.arrowOptions = {
+        
+        // 统一参数结构
+        this.options = {
             stroke: '#ff0000',
             strokeWidth: 2,
             opacity: 100,
             arrowHeadSize: Arrow.DEFAULT_ARROW_HEAD_LENGTH,
-            arrowStyle: 'solid'
+            arrowStyle: 'solid',
+            strokeDashArray: null
         };
         
-        // 绑定事件处理器
         this.handleMouseDown = this.handleMouseDown.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -590,7 +591,7 @@ export class FabricSimpleArrowTool {
 
         // 使用子工具栏当前参数直接创建预览箭头
         const initialEnd = { x: this.startPoint.x + 0.1, y: this.startPoint.y + 0.1 };
-        const arrow = new Arrow(this.startPoint, initialEnd, this.arrowOptions);
+        const arrow = new Arrow(this.startPoint, initialEnd, this.options);
         arrow.set({
             selectable: false,
             evented: false,
@@ -639,7 +640,7 @@ export class FabricSimpleArrowTool {
         }
 
         if (distance > 10) {
-            const finalArrow = new Arrow(startPoint, { x: pointer.x, y: pointer.y }, this.arrowOptions);
+            const finalArrow = new Arrow(startPoint, { x: pointer.x, y: pointer.y }, this.options);
             finalArrow.excludeFromHistory = false;
             finalArrow.set({
                 selectable: true,
@@ -663,63 +664,77 @@ export class FabricSimpleArrowTool {
         }
     }
     
-    // 子工具栏参数处理
     applyParameter(paramName, value) {
         switch (paramName) {
             case 'color':
-                this.arrowOptions.stroke = value;
+                this.options.stroke = value;
                 break;
             case 'opacity':
-                this.arrowOptions.opacity = Math.max(0, Math.min(100, value));
+                this.options.opacity = Math.max(0, Math.min(100, value));
                 break;
             case 'strokeWidth':
-                this.arrowOptions.strokeWidth = Math.max(1, value);
+                this.options.strokeWidth = Math.max(1, value);
                 break;
             case 'arrowHeadSize':
-                this.arrowOptions.arrowHeadSize = Math.max(6, Math.min(60, value));
+                this.options.arrowHeadSize = Math.max(6, Math.min(60, value));
                 break;
             case 'arrowStyle':
-                this.arrowOptions.arrowStyle = value;
-                this.arrowOptions.strokeDashArray = value === 'dashed' ? [12, 6] : null;
+                this.options.arrowStyle = value;
+                this.options.strokeDashArray = value === 'dashed' ? [12, 6] : null;
                 break;
         }
 
-        // 如果预览箭头存在，实时更新其样式
+        // 更新预览箭头
         if (this.previewArrow) {
-            this.previewArrow.arrowOptions = { ...this.arrowOptions };
             this.previewArrow.set({
-                stroke: this.arrowOptions.stroke,
-                strokeWidth: this.arrowOptions.strokeWidth,
-                opacity: this.arrowOptions.opacity / 100,
-                strokeDashArray: this.arrowOptions.strokeDashArray || null
+                stroke: this.options.stroke,
+                strokeWidth: this.options.strokeWidth,
+                opacity: this.options.opacity / 100,
+                strokeDashArray: this.options.strokeDashArray
             });
-            this.previewArrow.recalculateGeometryFromWorldPoints();
+            this.previewArrow.arrowOptions = { ...this.options };
+            if (this.previewArrow.recalculateGeometryFromWorldPoints) {
+                this.previewArrow.recalculateGeometryFromWorldPoints();
+            }
         }
 
-        // 更新画布中已存在的活动箭头（当通过子工具栏调整选中的箭头参数时）
-        if (this.fabricCanvas) {
-            const activeObject = this.fabricCanvas.getActiveObject();
-            if (activeObject instanceof Arrow) {
-                activeObject.arrowOptions = { ...this.arrowOptions };
-                activeObject.set({
-                    stroke: this.arrowOptions.stroke,
-                    strokeWidth: this.arrowOptions.strokeWidth,
-                    opacity: this.arrowOptions.opacity / 100,
-                    strokeDashArray: this.arrowOptions.strokeDashArray || null
-                });
+        this.applyToActiveArrow();
+    }
+
+    /**
+     * 应用参数到选中的箭头对象
+     */
+    applyToActiveArrow() {
+        const canvas = getCanvas(this);
+        const activeObject = canvas?.getActiveObject();
+        
+        if (activeObject instanceof Arrow) {
+            // 更新箭头的选项
+            activeObject.arrowOptions = { ...this.options };
+            
+            activeObject.set({
+                stroke: this.options.stroke,
+                strokeWidth: this.options.strokeWidth,
+                opacity: this.options.opacity / 100,
+                strokeDashArray: this.options.strokeDashArray || null
+            });
+            
+            // 重新计算箭头几何（这会应用头部大小等特殊属性）
+            if (activeObject.recalculateGeometryFromWorldPoints) {
                 activeObject.recalculateGeometryFromWorldPoints();
-                this.fabricCanvas.requestRenderAll();
             }
+            canvas.renderAll();
         }
     }
     
     syncParametersFromSubToolbar() {
-        if (window.screenshotController && window.screenshotController.subToolbarManager) {
-            const subToolbar = window.screenshotController.subToolbarManager;
-            const params = subToolbar.getToolParameters('arrow');
-            for (const [paramName, value] of Object.entries(params)) {
-                this.applyParameter(paramName, value);
-            }
+        const params = getToolParams('arrow');
+        for (const [name, value] of Object.entries(params)) {
+            this.applyParameter(name, value);
         }
+    }
+
+    getOptions() {
+        return { ...this.options };
     }
 }
