@@ -193,6 +193,9 @@ export class ScreenshotController {
                 if (currentTool) {
                     this.showSubToolbarForTool(currentTool);
                 }
+            } else {
+                // 没有选区时，禁用所有编辑工具
+                this.disableAllTools();
             }
         }
     }
@@ -203,6 +206,24 @@ export class ScreenshotController {
     hideAllToolbars() {
         this.toolbarManager.hide();
         this.subToolbarManager.hide();
+    }
+
+    /**
+     * 禁用所有编辑工具（无选区时调用）
+     */
+    disableAllTools() {
+        // 停用当前激活的工具
+        if (this.toolManager) {
+            this.toolManager.deactivateTool();
+        }
+        
+        // 清除工具栏选中状态
+        if (this.toolbarManager) {
+            this.toolbarManager.setActiveTool(null);
+        }
+        
+        // 隐藏所有工具栏
+        this.hideAllToolbars();
     }
 
     /**
@@ -388,6 +409,9 @@ export class ScreenshotController {
             
             // 初始化编辑层
             this.editLayerManager.init();
+            
+            // 确保初始状态下工具是禁用的（因为没有选区）
+            this.disableAllTools();
         } catch (error) {
             console.error('处理截屏数据失败:', error);
         }
@@ -559,7 +583,7 @@ export class ScreenshotController {
      */
     clearSelection() {
         this.selectionManager.clearSelection();
-        this.hideAllToolbars();
+        this.disableAllTools(); // 清除选区时禁用所有工具
         this.maskManager.resetToFullscreen();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }
@@ -590,23 +614,22 @@ export class ScreenshotController {
                 this.maskManager.clear();
             }
             
-            // 重置工具管理器（停用所有工具）
-            if (this.toolManager) {
-                this.toolManager.deactivateTool();
+            // 禁用所有编辑工具
+            this.disableAllTools();
+            
+            // 重置工具管理器（清空工具状态）
+            if (this.toolManager?.clear) {
                 this.toolManager.clear();
             }
             
-            // 重置工具栏状态
-            if (this.toolbarManager) {
-                this.toolbarManager.setActiveTool(null);
+            // 重置历史按钮状态
+            if (this.toolbarManager?.resetHistoryButtons) {
                 this.toolbarManager.resetHistoryButtons();
             }
             
-            // 清理子工具栏参数
-            if (this.subToolbarManager) {
-                this.subToolbarManager.hide();
-                // 清空所有工具参数，防止参数残留
-                this.subToolbarManager.parameters?.clear();
+            // 清空工具参数，防止参数残留
+            if (this.subToolbarManager?.parameters?.clear) {
+                this.subToolbarManager.parameters.clear();
             }
             
             // 重置事件管理器状态
@@ -624,7 +647,7 @@ export class ScreenshotController {
      */
     reset() {
         this.selectionManager.reset();
-        this.hideAllToolbars();
+        this.disableAllTools(); // 重置状态时禁用所有工具
         this.maskManager.clear();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }

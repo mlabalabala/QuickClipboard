@@ -68,6 +68,11 @@ export class SelectionManager {
             this.currentX = mouseX;
             this.currentY = mouseY;
             
+            // 立即重置选区样式，防止显示旧选区
+            this.selectionArea.style.left = mouseX + 'px';
+            this.selectionArea.style.top = mouseY + 'px';
+            this.selectionArea.style.width = '0px';
+            this.selectionArea.style.height = '0px';
             this.selectionArea.style.display = 'block';
             document.body.classList.add('has-selection');
             return 'select';
@@ -279,7 +284,14 @@ export class SelectionManager {
      */
     clearSelection() {
         this.selectionRect = null;
+        // 清除样式，防止下次显示时闪现旧选区
+        this.selectionArea.style.left = '0px';
+        this.selectionArea.style.top = '0px';
+        this.selectionArea.style.width = '0px';
+        this.selectionArea.style.height = '0px';
         this.selectionArea.style.display = 'none';
+        // 清除信息显示
+        this.selectionInfo.textContent = '';
         document.body.classList.remove('has-selection');
     }
 
@@ -290,7 +302,14 @@ export class SelectionManager {
         this.isSelecting = false;
         this.isMoving = false;
         this.selectionRect = null;
+        // 清除样式，防止下次显示时闪现旧选区
+        this.selectionArea.style.left = '0px';
+        this.selectionArea.style.top = '0px';
+        this.selectionArea.style.width = '0px';
+        this.selectionArea.style.height = '0px';
         this.selectionArea.style.display = 'none';
+        // 清除信息显示
+        this.selectionInfo.textContent = '';
         document.body.classList.remove('has-selection');
     }
 
