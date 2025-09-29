@@ -121,10 +121,19 @@ export class FabricTextTool {
      * 工具激活时的处理
      */
     onActivate(editLayerManager) {
-        if (!editLayerManager || !editLayerManager.getFabricCanvas) return;
+        if (!editLayerManager || !editLayerManager.getFabricCanvas) {
+            console.error('文本工具激活失败：editLayerManager 无效');
+            return;
+        }
         
         this.editLayerManager = editLayerManager;
         this.fabricCanvas = editLayerManager.getFabricCanvas();
+        
+        if (!this.fabricCanvas) {
+            console.error('文本工具激活失败：fabricCanvas 为空');
+            return;
+        }
+        
         this.isActive = true;
         
         // 确保不在绘画模式，禁用选择功能专注于创建
@@ -219,6 +228,7 @@ export class FabricTextTool {
             textAlign: this.textOptions.textAlign,
             editable: true
         });
+        textObj.historyAddReason = '添加文本';
 
         this.fabricCanvas.add(textObj);
         
@@ -227,8 +237,8 @@ export class FabricTextTool {
         
         // 延迟保存状态，避免与Fabric事件冲突
         setTimeout(() => {
-            if (this.editLayerManager && this.editLayerManager.saveState) {
-                this.editLayerManager.saveState('添加文本');
+            if (this.editLayerManager && this.editLayerManager.requestHistorySave) {
+                this.editLayerManager.requestHistorySave('添加文本', { immediate: true });
             }
         }, 50);
         

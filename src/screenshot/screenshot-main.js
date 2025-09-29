@@ -19,6 +19,7 @@ import { BackgroundManager } from './managers/background-manager.js';
 import { ExportManager } from './managers/export-manager.js';
 import { FabricEditLayerManager } from './managers/fabric-edit-layer-manager.js';
 import { FabricToolManager } from './managers/fabric-tool-manager.js';
+import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
     constructor() {
@@ -33,6 +34,7 @@ export class ScreenshotController {
         }
         
         this.initializeController();
+        registerArrowClass();
     }
     
     initializeController() {

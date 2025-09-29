@@ -1,7 +1,8 @@
 /**
  * Fabric.js编辑层管理器
- * 使用Fabric.js重构的编辑层管理器，提供更强大的对象管理和编辑功能
  */
+
+import { Arrow } from '../tools/fabric-simple-arrow-tool.js';
 
 export class FabricEditLayerManager {
     constructor() {
@@ -13,6 +14,11 @@ export class FabricEditLayerManager {
         this.historyStack = [];
         this.historyStep = -1;
         this.maxHistorySize = 50;
+        this.historyDebounceDelay = 180;
+        this.historyDebounceTimer = null;
+        this.pendingHistoryDescription = null;
+        this.historyEventHandlers = {};
+        this.isLoadingFromHistory = false;
         
         // 回调函数
         this.onHistoryChange = null;
@@ -65,58 +71,17 @@ export class FabricEditLayerManager {
 
         this.updateCanvasSize();
         this.initFabricEvents();
-        
-        // 初始化画笔
-        this.initBrush();
-        
-        // 延迟保存初始状态，确保Canvas完全准备好
-        setTimeout(() => {
-            this.saveState('初始状态');
-        }, 100);
-    }
-
-    /**
-     * 初始化画笔
-     */
-    initBrush() {
-        if (!this.fabricCanvas) return;
-        
-        // 创建画笔实例
-        this.fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(this.fabricCanvas);
-        
-        // 设置默认画笔选项
-        const brush = this.fabricCanvas.freeDrawingBrush;
-        brush.color = '#ff0000';
-        brush.width = 3;
-        brush.lineCap = 'round';
-        brush.lineJoin = 'round';
+        this.setupHistoryTracking();
+        this.initializeHistoryState('初始状态');
     }
 
     /**
      * 初始化Fabric事件
      */
     initFabricEvents() {
-        // 对象修改事件（移动、缩放等）
-        this.fabricCanvas.on('object:modified', () => {
-            if (!this.isLoadingFromHistory) {
-                this.saveState('对象修改');
-                this.onObjectModified?.();
-            }
-        });
-
-        // 路径创建完成事件（绘画模式） - 只保存这一个就够了
-        this.fabricCanvas.on('path:created', () => {
-            if (!this.isLoadingFromHistory) {
-                this.saveState('绘制路径');
-            }
-        });
-
-        // 对象移除事件
-        this.fabricCanvas.on('object:removed', (e) => {
-            if (!this.isLoadingFromHistory) {
-                this.saveState('删除对象');
-            }
-        });
+        const notifyChange = (e) => this.isLoadingFromHistory ? null : this.onObjectModified?.(e);
+        this.fabricCanvas.on('object:modified', notifyChange);
+        this.fabricCanvas.on('object:moving', notifyChange);
     }
 
     /**
@@ -219,16 +184,15 @@ export class FabricEditLayerManager {
     enableDrawingMode(brushOptions = {}) {
         if (!this.fabricCanvas) return;
 
+        const brush = this.ensureDrawingBrush();
+
         this.isDrawingMode = true;
         this.fabricCanvas.isDrawingMode = true;
-        
-        // 设置画笔选项
-        const brush = this.fabricCanvas.freeDrawingBrush;
+
         if (brush) {
             brush.color = brushOptions.color || '#ff0000';
             brush.width = brushOptions.width || 3;
-            
-            // 设置其他画笔属性
+
             if (brushOptions.shadowColor !== undefined) {
                 brush.shadowColor = brushOptions.shadowColor;
             }
@@ -244,6 +208,18 @@ export class FabricEditLayerManager {
         });
         
         this.fabricCanvas.renderAll();
+    }
+
+    ensureDrawingBrush() {
+        if (!this.fabricCanvas) return null;
+        if (!this.fabricCanvas.freeDrawingBrush) {
+            this.fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(this.fabricCanvas);
+            this.fabricCanvas.freeDrawingBrush.color = '#ff0000';
+            this.fabricCanvas.freeDrawingBrush.width = 3;
+            this.fabricCanvas.freeDrawingBrush.lineCap = 'round';
+            this.fabricCanvas.freeDrawingBrush.lineJoin = 'round';
+        }
+        return this.fabricCanvas.freeDrawingBrush;
     }
 
     /**
@@ -263,115 +239,6 @@ export class FabricEditLayerManager {
         
         this.fabricCanvas.renderAll();
         
-        // 不在这里保存状态，避免工具切换时的干扰
-    }
-
-    /**
-     * 设置画笔选项
-     */
-    setBrushOptions(options) {
-        if (!this.fabricCanvas) return;
-        
-        const brush = this.fabricCanvas.freeDrawingBrush;
-        if (!brush) return;
-        
-        if (options.color !== undefined) brush.color = options.color;
-        if (options.width !== undefined) brush.width = options.width;
-        if (options.shadowColor !== undefined) brush.shadowColor = options.shadowColor;
-        if (options.shadowBlur !== undefined) brush.shadowBlur = options.shadowBlur;
-    }
-
-    /**
-     * 添加文本对象
-     */
-    addText(text, options = {}) {
-        if (!this.fabricCanvas) return null;
-
-        const textObj = new fabric.Text(text, {
-            left: options.left || 100,
-            top: options.top || 100,
-            fontFamily: options.fontFamily || 'Arial',
-            fontSize: options.fontSize || 20,
-            fill: options.color || '#000000',
-            editable: true
-        });
-
-        this.fabricCanvas.add(textObj);
-        this.fabricCanvas.setActiveObject(textObj);
-        this.fabricCanvas.renderAll();
-        
-        return textObj;
-    }
-
-    /**
-     * 添加矩形
-     */
-    addRectangle(options = {}) {
-        if (!this.fabricCanvas) return null;
-
-        const rect = new fabric.Rect({
-            left: options.left || 100,
-            top: options.top || 100,
-            width: options.width || 100,
-            height: options.height || 100,
-            fill: options.fill || 'rgba(255, 0, 0, 0.3)',
-            stroke: options.stroke || '#ff0000',
-            strokeWidth: options.strokeWidth || 2
-        });
-
-        this.fabricCanvas.add(rect);
-        this.fabricCanvas.setActiveObject(rect);
-        this.fabricCanvas.renderAll();
-        
-        return rect;
-    }
-
-    /**
-     * 添加圆形
-     */
-    addCircle(options = {}) {
-        if (!this.fabricCanvas) return null;
-
-        const circle = new fabric.Circle({
-            left: options.left || 100,
-            top: options.top || 100,
-            radius: options.radius || 50,
-            fill: options.fill || 'rgba(0, 255, 0, 0.3)',
-            stroke: options.stroke || '#00ff00',
-            strokeWidth: options.strokeWidth || 2
-        });
-
-        this.fabricCanvas.add(circle);
-        this.fabricCanvas.setActiveObject(circle);
-        this.fabricCanvas.renderAll();
-        
-        return circle;
-    }
-
-    /**
-     * 添加箭头
-     */
-    addArrow(options = {}) {
-        if (!this.fabricCanvas) return null;
-
-        // 创建箭头路径
-        const arrowPath = 'M 0 0 L 100 0 M 90 -10 L 100 0 L 90 10';
-        
-        const arrow = new fabric.Path(arrowPath, {
-            left: options.left || 100,
-            top: options.top || 100,
-            stroke: options.color || '#0000ff',
-            strokeWidth: options.width || 3,
-            fill: '',
-            scaleX: options.scaleX || 1,
-            scaleY: options.scaleY || 1
-        });
-
-        this.fabricCanvas.add(arrow);
-        this.fabricCanvas.setActiveObject(arrow);
-        this.fabricCanvas.renderAll();
-        
-        return arrow;
     }
 
     /**
@@ -388,6 +255,38 @@ export class FabricEditLayerManager {
         }
     }
 
+    setSelectionEnabled(enabled) {
+        if (!this.fabricCanvas) return;
+        this.fabricCanvas.selection = enabled;
+        this.fabricCanvas.forEachObject((obj) => {
+            obj.selectable = enabled;
+            obj.evented = enabled;
+        });
+        if (!enabled) {
+            this.fabricCanvas.discardActiveObject();
+            this.fabricCanvas.renderAll();
+        }
+    }
+
+    prepareSelectionForTool(toolName) {
+        if (!this.fabricCanvas) return;
+        if (toolName === 'selection') {
+            this.fabricCanvas.selection = true;
+            this.fabricCanvas.forEachObject((obj) => {
+                obj.selectable = true;
+                obj.evented = true;
+            });
+        } else {
+            this.fabricCanvas.discardActiveObject();
+            this.fabricCanvas.selection = false;
+            this.fabricCanvas.forEachObject((obj) => {
+                obj.selectable = false;
+                obj.evented = false;
+            });
+            this.fabricCanvas.renderAll();
+        }
+    }
+
     /**
      * 清除所有内容
      */
@@ -399,37 +298,186 @@ export class FabricEditLayerManager {
     }
 
     /**
+     * 初始化历史事件跟踪
+     */
+    setupHistoryTracking() {
+        if (!this.fabricCanvas) return;
+
+        this.cleanupHistoryTracking();
+
+        const register = (eventName, handler) => {
+            const boundHandler = handler.bind(this);
+            this.historyEventHandlers[eventName] = boundHandler;
+            this.fabricCanvas.on(eventName, boundHandler);
+        };
+
+        register('object:added', this.onCanvasObjectAdded);
+        register('object:removed', this.onCanvasObjectRemoved);
+        register('object:modified', this.onCanvasObjectModified);
+        register('object:skewing', this.onCanvasObjectModifying);
+        register('object:scaling', this.onCanvasObjectModifying);
+        register('object:rotating', this.onCanvasObjectModifying);
+        register('object:moving', this.onCanvasObjectModifying);
+        register('path:created', this.onCanvasPathCreated);
+    }
+
+    /**
+     * 清理历史事件跟踪
+     */
+    cleanupHistoryTracking() {
+        if (!this.fabricCanvas) {
+            this.historyEventHandlers = {};
+            return;
+        }
+
+        Object.entries(this.historyEventHandlers).forEach(([eventName, handler]) => {
+            this.fabricCanvas.off(eventName, handler);
+        });
+        this.historyEventHandlers = {};
+
+        if (this.historyDebounceTimer) {
+            clearTimeout(this.historyDebounceTimer);
+            this.historyDebounceTimer = null;
+        }
+        this.pendingHistoryDescription = null;
+    }
+
+    /**
+     * 请求保存历史快照
+     */
+    requestHistorySave(description = '', options = {}) {
+        if (!this.fabricCanvas || this.isLoadingFromHistory) return;
+
+        const {
+            immediate = false,
+            debounceDelay = this.historyDebounceDelay
+        } = options;
+
+        if (immediate) {
+            this.flushHistorySave(description);
+            return;
+        }
+
+        if (description) {
+            this.pendingHistoryDescription = description;
+        }
+
+        if (this.historyDebounceTimer) {
+            clearTimeout(this.historyDebounceTimer);
+        }
+
+        this.historyDebounceTimer = setTimeout(() => {
+            const finalDescription = this.pendingHistoryDescription || description;
+            this.flushHistorySave(finalDescription);
+        }, debounceDelay);
+    }
+
+    /**
+     * 立即保存历史快照
+     */
+    flushHistorySave(description = '') {
+        if (!this.fabricCanvas || this.isLoadingFromHistory) return;
+
+        if (this.historyDebounceTimer) {
+            clearTimeout(this.historyDebounceTimer);
+            this.historyDebounceTimer = null;
+        }
+
+        const finalDescription = description || this.pendingHistoryDescription || '';
+        this.pendingHistoryDescription = null;
+        this.saveState(finalDescription);
+    }
+
+    /**
+     * 如果存在挂起的历史请求，则立即保存
+     */
+    flushPendingHistory(description = '自动保存') {
+        if (this.historyDebounceTimer) {
+            this.flushHistorySave(description);
+        }
+    }
+
+    onCanvasObjectAdded(event) {
+        if (this.isLoadingFromHistory) return;
+
+        const target = event?.target;
+        if (!target || target.excludeFromHistory) return;
+
+        const reason = target.historyAddReason || '添加对象';
+        this.requestHistorySave(reason, { immediate: true });
+        delete target.historyAddReason;
+    }
+
+    onCanvasObjectRemoved(event) {
+        if (this.isLoadingFromHistory) return;
+
+        const target = event?.target;
+        if (!target || target.excludeFromHistory) return;
+
+        const reason = target.historyRemoveReason || '删除对象';
+        this.requestHistorySave(reason, { immediate: true });
+        delete target.historyRemoveReason;
+    }
+
+    onCanvasObjectModified(event) {
+        if (this.isLoadingFromHistory) return;
+
+        const target = event?.target;
+        if (!target || target.excludeFromHistory) return;
+
+        const reason = target.historyModifyReason || '对象修改';
+        this.requestHistorySave(reason, { debounceDelay: this.historyDebounceDelay });
+        delete target.historyModifyReason;
+
+        this.onObjectModified?.(event);
+    }
+
+    onCanvasObjectModifying(event) {
+        if (this.isLoadingFromHistory) return;
+
+        const target = event?.target;
+        if (!target || target.excludeFromHistory) return;
+
+        target.historyModifyReason = target.historyModifyReason || '对象修改';
+    }
+
+    onCanvasPathCreated(event) {
+        if (this.isLoadingFromHistory) return;
+
+        const path = event?.path;
+        if (path) {
+            path.excludeFromHistory = false;
+            path.historyAddReason = path.historyAddReason || '绘制路径';
+        }
+
+        this.requestHistorySave('绘制路径', { immediate: true });
+    }
+
+    /**
      * 保存当前状态到历史记录
      */
     saveState(description = '') {
         if (!this.fabricCanvas || this.isLoadingFromHistory) return;
 
         try {
-            // 删除当前位置之后的历史记录
             if (this.historyStep < this.historyStack.length - 1) {
                 this.historyStack.splice(this.historyStep + 1);
             }
 
-            // 获取当前状态
             const state = JSON.stringify(this.fabricCanvas.toJSON());
-            
-            // 避免保存重复状态
-            if (this.historyStack.length > 0 && 
-                this.historyStack[this.historyStack.length - 1].state === state) {
+            const lastEntry = this.historyStack[this.historyStack.length - 1];
+            if (lastEntry && lastEntry.state === state) {
                 return;
             }
-            
-            // 添加到历史记录
+
             this.historyStack.push({ state, description, timestamp: Date.now() });
             this.historyStep = this.historyStack.length - 1;
 
-            // 限制历史记录大小
             if (this.historyStack.length > this.maxHistorySize) {
                 this.historyStack.shift();
                 this.historyStep--;
             }
 
-            // 触发历史状态改变回调
             this.triggerHistoryChange();
 
         } catch (error) {
@@ -441,10 +489,12 @@ export class FabricEditLayerManager {
      * 撤销操作
      */
     async undo() {
+        this.flushPendingHistory();
         if (!this.canUndo()) return false;
 
         try {
             this.historyStep--;
+            this.triggerHistoryChange();
             const historyItem = this.historyStack[this.historyStep];
             await this.loadHistoryState(historyItem.state);
             return true;
@@ -459,10 +509,12 @@ export class FabricEditLayerManager {
      * 重做操作
      */
     async redo() {
+        this.flushPendingHistory();
         if (!this.canRedo()) return false;
 
         try {
             this.historyStep++;
+            this.triggerHistoryChange();
             const historyItem = this.historyStack[this.historyStep];
             await this.loadHistoryState(historyItem.state);
             return true;
@@ -479,38 +531,44 @@ export class FabricEditLayerManager {
     async loadHistoryState(stateJson) {
         return new Promise((resolve, reject) => {
             this.isLoadingFromHistory = true;
-            
-            // 先清空Canvas，避免loadFromJSON的合并行为
             this.fabricCanvas.clear();
-            
-            // 防止重复回调
             let callbackExecuted = false;
-            
-            // 解析JSON状态
             const stateData = typeof stateJson === 'string' ? JSON.parse(stateJson) : stateJson;
-            
-            // 加载状态
-            this.fabricCanvas.loadFromJSON(stateData, () => {
+
+            const handleLoad = () => {
                 if (callbackExecuted) return;
                 callbackExecuted = true;
-                
-                // 恢复Canvas尺寸
                 this.updateCanvasSize();
-                
-                // 重新渲染
                 this.fabricCanvas.renderAll();
                 this.fabricCanvas.requestRenderAll();
-                
-                // 延迟重置标志，确保渲染完成
                 setTimeout(() => {
                     this.isLoadingFromHistory = false;
                     this.triggerHistoryChange();
                     resolve();
                 }, 10);
-            }, (error) => {
+            };
+
+            const handleError = (error) => {
+                const message = String(error);
+                if (message.includes('No class registered for arrow') || message.includes('fromObject')) {
+                    registerArrowClass();
+                    try {
+                        this.fabricCanvas.loadFromJSON(stateData, handleLoad, reject);
+                        return;
+                    } catch (retryError) {
+                        reject(retryError);
+                        return;
+                    }
+                }
                 this.isLoadingFromHistory = false;
                 reject(error);
-            });
+            };
+
+            try {
+                this.fabricCanvas.loadFromJSON(stateData, handleLoad, handleError);
+            } catch (error) {
+                handleError(error);
+            }
         });
     }
 
@@ -534,6 +592,7 @@ export class FabricEditLayerManager {
     clearHistory() {
         this.historyStack = [];
         this.historyStep = -1;
+        this.flushPendingHistory();
         this.triggerHistoryChange();
     }
 
@@ -619,6 +678,8 @@ export class FabricEditLayerManager {
      * 销毁编辑层
      */
     destroy() {
+        this.cleanupHistoryTracking();
+
         if (this.fabricCanvas) {
             this.fabricCanvas.dispose();
             this.fabricCanvas = null;
@@ -637,6 +698,11 @@ export class FabricEditLayerManager {
      * 获取Fabric Canvas实例（供工具使用）
      */
     getFabricCanvas() {
+        // 如果还没有初始化，先初始化
+        if (!this.fabricCanvas) {
+            console.warn('FabricCanvas 还未初始化，正在自动初始化...');
+            this.init();
+        }
         return this.fabricCanvas;
     }
 
@@ -668,8 +734,21 @@ export class FabricEditLayerManager {
     loadFromJSON(json, callback) {
         if (!this.fabricCanvas) return;
         this.fabricCanvas.loadFromJSON(json, () => {
+            this.updateCanvasSize();
             this.fabricCanvas.renderAll();
+            this.triggerHistoryChange();
             if (callback) callback();
         });
+    }
+
+    initializeHistoryState(description = '初始状态') {
+        if (!this.fabricCanvas) return;
+        this.flushPendingHistory();
+        this.historyStack = [];
+        this.historyStep = -1;
+        const state = JSON.stringify(this.fabricCanvas.toJSON());
+        this.historyStack.push({ state, description, timestamp: Date.now() });
+        this.historyStep = 0;
+        this.triggerHistoryChange();
     }
 }

@@ -1,18 +1,20 @@
 /**
- * Fabric.js形状工具
- * 基于Fabric.js的形状工具实现（矩形、圆形、箭头等）
+ * Fabric.js 统一形状工具
+ * 包含矩形、圆形、箭头形状等几何形状
  */
 
-export class FabricShapeTool {
-    constructor(shapeType = 'rectangle') {
-        this.name = shapeType;
-        this.shapeType = shapeType; // 'rectangle', 'circle', 'arrow'
-        this.fabricCanvas = null;
+import * as fabric from 'fabric';
+
+export class FabricUnifiedShapeTool {
+    constructor() {
+        this.name = 'shape';
         this.editLayerManager = null;
+        this.fabricCanvas = null;
         this.isActive = false;
         this.isDrawing = false;
         this.startPoint = null;
         this.currentShape = null;
+        this.currentShapeType = 'rectangle'; // 当前选择的形状类型
         
         // 形状参数（与子工具栏默认值保持一致）
         this.shapeOptions = {
@@ -32,6 +34,20 @@ export class FabricShapeTool {
     }
 
     /**
+     * 设置当前形状类型
+     */
+    setShapeType(shapeType) {
+        this.currentShapeType = shapeType;
+    }
+
+    /**
+     * 获取当前形状类型
+     */
+    getShapeType() {
+        return this.currentShapeType;
+    }
+
+    /**
      * 设置形状参数
      */
     setOptions(options) {
@@ -42,7 +58,7 @@ export class FabricShapeTool {
     }
 
     /**
-     * 获取当前形状参数
+     * 获取形状参数
      */
     getOptions() {
         return { ...this.shapeOptions };
@@ -84,6 +100,10 @@ export class FabricShapeTool {
                 if (this.isFillEnabled()) {
                     this.shapeOptions.fill = value;
                 }
+                break;
+            case 'shapeType':
+                // 形状类型切换
+                this.setShapeType(value);
                 break;
         }
         
@@ -142,41 +162,36 @@ export class FabricShapeTool {
         }
         this.shapeOptions.stroke = strokeColor;
         
-        // 应用到填充颜色（如果不是透明的）
-        if (this.shapeOptions.fill !== 'transparent') {
+        // 如果启用了填充，也应用到填充颜色
+        if (this.isFillEnabled()) {
             let fillColor = this.shapeOptions.fill;
-            const fillOpacity = opacity * 0.3; // 填充透明度稍微低一些
-            
             if (fillColor.startsWith('#')) {
                 const hex = fillColor.slice(1);
                 const r = parseInt(hex.slice(0, 2), 16);
                 const g = parseInt(hex.slice(2, 4), 16);
                 const b = parseInt(hex.slice(4, 6), 16);
-                fillColor = `rgba(${r}, ${g}, ${b}, ${fillOpacity})`;
+                fillColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
             } else if (fillColor.startsWith('rgb(')) {
-                fillColor = fillColor.replace('rgb(', 'rgba(').replace(')', `, ${fillOpacity})`);
+                fillColor = fillColor.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
             } else if (fillColor.startsWith('rgba(')) {
-                fillColor = fillColor.replace(/,\s*[\d.]+\s*\)$/, `, ${fillOpacity})`);
+                fillColor = fillColor.replace(/,\s*[\d.]+\s*\)$/, `, ${opacity})`);
             }
             this.shapeOptions.fill = fillColor;
         }
     }
 
     /**
-     * 将当前参数应用到活动的形状对象
+     * 应用设置到活动的形状对象
      */
     applyToActiveShape() {
-        if (!this.fabricCanvas) return;
-        
-        const activeObject = this.fabricCanvas.getActiveObject();
-        if (activeObject && (activeObject.type === 'rect' || activeObject.type === 'circle' || activeObject.type === 'path')) {
-            activeObject.set({
-                fill: this.shapeOptions.fill,
-                stroke: this.shapeOptions.stroke,
-                strokeWidth: this.shapeOptions.strokeWidth,
-                strokeDashArray: this.shapeOptions.strokeDashArray
-            });
-            this.fabricCanvas.renderAll();
+        if (this.fabricCanvas) {
+            const activeObject = this.fabricCanvas.getActiveObject();
+            if (activeObject && (activeObject.type === 'rect' || activeObject.type === 'circle' || 
+                                 activeObject.type === 'ellipse' || activeObject.type === 'path' || 
+                                 activeObject.type === 'group')) {
+                activeObject.set(this.shapeOptions);
+                this.fabricCanvas.renderAll();
+            }
         }
     }
 
@@ -184,10 +199,19 @@ export class FabricShapeTool {
      * 工具激活时的处理
      */
     onActivate(editLayerManager) {
-        if (!editLayerManager || !editLayerManager.getFabricCanvas) return;
+        if (!editLayerManager || !editLayerManager.getFabricCanvas) {
+            console.error('形状工具激活失败：editLayerManager 无效');
+            return;
+        }
         
         this.editLayerManager = editLayerManager;
         this.fabricCanvas = editLayerManager.getFabricCanvas();
+        
+        if (!this.fabricCanvas) {
+            console.error('形状工具激活失败：fabricCanvas 为空');
+            return;
+        }
+        
         this.isActive = true;
         
         // 确保不在绘画模式，禁用选择功能专注于创建
@@ -217,7 +241,6 @@ export class FabricShapeTool {
     syncParametersFromSubToolbar() {
         if (window.screenshotController && window.screenshotController.subToolbarManager) {
             const subToolbar = window.screenshotController.subToolbarManager;
-            // 所有形状工具都使用 'shape' 参数配置
             const toolParams = subToolbar.getToolParameters('shape');
             
             // 先同步填充颜色值（即使填充未启用）
@@ -238,8 +261,10 @@ export class FabricShapeTool {
     onDeactivate(editLayerManager) {
         this.isActive = false;
         this.isDrawing = false;
+        this.startPoint = null;
+        this.currentShape = null;
         
-        // 恢复默认光标
+        // 恢复光标
         document.body.style.cursor = 'default';
         
         // 移除事件监听器
@@ -248,38 +273,29 @@ export class FabricShapeTool {
             this.fabricCanvas.off('mouse:move', this.handleMouseMove);
             this.fabricCanvas.off('mouse:up', this.handleMouseUp);
         }
-        
-        this.fabricCanvas = null;
-        this.editLayerManager = null;
-        this.currentShape = null;
-        this.startPoint = null;
-    }
-
-    /**
-     * 切换到选择工具并选中指定对象
-     */
-    switchToSelectionTool(objectToSelect) {
-        // 通过全局事件或工具管理器切换工具
-        if (window.screenshotController && window.screenshotController.toolManager) {
-            window.screenshotController.toolManager.switchToSelectionTool(objectToSelect);
-        }
     }
 
     /**
      * 处理鼠标按下事件
      */
-    handleMouseDown(e) {
-        if (!this.isActive || !this.fabricCanvas) return;
+    handleMouseDown(options) {
+        if (!this.isActive) return;
         
-        const pointer = this.fabricCanvas.getPointer(e.e);
+        const pointer = this.fabricCanvas.getPointer(options.e);
         this.startPoint = { x: pointer.x, y: pointer.y };
         this.isDrawing = true;
         
-        // 创建初始形状
-        this.currentShape = this.createShape(pointer.x, pointer.y, 1, 1);
+        // 创建预览形状
+        this.currentShape = this.createShape(
+            this.startPoint.x, 
+            this.startPoint.y, 
+            1, 
+            1, 
+            this.shapeOptions
+        );
+        
         if (this.currentShape) {
-            // 新形状不可选择，避免创建过程中出现选择框
-            this.currentShape.selectable = false;
+            this.currentShape.excludeFromHistory = true;
             this.fabricCanvas.add(this.currentShape);
             this.fabricCanvas.renderAll();
         }
@@ -288,91 +304,108 @@ export class FabricShapeTool {
     /**
      * 处理鼠标移动事件
      */
-    handleMouseMove(e) {
-        if (!this.isDrawing || !this.currentShape || !this.startPoint) return;
+    handleMouseMove(options) {
+        if (!this.isActive || !this.isDrawing || !this.startPoint || !this.currentShape) return;
         
-        const pointer = this.fabricCanvas.getPointer(e.e);
+        const pointer = this.fabricCanvas.getPointer(options.e);
+        
+        // 更新形状
         this.updateShape(this.currentShape, this.startPoint, pointer);
         this.fabricCanvas.renderAll();
     }
 
     /**
-     * 处理鼠标抬起事件
+     * 处理鼠标松开事件
      */
-    handleMouseUp(e) {
-        if (!this.isDrawing) return;
+    handleMouseUp(options) {
+        if (!this.isActive || !this.isDrawing || !this.startPoint) return;
         
-        this.isDrawing = false;
+        const pointer = this.fabricCanvas.getPointer(options.e);
+        const distance = Math.sqrt(
+            Math.pow(pointer.x - this.startPoint.x, 2) + 
+            Math.pow(pointer.y - this.startPoint.y, 2)
+        );
         
-        // 如果形状太小，删除它
-        if (this.currentShape) {
-            const minSize = 5;
-            let shouldRemove = false;
-            
-            if (this.shapeType === 'rectangle') {
-                shouldRemove = this.currentShape.width < minSize || this.currentShape.height < minSize;
-            } else if (this.shapeType === 'circle') {
-                shouldRemove = this.currentShape.radius < minSize / 2;
-            }
-            
-            if (shouldRemove) {
+        if (distance < 10) {
+            // 距离太短，删除形状
+            if (this.currentShape) {
                 this.fabricCanvas.remove(this.currentShape);
-            } else {
-                // 形状创建成功，使其可选择
-                this.currentShape.selectable = true;
-                
-                // 延迟保存历史状态，避免与Fabric事件冲突
-                setTimeout(() => {
-                    if (this.editLayerManager && this.editLayerManager.saveState) {
-                        this.editLayerManager.saveState(`添加${this.shapeType}`);
-                    }
-                }, 50);
-                
-                // 切换到选择工具并选中刚创建的形状
-                setTimeout(() => {
-                    this.switchToSelectionTool(this.currentShape);
-                }, 100);
             }
+        } else {
+            // 完成形状创建
+            this.finishShape();
         }
         
-        this.currentShape = null;
+        this.isDrawing = false;
         this.startPoint = null;
+        this.currentShape = null;
+        this.fabricCanvas.renderAll();
+    }
+
+    /**
+     * 完成形状创建
+     */
+    finishShape() {
+        if (!this.currentShape) return;
+        this.currentShape.excludeFromHistory = false;
+        
+        // 标记对象可选择
+        this.currentShape.selectable = true;
+        this.currentShape.evented = true;
+        this.currentShape.excludeFromHistory = false;
+
+        if (this.editLayerManager && this.editLayerManager.requestHistorySave) {
+            this.currentShape.historyAddReason = `创建${this.getShapeTypeLabel()}`;
+            this.editLayerManager.requestHistorySave(`创建${this.getShapeTypeLabel()}`, { immediate: true });
+        }
+        
+        // 切换到选择工具并选中新创建的形状
+        if (window.screenshotController && window.screenshotController.toolManager) {
+            window.screenshotController.toolManager.switchToSelectionTool(this.currentShape);
+        }
+    }
+
+    getShapeTypeLabel() {
+        switch (this.currentShapeType) {
+            case 'rectangle':
+                return '矩形';
+            case 'circle':
+                return '圆形';
+            case 'arrow':
+                return '箭头形状';
+            default:
+                return '形状';
+        }
     }
 
     /**
      * 创建形状
      */
-    createShape(x, y, width, height) {
-        const options = {
-            left: x,
-            top: y,
-            fill: this.shapeOptions.fill,
-            stroke: this.shapeOptions.stroke,
-            strokeWidth: this.shapeOptions.strokeWidth,
-            strokeDashArray: this.shapeOptions.strokeDashArray,
-            selectable: true,
-            evented: true
-        };
-
-        switch (this.shapeType) {
+    createShape(x, y, width, height, options) {
+        const left = x;
+        const top = y;
+        
+        switch (this.currentShapeType) {
             case 'rectangle':
                 return new fabric.Rect({
-                    ...options,
-                    width: width,
-                    height: height
+                    left,
+                    top,
+                    width: Math.abs(width),
+                    height: Math.abs(height),
+                    ...options
                 });
                 
             case 'circle':
-                const radius = Math.min(width, height) / 2;
+                const radius = Math.min(Math.abs(width), Math.abs(height)) / 2;
                 return new fabric.Circle({
-                    ...options,
-                    radius: radius,
+                    radius,
                     left: x - radius,
-                    top: y - radius
+                    top: y - radius,
+                    ...options
                 });
                 
             case 'arrow':
-                return this.createArrow(x, y, width, height, options);
+                return this.createArrowShape(x, y, x + width, y + height, options);
                 
             default:
                 return null;
@@ -380,32 +413,36 @@ export class FabricShapeTool {
     }
 
     /**
-     * 创建箭头
+     * 创建箭头形状（几何形状，可填充）
      */
-    createArrow(startX, startY, endX, endY, options) {
-        const arrowHeadLength = 15;
-        const arrowHeadAngle = Math.PI / 6;
-        
-        const angle = Math.atan2(endY - startY, endX - startX);
+    createArrowShape(startX, startY, endX, endY, options) {
         const length = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-        
         if (length < 10) return null;
         
-        // 创建箭头路径
+        const angle = Math.atan2(endY - startY, endX - startX);
+        const arrowWidth = 8;
+        const arrowHeadLength = 20;
+        const arrowHeadWidth = 15;
+        
+        // 创建箭头路径（可填充的几何形状）
         const pathString = [
-            'M', startX, startY,
+            'M', startX, startY - arrowWidth / 2,
+            'L', endX - arrowHeadLength, endY - arrowWidth / 2,
+            'L', endX - arrowHeadLength, endY - arrowHeadWidth / 2,
             'L', endX, endY,
-            'M', endX - arrowHeadLength * Math.cos(angle - arrowHeadAngle), endY - arrowHeadLength * Math.sin(angle - arrowHeadAngle),
-            'L', endX, endY,
-            'L', endX - arrowHeadLength * Math.cos(angle + arrowHeadAngle), endY - arrowHeadLength * Math.sin(angle + arrowHeadAngle)
+            'L', endX - arrowHeadLength, endY + arrowHeadWidth / 2,
+            'L', endX - arrowHeadLength, endY + arrowWidth / 2,
+            'L', startX, startY + arrowWidth / 2,
+            'Z'
         ].join(' ');
         
-        return new fabric.Path(pathString, {
+        const path = new fabric.Path(pathString, {
             ...options,
-            fill: '',
-            stroke: this.shapeOptions.stroke,
-            strokeWidth: this.shapeOptions.strokeWidth
+            left: Math.min(startX, endX),
+            top: Math.min(startY, endY) - arrowHeadWidth / 2
         });
+        path.excludeFromHistory = true;
+        return path;
     }
 
     /**
@@ -414,101 +451,44 @@ export class FabricShapeTool {
     updateShape(shape, startPoint, currentPoint) {
         if (!shape || !startPoint) return;
         
-        const width = Math.abs(currentPoint.x - startPoint.x);
-        const height = Math.abs(currentPoint.y - startPoint.y);
+        const width = currentPoint.x - startPoint.x;
+        const height = currentPoint.y - startPoint.y;
         const left = Math.min(startPoint.x, currentPoint.x);
         const top = Math.min(startPoint.y, currentPoint.y);
 
-        switch (this.shapeType) {
+        switch (this.currentShapeType) {
             case 'rectangle':
                 shape.set({
-                    left: left,
-                    top: top,
-                    width: width,
-                    height: height
+                    left,
+                    top,
+                    width: Math.abs(width),
+                    height: Math.abs(height)
                 });
                 break;
                 
             case 'circle':
-                const radius = Math.min(width, height) / 2;
+                const radius = Math.min(Math.abs(width), Math.abs(height)) / 2;
                 shape.set({
-                    left: left,
-                    top: top,
-                    radius: radius
+                    radius,
+                    left: startPoint.x - radius,
+                    top: startPoint.y - radius
                 });
                 break;
                 
             case 'arrow':
-                // 重新创建箭头
-                const newArrow = this.createArrow(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y, this.shapeOptions);
-                if (newArrow) {
-                    this.fabricCanvas.remove(shape);
-                    this.fabricCanvas.add(newArrow);
-                    this.fabricCanvas.setActiveObject(newArrow);
-                    this.currentShape = newArrow;
+                this.fabricCanvas.remove(shape);
+                this.currentShape = this.createArrowShape(
+                    startPoint.x,
+                    startPoint.y,
+                    currentPoint.x,
+                    currentPoint.y,
+                    this.shapeOptions
+                );
+                if (this.currentShape) {
+                    this.currentShape.excludeFromHistory = true;
+                    this.fabricCanvas.add(this.currentShape);
                 }
                 break;
         }
-    }
-
-    /**
-     * 设置填充颜色
-     */
-    setFill(fill) {
-        this.setOptions({ fill });
-    }
-
-    /**
-     * 设置边框颜色
-     */
-    setStroke(stroke) {
-        this.setOptions({ stroke });
-    }
-
-    /**
-     * 设置边框宽度
-     */
-    setStrokeWidth(strokeWidth) {
-        this.setOptions({ strokeWidth });
-    }
-
-    /**
-     * 获取填充颜色
-     */
-    getFill() {
-        return this.shapeOptions.fill;
-    }
-
-    /**
-     * 获取边框颜色
-     */
-    getStroke() {
-        return this.shapeOptions.stroke;
-    }
-
-    /**
-     * 获取边框宽度
-     */
-    getStrokeWidth() {
-        return this.shapeOptions.strokeWidth;
-    }
-}
-
-// 导出具体的形状工具类
-export class FabricRectangleTool extends FabricShapeTool {
-    constructor() {
-        super('rectangle');
-    }
-}
-
-export class FabricCircleTool extends FabricShapeTool {
-    constructor() {
-        super('circle');
-    }
-}
-
-export class FabricArrowTool extends FabricShapeTool {
-    constructor() {
-        super('arrow');
     }
 }

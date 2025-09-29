@@ -5,7 +5,8 @@
 
 import { FabricBrushTool } from '../tools/fabric-brush-tool.js';
 import { FabricTextTool } from '../tools/fabric-text-tool.js';
-import { FabricRectangleTool, FabricCircleTool, FabricArrowTool } from '../tools/fabric-shape-tool.js';
+import { FabricUnifiedShapeTool } from '../tools/fabric-unified-shape-tool.js';
+import { FabricSimpleArrowTool } from '../tools/fabric-simple-arrow-tool.js';
 import { FabricSelectionTool } from '../tools/fabric-selection-tool.js';
 
 export class FabricToolManager {
@@ -27,9 +28,8 @@ export class FabricToolManager {
         this.registerTool(new FabricSelectionTool());  // 选择工具放在第一个
         this.registerTool(new FabricBrushTool());
         this.registerTool(new FabricTextTool());
-        this.registerTool(new FabricRectangleTool());
-        this.registerTool(new FabricCircleTool());
-        this.registerTool(new FabricArrowTool());
+        this.registerTool(new FabricSimpleArrowTool()); // 简化箭头工具
+        this.registerTool(new FabricUnifiedShapeTool()); // 统一的形状工具（矩形、圆形、箭头形状）
     }
 
     /**
@@ -66,8 +66,17 @@ export class FabricToolManager {
             return false;
         }
 
+        // 在激活新工具之前刷新当前工具的参数
+        if (tool && tool.syncParametersFromSubToolbar) {
+            tool.syncParametersFromSubToolbar();
+        }
+
         this.currentTool = tool;
         this.isToolActive = true;
+
+        if (this.editLayerManager && this.editLayerManager.prepareSelectionForTool) {
+            this.editLayerManager.prepareSelectionForTool(toolName);
+        }
 
         // 禁用选区和遮罩层的鼠标事件
         this.disableSelectionEvents();
@@ -90,6 +99,10 @@ export class FabricToolManager {
         if (!this.currentTool) return;
 
         // 调用工具的取消激活回调
+        if (this.editLayerManager && this.editLayerManager.prepareSelectionForTool) {
+            this.editLayerManager.prepareSelectionForTool(null);
+        }
+
         if (this.currentTool.onDeactivate) {
             this.currentTool.onDeactivate(this.editLayerManager);
         }

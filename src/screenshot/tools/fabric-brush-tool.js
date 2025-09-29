@@ -141,9 +141,17 @@ export class FabricBrushTool {
      * 工具激活时的处理
      */
     onActivate(editLayerManager) {
-        if (!editLayerManager || !editLayerManager.getFabricCanvas) return;
+        if (!editLayerManager || !editLayerManager.getFabricCanvas) {
+            console.error('画笔工具激活失败：editLayerManager 无效');
+            return;
+        }
         
         this.fabricCanvas = editLayerManager.getFabricCanvas();
+        
+        if (!this.fabricCanvas) {
+            console.error('画笔工具激活失败：fabricCanvas 为空');
+            return;
+        }
         
         // 从子工具栏获取当前参数值
         this.syncParametersFromSubToolbar();

@@ -99,8 +99,53 @@ export class SubToolbarManager {
                 }
             },
             
-            // 形状工具参数（矩形、圆形、箭头共用）
+            // 专业箭头标注工具参数
+            arrow: {
+                strokeWidth: {
+                    type: 'slider',
+                    label: '线条粗细',
+                    default: 2,
+                    min: 1,
+                    max: 8,
+                    step: 1,
+                    unit: 'px',
+                    icon: 'ti ti-line'
+                },
+                arrowHeadSize: {
+                    type: 'slider',
+                    label: '箭头大小',
+                    default: 18,
+                    min: 6,
+                    max: 30,
+                    step: 2,
+                    unit: 'px',
+                    icon: 'ti ti-arrow-right'
+                },
+                arrowStyle: {
+                    type: 'select',
+                    label: '线条样式',
+                    default: 'solid',
+                    options: [
+                        { value: 'solid', label: '实线', icon: 'ti ti-minus' },
+                        { value: 'dashed', label: '虚线', icon: 'ti ti-line-dashed' }
+                    ],
+                    icon: 'ti ti-line'
+                },
+            },
+            
+            // 形状工具参数（几何形状：矩形、圆形、箭头形状）
             shape: {
+                shapeType: {
+                    type: 'select',
+                    label: '形状类型',
+                    default: 'rectangle',
+                    options: [
+                        { value: 'rectangle', label: '矩形', icon: 'ti ti-square' },
+                        { value: 'circle', label: '圆形', icon: 'ti ti-circle' },
+                        { value: 'arrow', label: '箭头形状', icon: 'ti ti-arrow-right' }
+                    ],
+                    icon: 'ti ti-shapes'
+                },
                 strokeWidth: {
                     type: 'slider',
                     label: '边框粗细',
@@ -190,9 +235,9 @@ export class SubToolbarManager {
         // 获取工具配置（公共参数 + 工具特定参数）
         const commonConfig = this.toolConfigs.common || {};
         
-        // 形状工具（rectangle、circle、arrow）都使用 'shape' 配置
+        // 形状工具（rectangle、circle、arrow-shape）都使用 'shape' 配置
         let toolConfigKey = toolName;
-        if (['rectangle', 'circle', 'arrow'].includes(toolName)) {
+        if (['rectangle', 'circle'].includes(toolName)) {
             toolConfigKey = 'shape';
         }
         
@@ -655,9 +700,9 @@ export class SubToolbarManager {
      * 获取参数值
      */
     getParameter(toolName, paramName) {
-        // 形状工具都使用 'shape' 参数
+        // 形状工具都使用 'shape' 参数（不包括独立的箭头标注工具）
         let paramKey = toolName;
-        if (['rectangle', 'circle', 'arrow'].includes(toolName)) {
+        if (['rectangle', 'circle'].includes(toolName)) {
             paramKey = 'shape';
         }
         
@@ -683,9 +728,9 @@ export class SubToolbarManager {
             }
             this.parameters.get('common')[paramName] = value;
         } else {
-            // 工具特定参数 - 形状工具都使用 'shape' 参数存储
+            // 工具特定参数 - 形状工具都使用 'shape' 参数存储（不包括独立的箭头标注工具）
             let paramKey = toolName;
-            if (['rectangle', 'circle', 'arrow'].includes(toolName)) {
+            if (['rectangle', 'circle'].includes(toolName)) {
                 paramKey = 'shape';
             }
             
@@ -708,15 +753,18 @@ export class SubToolbarManager {
     getToolParameters(toolName) {
         const commonParams = this.parameters.get('common') || {};
         
-        // 形状工具（rectangle、circle、arrow）都使用 'shape' 参数
+        // 形状工具（rectangle、circle）都使用 'shape' 参数（不包括独立的箭头标注工具）
         let paramKey = toolName;
-        if (['rectangle', 'circle', 'arrow'].includes(toolName)) {
+        if (['rectangle', 'circle'].includes(toolName)) {
             paramKey = 'shape';
         }
         
         const toolParams = this.parameters.get(paramKey) || {};
-        
-        return { ...commonParams, ...toolParams };
+        const mergedParams = { ...commonParams, ...toolParams };
+        if (toolName === 'arrow' && mergedParams.opacity !== undefined) {
+            mergedParams.opacity = Math.max(0, Math.min(100, mergedParams.opacity));
+        }
+        return mergedParams;
     }
 
     /**

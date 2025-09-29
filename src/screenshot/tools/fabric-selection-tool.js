@@ -25,10 +25,19 @@ export class FabricSelectionTool {
      * 工具激活时的处理
      */
     onActivate(editLayerManager) {
-        if (!editLayerManager || !editLayerManager.getFabricCanvas) return;
+        if (!editLayerManager || !editLayerManager.getFabricCanvas) {
+            console.error('选择工具激活失败：editLayerManager 无效');
+            return;
+        }
         
         this.editLayerManager = editLayerManager;
         this.fabricCanvas = editLayerManager.getFabricCanvas();
+        
+        if (!this.fabricCanvas) {
+            console.error('选择工具激活失败：fabricCanvas 为空');
+            return;
+        }
+        
         this.isActive = true;
         
         // 确保不在绘画模式，启用选择功能
@@ -293,8 +302,13 @@ export class FabricSelectionTool {
             this.fabricCanvas.renderAll();
             
             // 保存状态
-            if (this.editLayerManager && this.editLayerManager.saveState) {
-                this.editLayerManager.saveState('删除对象');
+            if (this.editLayerManager && this.editLayerManager.requestHistorySave) {
+                activeObjects.forEach(obj => {
+                    if (obj) {
+                        obj.historyRemoveReason = '删除对象';
+                    }
+                });
+                this.editLayerManager.requestHistorySave('删除对象', { immediate: true });
             }
         }
     }
