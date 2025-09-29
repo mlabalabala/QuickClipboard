@@ -380,14 +380,14 @@ export class ScreenshotController {
                 this.backgroundManager.init();
             }
 
-                await this.backgroundManager.loadScreenshot({ 
-                    width: payload.width, 
-                    height: payload.height, 
-                    image_url: payload.image_url 
-                });
-                
-                // 初始化编辑层
-                this.editLayerManager.init();
+            await this.backgroundManager.loadScreenshot({ 
+                width: payload.width, 
+                height: payload.height, 
+                image_url: payload.image_url 
+            });
+            
+            // 初始化编辑层
+            this.editLayerManager.init();
         } catch (error) {
             console.error('处理截屏数据失败:', error);
         }
@@ -527,6 +527,9 @@ export class ScreenshotController {
             // 使用导出管理器复制选区到剪贴板（自动合并编辑层）
             await this.exportManager.copySelectionToClipboard(selection);
             
+            // 清空所有内容，防止下次显示时看到旧内容
+            this.clearAllContent();
+            
             // 关闭窗口
             await ScreenshotAPI.hideWindow();
         } catch (error) {
@@ -539,8 +542,10 @@ export class ScreenshotController {
      */
     async cancelScreenshot() {
         try {
-            // 清理工具状态
-            this.toolManager.deactivateTool();
+            // 清空所有内容，防止下次显示时看到旧内容
+            this.clearAllContent();
+            
+            // 清理工具栏状态
             this.toolbarManager.setActiveTool(null);
             
             await ScreenshotAPI.hideWindow();
@@ -557,6 +562,61 @@ export class ScreenshotController {
         this.hideAllToolbars();
         this.maskManager.resetToFullscreen();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
+    }
+
+    /**
+     * 彻底清空所有内容（用于窗口隐藏时，防止下次显示旧内容）
+     */
+    clearAllContent() {
+        try {
+            // 清空编辑层（包括画布内容和历史记录）
+            if (this.editLayerManager) {
+                this.editLayerManager.clear();
+                this.editLayerManager.clearHistory();
+            }
+            
+            // 清空背景管理器
+            if (this.backgroundManager?.clearBackground) {
+                this.backgroundManager.clearBackground();
+            }
+            
+            // 重置选区管理器
+            if (this.selectionManager?.reset) {
+                this.selectionManager.reset();
+            }
+            
+            // 清空遮罩管理器
+            if (this.maskManager?.clear) {
+                this.maskManager.clear();
+            }
+            
+            // 重置工具管理器（停用所有工具）
+            if (this.toolManager) {
+                this.toolManager.deactivateTool();
+                this.toolManager.clear();
+            }
+            
+            // 重置工具栏状态
+            if (this.toolbarManager) {
+                this.toolbarManager.setActiveTool(null);
+                this.toolbarManager.resetHistoryButtons();
+            }
+            
+            // 清理子工具栏参数
+            if (this.subToolbarManager) {
+                this.subToolbarManager.hide();
+                // 清空所有工具参数，防止参数残留
+                this.subToolbarManager.parameters?.clear();
+            }
+            
+            // 重置事件管理器状态
+            if (this.eventManager) {
+                this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
+            }
+            
+        } catch (error) {
+            console.error('清空内容时出错:', error);
+        }
     }
 
     /**
