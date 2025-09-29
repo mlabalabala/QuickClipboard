@@ -209,6 +209,10 @@ pub fn constrain_selection_bounds(
 /// 命令函数：显示截屏窗口
 #[tauri::command]
 pub fn show_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
+    // 检查窗口是否已显示，防止重复请求
+    if SCREENSHOT_WINDOW_VISIBLE.load(Ordering::Relaxed) {
+        return Ok(()); // 静默忽略重复请求
+    }
     ScreenshotWindowManager::show_screenshot_window(&app)
 }
 

@@ -809,6 +809,10 @@ pub fn get_saved_window_size() -> Result<Option<(u32, u32)>, String> {
 // 启动内置截屏窗口
 #[tauri::command]
 pub fn start_builtin_screenshot(app: tauri::AppHandle) -> Result<(), String> {
+    // 检查窗口是否已显示，防止重复请求
+    if crate::screenshot_window::ScreenshotWindowManager::is_screenshot_window_visible() {
+        return Ok(()); // 静默忽略重复请求
+    }
     crate::screenshot_window::ScreenshotWindowManager::show_screenshot_window(&app)
 }
 
