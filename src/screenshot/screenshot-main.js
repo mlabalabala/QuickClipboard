@@ -467,6 +467,8 @@ export class ScreenshotController {
             // OCR工具特殊处理：显示子工具栏，不激活编辑工具
             this.toolbarManager.setActiveTool('ocr');
             this.showSubToolbarForTool('ocr');
+            // OCR 工具不需要自定义光标，恢复默认
+            this.editLayerManager.restoreCursor();
             return;
         }
         
@@ -477,6 +479,14 @@ export class ScreenshotController {
             this.toolbarManager.setActiveTool(toolName);
             // 显示工具参数栏
             this.showSubToolbarForTool(toolName);
+            
+            // 如果是画笔工具，设置自定义光标
+            if (toolName === 'brush') {
+                this.editLayerManager.updateBrushCursor();
+            } else {
+                // 其他工具恢复默认光标
+                this.editLayerManager.restoreCursor();
+            }
         } else {
             // 取消激活工具
             this.toolManager.deactivateTool();
@@ -484,6 +494,8 @@ export class ScreenshotController {
             this.toolbarManager.setActiveTool(null);
             // 隐藏参数栏
             this.subToolbarManager.hide();
+            // 恢复默认光标
+            this.editLayerManager.restoreCursor();
         }
     }
     
@@ -586,13 +598,19 @@ export class ScreenshotController {
         const targetTool = this.toolManager.getTool(toolName);
         if (targetTool && targetTool.applyParameter) {
             targetTool.applyParameter(paramName, value);
-            return;
         }
         
         // 如果没找到对应工具，尝试应用到当前工具
-        const currentTool = this.toolManager.getCurrentTool();
-        if (currentTool && currentTool.applyParameter) {
-            currentTool.applyParameter(paramName, value);
+        if (!targetTool) {
+            const currentTool = this.toolManager.getCurrentTool();
+            if (currentTool && currentTool.applyParameter) {
+                currentTool.applyParameter(paramName, value);
+            }
+        }
+        
+        // 如果是画笔工具的参数变化，更新光标
+        if (toolName === 'brush' && (paramName === 'brushSize' || paramName === 'color' || paramName === 'opacity')) {
+            this.editLayerManager.updateBrushCursor();
         }
         
         // 如果是公共参数，应用到编辑层管理器
@@ -769,6 +787,9 @@ export class ScreenshotController {
                 this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
             }
             
+            // 恢复默认光标
+            this.editLayerManager.restoreCursor();
+            
         } catch (error) {
             console.error('清空内容时出错:', error);
         }
@@ -782,7 +803,9 @@ export class ScreenshotController {
         this.disableAllTools(); // 重置状态时禁用所有工具
         this.maskManager.clear();
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
+        this.editLayerManager.restoreCursor(); // 恢复默认光标
     }
+
 }
 
 // 初始化

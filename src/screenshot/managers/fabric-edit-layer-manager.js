@@ -279,6 +279,9 @@ export class FabricEditLayerManager {
             obj.selectable = false;
         });
         
+        // 更新画笔光标
+        this.updateBrushCursor();
+        
         this.fabricCanvas.renderAll();
     }
 
@@ -292,6 +295,89 @@ export class FabricEditLayerManager {
             this.fabricCanvas.freeDrawingBrush.lineJoin = 'round';
         }
         return this.fabricCanvas.freeDrawingBrush;
+    }
+
+    /**
+     * 获取画笔实例
+     */
+    getBrush() {
+        return this.fabricCanvas?.freeDrawingBrush || null;
+    }
+
+    /**
+     * 更新画笔光标
+     */
+    updateBrushCursor() {
+        const brush = this.getBrush();
+        if (!brush || !this.fabricCanvas) return;
+
+        // 获取画笔参数
+        const size = brush.width || 5;
+        const color = brush.color || '#ff0000';
+        
+        // 解析颜色和透明度
+        let r, g, b, opacity = 1;
+        
+        if (color.startsWith('#')) {
+            // HEX 颜色
+            const hex = color.slice(1);
+            r = parseInt(hex.slice(0, 2), 16);
+            g = parseInt(hex.slice(2, 4), 16);
+            b = parseInt(hex.slice(4, 6), 16);
+            if (hex.length === 8) {
+                opacity = parseInt(hex.slice(6, 8), 16) / 255;
+            }
+        } else if (color.startsWith('rgba')) {
+            // RGBA 颜色
+            const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (match) {
+                r = parseInt(match[1]);
+                g = parseInt(match[2]);
+                b = parseInt(match[3]);
+                opacity = match[4] ? parseFloat(match[4]) : 1;
+            }
+        } else if (color.startsWith('rgb')) {
+            // RGB 颜色
+            const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (match) {
+                r = parseInt(match[1]);
+                g = parseInt(match[2]);
+                b = parseInt(match[3]);
+            }
+        }
+
+        // 创建光标 SVG
+        const cursorSize = Math.max(size, 8); // 最小 8px
+        const center = cursorSize / 2;
+        const svgSize = cursorSize + 4; // 额外空间用于描边
+        const offset = svgSize / 2;
+
+        // 光标 SVG：带白色描边的彩色圆圈
+        const cursorSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}">
+                <circle cx="${offset}" cy="${offset}" r="${center}" 
+                    fill="rgba(${r}, ${g}, ${b}, ${opacity})" 
+                    stroke="white" 
+                    stroke-width="1.5"/>
+                <circle cx="${offset}" cy="${offset}" r="${center}" 
+                    fill="none" 
+                    stroke="black" 
+                    stroke-width="0.5"/>
+            </svg>
+        `.trim().replace(/\s+/g, ' ');
+
+        // 设置光标
+        const cursorUrl = `data:image/svg+xml;utf8,${encodeURIComponent(cursorSvg)}`;
+        this.fabricCanvas.freeDrawingCursor = `url('${cursorUrl}') ${offset} ${offset}, crosshair`;
+    }
+
+    /**
+     * 恢复默认光标
+     */
+    restoreCursor() {
+        if (this.fabricCanvas) {
+            this.fabricCanvas.freeDrawingCursor = 'crosshair';
+        }
     }
 
     /**
