@@ -440,6 +440,7 @@ export class SubToolbarManager {
     createSlider(toolName, paramName, config) {
         const container = document.createElement('div');
         container.className = 'param-slider-container';
+        container.dataset.tooltip = config.label;
         
         // 图标
         const icon = document.createElement('i');

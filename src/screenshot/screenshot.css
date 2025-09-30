@@ -195,9 +195,11 @@ body:not(.has-selection) .mask-top {
     position: relative;
 }
 
-/* 通用自定义 tooltip（适用于所有工具栏按钮，除了颜色选择器） */
-.toolbar button[data-tooltip]:not(.param-color)::after,
-.sub-toolbar button[data-tooltip]:not(.param-color)::after {
+/* 统一的 Tooltip 样式 - 适用于所有元素 */
+.toolbar button[data-tooltip]::after,
+.sub-toolbar button[data-tooltip]::after,
+.param-slider-container[data-tooltip]::after,
+.param-number-container[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);
@@ -217,8 +219,11 @@ body:not(.has-selection) .mask-top {
     border: 1px solid #cccccc;
 }
 
+/* Tooltip 箭头（颜色按钮除外） */
 .toolbar button[data-tooltip]:not(.param-color)::before,
-.sub-toolbar button[data-tooltip]:not(.param-color)::before {
+.sub-toolbar button[data-tooltip]:not(.param-color)::before,
+.param-slider-container[data-tooltip]::before,
+.param-number-container[data-tooltip]::before {
     content: '';
     position: absolute;
     top: calc(100% + 2px);
@@ -233,10 +238,14 @@ body:not(.has-selection) .mask-top {
     z-index: 10001;
 }
 
-.toolbar button[data-tooltip]:not(.param-color):hover::after,
+.toolbar button[data-tooltip]:hover::after,
 .toolbar button[data-tooltip]:not(.param-color):hover::before,
-.sub-toolbar button[data-tooltip]:not(.param-color):hover::after,
-.sub-toolbar button[data-tooltip]:not(.param-color):hover::before {
+.sub-toolbar button[data-tooltip]:hover::after,
+.sub-toolbar button[data-tooltip]:not(.param-color):hover::before,
+.param-slider-container[data-tooltip]:hover::after,
+.param-slider-container[data-tooltip]:hover::before,
+.param-number-container[data-tooltip]:hover::after,
+.param-number-container[data-tooltip]:hover::before {
     opacity: 1;
     visibility: visible;
 }
@@ -347,31 +356,6 @@ body:not(.has-selection) .mask-top {
     overflow: visible;
 }
 
-/* 颜色选择器特殊处理（避免与 ::before 背景色冲突） */
-.param-color[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    pointer-events: none;
-    z-index: 10001;
-}
-
-.param-color[data-tooltip]:hover::after {
-    opacity: 1;
-    visibility: visible;
-}
-
 .param-color::before {
     content: '';
     position: absolute;
@@ -411,6 +395,7 @@ body:not(.has-selection) .mask-top {
     padding: 6px 8px;
     border-radius: 6px;
     min-width: 120px;
+    position: relative;
 }
 
 .param-slider-container i {
@@ -536,6 +521,7 @@ body:not(.has-selection) .mask-top {
     background: rgba(255, 255, 255, 0.08);
     padding: 6px 10px;
     border-radius: 6px;
+    position: relative;
 }
 
 .param-number-label {
