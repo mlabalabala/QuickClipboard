@@ -61,7 +61,7 @@ export class ToolbarManager {
      * 显示工具栏
      */
     show(selectionRect) {
-        if (!selectionRect) return;
+        if (!selectionRect) return null;
         
         // 显示工具栏以获取准确尺寸（临时显示）
         this.toolbar.style.visibility = 'hidden';
@@ -103,6 +103,14 @@ export class ToolbarManager {
         this.toolbar.style.left = toolbarLeft + 'px';
         this.toolbar.style.top = toolbarTop + 'px';
         this.toolbar.style.visibility = 'visible';
+        
+        // 返回计算后的位置和尺寸，供子工具栏使用
+        return {
+            left: toolbarLeft,
+            top: toolbarTop,
+            width: toolbarWidth,
+            height: toolbarHeight
+        };
     }
 
     /**

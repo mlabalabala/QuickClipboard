@@ -175,6 +175,26 @@ export class SubToolbarManager {
                     icon: 'ti ti-palette',
                     dependsOn: 'filled' // 依赖填充开关
                 }
+            },
+            
+            // OCR工具（特殊配置：只有操作按钮，没有参数）
+            ocr: {
+                _actions: true,  // 标记这是操作按钮工具
+                recognize: {
+                    type: 'action',
+                    label: '识别文字',
+                    icon: 'ti ti-scan'
+                },
+                copy: {
+                    type: 'action',
+                    label: '复制',
+                    icon: 'ti ti-copy'
+                },
+                close: {
+                    type: 'action',
+                    label: '关闭',
+                    icon: 'ti ti-x'
+                }
             }
         };
         
@@ -242,9 +262,6 @@ export class SubToolbarManager {
     renderToolParameters(toolName) {
         if (!this.subToolbar) return;
         
-        // 获取工具配置（公共参数 + 工具特定参数）
-        const commonConfig = this.toolConfigs.common || {};
-        
         // 形状工具（rectangle、circle、arrow-shape）都使用 'shape' 配置
         let toolConfigKey = toolName;
         if (['rectangle', 'circle'].includes(toolName)) {
@@ -253,8 +270,20 @@ export class SubToolbarManager {
         
         const toolConfig = this.toolConfigs[toolConfigKey] || {};
         
-        // 合并配置
-        const allConfig = { ...commonConfig, ...toolConfig };
+        // 检查是否是纯操作按钮工具（如 OCR）
+        const isActionsOnly = toolConfig._actions === true;
+        
+        // 如果不是纯操作工具，则合并公共参数
+        let allConfig;
+        if (isActionsOnly) {
+            // 只使用工具特定参数，排除 _actions 标记
+            const { _actions, ...restConfig } = toolConfig;
+            allConfig = restConfig;
+        } else {
+            // 合并公共参数和工具特定参数
+            const commonConfig = this.toolConfigs.common || {};
+            allConfig = { ...commonConfig, ...toolConfig };
+        }
         
         // 清空现有内容
         this.subToolbar.innerHTML = '';
@@ -298,6 +327,9 @@ export class SubToolbarManager {
                 break;
             case 'toggle':
                 wrapper.appendChild(this.createToggle(toolName, paramName, config));
+                break;
+            case 'action':
+                wrapper.appendChild(this.createActionButton(toolName, paramName, config));
                 break;
         }
         
@@ -588,6 +620,24 @@ export class SubToolbarManager {
             
             // 检查依赖关系
             this.updateDependentParameters(toolName, paramName);
+        });
+        
+        return button;
+    }
+
+    /**
+     * 创建操作按钮（用于 OCR 等工具）
+     */
+    createActionButton(toolName, paramName, config) {
+        const button = document.createElement('button');
+        button.className = 'param-action-btn';
+        button.title = config.label;
+        
+        button.innerHTML = `<i class="${config.icon}"></i><span>${config.label}</span>`;
+        
+        // 点击事件：触发回调
+        button.addEventListener('click', () => {
+            this.triggerParameterChange(toolName, paramName, 'action');
         });
         
         return button;

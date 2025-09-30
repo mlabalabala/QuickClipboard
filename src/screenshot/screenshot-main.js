@@ -20,6 +20,7 @@ import { ExportManager } from './managers/export-manager.js';
 import { FabricEditLayerManager } from './managers/fabric-edit-layer-manager.js';
 import { FabricToolManager } from './managers/fabric-tool-manager.js';
 import { MagnifierManager } from './managers/magnifier-manager.js';
+import { OCRManager } from './managers/ocr-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
@@ -52,6 +53,7 @@ export class ScreenshotController {
         this.editLayerManager = new FabricEditLayerManager();
         this.toolManager = new FabricToolManager();
         this.magnifierManager = new MagnifierManager();
+        this.ocrManager = new OCRManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -146,6 +148,10 @@ export class ScreenshotController {
         if (action === 'select') {
             this.eventManager.hideInfoText();
             this.hideAllToolbars();
+            // 清理之前的 OCR 界面元素
+            if (this.ocrManager?.clear) {
+                this.ocrManager.clear();
+            }
             // 开始新的选择时，显示放大镜
             if (this.magnifierManager) {
                 this.magnifierManager.show();
@@ -197,7 +203,8 @@ export class ScreenshotController {
         if (action === 'move-end' || action === 'select-end' || action === 'resize-end') {
             const selection = this.selectionManager.getSelection();
             if (selection) {
-                this.toolbarManager.show(selection);
+                // show() 现在返回主工具栏的实际位置
+                const mainToolbarPosition = this.toolbarManager.show(selection);
                 
                 // 有选区时隐藏放大镜
                 if (this.magnifierManager) {
@@ -206,8 +213,9 @@ export class ScreenshotController {
                 
                 // 如果有激活的工具，显示对应的子工具栏
                 const currentTool = this.toolbarManager.getCurrentTool();
-                if (currentTool) {
-                    this.showSubToolbarForTool(currentTool);
+                if (currentTool && mainToolbarPosition) {
+                    // 直接使用返回的位置
+                    this.showSubToolbarForTool(currentTool, selection, mainToolbarPosition);
                 }
             } else {
                 // 没有选区时，禁用所有编辑工具
@@ -413,6 +421,11 @@ export class ScreenshotController {
      */
     async handleScreenshotData(payload) {
         try {
+            // 清理之前的 OCR 界面元素
+            if (this.ocrManager?.clear) {
+                this.ocrManager.clear();
+            }
+            
             if (!this.backgroundManager.canvas) {
                 this.backgroundManager.init();
             }
@@ -450,6 +463,13 @@ export class ScreenshotController {
      * 处理工具选择
      */
     handleToolSelect(toolName) {
+        if (toolName === 'ocr') {
+            // OCR工具特殊处理：显示子工具栏，不激活编辑工具
+            this.toolbarManager.setActiveTool('ocr');
+            this.showSubToolbarForTool('ocr');
+            return;
+        }
+        
         if (toolName) {
             // 激活工具
             this.toolManager.activateTool(toolName);
@@ -466,23 +486,76 @@ export class ScreenshotController {
             this.subToolbarManager.hide();
         }
     }
+    
+    /**
+     * 处理OCR工具
+     */
+    async handleOCRTool() {
+        const selection = this.selectionManager.getSelection();
+        if (!selection) {
+            console.warn('请先选择要识别的区域');
+            this.ocrManager.showNotification('请先选择要识别的区域', 'warning');
+            return;
+        }
+        
+        try {
+            // 显示加载提示
+            this.ocrManager.showLoadingDialog();
+            
+            // 执行OCR识别（带位置信息）
+            const result = await this.ocrManager.recognizeSelection(
+                this.backgroundManager.canvas,
+                selection
+            );
+            
+            // 隐藏加载提示
+            this.ocrManager.hideLoadingDialog();
+            
+            // 在原图上显示覆盖层
+            this.ocrManager.showOverlayResult(result);
+        } catch (error) {
+            console.error('OCR识别失败:', error);
+            this.ocrManager.hideLoadingDialog();
+            this.ocrManager.showNotification('OCR识别失败: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * 处理OCR复制操作
+     */
+    async handleOCRCopy() {
+        if (this.ocrManager && this.ocrManager.copyText) {
+            await this.ocrManager.copyText();
+        }
+    }
+
+    /**
+     * 处理OCR关闭操作
+     */
+    handleOCRClose() {
+        if (this.ocrManager && this.ocrManager.clear) {
+            this.ocrManager.clear();
+        }
+    }
 
     /**
      * 为指定工具显示子工具栏
      */
-    showSubToolbarForTool(toolName, selectionRect = null) {
+    showSubToolbarForTool(toolName, selectionRect = null, mainToolbarPosition = null) {
         // 如果没有提供选区信息，从选择管理器获取
         const selection = selectionRect || this.selectionManager.getSelection();
         
         if (selection && this.toolbarManager.isVisible()) {
-            // 获取主工具栏位置和尺寸
-            const mainToolbarRect = this.toolbarManager.toolbar.getBoundingClientRect();
-            const mainToolbarPosition = {
-                left: mainToolbarRect.left,
-                top: mainToolbarRect.top,
-                width: mainToolbarRect.width,
-                height: mainToolbarRect.height
-            };
+            // 如果没有提供主工具栏位置
+            if (!mainToolbarPosition) {
+                const mainToolbarRect = this.toolbarManager.toolbar.getBoundingClientRect();
+                mainToolbarPosition = {
+                    left: mainToolbarRect.left,
+                    top: mainToolbarRect.top,
+                    width: mainToolbarRect.width,
+                    height: mainToolbarRect.height
+                };
+            }
             
             // 显示对应工具的参数栏，传递选区信息用于智能定位
             this.subToolbarManager.showForTool(toolName, mainToolbarPosition, selection);
@@ -493,6 +566,22 @@ export class ScreenshotController {
      * 处理参数变化
      */
     handleParameterChange(toolName, paramName, value) {
+        // 处理 OCR 工具的操作按钮
+        if (toolName === 'ocr' && value === 'action') {
+            switch (paramName) {
+                case 'recognize':
+                    this.handleOCRTool();
+                    break;
+                case 'copy':
+                    this.handleOCRCopy();
+                    break;
+                case 'close':
+                    this.handleOCRClose();
+                    break;
+            }
+            return;
+        }
+        
         // 优先根据工具名称找到对应的工具来处理参数变化
         const targetTool = this.toolManager.getTool(toolName);
         if (targetTool && targetTool.applyParameter) {
@@ -608,6 +697,11 @@ export class ScreenshotController {
         this.disableAllTools(); // 清除选区时禁用所有工具
         this.maskManager.resetToFullscreen();
         
+        // 清理 OCR 界面元素
+        if (this.ocrManager?.clear) {
+            this.ocrManager.clear();
+        }
+        
         // 清除选区后重新显示放大镜
         if (this.magnifierManager && this.backgroundManager?.isScreenshotLoaded) {
             this.magnifierManager.show();
@@ -645,6 +739,11 @@ export class ScreenshotController {
             // 隐藏放大镜
             if (this.magnifierManager?.clear) {
                 this.magnifierManager.clear();
+            }
+            
+            // 清理 OCR 界面元素
+            if (this.ocrManager?.clear) {
+                this.ocrManager.clear();
             }
             
             // 禁用所有编辑工具
