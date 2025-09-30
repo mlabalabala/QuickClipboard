@@ -763,9 +763,9 @@ export class ScreenshotController {
                 this.toolbarManager.resetHistoryButtons();
             }
             
-            // 清空工具参数，防止参数残留
-            if (this.subToolbarManager?.parameters?.clear) {
-                this.subToolbarManager.parameters.clear();
+            // 重新初始化工具参数为默认值
+            if (this.subToolbarManager?.initParameters) {
+                this.subToolbarManager.initParameters();
             }
             
             // 重置事件管理器状态

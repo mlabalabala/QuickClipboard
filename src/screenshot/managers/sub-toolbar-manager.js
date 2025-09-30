@@ -1015,35 +1015,6 @@ export class SubToolbarManager {
     }
 
     /**
-     * 获取单个参数值
-     */
-    getParameter(toolName, paramName) {
-        // 先从工具特定参数中查找
-        let paramKey = toolName;
-        if (['rectangle', 'circle'].includes(toolName)) {
-            paramKey = 'shape';
-        }
-        
-        const toolParams = this.parameters.get(paramKey) || {};
-        if (toolParams[paramName] !== undefined) {
-            return toolParams[paramName];
-        }
-        
-        // 再从公共参数中查找
-        const commonParams = this.parameters.get('common') || {};
-        if (commonParams[paramName] !== undefined) {
-            return commonParams[paramName];
-        }
-        
-        // 返回配置中的默认值
-        const toolConfig = this.toolConfigs[paramKey] || {};
-        const commonConfig = this.toolConfigs.common || {};
-        const paramConfig = toolConfig[paramName] || commonConfig[paramName];
-        
-        return paramConfig?.default;
-    }
-
-    /**
      * 获取工具的所有参数
      */
     getToolParameters(toolName) {
