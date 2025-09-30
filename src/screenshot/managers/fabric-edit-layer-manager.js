@@ -714,19 +714,23 @@ export class FabricEditLayerManager {
         if (!this.fabricCanvas || this.isLoadingFromHistory) return;
 
         try {
+            // 删除未来的历史记录
             if (this.historyStep < this.historyStack.length - 1) {
                 this.historyStack.splice(this.historyStep + 1);
             }
 
+            // 检查状态是否改变
             const state = JSON.stringify(this.fabricCanvas.toJSON());
             const lastEntry = this.historyStack[this.historyStack.length - 1];
             if (lastEntry && lastEntry.state === state) {
                 return;
             }
 
+            // 保存新状态
             this.historyStack.push({ state, description, timestamp: Date.now() });
             this.historyStep = this.historyStack.length - 1;
 
+            // 限制历史记录数量
             if (this.historyStack.length > this.maxHistorySize) {
                 this.historyStack.shift();
                 this.historyStep--;
@@ -789,9 +793,22 @@ export class FabricEditLayerManager {
             let callbackExecuted = false;
             const stateData = typeof stateJson === 'string' ? JSON.parse(stateJson) : stateJson;
 
+            // 检查是否为空状态（初始状态）
+            const isEmpty = !stateData.objects || stateData.objects.length === 0;
+            
+            // 安全兜底：防止 isLoadingFromHistory 卡住
+            const safetyTimer = setTimeout(() => {
+                if (this.isLoadingFromHistory && !callbackExecuted) {
+                    this.isLoadingFromHistory = false;
+                    this.triggerHistoryChange();
+                    resolve();
+                }
+            }, 300);
+
             const handleLoad = () => {
                 if (callbackExecuted) return;
                 callbackExecuted = true;
+                clearTimeout(safetyTimer);
                 this.updateCanvasSize();
                 this.fabricCanvas.renderAll();
                 this.fabricCanvas.requestRenderAll();
@@ -803,6 +820,7 @@ export class FabricEditLayerManager {
             };
 
             const handleError = (error) => {
+                clearTimeout(safetyTimer);
                 const message = String(error);
                 if (message.includes('No class registered for arrow') || message.includes('fromObject')) {
                     registerArrowClass();
@@ -819,7 +837,19 @@ export class FabricEditLayerManager {
             };
 
             try {
-                this.fabricCanvas.loadFromJSON(stateData, handleLoad, handleError);
+                // 对于空状态，直接完成
+                if (isEmpty) {
+                    clearTimeout(safetyTimer);
+                    this.updateCanvasSize();
+                    this.fabricCanvas.renderAll();
+                    setTimeout(() => {
+                        this.isLoadingFromHistory = false;
+                        this.triggerHistoryChange();
+                        resolve();
+                    }, 10);
+                } else {
+                    this.fabricCanvas.loadFromJSON(stateData, handleLoad, handleError);
+                }
             } catch (error) {
                 handleError(error);
             }
