@@ -93,7 +93,7 @@ export class ToolbarManager {
             );
             
             // 如果上方位置更合适，使用上方
-            if (upperBounds.y >= upperToolbarTop - 4) {
+            if (upperBounds.y >= upperToolbarTop - 4) {a
                 toolbarLeft = upperBounds.x;
                 toolbarTop = upperBounds.y;
             }

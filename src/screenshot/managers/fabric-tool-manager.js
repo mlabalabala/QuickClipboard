@@ -9,6 +9,7 @@ import { FabricUnifiedShapeTool } from '../tools/fabric-unified-shape-tool.js';
 import { FabricSimpleArrowTool } from '../tools/fabric-simple-arrow-tool.js';
 import { FabricSelectionTool } from '../tools/fabric-selection-tool.js';
 import { FabricNumberTool } from '../tools/fabric-number-tool.js';
+import { FabricWatermarkTool } from '../tools/fabric-watermark-tool.js';
 
 export class FabricToolManager {
     constructor() {
@@ -30,6 +31,7 @@ export class FabricToolManager {
         this.registerTool(new FabricBrushTool());
         this.registerTool(new FabricTextTool());
         this.registerTool(new FabricNumberTool());      // 序号标注工具
+        this.registerTool(new FabricWatermarkTool());   // 水印工具
         this.registerTool(new FabricSimpleArrowTool()); // 简化箭头工具
         this.registerTool(new FabricUnifiedShapeTool()); // 统一的形状工具（矩形、圆形、箭头形状）
     }

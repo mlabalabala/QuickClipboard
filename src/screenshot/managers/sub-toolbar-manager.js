@@ -244,6 +244,52 @@ export class SubToolbarManager {
                 }
             },
             
+            // 水印工具参数
+            watermark: {
+                enabled: {
+                    type: 'toggle',
+                    label: '启用水印',
+                    default: false,
+                    icon: 'ti ti-wall'
+                },
+                text: {
+                    type: 'text',
+                    label: '水印文字',
+                    default: '水印文字',
+                    icon: 'ti ti-text'
+                },
+                fontSize: {
+                    type: 'slider',
+                    label: '字体大小',
+                    default: 24,
+                    min: 12,
+                    max: 72,
+                    step: 2,
+                    unit: 'px',
+                    icon: 'ti ti-text-size'
+                },
+                rotation: {
+                    type: 'slider',
+                    label: '旋转角度',
+                    default: -45,
+                    min: -90,
+                    max: 90,
+                    step: 5,
+                    unit: '°',
+                    icon: 'ti ti-rotate'
+                },
+                spacing: {
+                    type: 'slider',
+                    label: '间距',
+                    default: 100,
+                    min: 50,
+                    max: 300,
+                    step: 10,
+                    unit: 'px',
+                    icon: 'ti ti-spacing-horizontal'
+                }
+            },
+            
             // OCR工具（特殊配置：只有操作按钮，没有参数）
             ocr: {
                 _actions: true,  // 标记这是操作按钮工具
@@ -304,6 +350,12 @@ export class SubToolbarManager {
      */
     showForTool(toolName, mainToolbarPosition, selectionRect = null) {
         if (!toolName) {
+            this.hide();
+            return;
+        }
+        
+        // 选择工具不显示子工具栏
+        if (toolName === 'selection') {
             this.hide();
             return;
         }
@@ -403,6 +455,9 @@ export class SubToolbarManager {
                 break;
             case 'number':
                 wrapper.appendChild(this.createNumberInput(toolName, paramName, config));
+                break;
+            case 'text':
+                wrapper.appendChild(this.createTextInput(toolName, paramName, config));
                 break;
             case 'action':
                 wrapper.appendChild(this.createActionButton(toolName, paramName, config));
@@ -741,6 +796,36 @@ export class SubToolbarManager {
         });
         
         container.appendChild(label);
+        container.appendChild(input);
+        
+        return container;
+    }
+
+    /**
+     * 创建文本输入框
+     */
+    createTextInput(toolName, paramName, config) {
+        const container = document.createElement('div');
+        container.className = 'param-text-container';
+        container.dataset.tooltip = config.label;
+        
+        const icon = document.createElement('i');
+        icon.className = config.icon;
+        container.appendChild(icon);
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'param-text-input';
+        input.value = this.getParameter(toolName, paramName);
+        input.placeholder = config.label;
+        
+        // 输入事件
+        input.addEventListener('input', () => {
+            const value = input.value;
+            this.setParameter(toolName, paramName, value);
+            this.triggerParameterChange(toolName, paramName, value);
+        });
+        
         container.appendChild(input);
         
         return container;

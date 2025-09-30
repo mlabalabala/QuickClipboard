@@ -199,7 +199,8 @@ body:not(.has-selection) .mask-top {
 .toolbar button[data-tooltip]::after,
 .sub-toolbar button[data-tooltip]::after,
 .param-slider-container[data-tooltip]::after,
-.param-number-container[data-tooltip]::after {
+.param-number-container[data-tooltip]::after,
+.param-text-container[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);
@@ -223,7 +224,8 @@ body:not(.has-selection) .mask-top {
 .toolbar button[data-tooltip]:not(.param-color)::before,
 .sub-toolbar button[data-tooltip]:not(.param-color)::before,
 .param-slider-container[data-tooltip]::before,
-.param-number-container[data-tooltip]::before {
+.param-number-container[data-tooltip]::before,
+.param-text-container[data-tooltip]::before {
     content: '';
     position: absolute;
     top: calc(100% + 2px);
@@ -245,7 +247,9 @@ body:not(.has-selection) .mask-top {
 .param-slider-container[data-tooltip]:hover::after,
 .param-slider-container[data-tooltip]:hover::before,
 .param-number-container[data-tooltip]:hover::after,
-.param-number-container[data-tooltip]:hover::before {
+.param-number-container[data-tooltip]:hover::before,
+.param-text-container[data-tooltip]:hover::after,
+.param-text-container[data-tooltip]:hover::before {
     opacity: 1;
     visibility: visible;
 }
@@ -530,6 +534,50 @@ body:not(.has-selection) .mask-top {
     color: rgba(255, 255, 255, 0.7);
     font-size: 12px;
     white-space: nowrap;
+}
+
+/* 文本输入框容器 */
+.param-text-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 10px;
+    border-radius: 6px;
+    position: relative;
+}
+
+.param-text-container i {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.param-text-input {
+    min-width: 100px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    padding: 0 8px;
+    outline: none;
+    transition: all 0.15s ease;
+}
+
+.param-text-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.param-text-input:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.param-text-input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(67, 149, 255, 0.6);
+    box-shadow: 0 0 0 2px rgba(67, 149, 255, 0.2);
 }
 
 .param-number-input {
