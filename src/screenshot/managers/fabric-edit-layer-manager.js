@@ -70,6 +70,9 @@ export class FabricEditLayerManager {
             defaultCursor: 'default'
         });
 
+        // 自定义选择框和控制节点样式
+        this.customizeSelectionStyle();
+
         this.updateCanvasSize();
         this.initFabricEvents();
         this.setupHistoryTracking();
@@ -77,9 +80,84 @@ export class FabricEditLayerManager {
     }
 
     /**
+     * 自定义选择框和控制节点样式
+     */
+    customizeSelectionStyle() {
+        // 设置全局对象控制样式（Fabric.js v6 兼容）
+        const controlStyle = {
+            // 边框样式
+            borderColor: '#4395ff',           // 边框颜色（蓝色）
+            borderScaleFactor: 2,             // 边框粗细
+            borderOpacityWhenMoving: 0.8,     // 移动时边框透明度
+            
+            // 控制节点样式
+            cornerColor: '#4395ff',           // 控制点填充色（蓝色）
+            cornerStrokeColor: '#ffffff',     // 控制点描边色（白色）
+            cornerStyle: 'circle',            // 控制点形状：circle（圆形）或 rect（方形）
+            cornerSize: 10,                   // 控制点大小
+            transparentCorners: false,        // 控制点不透明
+            
+            // 其他样式
+            padding: 0,                       // 控制边距
+            borderDashArray: null             // 边框无虚线
+        };
+        
+        // 应用到全局对象原型
+        Object.assign(fabric.Object.prototype, controlStyle);
+        
+        // 设置画布的拖拽框选样式
+        this.fabricCanvas.selectionColor = 'rgba(67, 149, 255, 0.1)';      // 框选填充色
+        this.fabricCanvas.selectionBorderColor = '#4395ff';                 // 框选边框色
+        this.fabricCanvas.selectionLineWidth = 2;                           // 框选边框宽度
+        
+        // 自定义控制器渲染（确保样式生效）
+        this.fabricCanvas.renderAll();
+    }
+
+    /**
+     * 应用对象样式
+     */
+    applyObjectStyle(obj) {
+        if (!obj) return;
+        
+        obj.set({
+            // 边框样式
+            borderColor: '#4395ff',
+            borderScaleFactor: 2,
+            borderOpacityWhenMoving: 0.8,
+            
+            // 控制节点样式
+            cornerColor: '#4395ff',
+            cornerStrokeColor: '#ffffff',
+            cornerStyle: 'circle',
+            cornerSize: 10,
+            transparentCorners: false,
+            
+            // 其他样式
+            padding: 0,
+            borderDashArray: null
+        });
+        
+        // 强制更新控制器坐标
+        obj.setCoords();
+        
+        // 立即渲染
+        if (this.fabricCanvas) {
+            this.fabricCanvas.requestRenderAll();
+        }
+    }
+
+    /**
      * 初始化Fabric事件
      */
     initFabricEvents() {
+        // 对象添加时应用自定义样式
+        this.fabricCanvas.on('object:added', (e) => {
+            if (e.target) {
+                this.applyObjectStyle(e.target);
+            }
+        });
+        
         const notifyChange = (e) => this.isLoadingFromHistory ? null : this.onObjectModified?.(e);
         this.fabricCanvas.on('object:modified', notifyChange);
         this.fabricCanvas.on('object:moving', notifyChange);
@@ -163,7 +241,7 @@ export class FabricEditLayerManager {
             case 'arrow':
                 return 'arrow';
             case 'activeSelection':
-                // 多选时，返回第一个对象的类型
+                // 多个对象被选中时，返回第一个对象的类型
                 if (obj._objects && obj._objects.length > 0) {
                     return this.getObjectType(obj._objects[0]);
                 }
@@ -428,19 +506,37 @@ export class FabricEditLayerManager {
 
     prepareSelectionForTool(toolName) {
         if (!this.fabricCanvas) return;
+        
+        // 自定义十字光标 SVG
+        const crosshairCursor = 'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21"><line x1="10.5" y1="0" x2="10.5" y2="21" stroke="white" stroke-width="3"/><line x1="0" y1="10.5" x2="21" y2="10.5" stroke="white" stroke-width="3"/><line x1="10.5" y1="0" x2="10.5" y2="21" stroke="black" stroke-width="1"/><line x1="0" y1="10.5" x2="21" y2="10.5" stroke="black" stroke-width="1"/></svg>\') 10 10, crosshair';
+        
         if (toolName === 'selection') {
+            // 选择工具：启用选择
             this.fabricCanvas.selection = true;
             this.fabricCanvas.forEachObject((obj) => {
                 obj.selectable = true;
                 obj.evented = true;
             });
-        } else {
+            this.fabricCanvas.defaultCursor = crosshairCursor;
+        } else if (toolName === 'text') {
+            // 文本工具：禁用选择，使用文本光标
             this.fabricCanvas.discardActiveObject();
             this.fabricCanvas.selection = false;
             this.fabricCanvas.forEachObject((obj) => {
                 obj.selectable = false;
                 obj.evented = false;
             });
+            this.fabricCanvas.defaultCursor = 'text';
+            this.fabricCanvas.renderAll();
+        } else {
+            // 其他工具或取消工具：禁用选择，使用十字光标
+            this.fabricCanvas.discardActiveObject();
+            this.fabricCanvas.selection = false;
+            this.fabricCanvas.forEachObject((obj) => {
+                obj.selectable = false;
+                obj.evented = false;
+            });
+            this.fabricCanvas.defaultCursor = crosshairCursor;
             this.fabricCanvas.renderAll();
         }
     }
