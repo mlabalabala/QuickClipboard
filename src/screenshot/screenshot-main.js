@@ -19,6 +19,7 @@ import { BackgroundManager } from './managers/background-manager.js';
 import { ExportManager } from './managers/export-manager.js';
 import { FabricEditLayerManager } from './managers/fabric-edit-layer-manager.js';
 import { FabricToolManager } from './managers/fabric-tool-manager.js';
+import { MagnifierManager } from './managers/magnifier-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
@@ -50,6 +51,7 @@ export class ScreenshotController {
         this.exportManager = new ExportManager();
         this.editLayerManager = new FabricEditLayerManager();
         this.toolManager = new FabricToolManager();
+        this.magnifierManager = new MagnifierManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -144,6 +146,10 @@ export class ScreenshotController {
         if (action === 'select') {
             this.eventManager.hideInfoText();
             this.hideAllToolbars();
+            // 开始新的选择时，显示放大镜
+            if (this.magnifierManager) {
+                this.magnifierManager.show();
+            }
         } else if (action === 'move') {
             this.hideAllToolbars();
         } else if (action === 'resize') {
@@ -155,6 +161,11 @@ export class ScreenshotController {
      * 处理选择更新
      */
     handleSelectionUpdate(x, y) {
+        // 始终更新放大镜位置（不管是否可见，因为它可能随时变为可见）
+        if (this.magnifierManager) {
+            this.magnifierManager.update(x, y);
+        }
+        
         if (this.selectionManager.isSelectingState) {
             this.selectionManager.updateSelection(x, y);
             const selection = this.selectionManager.getSelection();
@@ -187,6 +198,11 @@ export class ScreenshotController {
             const selection = this.selectionManager.getSelection();
             if (selection) {
                 this.toolbarManager.show(selection);
+                
+                // 有选区时隐藏放大镜
+                if (this.magnifierManager) {
+                    this.magnifierManager.hide();
+                }
                 
                 // 如果有激活的工具，显示对应的子工具栏
                 const currentTool = this.toolbarManager.getCurrentTool();
@@ -410,6 +426,12 @@ export class ScreenshotController {
             // 初始化编辑层
             this.editLayerManager.init();
             
+            // 设置放大镜的背景画布并显示
+            if (this.backgroundManager.canvas) {
+                this.magnifierManager.setBackgroundCanvas(this.backgroundManager.canvas);
+                this.magnifierManager.show();
+            }
+            
             // 确保初始状态下工具是禁用的（因为没有选区）
             this.disableAllTools();
         } catch (error) {
@@ -585,6 +607,12 @@ export class ScreenshotController {
         this.selectionManager.clearSelection();
         this.disableAllTools(); // 清除选区时禁用所有工具
         this.maskManager.resetToFullscreen();
+        
+        // 清除选区后重新显示放大镜
+        if (this.magnifierManager && this.backgroundManager?.isScreenshotLoaded) {
+            this.magnifierManager.show();
+        }
+        
         this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }
 
@@ -612,6 +640,11 @@ export class ScreenshotController {
             // 清空遮罩管理器
             if (this.maskManager?.clear) {
                 this.maskManager.clear();
+            }
+            
+            // 隐藏放大镜
+            if (this.magnifierManager?.clear) {
+                this.magnifierManager.clear();
             }
             
             // 禁用所有编辑工具

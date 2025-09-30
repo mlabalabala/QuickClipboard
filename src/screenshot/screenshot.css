@@ -737,3 +737,85 @@ body:not(.has-selection) .mask-top {
     z-index: 3;
     pointer-events: none;
 }
+
+/* 放大镜样式 */
+.magnifier-container {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 4px;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.magnifier-grid {
+    display: block;
+    border-radius: 2px;
+    margin-bottom: 4px;
+    image-rendering: pixelated;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.magnifier-info {
+    color: white;
+    font-size: 10px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    /* 移除固定宽度，让它自适应网格宽度 */
+}
+
+.magnifier-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 0;
+    gap: 4px;
+}
+
+.magnifier-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    font-size: 9px;
+}
+
+.magnifier-coord {
+    color: rgba(67, 149, 255, 0.9);
+    font-weight: 600;
+    text-align: right;
+    font-size: 10px;
+}
+
+.magnifier-color {
+    /* color 由 JavaScript 动态设置，根据背景亮度自适应 */
+    font-weight: 600;
+    text-align: right;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    transition: all 0.2s ease;
+    font-size: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.magnifier-shortcuts {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+}
+
+.magnifier-shortcut {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 8px;
+    display: block;
+    width: 100%;
+    line-height: 1.2;
+}
