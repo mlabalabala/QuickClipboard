@@ -480,6 +480,20 @@ export class ScreenshotController {
             // 显示工具参数栏
             this.showSubToolbarForTool(toolName);
             
+            // 应用默认公共参数（颜色和透明度）
+            const params = this.subToolbarManager.getToolParameters(toolName);
+            if (params.color) {
+                this.editLayerManager.applyParameter('color', params.color);
+            }
+            if (params.opacity !== undefined) {
+                this.editLayerManager.applyParameter('opacity', params.opacity);
+            }
+            
+            // 应用工具特定参数
+            if (toolName === 'brush' && params.brushSize) {
+                this.editLayerManager.applyParameter('brushSize', params.brushSize);
+            }
+            
             // 如果是画笔工具，设置自定义光标
             if (toolName === 'brush') {
                 this.editLayerManager.updateBrushCursor();

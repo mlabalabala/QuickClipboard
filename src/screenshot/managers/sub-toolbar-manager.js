@@ -208,7 +208,13 @@ export class SubToolbarManager {
         for (const [toolName, config] of Object.entries(this.toolConfigs)) {
             this.parameters.set(toolName, {});
             for (const [paramName, paramConfig] of Object.entries(config)) {
-                this.parameters.get(toolName)[paramName] = paramConfig.default;
+                // 跳过特殊标记（如 _actions）
+                if (paramName.startsWith('_')) continue;
+                
+                // 只初始化有 default 属性的参数
+                if (paramConfig && paramConfig.default !== undefined) {
+                    this.parameters.get(toolName)[paramName] = paramConfig.default;
+                }
             }
         }
     }
@@ -1002,6 +1008,35 @@ export class SubToolbarManager {
         if (triggerCallback) {
             this.triggerParameterChange(toolName, paramName, value);
         }
+    }
+
+    /**
+     * 获取单个参数值
+     */
+    getParameter(toolName, paramName) {
+        // 先从工具特定参数中查找
+        let paramKey = toolName;
+        if (['rectangle', 'circle'].includes(toolName)) {
+            paramKey = 'shape';
+        }
+        
+        const toolParams = this.parameters.get(paramKey) || {};
+        if (toolParams[paramName] !== undefined) {
+            return toolParams[paramName];
+        }
+        
+        // 再从公共参数中查找
+        const commonParams = this.parameters.get('common') || {};
+        if (commonParams[paramName] !== undefined) {
+            return commonParams[paramName];
+        }
+        
+        // 返回配置中的默认值
+        const toolConfig = this.toolConfigs[paramKey] || {};
+        const commonConfig = this.toolConfigs.common || {};
+        const paramConfig = toolConfig[paramName] || commonConfig[paramName];
+        
+        return paramConfig?.default;
     }
 
     /**
