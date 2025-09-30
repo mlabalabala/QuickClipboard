@@ -38,6 +38,21 @@ export class SubToolbarManager {
             
             // 画笔工具参数
             brush: {
+                brushType: {
+                    type: 'shape-panel',
+                    label: '笔刷类型',
+                    default: 'Pencil',
+                    options: [
+                        { value: 'Pencil', label: '铅笔', icon: 'ti ti-pencil' },
+                        { value: 'Circle', label: '圆形', icon: 'ti ti-circle-dot' },
+                        { value: 'Spray', label: '喷雾', icon: 'ti ti-spray' },
+                        { value: 'hline', label: '横线', icon: 'ti ti-baseline-density-medium' },
+                        { value: 'vline', label: '竖线', icon: 'ti ti-tallymark-3' },
+                        { value: 'square', label: '方形', icon: 'ti ti-square' },
+                        { value: 'diamond', label: '菱形', icon: 'ti ti-diamonds' }
+                    ],
+                    icon: 'ti ti-brush'
+                },
                 brushSize: {
                     type: 'slider',
                     label: '笔刷大小',
@@ -47,17 +62,6 @@ export class SubToolbarManager {
                     step: 1,
                     unit: 'px',
                     icon: 'ti ti-circle'
-                },
-                brushType: {
-                    type: 'select',
-                    label: '笔刷类型',
-                    default: 'pencil',
-                    options: [
-                        { value: 'pencil', label: '铅笔', icon: 'ti ti-pencil' },
-                        { value: 'brush', label: '画笔', icon: 'ti ti-brush' },
-                        { value: 'marker', label: '马克笔', icon: 'ti ti-highlight' }
-                    ],
-                    icon: 'ti ti-brush'
                 }
             },
             
