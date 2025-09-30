@@ -348,7 +348,7 @@ export class SubToolbarManager {
     createColorPicker(toolName, paramName, config) {
         const button = document.createElement('button');
         button.className = 'param-color';
-        button.title = config.label;
+        button.dataset.tooltip = config.label;
         
         const currentValue = this.getParameter(toolName, paramName);
         button.style.backgroundColor = currentValue;
@@ -409,7 +409,7 @@ export class SubToolbarManager {
     createSelect(toolName, paramName, config) {
         const button = document.createElement('button');
         button.className = 'param-select';
-        button.title = config.label;
+        button.dataset.tooltip = config.label;
         
         // 获取当前值并更新显示
         const updateButtonDisplay = () => {
@@ -453,7 +453,7 @@ export class SubToolbarManager {
         // 当前选中的形状按钮
         const currentButton = document.createElement('button');
         currentButton.className = 'param-shape-current';
-        currentButton.title = config.label;
+        currentButton.dataset.tooltip = config.label;
         
         // 更新当前按钮显示
         const updateCurrentButton = () => {
@@ -462,10 +462,10 @@ export class SubToolbarManager {
             
             if (currentOption && currentOption.icon) {
                 currentButton.innerHTML = `<i class="${currentOption.icon}"></i>`;
-                currentButton.title = `当前形状: ${currentOption.label}`;
+                currentButton.dataset.tooltip = `当前形状: ${currentOption.label}`;
             } else {
                 currentButton.innerHTML = `<i class="${config.icon}"></i>`;
-                currentButton.title = config.label;
+                currentButton.dataset.tooltip = config.label;
             }
         };
         
@@ -486,7 +486,7 @@ export class SubToolbarManager {
             const shapeItem = document.createElement('button');
             shapeItem.className = 'shape-item';
             shapeItem.innerHTML = `<i class="${option.icon}"></i>`;
-            shapeItem.title = option.label;
+            shapeItem.dataset.tooltip = option.label;
             shapeItem.dataset.value = option.value;
             
             // 标记当前选中的形状
@@ -604,7 +604,7 @@ export class SubToolbarManager {
     createToggle(toolName, paramName, config) {
         const button = document.createElement('button');
         button.className = 'param-toggle';
-        button.title = config.label;
+        button.dataset.tooltip = config.label;
         
         const currentValue = this.getParameter(toolName, paramName);
         if (currentValue) {
@@ -637,7 +637,7 @@ export class SubToolbarManager {
     createActionButton(toolName, paramName, config) {
         const button = document.createElement('button');
         button.className = 'param-action-btn';
-        button.title = config.label;
+        button.dataset.tooltip = config.label;
         
         button.innerHTML = `<i class="${config.icon}"></i><span>${config.label}</span>`;
         
@@ -775,7 +775,7 @@ export class SubToolbarManager {
             const colorItem = document.createElement('div');
             colorItem.className = 'color-preset-item';
             colorItem.style.backgroundColor = color;
-            colorItem.title = color;
+            colorItem.dataset.tooltip = color;
             
             colorItem.addEventListener('click', () => {
                 this.selectColor(toolName, paramName, button, color);

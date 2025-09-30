@@ -467,8 +467,6 @@ export class ScreenshotController {
             // OCR工具特殊处理：显示子工具栏，不激活编辑工具
             this.toolbarManager.setActiveTool('ocr');
             this.showSubToolbarForTool('ocr');
-            // OCR 工具不需要自定义光标，恢复默认
-            this.editLayerManager.restoreCursor();
             return;
         }
         
@@ -480,26 +478,9 @@ export class ScreenshotController {
             // 显示工具参数栏
             this.showSubToolbarForTool(toolName);
             
-            // 应用默认公共参数（颜色和透明度）
-            const params = this.subToolbarManager.getToolParameters(toolName);
-            if (params.color) {
-                this.editLayerManager.applyParameter('color', params.color);
-            }
-            if (params.opacity !== undefined) {
-                this.editLayerManager.applyParameter('opacity', params.opacity);
-            }
-            
-            // 应用工具特定参数
-            if (toolName === 'brush' && params.brushSize) {
-                this.editLayerManager.applyParameter('brushSize', params.brushSize);
-            }
-            
-            // 如果是画笔工具，设置自定义光标
+            // 画笔工具设置自定义光标
             if (toolName === 'brush') {
                 this.editLayerManager.updateBrushCursor();
-            } else {
-                // 其他工具恢复默认光标
-                this.editLayerManager.restoreCursor();
             }
         } else {
             // 取消激活工具
@@ -508,8 +489,6 @@ export class ScreenshotController {
             this.toolbarManager.setActiveTool(null);
             // 隐藏参数栏
             this.subToolbarManager.hide();
-            // 恢复默认光标
-            this.editLayerManager.restoreCursor();
         }
     }
     
@@ -625,13 +604,6 @@ export class ScreenshotController {
         // 如果是画笔工具的参数变化，更新光标
         if (toolName === 'brush' && (paramName === 'brushSize' || paramName === 'color' || paramName === 'opacity')) {
             this.editLayerManager.updateBrushCursor();
-        }
-        
-        // 如果是公共参数，应用到编辑层管理器
-        if (paramName === 'color' || paramName === 'opacity') {
-            if (this.editLayerManager.applyParameter) {
-                this.editLayerManager.applyParameter(paramName, value);
-            }
         }
     }
 
