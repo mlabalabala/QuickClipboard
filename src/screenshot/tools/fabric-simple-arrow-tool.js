@@ -301,7 +301,7 @@ export class Arrow extends fabric.Path {
         });
     }
     
-    // 简化方案：直接返回世界坐标，无需变换
+    // 直接返回世界坐标，无需变换
     startPointPositionHandler() {
         return new fabric.Point(this.worldStartPoint.x, this.worldStartPoint.y);
     }

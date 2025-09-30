@@ -388,7 +388,13 @@ body:not(.has-selection) .mask-top {
     position: relative;
     z-index: 2;
     color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    /* 阴影效果，确保在任何背景下都清晰可见 */
+    text-shadow: 
+        0 0 3px rgba(0, 0, 0, 0.9),
+        0 1px 2px rgba(0, 0, 0, 0.8),
+        1px 1px 2px rgba(0, 0, 0, 0.7),
+        -1px -1px 2px rgba(0, 0, 0, 0.7);
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
 }
 
 .param-color:hover {
@@ -520,6 +526,59 @@ body:not(.has-selection) .mask-top {
 
 .param-toggle.active:hover {
     background: rgba(67, 149, 255, 0.9);
+}
+
+/* 数字输入框容器 */
+.param-number-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.param-number-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.param-number-input {
+    width: 50px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    text-align: center;
+    padding: 0 4px;
+    outline: none;
+    transition: all 0.15s ease;
+}
+
+.param-number-input:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.param-number-input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(67, 149, 255, 0.6);
+    box-shadow: 0 0 0 2px rgba(67, 149, 255, 0.2);
+}
+
+/* 隐藏数字输入框的上下箭头 */
+.param-number-input::-webkit-inner-spin-button,
+.param-number-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.param-number-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 /* 操作按钮（用于 OCR 等工具） */

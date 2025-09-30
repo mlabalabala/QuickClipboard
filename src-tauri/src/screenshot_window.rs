@@ -47,7 +47,7 @@ impl ScreenshotWindowManager {
         // 更新窗口可见状态
         SCREENSHOT_WINDOW_VISIBLE.store(true, Ordering::Relaxed);
 
-        // 本地HTTP服务器 + 浏览器原生加载（最快方案）
+        // 本地HTTP服务器 + 浏览器原生加载
         let window_for_data = screenshot_window.clone();
         
         std::thread::spawn(move || {
@@ -247,13 +247,13 @@ pub struct ScreenshotCapture {
 }
 
 impl ScreenshotWindowManager {
-    /// GDI截屏方案
+    /// GDI截屏
     fn capture_screenshot_sync() -> Result<ScreenshotCapture, String> {
         let (x, y, w, h) = crate::screen_utils::ScreenUtils::get_virtual_screen_size()?;
         unsafe { Self::capture_with_gdi(x, y, w, h) }
     }
 
-    /// GDI截屏方案
+    /// GDI截屏
     unsafe fn capture_with_gdi(x: i32, y: i32, width: i32, height: i32) -> Result<ScreenshotCapture, String> {
         let desktop_wnd = GetDesktopWindow();
         let desktop_dc = GetDC(desktop_wnd);

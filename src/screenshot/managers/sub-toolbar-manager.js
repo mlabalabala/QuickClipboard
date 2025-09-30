@@ -36,6 +36,69 @@ export class SubToolbarManager {
                 }
             },
             
+            // 序号标注工具参数
+            number: {
+                numberType: {
+                    type: 'select',
+                    label: '序号类型',
+                    default: 'numeric',
+                    options: [
+                        { value: 'numeric', label: '数字 (1,2,3)', icon: 'ti ti-123' },
+                        { value: 'letter', label: '字母 (A,B,C)', icon: 'ti ti-abc' },
+                        { value: 'roman', label: '罗马 (I,II,III)', icon: 'ti ti-letter-case' }
+                    ],
+                    icon: 'ti ti-123'
+                },
+                shapeType: {
+                    type: 'shape-panel',
+                    label: '形状',
+                    default: 'circle',
+                    options: [
+                        { value: 'circle', label: '圆形', icon: 'ti ti-circle' },
+                        { value: 'square', label: '方形', icon: 'ti ti-square' },
+                        { value: 'diamond', label: '菱形', icon: 'ti ti-diamond' },
+                        { value: 'hexagon', label: '六边形', icon: 'ti ti-hexagon' }
+                    ],
+                    icon: 'ti ti-circle'
+                },
+                filled: {
+                    type: 'toggle',
+                    label: '填充',
+                    default: true,
+                    icon: 'ti ti-paint'
+                },
+                textColor: {
+                    type: 'color',
+                    label: '文字颜色',
+                    default: '#ffffff',
+                    icon: 'ti ti-typography'
+                },
+                size: {
+                    type: 'slider',
+                    label: '大小',
+                    default: 32,
+                    min: 24,
+                    max: 60,
+                    step: 4,
+                    unit: 'px',
+                    icon: 'ti ti-dimensions'
+                },
+                currentNumber: {
+                    type: 'number',
+                    label: '当前序号',
+                    default: 1,
+                    min: 1,
+                    max: 999,
+                    icon: 'ti ti-number-small'
+                },
+                lockNumber: {
+                    type: 'toggle',
+                    label: '锁定序号',
+                    default: false,
+                    icon: 'ti ti-lock'
+                }
+            },
+            
             // 画笔工具参数
             brush: {
                 brushType: {
@@ -338,6 +401,9 @@ export class SubToolbarManager {
             case 'toggle':
                 wrapper.appendChild(this.createToggle(toolName, paramName, config));
                 break;
+            case 'number':
+                wrapper.appendChild(this.createNumberInput(toolName, paramName, config));
+                break;
             case 'action':
                 wrapper.appendChild(this.createActionButton(toolName, paramName, config));
                 break;
@@ -633,6 +699,50 @@ export class SubToolbarManager {
         });
         
         return button;
+    }
+
+    /**
+     * 创建数字输入框
+     */
+    createNumberInput(toolName, paramName, config) {
+        const container = document.createElement('div');
+        container.className = 'param-number-container';
+        
+        const label = document.createElement('label');
+        label.className = 'param-number-label';
+        label.textContent = config.label;
+        
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'param-number-input';
+        input.min = config.min || 1;
+        input.max = config.max || 999;
+        input.value = this.getParameter(toolName, paramName);
+        input.dataset.tooltip = config.label;
+        
+        // 输入事件
+        input.addEventListener('input', () => {
+            let value = parseInt(input.value);
+            if (isNaN(value)) value = config.default || 1;
+            if (value < input.min) value = parseInt(input.min);
+            if (value > input.max) value = parseInt(input.max);
+            
+            this.setParameter(toolName, paramName, value);
+            this.triggerParameterChange(toolName, paramName, value);
+        });
+        
+        // 失焦时确保值有效
+        input.addEventListener('blur', () => {
+            if (input.value === '' || isNaN(parseInt(input.value))) {
+                const defaultValue = this.getParameter(toolName, paramName);
+                input.value = defaultValue;
+            }
+        });
+        
+        container.appendChild(label);
+        container.appendChild(input);
+        
+        return container;
     }
 
     /**
