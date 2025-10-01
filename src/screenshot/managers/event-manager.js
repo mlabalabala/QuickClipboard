@@ -7,7 +7,6 @@ export class EventManager {
     constructor() {
         this.overlay = document.getElementById('overlay');
         this.selectionArea = document.getElementById('selectionArea');
-        this.infoText = document.getElementById('infoText');
         
         this.onSelectionStart = null;
         this.onSelectionUpdate = null;
@@ -158,18 +157,4 @@ export class EventManager {
         this.onWindowBlur = callback;
     }
 
-    /**
-     * 显示信息文本
-     */
-    showInfoText(text) {
-        this.infoText.textContent = text;
-        this.infoText.style.opacity = '1';
-    }
-
-    /**
-     * 隐藏信息文本
-     */
-    hideInfoText() {
-        this.infoText.style.opacity = '0';
-    }
 }

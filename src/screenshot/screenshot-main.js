@@ -21,6 +21,7 @@ import { FabricEditLayerManager } from './managers/fabric-edit-layer-manager.js'
 import { FabricToolManager } from './managers/fabric-tool-manager.js';
 import { MagnifierManager } from './managers/magnifier-manager.js';
 import { OCRManager } from './managers/ocr-manager.js';
+import { HelpPanelManager } from './managers/help-panel-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
@@ -54,6 +55,7 @@ export class ScreenshotController {
         this.toolManager = new FabricToolManager();
         this.magnifierManager = new MagnifierManager();
         this.ocrManager = new OCRManager();
+        this.helpPanelManager = new HelpPanelManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -395,6 +397,9 @@ export class ScreenshotController {
             
             // 将边界信息传递给选区管理器
             this.selectionManager.setMonitorBounds(this.monitors, virtualBounds);
+            
+            // 将显示器信息传递给帮助面板管理器
+            this.helpPanelManager.setMonitors(this.monitors);
         } catch (error) {
             console.error('Failed to load monitor info:', error);
             this.monitors = [];
@@ -467,7 +472,8 @@ export class ScreenshotController {
      * 显示初始信息
      */
     showInitialInfo() {
-        this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
+        // 显示帮助面板
+        this.helpPanelManager.show();
     }
 
     /**
