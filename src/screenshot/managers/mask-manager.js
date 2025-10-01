@@ -1,82 +1,59 @@
 /**
- * 遮罩层管理模块
- * 负责半透明遮罩层的显示和更新
+ * 遮罩层管理
+ * 用 clip-path 实现镂空
  */
 
 export class MaskManager {
     constructor() {
-        this.maskTop = document.getElementById('maskTop');
-        this.maskBottom = document.getElementById('maskBottom');
-        this.maskLeft = document.getElementById('maskLeft');
-        this.maskRight = document.getElementById('maskRight');
+        this.maskLayer = document.getElementById('maskLayer');
+        this.screenWidth = window.innerWidth;
+        this.screenHeight = window.innerHeight;
+        
+        // 窗口变化时更新尺寸
+        window.addEventListener('resize', () => {
+            this.screenWidth = window.innerWidth;
+            this.screenHeight = window.innerHeight;
+        });
     }
 
-    /**
-     * 更新遮罩层
-     */
+    // 根据选区更新遮罩镂空区域
     updateMask(left, top, width, height) {
         const right = left + width;
         const bottom = top + height;
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
+        const w = this.screenWidth;
+        const h = this.screenHeight;
         
-        // 上遮罩
-        this.maskTop.style.cssText = `
-            left: 0; 
-            top: 0; 
-            width: ${screenWidth}px; 
-            height: ${Math.max(0, top)}px; 
-            position: absolute; 
-            background: rgba(0, 0, 0, 0.5);
-        `;
-        
-        // 下遮罩
-        this.maskBottom.style.cssText = `
-            left: 0; 
-            top: ${Math.min(bottom, screenHeight)}px; 
-            width: ${screenWidth}px; 
-            height: ${Math.max(0, screenHeight - bottom)}px; 
-            position: absolute; 
-            background: rgba(0, 0, 0, 0.5);
-        `;
-        
-        // 左遮罩
-        this.maskLeft.style.cssText = `
-            left: 0; 
-            top: ${Math.max(0, top)}px; 
-            width: ${Math.max(0, left)}px; 
-            height: ${Math.max(0, Math.min(height, screenHeight - top))}px; 
-            position: absolute; 
-            background: rgba(0, 0, 0, 0.5);
-        `;
-        
-        // 右遮罩
-        this.maskRight.style.cssText = `
-            left: ${Math.min(right, screenWidth)}px; 
-            top: ${Math.max(0, top)}px; 
-            width: ${Math.max(0, screenWidth - right)}px; 
-            height: ${Math.max(0, Math.min(height, screenHeight - top))}px; 
-            position: absolute; 
-            background: rgba(0, 0, 0, 0.5);
-        `;
+        // polygon evenodd 规则：外框顺时针 + 内框逆时针 = 镂空效果
+        // 用像素值比百分比快，减少计算开销
+        this.maskLayer.style.clipPath = 
+            `polygon(evenodd,0 0,${w}px 0,${w}px ${h}px,0 ${h}px,0 0,${left}px ${top}px,${left}px ${bottom}px,${right}px ${bottom}px,${right}px ${top}px,${left}px ${top}px)`;
     }
 
-    /**
-     * 重置遮罩层为全屏状态
-     */
+    // 自定义形状遮罩（圆形、椭圆等）
+    updateMaskWithCustomShape(clipPathValue) {
+        this.maskLayer.style.clipPath = clipPathValue;
+    }
+
+    // 重置为全屏遮罩
     resetToFullscreen() {
-        this.maskTop.style.cssText = 'top: 0; left: 0; width: 100%; height: 100%;';
-        this.maskBottom.style.cssText = 'display: none;';
-        this.maskLeft.style.cssText = 'display: none;';
-        this.maskRight.style.cssText = 'display: none;';
+        this.maskLayer.style.clipPath = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
     }
 
-    /**
-     * 清理所有遮罩
-     */
+    // 清除遮罩
     clear() {
-        [this.maskTop, this.maskBottom, this.maskLeft, this.maskRight].forEach(mask => {
-            mask.style.cssText = '';
-        });
+        this.maskLayer.style.clipPath = '';
+    }
+
+    // 调整遮罩透明度 (0-1)
+    setOpacity(opacity) {
+        const currentOpacity = parseFloat(opacity);
+        if (currentOpacity >= 0 && currentOpacity <= 1) {
+            this.maskLayer.style.background = `rgba(0, 0, 0, ${currentOpacity})`;
+        }
+    }
+
+    // 修改遮罩颜色
+    setColor(color) {
+        this.maskLayer.style.background = color;
     }
 }
