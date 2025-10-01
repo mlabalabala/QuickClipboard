@@ -50,7 +50,7 @@ body {
     display: none;
     z-index: 4;
     cursor: move;
-    /* box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8); */
+    border-radius: 0;
 }
 
 /* 拖拽节点样式 */
@@ -65,7 +65,13 @@ body {
     border-radius: 2px;
     box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
 }
+.resize-handle:hover {
+    background: #007bff;
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.8);
 
+}
 /* 角节点 */
 .resize-handle-nw {
     top: -5px;
@@ -95,7 +101,6 @@ body {
 .resize-handle-n {
     top: -5px;
     left: 50%;
-    /* width: 10%; */
     transform: translateX(-50%);
     cursor: n-resize;
 }
@@ -103,7 +108,6 @@ body {
 .resize-handle-e {
     right: -5px;
     top: 50%;
-    /* height: 10%; */
     transform: translateY(-50%);
     cursor: e-resize;
 }
@@ -111,7 +115,6 @@ body {
 .resize-handle-s {
     bottom: -5px;
     left: 50%;
-    /* width: 10%; */
     transform: translateX(-50%);
     cursor: s-resize;
 }
@@ -119,9 +122,49 @@ body {
 .resize-handle-w {
     left: -5px;
     top: 50%;
-    /* height: 10%; */
     transform: translateY(-50%);
     cursor: w-resize;
+}
+
+/* 圆角控制节点 */
+.radius-handle {
+    position: absolute;
+    background: rgba(255, 165, 0, 0.9);
+    border: 2px solid #ffffff;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    z-index: 6;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(255, 165, 0, 0.6);
+}
+
+.radius-handle:hover {
+    background: rgba(255, 165, 0, 1);
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 8px rgba(255, 165, 0, 0.8);
+}
+
+/* 圆角节点位置 - 在角内侧 */
+.radius-handle-nw {
+    top: 12px;
+    left: 12px;
+}
+
+.radius-handle-ne {
+    top: 12px;
+    right: 12px;
+}
+
+.radius-handle-se {
+    bottom: 12px;
+    right: 12px;
+}
+
+.radius-handle-sw {
+    bottom: 12px;
+    left: 12px;
 }
 
 .toolbar {
@@ -168,7 +211,8 @@ body {
 .sub-toolbar button[data-tooltip]::after,
 .param-slider-container[data-tooltip]::after,
 .param-number-container[data-tooltip]::after,
-.param-text-container[data-tooltip]::after {
+.param-text-container[data-tooltip]::after,
+.radius-handle[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);
@@ -193,7 +237,8 @@ body {
 .sub-toolbar button[data-tooltip]:not(.param-color)::before,
 .param-slider-container[data-tooltip]::before,
 .param-number-container[data-tooltip]::before,
-.param-text-container[data-tooltip]::before {
+.param-text-container[data-tooltip]::before,
+.radius-handle[data-tooltip]::before {
     content: '';
     position: absolute;
     top: calc(100% + 2px);
@@ -217,7 +262,9 @@ body {
 .param-number-container[data-tooltip]:hover::after,
 .param-number-container[data-tooltip]:hover::before,
 .param-text-container[data-tooltip]:hover::after,
-.param-text-container[data-tooltip]:hover::before {
+.param-text-container[data-tooltip]:hover::before,
+.radius-handle[data-tooltip]:hover::after,
+.radius-handle[data-tooltip]:hover::before {
     opacity: 1;
     visibility: visible;
 }

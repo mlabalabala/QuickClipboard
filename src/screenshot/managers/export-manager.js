@@ -26,8 +26,9 @@ export class ExportManager {
     /**
      * 将选区内容复制到系统剪贴板
      * @param {Object} selection - 选区信息 {left, top, width, height}
+     * @param {number} borderRadius - 圆角半径，默认0
      */
-    async copySelectionToClipboard(selection) {
+    async copySelectionToClipboard(selection, borderRadius = 0) {
         try {
             const backgroundCanvas = this.backgroundManager?.canvas;
             const backgroundCtx = this.backgroundManager?.ctx;
@@ -37,7 +38,7 @@ export class ExportManager {
             }
 
             // 创建选区Canvas（会自动合并编辑层内容）
-            const selectionCanvas = await this.createSelectionCanvas(backgroundCanvas, selection);
+            const selectionCanvas = await this.createSelectionCanvas(backgroundCanvas, selection, borderRadius);
             
             // 转换为PNG格式的Blob
             const blob = await this.canvasToBlob(selectionCanvas);
@@ -56,9 +57,10 @@ export class ExportManager {
      * 创建选区Canvas
      * @param {HTMLCanvasElement} sourceCanvas - 源Canvas
      * @param {Object} selection - 选区信息
+     * @param {number} borderRadius - 圆角半径
      * @returns {Promise<HTMLCanvasElement>} - 选区Canvas
      */
-    async createSelectionCanvas(sourceCanvas, selection) {
+    async createSelectionCanvas(sourceCanvas, selection, borderRadius = 0) {
         // 计算Canvas实际尺寸与显示尺寸的比例
         const canvasRect = sourceCanvas.getBoundingClientRect();
         const scaleX = sourceCanvas.width / canvasRect.width;
@@ -69,11 +71,12 @@ export class ExportManager {
         const actualTop = selection.top * scaleY;
         const actualWidth = selection.width * scaleX;
         const actualHeight = selection.height * scaleY;
+        const actualRadius = borderRadius * scaleX; // 圆角也需要缩放
 
         console.log('选区坐标转换:', {
             original: selection,
             scale: { scaleX, scaleY },
-            actual: { actualLeft, actualTop, actualWidth, actualHeight }
+            actual: { actualLeft, actualTop, actualWidth, actualHeight, actualRadius }
         });
 
         // 创建新的Canvas来绘制选区部分
@@ -109,6 +112,11 @@ export class ExportManager {
                             actualLeft, actualTop, actualWidth, actualHeight,
                             0, 0, actualWidth, actualHeight
                         );
+                        
+                        // 应用圆角
+                        if (actualRadius > 0) {
+                            this.applyRoundedCorners(selectionCanvas, actualRadius);
+                        }
                         return selectionCanvas;
                     } catch (drawError) {
                         console.error('传统绘制方式也失败:', drawError);
@@ -124,7 +132,52 @@ export class ExportManager {
             0, 0, actualWidth, actualHeight  // 目标区域
         );
 
+        // 应用圆角裁剪
+        if (actualRadius > 0) {
+            this.applyRoundedCorners(selectionCanvas, actualRadius);
+        }
+
         return selectionCanvas;
+    }
+
+    /**
+     * 对Canvas应用圆角裁剪
+     * @param {HTMLCanvasElement} canvas - 要裁剪的Canvas
+     * @param {number} radius - 圆角半径
+     */
+    applyRoundedCorners(canvas, radius) {
+        const width = canvas.width;
+        const height = canvas.height;
+        const ctx = canvas.getContext('2d');
+        
+        // 创建临时canvas保存原始图像
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        // 清空原画布
+        ctx.clearRect(0, 0, width, height);
+        
+        // 绘制圆角矩形路径
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.arcTo(width, 0, width, radius, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.arcTo(width, height, width - radius, height, radius);
+        ctx.lineTo(radius, height);
+        ctx.arcTo(0, height, 0, height - radius, radius);
+        ctx.lineTo(0, radius);
+        ctx.arcTo(0, 0, radius, 0, radius);
+        ctx.closePath();
+        
+        // 裁剪
+        ctx.clip();
+        
+        // 将临时canvas的图像绘制回来（受clip影响）
+        ctx.drawImage(tempCanvas, 0, 0);
     }
 
     /**

@@ -190,6 +190,11 @@ export class ScreenshotController {
             this.selectionManager.resizeSelection(x, y, this.maskManager);
             // 只在调整过程中隐藏工具栏
             this.hideAllToolbars();
+        } else if (this.selectionManager.isAdjustingRadius) {
+            // 调整圆角模式
+            this.selectionManager.adjustRadius(x, y, this.maskManager);
+            // 只在调整圆角过程中隐藏工具栏
+            this.hideAllToolbars();
         }
         // 如果既不在选择也不在移动状态，就不要隐藏工具栏
     }
@@ -200,7 +205,7 @@ export class ScreenshotController {
     handleSelectionEnd() {
         const action = this.selectionManager.endSelection();
         
-        if (action === 'move-end' || action === 'select-end' || action === 'resize-end') {
+        if (action === 'move-end' || action === 'select-end' || action === 'resize-end' || action === 'radius-end') {
             const selection = this.selectionManager.getSelection();
             if (selection) {
                 // show() 现在返回主工具栏的实际位置
@@ -663,8 +668,11 @@ export class ScreenshotController {
             this.hideAllToolbars();
             await new Promise(resolve => setTimeout(resolve, 100));
             
+            // 获取圆角半径
+            const borderRadius = this.selectionManager.getBorderRadius();
+            
             // 使用导出管理器复制选区到剪贴板（自动合并编辑层）
-            await this.exportManager.copySelectionToClipboard(selection);
+            await this.exportManager.copySelectionToClipboard(selection, borderRadius);
             
             // 清空所有内容，防止下次显示时看到旧内容
             this.clearAllContent();
