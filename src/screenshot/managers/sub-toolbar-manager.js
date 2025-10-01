@@ -56,7 +56,7 @@ export class SubToolbarManager {
                     options: [
                         { value: 'circle', label: '圆形', icon: 'ti ti-circle' },
                         { value: 'square', label: '方形', icon: 'ti ti-square' },
-                        { value: 'diamond', label: '菱形', icon: 'ti ti-diamond' },
+                        { value: 'diamond', label: '菱形', icon: 'ti ti-diamonds' },
                         { value: 'hexagon', label: '六边形', icon: 'ti ti-hexagon' }
                     ],
                     icon: 'ti ti-circle'

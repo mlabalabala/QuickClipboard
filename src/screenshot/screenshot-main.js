@@ -72,6 +72,7 @@ export class ScreenshotController {
         
         // 设置全局引用，供工具使用
         window.screenshotController = this;
+        window.screenshotApp = this;
         
         console.log('ScreenshotController: 初始化完成');
     }
@@ -82,7 +83,7 @@ export class ScreenshotController {
     initializeManagers() {
         // 事件管理器回调
         this.eventManager.setOnSelectionStart((x, y, target) => this.handleSelectionStart(x, y, target));
-        this.eventManager.setOnSelectionUpdate((x, y) => this.handleSelectionUpdate(x, y));
+        this.eventManager.setOnSelectionUpdate((x, y, shiftKey) => this.handleSelectionUpdate(x, y, shiftKey));
         this.eventManager.setOnSelectionEnd(() => this.handleSelectionEnd());
         this.eventManager.setOnRightClick((x, y) => this.handleRightClick(x, y));
         this.eventManager.setOnKeyDown((key) => this.handleKeyDown(key));
@@ -166,7 +167,7 @@ export class ScreenshotController {
     /**
      * 处理选择更新
      */
-    handleSelectionUpdate(x, y) {
+    handleSelectionUpdate(x, y, shiftKey) {
         // 始终更新放大镜位置（不管是否可见，因为它可能随时变为可见）
         if (this.magnifierManager) {
             this.magnifierManager.update(x, y);
@@ -187,7 +188,7 @@ export class ScreenshotController {
             this.hideAllToolbars();
         } else if (this.selectionManager.isResizingState) {
             // 调整大小模式
-            this.selectionManager.resizeSelection(x, y, this.maskManager);
+            this.selectionManager.resizeSelection(x, y, this.maskManager, shiftKey);
             // 只在调整过程中隐藏工具栏
             this.hideAllToolbars();
         } else if (this.selectionManager.isAdjustingRadius) {

@@ -44,6 +44,13 @@ export class EventManager {
         const mouseX = e.clientX;
         const mouseY = e.clientY;
         
+        // 检查是否点击了选区信息框或其子元素（包括比例按钮）
+        const selectionInfo = document.getElementById('selectionInfo');
+        if (selectionInfo && (e.target === selectionInfo || selectionInfo.contains(e.target))) {
+            // 点击选区信息框内的元素，不触发选区事件
+            return;
+        }
+        
         // 如果点击的是拖拽节点，需要特殊处理
         if (e.target.classList.contains('resize-handle')) {
             e.preventDefault();
@@ -61,7 +68,7 @@ export class EventManager {
         const mouseX = e.clientX;
         const mouseY = e.clientY;
         
-        this.onSelectionUpdate?.(mouseX, mouseY);
+        this.onSelectionUpdate?.(mouseX, mouseY, e.shiftKey);
     }
 
     handleMouseUp(e) {

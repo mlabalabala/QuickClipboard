@@ -159,7 +159,7 @@ export class SelectionManager {
     /**
      * 调整选区大小（调整模式）
      */
-    resizeSelection(mouseX, mouseY, maskManager) {
+    resizeSelection(mouseX, mouseY, maskManager, shiftKey = false) {
         if (!this.selectionRect || !this.resizeStartRect) return;
         
         const deltaX = mouseX - this.resizeStartX;
@@ -167,42 +167,89 @@ export class SelectionManager {
         
         let { left, top, width, height } = this.resizeStartRect;
         
-        // 根据拖拽方向调整选区
-        switch (this.resizeDirection) {
-            case 'nw': // 左上
-                left += deltaX;
-                top += deltaY;
-                width -= deltaX;
-                height -= deltaY;
-                break;
-            case 'n': // 上
-                top += deltaY;
-                height -= deltaY;
-                break;
-            case 'ne': // 右上
-                top += deltaY;
-                width += deltaX;
-                height -= deltaY;
-                break;
-            case 'e': // 右
-                width += deltaX;
-                break;
-            case 'se': // 右下
-                width += deltaX;
-                height += deltaY;
-                break;
-            case 's': // 下
-                height += deltaY;
-                break;
-            case 'sw': // 左下
-                left += deltaX;
-                width -= deltaX;
-                height += deltaY;
-                break;
-            case 'w': // 左
-                left += deltaX;
-                width -= deltaX;
-                break;
+        // 保持比例缩放（按住shift键，且是角落节点）
+        const isCorner = ['nw', 'ne', 'se', 'sw'].includes(this.resizeDirection);
+        const keepAspectRatio = shiftKey && isCorner;
+        
+        if (keepAspectRatio) {
+            // 记录原始比例
+            const aspectRatio = this.resizeStartRect.width / this.resizeStartRect.height;
+            
+            // 根据拖拽方向调整（保持比例）
+            switch (this.resizeDirection) {
+                case 'nw': // 左上
+                case 'se': // 右下
+                    // 以对角线方向为准
+                    const diagDelta = (deltaX + deltaY) / 2;
+                    if (this.resizeDirection === 'nw') {
+                        left += diagDelta;
+                        top += diagDelta;
+                        width -= diagDelta;
+                        height = width / aspectRatio;
+                    } else {
+                        width += diagDelta;
+                        height = width / aspectRatio;
+                    }
+                    break;
+                case 'ne': // 右上
+                case 'sw': // 左下
+                    const antiDiagDelta = (deltaX - deltaY) / 2;
+                    if (this.resizeDirection === 'ne') {
+                        top -= antiDiagDelta;
+                        width += antiDiagDelta;
+                        height = width / aspectRatio;
+                    } else {
+                        left -= antiDiagDelta;
+                        width += antiDiagDelta;
+                        height = width / aspectRatio;
+                    }
+                    break;
+            }
+            
+            // 添加保持比例的视觉反馈
+            this.selectionArea.style.boxShadow = '0 0 0 2px #00ff00';
+        } else {
+            // 正常缩放
+            // 根据拖拽方向调整选区
+            switch (this.resizeDirection) {
+                case 'nw': // 左上
+                    left += deltaX;
+                    top += deltaY;
+                    width -= deltaX;
+                    height -= deltaY;
+                    break;
+                case 'n': // 上
+                    top += deltaY;
+                    height -= deltaY;
+                    break;
+                case 'ne': // 右上
+                    top += deltaY;
+                    width += deltaX;
+                    height -= deltaY;
+                    break;
+                case 'e': // 右
+                    width += deltaX;
+                    break;
+                case 'se': // 右下
+                    width += deltaX;
+                    height += deltaY;
+                    break;
+                case 's': // 下
+                    height += deltaY;
+                    break;
+                case 'sw': // 左下
+                    left += deltaX;
+                    width -= deltaX;
+                    height += deltaY;
+                    break;
+                case 'w': // 左
+                    left += deltaX;
+                    width -= deltaX;
+                    break;
+            }
+            
+            // 移除比例缩放的视觉反馈
+            this.selectionArea.style.boxShadow = '';
         }
         
         // 确保最小大小
@@ -294,6 +341,8 @@ export class SelectionManager {
             this.isResizing = false;
             this.resizeDirection = '';
             this.resizeStartRect = null;
+            // 恢复边框样式
+            this.selectionArea.style.boxShadow = '';
             return 'resize-end';
         } else if (this.isAdjustingRadius) {
             this.isAdjustingRadius = false;
@@ -345,10 +394,21 @@ export class SelectionManager {
         this.updateCornerHandles();
         
         // 更新信息显示
-        const radiusInfo = this.borderRadius > 0 ? ` R${this.borderRadius}` : '';
-        this.selectionInfo.textContent = `${Math.round(width)} × ${Math.round(height)}${radiusInfo}`;
+        let infoHTML = `
+            <span class="info-content">
+                <i class="ti ti-dimensions"></i> ${Math.round(width)} × ${Math.round(height)}
+                ${this.borderRadius > 0 ? `<span class="info-separator"></span> <i class="ti ti-border-corner-pill"></i> ${this.borderRadius}` : ''}
+            </span>
+            <button class="aspect-ratio-btn" data-tooltip="调整比例">
+                <i class="ti ti-aspect-ratio"></i>
+            </button>
+        `;
+        this.selectionInfo.innerHTML = infoHTML;
         this.selectionInfo.style.left = '8px';
         this.selectionInfo.style.top = (top < 40 ? height + 8 : -30) + 'px';
+        
+        // 绑定比例按钮事件
+        this.bindAspectRatioButton();
     }
     
     /**
@@ -477,5 +537,149 @@ export class SelectionManager {
      */
     get isResizingState() {
         return this.isResizing;
+    }
+
+    /**
+     * 绑定比例按钮事件
+     */
+    bindAspectRatioButton() {
+        const btn = this.selectionInfo.querySelector('.aspect-ratio-btn');
+        if (!btn) return;
+        
+        // 移除旧的菜单
+        const oldMenu = document.querySelector('.aspect-ratio-menu');
+        if (oldMenu) oldMenu.remove();
+        
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showAspectRatioMenu(btn);
+        });
+    }
+
+    /**
+     * 显示比例菜单
+     */
+    showAspectRatioMenu(btn) {
+        // 移除旧菜单
+        const oldMenu = document.querySelector('.aspect-ratio-menu');
+        if (oldMenu) {
+            oldMenu.remove();
+            return;
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'aspect-ratio-menu';
+        
+        const ratios = [
+            { icon: 'ti-maximize', label: '全屏', value: null },
+            { icon: 'ti-square', label: '1:1', value: 1 },
+            { icon: 'ti-rectangle-vertical', label: '3:4', value: 3/4 },
+            { icon: 'ti-device-mobile', label: '9:16', value: 9/16 },
+            { icon: 'ti-rectangle', label: '16:9', value: 16/9 },
+            { icon: 'ti-layout', label: '4:3', value: 4/3 }
+        ];
+
+        ratios.forEach(ratio => {
+            const item = document.createElement('div');
+            item.className = 'aspect-ratio-item';
+            item.innerHTML = `<i class="ti ${ratio.icon}"></i><span>${ratio.label}</span>`;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyAspectRatio(ratio.value);
+                menu.remove();
+            });
+            menu.appendChild(item);
+        });
+
+        document.body.appendChild(menu);
+        
+        // 定位菜单
+        const btnRect = btn.getBoundingClientRect();
+        menu.style.left = btnRect.left + 'px';
+        menu.style.top = (btnRect.bottom + 4) + 'px';
+        
+        // 显示菜单
+        requestAnimationFrame(() => {
+            menu.classList.add('visible');
+        });
+
+        // 点击外部关闭
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 0);
+    }
+
+    /**
+     * 应用长宽比
+     */
+    applyAspectRatio(ratio) {
+        if (!this.selectionRect) return;
+
+        const { left, top } = this.selectionRect;
+        let newWidth, newHeight;
+
+        if (ratio === null) {
+            // 全屏
+            newWidth = window.innerWidth;
+            newHeight = window.innerHeight;
+            this.selectionRect = { left: 0, top: 0, width: newWidth, height: newHeight };
+        } else {
+            // 初始大小为 300px（基准大小）
+            const baseSize = 300;
+            
+            if (ratio >= 1) {
+                // 横向比例：宽为基准
+                newWidth = baseSize;
+                newHeight = baseSize / ratio;
+            } else {
+                // 纵向比例：高为基准
+                newHeight = baseSize;
+                newWidth = baseSize * ratio;
+            }
+            
+            // 边界检查
+            if (left + newWidth > window.innerWidth) {
+                const scale = (window.innerWidth - left) / newWidth;
+                newWidth *= scale;
+                newHeight *= scale;
+            }
+            if (top + newHeight > window.innerHeight) {
+                const scale = (window.innerHeight - top) / newHeight;
+                newWidth *= scale;
+                newHeight *= scale;
+            }
+
+            this.selectionRect = { left, top, width: newWidth, height: newHeight };
+        }
+
+        // 更新显示
+        this.updateSelectionDisplay(this.selectionRect.left, this.selectionRect.top, 
+                                    this.selectionRect.width, this.selectionRect.height);
+        
+        // 更新遮罩
+        if (window.screenshotApp?.maskManager) {
+            window.screenshotApp.maskManager.updateMask(
+                this.selectionRect.left, this.selectionRect.top,
+                this.selectionRect.width, this.selectionRect.height,
+                this.borderRadius
+            );
+        }
+        
+        // 通知主程序更新工具栏位置
+        if (window.screenshotApp?.toolbarManager) {
+            const mainToolbarPosition = window.screenshotApp.toolbarManager.show(this.selectionRect);
+            
+            // 如果有激活的工具，更新子工具栏位置
+            const currentTool = window.screenshotApp.toolbarManager.getCurrentTool();
+            if (currentTool && mainToolbarPosition && window.screenshotApp.subToolbarManager) {
+                window.screenshotApp.showSubToolbarForTool(currentTool, this.selectionRect, mainToolbarPosition);
+            }
+        }
     }
 }

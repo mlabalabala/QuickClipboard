@@ -212,7 +212,8 @@ body {
 .param-slider-container[data-tooltip]::after,
 .param-number-container[data-tooltip]::after,
 .param-text-container[data-tooltip]::after,
-.radius-handle[data-tooltip]::after {
+.radius-handle[data-tooltip]::after,
+.aspect-ratio-btn[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);
@@ -238,7 +239,8 @@ body {
 .param-slider-container[data-tooltip]::before,
 .param-number-container[data-tooltip]::before,
 .param-text-container[data-tooltip]::before,
-.radius-handle[data-tooltip]::before {
+.radius-handle[data-tooltip]::before,
+.aspect-ratio-btn[data-tooltip]::before {
     content: '';
     position: absolute;
     top: calc(100% + 2px);
@@ -264,7 +266,9 @@ body {
 .param-text-container[data-tooltip]:hover::after,
 .param-text-container[data-tooltip]:hover::before,
 .radius-handle[data-tooltip]:hover::after,
-.radius-handle[data-tooltip]:hover::before {
+.radius-handle[data-tooltip]:hover::before,
+.aspect-ratio-btn[data-tooltip]:hover::after,
+.aspect-ratio-btn[data-tooltip]:hover::before {
     opacity: 1;
     visibility: visible;
 }
@@ -959,7 +963,107 @@ body {
     border-radius: 4px;
     font-size: 12px;
     z-index: 3;
+    pointer-events: auto;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.selection-info .info-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     pointer-events: none;
+}
+
+.selection-info i {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.selection-info .info-separator {
+    display: inline-block;
+    width: 1px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.3);
+    margin: 0 2px;
+}
+
+/* 比例按钮 */
+.aspect-ratio-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    padding: 0;
+    position: relative;
+}
+
+.aspect-ratio-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.aspect-ratio-btn i {
+    font-size: 12px;
+}
+
+/* 比例菜单 */
+.aspect-ratio-menu {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 120px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.aspect-ratio-menu.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.aspect-ratio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.aspect-ratio-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.aspect-ratio-item i {
+    font-size: 16px;
+    opacity: 0.8;
+    width: 16px;
+}
+
+.aspect-ratio-item span {
+    flex: 1;
 }
 
 /* 放大镜样式 */
