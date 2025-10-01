@@ -399,7 +399,11 @@ export class SelectionManager {
         let infoHTML = `
             <span class="info-content">
                 <i class="ti ti-dimensions"></i> ${Math.round(width)} × ${Math.round(height)}
-                ${this.borderRadius > 0 ? `<span class="info-separator"></span> <i class="ti ti-border-corner-pill"></i> ${this.borderRadius}` : ''}
+                ${this.borderRadius > 0 ? `
+                    <span class="info-separator"></span> 
+                    <i class="ti ti-border-corner-pill"></i> 
+                    <input type="number" class="radius-input" value="${this.borderRadius}" min="0" max="${Math.floor(Math.min(width, height) / 2)}" />
+                ` : ''}
             </span>
             <button class="aspect-ratio-btn" data-tooltip="调整比例">
                 <i class="ti ti-aspect-ratio"></i>
@@ -411,6 +415,9 @@ export class SelectionManager {
         
         // 绑定比例按钮事件
         this.bindAspectRatioButton();
+        
+        // 绑定圆角输入框事件
+        this.bindRadiusInput();
     }
     
     /**
@@ -681,6 +688,48 @@ export class SelectionManager {
                 window.screenshotApp.showSubToolbarForTool(currentTool, this.selectionRect, mainToolbarPosition);
             }
         }
+    }
+
+    /**
+     * 绑定圆角输入框事件
+     */
+    bindRadiusInput() {
+        const radiusInput = this.selectionInfo.querySelector('.radius-input');
+        if (!radiusInput) return;
+        
+        // 输入框变化事件
+        radiusInput.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const value = parseInt(e.target.value, 10);
+            if (!isNaN(value)) {
+                const maxRadius = Math.min(this.selectionRect.width, this.selectionRect.height) / 2;
+                this.borderRadius = Math.max(0, Math.min(value, maxRadius));
+                
+                // 保存到本地存储
+                this.saveBorderRadius(this.borderRadius);
+                
+                // 更新选区和遮罩显示
+                this.selectionArea.style.borderRadius = this.borderRadius + 'px';
+                this.updateCornerHandles();
+                
+                if (window.screenshotApp?.maskManager) {
+                    window.screenshotApp.maskManager.updateMask(
+                        this.selectionRect.left, this.selectionRect.top,
+                        this.selectionRect.width, this.selectionRect.height,
+                        this.borderRadius
+                    );
+                }
+            }
+        });
+        
+        // 防止点击输入框时触发其他事件
+        radiusInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+        });
+        
+        radiusInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
     }
 
     /**

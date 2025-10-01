@@ -975,7 +975,6 @@ body {
     display: flex;
     align-items: center;
     gap: 4px;
-    pointer-events: none;
 }
 
 .selection-info i {
@@ -989,6 +988,45 @@ body {
     height: 12px;
     background: rgba(255, 255, 255, 0.3);
     margin: 0 2px;
+}
+
+/* 圆角输入框 */
+.selection-info .radius-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 12px;
+    width: 32px;
+    padding: 0;
+    margin: 0 -2px 0 -2px;
+    text-align: center;
+    cursor: text;
+}
+
+/* Chrome/Safari/Edge 的上下箭头 */
+.selection-info .radius-input::-webkit-inner-spin-button,
+.selection-info .radius-input::-webkit-outer-spin-button {
+    opacity: 1;
+    cursor: pointer;
+    width: 12px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    /* 使用滤镜让箭头变成白色 */
+    filter: invert(1);
+}
+
+.selection-info .radius-input::-webkit-inner-spin-button:hover,
+.selection-info .radius-input::-webkit-outer-spin-button:hover {
+    filter: invert(1) brightness(1.2);
+}
+
+/* Firefox 的数字输入框样式 */
+.selection-info .radius-input {
+    -moz-appearance: number-input;
 }
 
 /* 比例按钮 */

@@ -24,7 +24,9 @@ export class MaskManager {
         const bottom = top + height;
         
         if (borderRadius > 0) {
-            const r = borderRadius;
+            // 限制圆角半径不超过选区较短边的一半，避免路径交叉
+            const maxRadius = Math.min(width, height) / 2;
+            const r = Math.min(borderRadius, maxRadius);
             
             // 根据圆角大小动态调整点数：圆角越大，点数越多
             // 小圆角(r<30): 5个点；中圆角(30-100): 8个点；大圆角(>100): 12个点
