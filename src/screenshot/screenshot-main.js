@@ -177,7 +177,8 @@ export class ScreenshotController {
             this.selectionManager.updateSelection(x, y);
             const selection = this.selectionManager.getSelection();
             if (selection) {
-                this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height);
+                const borderRadius = this.selectionManager.getBorderRadius();
+                this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
             }
             // 只在选择过程中隐藏工具栏
             this.hideAllToolbars();
@@ -209,6 +210,10 @@ export class ScreenshotController {
         if (action === 'move-end' || action === 'select-end' || action === 'resize-end' || action === 'radius-end') {
             const selection = this.selectionManager.getSelection();
             if (selection) {
+                // 更新遮罩层（包括圆角）
+                const borderRadius = this.selectionManager.getBorderRadius();
+                this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
+                
                 // show() 现在返回主工具栏的实际位置
                 const mainToolbarPosition = this.toolbarManager.show(selection);
                 

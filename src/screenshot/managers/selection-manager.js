@@ -30,7 +30,7 @@ export class SelectionManager {
         this.resizeStartRect = null;
         
         // 圆角相关
-        this.borderRadius = 0;
+        this.borderRadius = this.loadBorderRadius();
         this.isAdjustingRadius = false;
         this.radiusCorner = '';
         this.radiusStartX = 0;
@@ -86,7 +86,6 @@ export class SelectionManager {
             this.isMoving = false;
             this.isResizing = false;
             this.isAdjustingRadius = false;
-            this.borderRadius = 0; // 新选区重置圆角
             this.startX = mouseX;
             this.startY = mouseY;
             this.currentX = mouseX;
@@ -323,6 +322,9 @@ export class SelectionManager {
         
         this.borderRadius = Math.round(newRadius);
         
+        // 保存圆角值到本地存储
+        this.saveBorderRadius(this.borderRadius);
+        
         // 更新显示
         this.updateSelectionDisplay(left, top, width, height);
         
@@ -469,7 +471,6 @@ export class SelectionManager {
      */
     clearSelection() {
         this.selectionRect = null;
-        this.borderRadius = 0;
         // 清除样式，防止下次显示时闪现旧选区
         this.selectionArea.style.left = '0px';
         this.selectionArea.style.top = '0px';
@@ -490,7 +491,6 @@ export class SelectionManager {
         this.isMoving = false;
         this.isResizing = false;
         this.isAdjustingRadius = false;
-        this.borderRadius = 0;
         this.selectionRect = null;
         // 清除样式，防止下次显示时闪现旧选区
         this.selectionArea.style.left = '0px';
@@ -680,6 +680,33 @@ export class SelectionManager {
             if (currentTool && mainToolbarPosition && window.screenshotApp.subToolbarManager) {
                 window.screenshotApp.showSubToolbarForTool(currentTool, this.selectionRect, mainToolbarPosition);
             }
+        }
+    }
+
+    /**
+     * 从本地存储加载圆角值
+     */
+    loadBorderRadius() {
+        try {
+            const saved = localStorage.getItem('screenshot_borderRadius');
+            if (saved !== null) {
+                const radius = parseInt(saved, 10);
+                return isNaN(radius) ? 0 : Math.max(0, radius);
+            }
+        } catch (e) {
+            console.warn('加载圆角值失败:', e);
+        }
+        return 0;
+    }
+
+    /**
+     * 保存圆角值到本地存储
+     */
+    saveBorderRadius(radius) {
+        try {
+            localStorage.setItem('screenshot_borderRadius', radius.toString());
+        } catch (e) {
+            console.warn('保存圆角值失败:', e);
         }
     }
 }
