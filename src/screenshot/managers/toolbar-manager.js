@@ -72,30 +72,79 @@ export class ToolbarManager {
         
         const { left, top, width, height } = selectionRect;
         
-        // 计算工具栏位置：选区右下角，右对齐
         let toolbarLeft = left + width - toolbarWidth;
-        let toolbarTop = top + height + 8; // 选区下方8px
+        let toolbarTop;
         
-        // 使用前端边界约束（同步、快速）
-        const constrainedBounds = boundsConstraint.constrain(
-            toolbarLeft, toolbarTop, toolbarWidth, toolbarHeight
+        // 优先尝试下方
+        const lowerToolbarTop = top + height + 8;
+        const lowerConstrained = boundsConstraint.constrain(
+            toolbarLeft, lowerToolbarTop, toolbarWidth, toolbarHeight
         );
         
-        toolbarLeft = constrainedBounds.x;
-        toolbarTop = constrainedBounds.y;
+        // 检查约束后的位置是否与期望位置接近（容差4px）
+        const hasSpaceBelow = Math.abs(lowerConstrained.y - lowerToolbarTop) < 4;
         
-        // 如果约束后的位置与预期差距太大，说明下方空间不足，尝试上方
-        if (toolbarTop < top + height + 4) {
+        if (hasSpaceBelow) {
+            // 下方有空间
+            toolbarLeft = lowerConstrained.x;
+            toolbarTop = lowerConstrained.y;
+        } else {
+            // 下方没空间，尝试上方
             const upperToolbarTop = top - toolbarHeight - 8;
-            const upperBounds = boundsConstraint.constrain(
-                left + width - toolbarWidth, upperToolbarTop,
-                toolbarWidth, toolbarHeight
+            const upperConstrained = boundsConstraint.constrain(
+                toolbarLeft, upperToolbarTop, toolbarWidth, toolbarHeight
             );
             
-            // 如果上方位置更合适，使用上方
-            if (upperBounds.y >= upperToolbarTop - 4) {a
-                toolbarLeft = upperBounds.x;
-                toolbarTop = upperBounds.y;
+            // 检查上方是否有空间
+            const hasSpaceAbove = Math.abs(upperConstrained.y - upperToolbarTop) < 4;
+            
+            if (hasSpaceAbove) {
+                // 上方有空间
+                toolbarLeft = upperConstrained.x;
+                toolbarTop = upperConstrained.y;
+            } else {
+                // 上下都没有足够空间，尝试选区内部的多个位置
+                // 按照右对齐的设计优先级排序
+                const innerPositions = [
+                    { x: left + width - toolbarWidth - 8, y: top + height - toolbarHeight - 8, name: '右下角' },
+                    { x: left + width - toolbarWidth - 8, y: top + 8, name: '右上角' },
+                    { x: left + 8, y: top + height - toolbarHeight - 8, name: '左下角' },
+                    { x: left + 8, y: top + 8, name: '左上角' }
+                ];
+                
+                let bestPosition = null;
+                let bestScore = -1;
+                
+                for (const pos of innerPositions) {
+                    // 确保在选区范围内
+                    let x = Math.max(left + 8, Math.min(pos.x, left + width - toolbarWidth - 8));
+                    let y = Math.max(top + 8, Math.min(pos.y, top + height - toolbarHeight - 8));
+                    
+                    // 使用边界约束检查这个位置
+                    const constrained = boundsConstraint.constrain(x, y, toolbarWidth, toolbarHeight);
+                    
+                    // 计算约束后的偏移量（越小越好）
+                    const offsetX = Math.abs(constrained.x - x);
+                    const offsetY = Math.abs(constrained.y - y);
+                    const totalOffset = offsetX + offsetY;
+                    
+                    // 如果完全没有偏移，直接使用这个位置
+                    if (totalOffset === 0) {
+                        toolbarLeft = constrained.x;
+                        toolbarTop = constrained.y;
+                        bestPosition = pos;
+                        break;
+                    }
+                    
+                    // 记录偏移最小的位置
+                    const score = 1000 - totalOffset; // 偏移越小分数越高
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestPosition = pos;
+                        toolbarLeft = constrained.x;
+                        toolbarTop = constrained.y;
+                    }
+                }
             }
         }
         
