@@ -9,10 +9,31 @@ export class MaskManager {
         this.screenWidth = window.innerWidth;
         this.screenHeight = window.innerHeight;
         
+        // 预计算圆角点的角度，避免重复计算
+        this.cornerAnglesCache = new Map();
+        this.precomputeCornerAngles();
+        
         // 窗口变化时更新尺寸
         window.addEventListener('resize', () => {
             this.screenWidth = window.innerWidth;
             this.screenHeight = window.innerHeight;
+        });
+    }
+    
+    /**
+     * 预计算不同点数的圆角角度
+     */
+    precomputeCornerAngles() {
+        [5, 8, 12].forEach(pointsPerCorner => {
+            const angles = [];
+            for (let i = 0; i <= pointsPerCorner; i++) {
+                const angle = (Math.PI / 2) * (i / pointsPerCorner);
+                angles.push({
+                    sin: Math.sin(angle),
+                    cos: Math.cos(angle)
+                });
+            }
+            this.cornerAnglesCache.set(pointsPerCorner, angles);
         });
     }
 
@@ -39,20 +60,24 @@ export class MaskManager {
                 pointsPerCorner = 12;
             }
             
+            // 使用预计算的角度
+            const angles = this.cornerAnglesCache.get(pointsPerCorner);
+            
+            // 使用数组直接拼接，避免字符串重复创建
             const points = [];
             
             // 外框（顺时针）
-            points.push(`0 0`, `${w}px 0`, `${w}px ${h}px`, `0 ${h}px`, `0 0`);
+            points.push(`0 0,${w}px 0,${w}px ${h}px,0 ${h}px,0 0`);
             
             // 内框圆角矩形（逆时针）
             // 上边
-            points.push(`${left + r}px ${top}px`, `${right - r}px ${top}px`);
+            points.push(`${left + r}px ${top}px,${right - r}px ${top}px`);
             
             // 右上圆角
             for (let i = 0; i <= pointsPerCorner; i++) {
-                const angle = (Math.PI / 2) * (i / pointsPerCorner);
-                const x = right - r + r * Math.sin(angle);
-                const y = top + r - r * Math.cos(angle);
+                const { sin, cos } = angles[i];
+                const x = right - r + r * sin;
+                const y = top + r - r * cos;
                 points.push(`${x}px ${y}px`);
             }
             
@@ -61,9 +86,9 @@ export class MaskManager {
             
             // 右下圆角
             for (let i = 0; i <= pointsPerCorner; i++) {
-                const angle = (Math.PI / 2) * (i / pointsPerCorner);
-                const x = right - r + r * Math.cos(angle);
-                const y = bottom - r + r * Math.sin(angle);
+                const { sin, cos } = angles[i];
+                const x = right - r + r * cos;
+                const y = bottom - r + r * sin;
                 points.push(`${x}px ${y}px`);
             }
             
@@ -72,9 +97,9 @@ export class MaskManager {
             
             // 左下圆角
             for (let i = 0; i <= pointsPerCorner; i++) {
-                const angle = (Math.PI / 2) * (i / pointsPerCorner);
-                const x = left + r - r * Math.sin(angle);
-                const y = bottom - r + r * Math.cos(angle);
+                const { sin, cos } = angles[i];
+                const x = left + r - r * sin;
+                const y = bottom - r + r * cos;
                 points.push(`${x}px ${y}px`);
             }
             
@@ -83,12 +108,13 @@ export class MaskManager {
             
             // 左上圆角
             for (let i = 0; i <= pointsPerCorner; i++) {
-                const angle = (Math.PI / 2) * (i / pointsPerCorner);
-                const x = left + r - r * Math.cos(angle);
-                const y = top + r - r * Math.sin(angle);
+                const { sin, cos } = angles[i];
+                const x = left + r - r * cos;
+                const y = top + r - r * sin;
                 points.push(`${x}px ${y}px`);
             }
             
+            // 直接拼接所有点，减少join操作
             this.maskLayer.style.clipPath = `polygon(evenodd,${points.join(',')})`;
         } else {
             // 无圆角时，使用简单矩形

@@ -385,12 +385,27 @@ export class SelectionManager {
      * 更新选区DOM显示
      */
     updateSelectionDisplay(left, top, width, height) {
-        // 更新选择区域
-        this.selectionArea.style.left = left + 'px';
-        this.selectionArea.style.top = top + 'px';
-        this.selectionArea.style.width = width + 'px';
-        this.selectionArea.style.height = height + 'px';
-        this.selectionArea.style.borderRadius = this.borderRadius + 'px';
+        // 保存当前的 boxShadow 值（用于保持比例缩放的视觉反馈）
+        const currentBoxShadow = this.selectionArea.style.boxShadow;
+        
+        // 批量更新样式，减少重排次数
+        this.selectionArea.style.cssText = `
+            left: ${left}px;
+            top: ${top}px;
+            width: ${width}px;
+            height: ${height}px;
+            border-radius: ${this.borderRadius}px;
+            border: 2px solid #007bff;
+            background: transparent;
+            z-index: 4;
+            cursor: move;
+            display: block;
+            position: absolute;
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            box-shadow: ${currentBoxShadow};
+        `;
         
         // 根据圆角调整角落节点位置
         this.updateCornerHandles();
