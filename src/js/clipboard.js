@@ -250,7 +250,30 @@ export async function writeClipboardImage(dataUrl) {
   }
 }
 
-// 刷新剪贴板历史
+// 增量添加剪贴板项
+export function addClipboardItemIncremental(item, isNew) {
+  // 如果是新增项，直接添加到数组开头
+  if (isNew) {
+    console.log('增量添加：新增项');
+    const newHistory = [item, ...clipboardHistory];
+    setClipboardHistory(newHistory);
+    window.clipboardHistory = newHistory;
+  } else {
+    // 如果是移动已存在的项，先删除原有位置的项，再添加到开头
+    const newHistory = clipboardHistory.filter(
+      existingItem => existingItem.content !== item.content
+    );
+    const afterLength = newHistory.length;
+    newHistory.unshift(item);
+    setClipboardHistory(newHistory);
+    window.clipboardHistory = newHistory;
+  }
+
+  // 增量渲染
+  renderClipboardItems();
+}
+
+// 刷新剪贴板历史（全量更新，用于特定场景）
 export async function refreshClipboardHistory() {
   let retries = 3;
 

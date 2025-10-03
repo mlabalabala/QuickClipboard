@@ -656,6 +656,13 @@ export class VirtualList {
       // 动态导入clipboard模块以避免循环依赖
       const clipboardModule = await import('./clipboard.js');
 
+      // 加载HTML中的image-id引用图片
+      const { loadPendingImages } = await import('./utils/htmlProcessor.js');
+      const htmlContainers = document.querySelectorAll('.clipboard-html');
+      for (const container of htmlContainers) {
+        await loadPendingImages(container);
+      }
+
       // 加载文件图标
       const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
       for (const icon of fileIcons) {
@@ -701,6 +708,13 @@ export class VirtualList {
     try {
       // 动态导入quickTexts模块以避免循环依赖
       const quickTextsModule = await import('./quickTexts.js');
+
+      // 加载HTML中的image-id引用图片
+      const { loadPendingImages } = await import('./utils/htmlProcessor.js');
+      const htmlContainers = document.querySelectorAll('.quick-text-content.quick-text-html');
+      for (const container of htmlContainers) {
+        await loadPendingImages(container);
+      }
 
       // 加载常用文本中的图片
       const quickTextImages = document.querySelectorAll('.quick-text-image[data-needs-load="true"]');

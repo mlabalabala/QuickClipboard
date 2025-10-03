@@ -1,4 +1,4 @@
-/// 统一处理HTML中的图片URL，将所有图片转换为dataURL
+/// 统一处理HTML中的图片URL，将所有图片保存到本地并返回图片ID引用
 /// 包括：网络图片、本地file://路径、Windows本地路径等
 pub fn normalize_html_images(input: &str) -> String {
     use regex::Regex;
@@ -10,9 +10,10 @@ pub fn normalize_html_images(input: &str) -> String {
             let src = &caps[2];
             let suffix = &caps[3];
             
-            // 尝试转换图片为dataURL
-            if let Some(data_url) = convert_image_to_data_url(src) {
-                format!("{}{}{}", prefix, data_url, suffix)
+            // 尝试将图片保存到本地并获取图片ID
+            if let Some(image_id) = save_image_and_get_id(src) {
+                // 使用特殊的 image-id: 前缀来标记这是一个图片ID引用
+                format!("{}image-id:{}{}", prefix, image_id, suffix)
             } else {
                 caps[0].to_string() // 保持原样
             }
@@ -28,9 +29,10 @@ pub fn normalize_html_images(input: &str) -> String {
             let src = &caps[2];
             let suffix = &caps[3];
             
-            // 尝试转换图片为dataURL
-            if let Some(data_url) = convert_image_to_data_url(src) {
-                format!("{}{}{}", prefix, data_url, suffix)
+            // 尝试将图片保存到本地并获取图片ID
+            if let Some(image_id) = save_image_and_get_id(src) {
+                // 使用特殊的 image-id: 前缀来标记这是一个图片ID引用
+                format!("{}image-id:{}{}", prefix, image_id, suffix)
             } else {
                 caps[0].to_string() // 保持原样
             }
@@ -40,31 +42,54 @@ pub fn normalize_html_images(input: &str) -> String {
     html
 }
 
-/// 尝试将图片URL转换为dataURL
-/// 支持：网络图片、本地file://路径、Windows本地路径
-fn convert_image_to_data_url(src: &str) -> Option<String> {
+/// 尝试将图片保存到本地并返回图片ID
+/// 支持：网络图片、本地file://路径、Windows本地路径、data URL
+fn save_image_and_get_id(src: &str) -> Option<String> {
     let s = src.trim();
     
-    // 如果已经是dataURL，直接返回
-    if s.starts_with("data:") {
-        return Some(s.to_string());
+    // 如果已经是 image-id: 格式，直接返回ID
+    if s.starts_with("image-id:") {
+        return Some(s.strip_prefix("image-id:").unwrap_or("").to_string());
     }
     
-    // 1. 尝试作为本地文件路径处理
+    // 获取图片管理器
+    let image_manager = match crate::image_manager::get_image_manager() {
+        Ok(manager) => manager,
+        Err(_) => return None,
+    };
+    
+    // 1. 如果是data URL，直接保存
+    if s.starts_with("data:") {
+        if let Ok(guard) = image_manager.lock() {
+            if let Ok(info) = guard.save_image(s) {
+                return Some(info.id);
+            }
+        }
+        return None;
+    }
+    
+    // 2. 尝试作为本地文件路径处理
     #[cfg(windows)]
     {
         if let Some(local_path) = convert_src_to_local_path_db(s) {
             if let Ok(data_url) = crate::services::file_operation_service::FileOperationService::read_image_file(local_path) {
-                return Some(data_url);
+                if let Ok(guard) = image_manager.lock() {
+                    if let Ok(info) = guard.save_image(&data_url) {
+                        return Some(info.id);
+                    }
+                }
             }
         }
     }
     
-    // 2. 尝试作为网络图片处理（同步版本，用于数据库存储时）
+    // 3. 尝试作为网络图片处理
     if s.starts_with("http://") || s.starts_with("https://") {
-        // 为了统一处理，这里也尝试下载网络图片
         if let Ok(data_url) = download_image_sync(s) {
-            return Some(data_url);
+            if let Ok(guard) = image_manager.lock() {
+                if let Ok(info) = guard.save_image(&data_url) {
+                    return Some(info.id);
+                }
+            }
         }
     }
     

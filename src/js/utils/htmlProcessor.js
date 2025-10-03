@@ -19,6 +19,18 @@ export function processHTMLImages(htmlContent) {
     const originalSrc = img.getAttribute('src');
     if (originalSrc) {
       img.setAttribute('data-original-src', originalSrc);
+      
+      // 检查是否是 image-id: 格式的引用
+      if (originalSrc.startsWith('image-id:')) {
+        const imageId = originalSrc.substring(9); // 去掉 'image-id:' 前缀
+        img.setAttribute('data-image-id', imageId);
+        
+        // 先设置占位符
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Yqg6L295LitLi4uPC90ZXh0Pjwvc3ZnPg==';
+        
+        // 添加类名以便稍后识别
+        img.classList.add('image-id-pending');
+      }
     }
     
     // 使用 inline onerror 以确保字符串注入后仍能生效
@@ -32,6 +44,35 @@ export function processHTMLImages(htmlContent) {
   });
   
   return tempDiv.innerHTML;
+}
+
+// 加载所有待处理的图片ID引用（在HTML插入DOM后调用）
+export async function loadPendingImages(container) {
+  const pendingImages = container.querySelectorAll('img.image-id-pending[data-image-id]');
+  
+  for (const img of pendingImages) {
+    const imageId = img.getAttribute('data-image-id');
+    if (imageId) {
+      await loadImageByIdForHTML(img, imageId);
+    }
+    img.classList.remove('image-id-pending');
+  }
+}
+
+// 异步加载图片ID对应的图片
+async function loadImageByIdForHTML(imgElement, imageId) {
+  try {
+    const { invoke } = window.__TAURI__.core;
+    
+    // 加载图片数据
+    const dataUrl = await invoke('get_image_data_url', { imageId });
+    
+    imgElement.src = dataUrl;
+  } catch (error) {
+    console.error('加载HTML内图片失败:', error, 'imageId:', imageId);
+    imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';
+    imgElement.alt = '图片加载失败';
+  }
 }
 
 // HTML安全清理函数
@@ -150,10 +191,10 @@ if (!window.handleImageError) {
   };
 }
 
-// 图片错误处理
+// HTML内图片错误处理
 if (!window.handleHtmlImageError) {
   window.handleHtmlImageError = function(imgElement) {
-    // 直接使用占位图，所有图片都应该已经是dataURL格式
+    // 图片加载失败时使用占位图
     window.handleImageError(imgElement);
   };
 }

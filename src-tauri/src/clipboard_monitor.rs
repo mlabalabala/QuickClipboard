@@ -291,6 +291,12 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
                 *last_content = content.clone();
                 drop(last_content); // 释放锁
 
+                // 先检查内容是否已存在，以便正确区分新增和移动
+                let is_existing = matches!(
+                    crate::database::clipboard_item_exists(&content),
+                    Ok(Some(_))
+                );
+
                 // 添加到历史记录，并检查是否真的添加了新内容
                 // 如果正在粘贴，不移动重复内容的位置
                 let move_duplicates = !is_pasting_internal();
@@ -298,13 +304,46 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
                     clipboard_history::add_to_history_with_check_and_move_html(content, html_content, move_duplicates);
 
                 // 只有在真正添加了新内容且非粘贴状态下才播放复制音效
-                if was_added && !is_pasting_internal() {
+                if was_added && !is_pasting_internal() && !is_existing {
                     crate::sound_manager::play_copy_sound();
                 }
 
-                // 发射事件通知前端
-                if let Err(e) = app_handle.emit("clipboard-changed", ()) {
-                    println!("发射剪贴板变化事件失败: {}", e);
+                // 通知前端
+                if was_added {
+                    // 获取最新添加的项目（索引0）
+                    if let Ok(items) = crate::database::get_clipboard_history(Some(1)) {
+                        if let Some(latest_item) = items.first() {
+                            use tauri::Emitter;
+                            #[derive(Clone, serde::Serialize)]
+                            struct ClipboardUpdatePayload {
+                                item: crate::database::ClipboardItem,
+                                is_new: bool,
+                            }
+                            
+                            // 根据是否已存在来判断发送哪个事件
+                            if is_existing {
+                                // 已存在的内容被移动到前面
+                                let payload = ClipboardUpdatePayload {
+                                    item: latest_item.clone(),
+                                    is_new: false,
+                                };
+                                
+                                if let Err(e) = app_handle.emit("clipboard-item-moved", payload) {
+                                    println!("发射剪贴板移动事件失败: {}", e);
+                                }
+                            } else {
+                                // 新增的内容
+                                let payload = ClipboardUpdatePayload {
+                                    item: latest_item.clone(),
+                                    is_new: true,
+                                };
+                                
+                                if let Err(e) = app_handle.emit("clipboard-item-added", payload) {
+                                    println!("发射剪贴板新增事件失败: {}", e);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
