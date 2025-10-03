@@ -416,7 +416,7 @@ export class SelectionManager {
                 <i class="ti ti-dimensions"></i> ${Math.round(width)} × ${Math.round(height)}
                 ${this.borderRadius > 0 ? `
                     <span class="info-separator"></span> 
-                    <i class="ti ti-border-corner-pill"></i> 
+                    <i class="ti ti-border-radius"></i> 
                     <input type="number" class="radius-input" value="${this.borderRadius}" min="0" max="${Math.floor(Math.min(width, height) / 2)}" />
                 ` : ''}
             </span>
@@ -426,7 +426,7 @@ export class SelectionManager {
         `;
         this.selectionInfo.innerHTML = infoHTML;
         this.selectionInfo.style.left = '8px';
-        this.selectionInfo.style.top = (top < 40 ? height + 8 : -30) + 'px';
+        this.selectionInfo.style.top = (top < 40 ? height + 8 : -32) + 'px';
         
         // 绑定比例按钮事件
         this.bindAspectRatioButton();

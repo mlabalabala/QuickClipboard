@@ -58,4 +58,50 @@ export class ScreenshotAPI {
         return await invoke('hide_screenshot_window');
     }
 
+    /**
+     * 初始化长截屏
+     */
+    static async initScrollingScreenshot(selection, panel) {
+        return await invoke('init_scrolling_screenshot', { selection, panel });
+    }
+
+    /**
+     * 开始长截屏
+     */
+    static async startScrollingScreenshot() {
+        return await invoke('start_scrolling_screenshot');
+    }
+
+    /**
+     * 暂停长截屏
+     */
+    static async pauseScrollingScreenshot() {
+        return await invoke('pause_scrolling_screenshot');
+    }
+
+    /**
+     * 继续长截屏
+     */
+    static async resumeScrollingScreenshot() {
+        return await invoke('resume_scrolling_screenshot');
+    }
+
+    /**
+     * 停止长截屏
+     */
+    static async stopScrollingScreenshot() {
+        return await invoke('stop_scrolling_screenshot');
+    }
+
+    /**
+     * 取消长截屏
+     */
+    static async cancelScrollingScreenshot() {
+        return await invoke('cancel_scrolling_screenshot');
+    }
+
+    static async updateScrollingPanelRect(panel) {
+        return await invoke('update_scrolling_panel_rect', { panel });
+    }
+
 }

@@ -1,0 +1,643 @@
+/**
+ * 长截屏管理器
+ * 负责长截屏功能的控制和预览显示
+ */
+
+import { ScreenshotAPI } from '../api/screenshot-api.js';
+import { boundsConstraint } from '../utils/bounds-constraint.js';
+
+export class ScrollingScreenshotManager {
+    constructor() {
+        this.isActive = false;
+        this.isPaused = false;
+        this.previewImageUrl = null;
+        this.selection = null;
+        
+        // DOM元素
+        this.panel = null;
+        this.previewImage = null;
+        
+        // 回调函数
+        this.onCancel = null;
+        this.onComplete = null;
+        
+        // 预览更新节流控制
+        this.isUpdatingPreview = false;
+        this.pendingPreviewUpdate = null;
+        this.lastPreviewData = null;
+        
+        this.initUI();
+    }
+
+    /**
+     * 初始化UI元素
+     */
+    initUI() {
+        // 创建长截屏面板
+        this.panel = document.createElement('div');
+        this.panel.id = 'scrollingScreenshotPanel';
+        this.panel.className = 'scrolling-screenshot-panel';
+        this.panel.style.display = 'none';
+        
+        this.panel.innerHTML = `
+            <div class="scrolling-preview-wrapper">
+                <canvas class="scrolling-preview-canvas"></canvas>
+            </div>
+            <div class="scrolling-controls-area">
+                <div class="scrolling-controls">
+                    <button id="scrollingStartBtn" class="scrolling-control-btn" data-tooltip="开始">
+                        <i class="ti ti-player-play"></i>
+                    </button>
+                    <button id="scrollingPauseBtn" class="scrolling-control-btn" data-tooltip="暂停" style="display: none;">
+                        <i class="ti ti-player-pause"></i>
+                    </button>
+                    <button id="scrollingResumeBtn" class="scrolling-control-btn" data-tooltip="继续" style="display: none;">
+                        <i class="ti ti-player-play"></i>
+                    </button>
+                    <button id="scrollingStopBtn" class="scrolling-control-btn" data-tooltip="完成">
+                        <i class="ti ti-check"></i>
+                    </button>
+                    <button id="scrollingCancelBtn" class="scrolling-control-btn scrolling-cancel-btn" data-tooltip="取消">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+                <div class="scrolling-info">
+                    <span class="scrolling-info-text" id="scrollingStatus">准备</span>
+                    <div class="scrolling-info-data">
+                        <div class="scrolling-info-item">
+                            <i class="ti ti-ruler-measure"></i>
+                            <span id="scrollingHeight">0px</span>
+                        </div>
+                        <div class="scrolling-info-item">
+                            <i class="ti ti-photo"></i>
+                            <span id="scrollingFrames">0帧</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(this.panel);
+        
+        this.previewCanvas = this.panel.querySelector('.scrolling-preview-canvas');
+        this.previewCtx = this.previewCanvas.getContext('2d', { 
+            alpha: false, 
+            desynchronized: true 
+        });
+        this.previewWrapper = this.panel.querySelector('.scrolling-preview-wrapper');
+
+        this.bindEvents();
+    }
+
+    /**
+     * 绑定控制按钮事件
+     */
+    bindEvents() {
+        const startBtn = document.getElementById('scrollingStartBtn');
+        const pauseBtn = document.getElementById('scrollingPauseBtn');
+        const resumeBtn = document.getElementById('scrollingResumeBtn');
+        const stopBtn = document.getElementById('scrollingStopBtn');
+        const cancelBtn = document.getElementById('scrollingCancelBtn');
+        
+        if (startBtn) {
+            startBtn.addEventListener('click', () => this.start());
+        }
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => this.pause());
+        }
+        if (resumeBtn) {
+            resumeBtn.addEventListener('click', () => this.resume());
+        }
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stop());
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.cancel());
+        }
+    }
+
+    /**
+     * 激活长截屏模式
+     */
+    async activate(selection) {
+        if (this.isActive) return;
+        
+        this.isActive = true;
+        this.isPaused = false;
+        this.selection = selection;
+        
+        // 清理上次的预览状态
+        this.clearPreview();
+        
+        // 隐藏选区内的UI元素
+        this.hideSelectionElements();
+        
+        // 显示面板并定位
+        this.showPanel(selection);
+        
+        // 隐藏截屏背景
+        this.hideScreenshotBackground();
+        
+        // 更新状态文本
+        this.updateStatus('准备开始');
+        
+        const stopBtn = document.getElementById('scrollingStopBtn');
+        if (stopBtn) {
+            stopBtn.disabled = true;
+            stopBtn.style.opacity = '0.5';
+            stopBtn.style.cursor = 'not-allowed';
+        }
+        
+        // 获取面板位置
+        const panelRect = this.panel.getBoundingClientRect();
+        const panel = {
+            left: Math.round(panelRect.left),
+            top: Math.round(panelRect.top),
+            width: Math.round(panelRect.width),
+            height: Math.round(panelRect.height)
+        };
+        
+        // 初始化后端长截屏
+        try {
+            await ScreenshotAPI.initScrollingScreenshot(selection, panel);
+        } catch (error) {
+            console.error('初始化长截屏失败:', error);
+            this.updateStatus('初始化失败');
+        }
+    }
+
+    /**
+     * 显示并定位面板
+     */
+    showPanel(selection) {
+        this.panel.style.display = 'grid';
+        
+        const { left, top, width } = selection;
+        const panelWidth = 216;
+        const screenWidth = window.innerWidth;
+        
+        // 优先显示在选区右侧，顶部对齐选区顶部
+        let panelLeft = left + width + 12;
+        let panelTop = top;
+
+        if (panelLeft + panelWidth > screenWidth) {
+            panelLeft = left - panelWidth - 12;
+            if (panelLeft < 0) {
+                panelLeft = 12;
+            }
+        }
+        
+        this.panel.style.left = panelLeft + 'px';
+        this.panel.style.top = panelTop + 'px';
+        this.panel.style.bottom = '';
+
+        this.panelInitialTop = panelTop;
+    }
+
+    /**
+     * 开始长截屏
+     */
+    async start() {
+        if (!this.isActive) return;
+        
+        try {
+            await ScreenshotAPI.startScrollingScreenshot();
+            
+            document.getElementById('scrollingStartBtn').style.display = 'none';
+            document.getElementById('scrollingPauseBtn').style.display = 'inline-block';
+            
+            const stopBtn = document.getElementById('scrollingStopBtn');
+            if (stopBtn) {
+                stopBtn.disabled = false;
+                stopBtn.style.opacity = '1';
+                stopBtn.style.cursor = 'pointer';
+            }
+            
+            this.updateStatus('滚动中...');
+            this.listenForPreviewUpdates();
+        } catch (error) {
+            console.error('开始长截屏失败:', error);
+            this.updateStatus('开始失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 暂停长截屏
+     */
+    async pause() {
+        if (!this.isActive || this.isPaused) return;
+        
+        try {
+            // 暂停时恢复选区UI元素
+            this.showSelectionElements();
+            
+            await ScreenshotAPI.pauseScrollingScreenshot();
+            this.isPaused = true;
+            
+            // 更新UI状态
+            document.getElementById('scrollingPauseBtn').style.display = 'none';
+            document.getElementById('scrollingResumeBtn').style.display = 'inline-block';
+            this.updateStatus('已暂停');
+        } catch (error) {
+            console.error('暂停长截屏失败:', error);
+        }
+    }
+
+    /**
+     * 继续长截屏
+     */
+    async resume() {
+        if (!this.isActive || !this.isPaused) return;
+        
+        try {
+            await ScreenshotAPI.resumeScrollingScreenshot();
+            this.isPaused = false;
+            
+            document.getElementById('scrollingResumeBtn').style.display = 'none';
+            document.getElementById('scrollingPauseBtn').style.display = 'inline-block';
+            this.updateStatus('滚动中...');
+        } catch (error) {
+            console.error('继续长截屏失败:', error);
+        }
+    }
+
+    /**
+     * 结束长截屏
+     */
+    async stop() {
+        if (!this.isActive) return;
+        
+        try {
+            await ScreenshotAPI.stopScrollingScreenshot();
+            
+            // 通知完成回调
+            if (this.onComplete) {
+                this.onComplete();
+            }
+        } catch (error) {
+            console.error('结束长截屏失败:', error);
+            this.updateStatus('保存失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 取消长截屏
+     */
+    async cancel() {
+        if (!this.isActive) return;
+        
+        try {
+            // 恢复选区UI元素显示
+            this.showSelectionElements();
+            
+            await ScreenshotAPI.cancelScrollingScreenshot();
+            
+            // 通知取消回调
+            if (this.onCancel) {
+                this.onCancel();
+            }
+            
+            this.deactivate();
+        } catch (error) {
+            console.error('取消长截屏失败:', error);
+            this.deactivate();
+        }
+    }
+
+    /**
+     * 清理预览状态
+     */
+    clearPreview() {
+        // 清理预览更新状态
+        this.isUpdatingPreview = false;
+        this.pendingPreviewUpdate = null;
+        this.lastPreviewData = null;
+        this.lastPanelHeight = null;
+        
+        // 释放旧的图片URL
+        if (this.previewImageUrl && this.previewImageUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.previewImageUrl);
+        }
+        this.previewImageUrl = null;
+        
+        // 清理 Canvas
+        if (this.previewCtx && this.previewCanvas) {
+            this.previewCtx.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
+            this.previewCanvas.width = 0;
+            this.previewCanvas.height = 0;
+        }
+    }
+
+    /**
+     * 停用长截屏模式
+     */
+    deactivate() {
+        this.isActive = false;
+        this.isPaused = false;
+
+        this.clearPreview();
+        
+        this.showSelectionElements();
+
+        this.panel.style.display = 'none';
+
+        this.showScreenshotBackground();
+
+        document.getElementById('scrollingStartBtn').style.display = 'inline-block';
+        document.getElementById('scrollingPauseBtn').style.display = 'none';
+        document.getElementById('scrollingResumeBtn').style.display = 'none';
+
+        const stopBtn = document.getElementById('scrollingStopBtn');
+        if (stopBtn) {
+            stopBtn.disabled = true;
+            stopBtn.style.opacity = '0.5';
+            stopBtn.style.cursor = 'not-allowed';
+        }
+        
+        this.updateStatus('准备开始');
+        this.updateInfo(0, 0);
+    }
+
+    /**
+     * 监听预览图片更新
+     */
+    listenForPreviewUpdates() {
+        // 监听后端发送的预览更新事件
+        window.__TAURI__.event.listen('scrolling-screenshot-preview', (event) => {
+            const payload = event.payload;
+            this.schedulePreviewUpdate(payload);
+        });
+        
+        // 监听长截屏完成事件
+        window.__TAURI__.event.listen('scrolling-screenshot-complete', (event) => {
+            const payload = event.payload;
+            this.handleComplete(payload);
+        });
+        
+        // 监听长截屏错误事件
+        window.__TAURI__.event.listen('scrolling-screenshot-error', (event) => {
+            const error = event.payload;
+            this.updateStatus('错误: ' + error);
+        });
+    }
+
+    /**
+     * 调度预览更新
+     */
+    schedulePreviewUpdate(payload) {
+        // 保存最新的预览数据
+        this.pendingPreviewUpdate = payload;
+        
+        // 如果正在更新预览，跳过
+        if (this.isUpdatingPreview) {
+            return;
+        }
+        
+        // 标记正在更新
+        this.isUpdatingPreview = true;
+        
+        // 使用 requestAnimationFrame
+        requestAnimationFrame(() => {
+            if (this.pendingPreviewUpdate) {
+                this.updatePreview(this.pendingPreviewUpdate);
+                this.pendingPreviewUpdate = null;
+            }
+            this.isUpdatingPreview = false;
+        });
+    }
+
+    /**
+     * 更新预览图片
+     */
+    updatePreview(payload) {
+        const { image_url, height, frames } = payload;
+
+        // 更新信息显示
+        this.updateInfo(height, frames);
+
+        // 释放旧的图片URL
+        if (this.previewImageUrl && this.previewImageUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.previewImageUrl);
+        }
+        this.previewImageUrl = image_url;
+
+        // 加载图片并绘制到 Canvas
+        const img = new Image();
+        img.onload = () => {
+            const displayWidth = 150;
+            const scale = displayWidth / img.width;
+            const displayHeight = img.height * scale;
+            
+            this.previewCanvas.width = displayWidth;
+            this.previewCanvas.height = displayHeight;
+            
+            this.previewCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
+            
+            // 释放临时图片对象
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
+            
+            if (this.previewWrapper) {
+                this.previewWrapper.scrollTop = this.previewWrapper.scrollHeight;
+            }
+            
+            // 动态调整面板扩展方向
+            this.adjustPanelExpansion();
+            
+            const newHeight = this.panel.getBoundingClientRect().height;
+            if (!this.lastPanelHeight || Math.abs(newHeight - this.lastPanelHeight) > 5) {
+                this.lastPanelHeight = newHeight;
+                this.updatePanelRect();
+            }
+        };
+        
+        img.onerror = () => {
+            console.error('预览图片加载失败');
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
+        };
+        
+        img.src = image_url;
+    }
+
+    /**
+     * 处理长截屏完成
+     */
+    handleComplete(payload) {
+        const { image_url, height, frames } = payload;
+        
+        // 更新信息显示
+        this.updateInfo(height, frames);
+        this.updateStatus('长截屏完成！');
+
+        this.updatePreview(payload);
+    }
+
+    /**
+     * 更新状态文本
+     */
+    updateStatus(text) {
+        const statusText = document.getElementById('scrollingStatus');
+        if (statusText) {
+            statusText.textContent = text;
+        }
+    }
+
+    /**
+     * 更新信息显示
+     */
+    updateInfo(height, frames) {
+        const heightElem = document.getElementById('scrollingHeight');
+        const framesElem = document.getElementById('scrollingFrames');
+        
+        if (heightElem) {
+            heightElem.textContent = `${height}px`;
+        }
+        if (framesElem) {
+            framesElem.textContent = `${frames}帧`;
+        }
+    }
+
+    /**
+     * 隐藏截屏背景
+     */
+    hideScreenshotBackground() {
+        const backgroundCanvas = document.querySelector('#screenshot-background');
+        if (backgroundCanvas) {
+            backgroundCanvas.style.opacity = '0';
+        }
+    }
+
+    /**
+     * 恢复截屏背景
+     */
+    showScreenshotBackground() {
+        const backgroundCanvas = document.querySelector('#screenshot-background');
+        if (backgroundCanvas) {
+            backgroundCanvas.style.opacity = '1';
+        }
+    }
+
+
+    /**
+     * 设置取消回调
+     */
+    setOnCancel(callback) {
+        this.onCancel = callback;
+    }
+
+    setOnComplete(callback) {
+        this.onComplete = callback;
+    }
+
+    /**
+     * 更新面板区域
+     */
+    async updatePanelRect() {
+        if (!this.panel || !this.isActive) return;
+        
+        try {
+            const panelRect = this.panel.getBoundingClientRect();
+            const panel = {
+                left: Math.round(panelRect.left),
+                top: Math.round(panelRect.top),
+                width: Math.round(panelRect.width),
+                height: Math.round(panelRect.height)
+            };
+            
+            await ScreenshotAPI.updateScrollingPanelRect(panel);
+        } catch (error) {
+            console.error('更新面板区域失败:', error);
+        }
+    }
+
+    /**
+     * 动态调整面板位置
+     */
+    adjustPanelExpansion() {
+        if (!this.panel || this.panelInitialTop === undefined) return;
+        
+        const panelRect = this.panel.getBoundingClientRect();
+        const panelWidth = panelRect.width;
+        const currentPanelHeight = panelRect.height;
+        const panelLeft = parseInt(this.panel.style.left) || 0;
+        
+        const constrained = boundsConstraint.constrain(
+            panelLeft, 
+            this.panelInitialTop, 
+            panelWidth, 
+            currentPanelHeight
+        );
+        
+        // 应用约束后的位置
+        this.panel.style.top = constrained.y + 'px';
+    }
+
+    /**
+     * 隐藏选区内的UI元素
+     */
+    hideSelectionElements() {
+
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        resizeHandles.forEach(handle => {
+            handle.style.display = 'none';
+        });
+        
+        const radiusHandles = document.querySelectorAll('.radius-handle');
+        radiusHandles.forEach(handle => {
+            handle.style.display = 'none';
+        });
+
+        const selectionInfo = document.getElementById('selectionInfo');
+        if (selectionInfo) {
+            selectionInfo.style.display = 'none';
+        }
+
+        const maskLayer = document.getElementById('maskLayer');
+        if (maskLayer) {
+            maskLayer.style.display = 'none';
+        }
+
+        this.elementsHidden = true;
+    }
+
+    /**
+     * 显示选区内的UI元素
+     */
+    showSelectionElements() {
+
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        resizeHandles.forEach(handle => {
+            handle.style.display = 'block';
+        });
+
+        const radiusHandles = document.querySelectorAll('.radius-handle');
+        radiusHandles.forEach(handle => {
+            handle.style.display = 'block';
+        });
+
+        const selectionInfo = document.getElementById('selectionInfo');
+        if (selectionInfo) {
+            selectionInfo.style.display = 'inline-flex';
+        }
+
+        const maskLayer = document.getElementById('maskLayer');
+        if (maskLayer) {
+            maskLayer.style.display = 'block';
+        }
+        
+        this.elementsHidden = false;
+    }
+
+    /**
+     * 清理资源
+     */
+    clear() {
+        if (this.isActive) {
+            this.cancel();
+        }
+    }
+}
+

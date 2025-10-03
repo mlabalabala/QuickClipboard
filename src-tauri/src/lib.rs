@@ -22,6 +22,8 @@ mod paste_utils;
 mod preview_window;
 mod quick_texts;
 mod screenshot_window;
+mod scrolling_screenshot;
+mod image_stitcher;
 
 mod memory_manager;
 mod services;
@@ -511,7 +513,15 @@ pub fn run() {
             crate::screenshot_window::get_all_monitors,
             crate::screenshot_window::get_css_monitors,
             crate::screenshot_window::constrain_selection_bounds,
-            commands::start_builtin_screenshot
+            commands::start_builtin_screenshot,
+            
+            crate::scrolling_screenshot::init_scrolling_screenshot,
+            crate::scrolling_screenshot::start_scrolling_screenshot,
+            crate::scrolling_screenshot::pause_scrolling_screenshot,
+            crate::scrolling_screenshot::resume_scrolling_screenshot,
+            crate::scrolling_screenshot::stop_scrolling_screenshot,
+            crate::scrolling_screenshot::cancel_scrolling_screenshot,
+            crate::scrolling_screenshot::update_scrolling_panel_rect
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

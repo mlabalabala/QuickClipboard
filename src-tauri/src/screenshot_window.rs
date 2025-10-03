@@ -22,19 +22,17 @@ impl ScreenshotWindowManager {
             .get_webview_window("screenshot")
             .ok_or_else(|| "截屏窗口未找到".to_string())?;
 
-        // 获取屏幕尺寸并设置窗口为全屏
         if let Err(_) = Self::set_fullscreen_size(app, &screenshot_window) {
             // 继续执行，使用默认尺寸
         }
 
-        // 先截屏（完全同步，截屏完成后再显示窗口）
         let capture = Self::capture_screenshot_sync()
             .map_err(|e| format!("截屏失败: {}", e))?;
         let capture_width = capture.width;
         let capture_height = capture.height;
         let bmp_data = capture.data;
 
-        // 截屏完成，现在可以安全显示窗口
+        // 截屏完成，显示窗口
         screenshot_window
             .show()
             .map_err(|e| format!("显示截屏窗口失败: {}", e))?;
@@ -47,7 +45,6 @@ impl ScreenshotWindowManager {
         // 更新窗口可见状态
         SCREENSHOT_WINDOW_VISIBLE.store(true, Ordering::Relaxed);
 
-        // 本地HTTP服务器 + 浏览器原生加载
         let window_for_data = screenshot_window.clone();
         
         std::thread::spawn(move || {
@@ -115,7 +112,7 @@ impl ScreenshotWindowManager {
         let (logical_x, logical_y, logical_width, logical_height) =
             crate::screen_utils::ScreenUtils::get_css_virtual_screen_size(scale_factor)?;
 
-        // 使用LogicalSize设置逻辑尺寸，让Tauri处理缩放
+        // 使用LogicalSize设置逻辑尺寸
         let size = LogicalSize::new(logical_width, logical_height);
         window
             .set_size(size)
@@ -131,23 +128,21 @@ impl ScreenshotWindowManager {
     }
 
 
-    /// 获取所有显示器信息（物理像素格式，供后端使用）
+    /// 获取所有显示器信息
     pub fn get_all_monitors() -> Result<Vec<crate::screen_utils::MonitorInfo>, String> {
         crate::screen_utils::ScreenUtils::get_all_monitors()
     }
 
     /// 初始化截屏窗口
     pub fn init_screenshot_window(app: &tauri::AppHandle) -> Result<(), String> {
-        // 获取截屏窗口
         let screenshot_window = app
             .get_webview_window("screenshot")
             .ok_or_else(|| "截屏窗口未找到".to_string())?;
 
-        // 确保窗口初始状态为隐藏
         let _ = screenshot_window.hide();
         SCREENSHOT_WINDOW_VISIBLE.store(false, Ordering::Relaxed);
 
-        // 设置窗口关闭事件处理 - 隐藏而不是关闭
+        // 设置窗口隐藏而不是关闭
         let screenshot_window_clone = screenshot_window.clone();
         screenshot_window.on_window_event(move |event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -163,7 +158,7 @@ impl ScreenshotWindowManager {
     }
 }
 
-/// 获取所有显示器信息（返回CSS像素格式，供前端使用）
+/// 获取所有显示器信息
 #[tauri::command]
 pub fn get_css_monitors(
     window: tauri::WebviewWindow,
@@ -211,24 +206,24 @@ pub fn constrain_selection_bounds(
 pub fn show_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     // 检查窗口是否已显示，防止重复请求
     if SCREENSHOT_WINDOW_VISIBLE.load(Ordering::Relaxed) {
-        return Ok(()); // 静默忽略重复请求
+        return Ok(());
     }
     ScreenshotWindowManager::show_screenshot_window(&app)
 }
 
-/// 命令函数：隐藏截屏窗口
+/// 隐藏截屏窗口
 #[tauri::command]
 pub fn hide_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     ScreenshotWindowManager::hide_screenshot_window(&app)
 }
 
-/// 命令函数：切换截屏窗口显示状态
+/// 切换截屏窗口显示状态
 #[tauri::command]
 pub fn toggle_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     ScreenshotWindowManager::toggle_screenshot_window(&app)
 }
 
-/// 命令函数：检查截屏窗口是否可见
+/// 检查截屏窗口是否可见
 #[tauri::command]
 pub fn is_screenshot_window_visible() -> bool {
     ScreenshotWindowManager::is_screenshot_window_visible()
@@ -337,7 +332,7 @@ impl ScreenshotWindowManager {
     /// 创建BMP文件
     fn create_bmp_from_bgra(pixel_data: &[u8], width: u32, height: u32) -> Vec<u8> {
         let pixel_data_size = pixel_data.len() as u32;
-        let file_size = 54 + pixel_data_size; // 54字节BMP头 + 像素数据
+        let file_size = 54 + pixel_data_size;
         
         let mut bmp_data = Vec::with_capacity(file_size as usize);
         

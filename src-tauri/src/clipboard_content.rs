@@ -1,6 +1,6 @@
 use arboard::Clipboard;
 use base64::{engine::general_purpose as b64_engine, Engine as _};
-use image::{ImageBuffer, ImageOutputFormat, Rgba};
+use image::{ImageBuffer, Rgba};
 
 // Windows CF_DIB 常量（0x0008）
 #[cfg(windows)]
@@ -8,17 +8,25 @@ const CF_DIB: u32 = 8;
 
 // === 图像与 DataURL 转换辅助函数 ===
 pub fn image_to_data_url(image: &arboard::ImageData) -> String {
+    use image::codecs::png::PngEncoder;
+    use image::{ExtendedColorType, ImageEncoder};
+    
     let buffer = ImageBuffer::<Rgba<u8>, _>::from_raw(
         image.width as u32,
         image.height as u32,
         image.bytes.clone().into_owned(),
     )
     .expect("无法创建图像缓冲区");
+    
     let mut png_bytes: Vec<u8> = Vec::new();
-    let _ = image::DynamicImage::ImageRgba8(buffer).write_to(
-        &mut std::io::Cursor::new(&mut png_bytes),
-        ImageOutputFormat::Png,
+    let encoder = PngEncoder::new(&mut png_bytes);
+    let _ = encoder.write_image(
+        buffer.as_raw(),
+        image.width as u32,
+        image.height as u32,
+        ExtendedColorType::Rgba8
     );
+    
     let b64 = b64_engine::STANDARD.encode(png_bytes);
     format!("data:image/png;base64,{}", b64)
 }

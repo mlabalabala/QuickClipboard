@@ -22,16 +22,14 @@ import { FabricToolManager } from './managers/fabric-tool-manager.js';
 import { MagnifierManager } from './managers/magnifier-manager.js';
 import { OCRManager } from './managers/ocr-manager.js';
 import { HelpPanelManager } from './managers/help-panel-manager.js';
+import { ScrollingScreenshotManager } from './managers/scrolling-screenshot-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
     constructor() {
         this.monitors = [];
-        
-        // 确保Fabric.js已加载
+
         if (typeof fabric === 'undefined') {
-            console.error('ScreenshotController: Fabric.js 未加载，等待加载...');
-            // 延迟初始化，等待Fabric.js加载
             setTimeout(() => this.initializeManagers(), 100);
             return;
         }
@@ -41,7 +39,6 @@ export class ScreenshotController {
     }
     
     initializeController() {
-        console.log('ScreenshotController: 开始初始化，Fabric.js 版本:', fabric.version);
         
         // 初始化各个管理器
         this.selectionManager = new SelectionManager();
@@ -56,6 +53,7 @@ export class ScreenshotController {
         this.magnifierManager = new MagnifierManager();
         this.ocrManager = new OCRManager();
         this.helpPanelManager = new HelpPanelManager();
+        this.scrollingScreenshotManager = new ScrollingScreenshotManager();
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -76,7 +74,6 @@ export class ScreenshotController {
         window.screenshotController = this;
         window.screenshotApp = this;
         
-        console.log('ScreenshotController: 初始化完成');
     }
 
     /**
@@ -149,7 +146,6 @@ export class ScreenshotController {
         const action = this.selectionManager.startSelection(x, y, target);
         
         if (action === 'select') {
-            this.eventManager.hideInfoText();
             this.hideAllToolbars();
             // 清理之前的 OCR 界面元素
             if (this.ocrManager?.clear) {
@@ -170,7 +166,7 @@ export class ScreenshotController {
      * 处理选择更新
      */
     handleSelectionUpdate(x, y, shiftKey) {
-        // 始终更新放大镜位置（不管是否可见，因为它可能随时变为可见）
+        // 始终更新放大镜位置
         if (this.magnifierManager) {
             this.magnifierManager.update(x, y);
         }
@@ -182,25 +178,17 @@ export class ScreenshotController {
                 const borderRadius = this.selectionManager.getBorderRadius();
                 this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
             }
-            // 只在选择过程中隐藏工具栏
             this.hideAllToolbars();
         } else if (this.selectionManager.isMovingState) {
-            // 完全按照原版：直接调用，不等待！
             this.selectionManager.moveSelection(x, y, this.maskManager);
-            // 只在移动过程中隐藏工具栏
             this.hideAllToolbars();
         } else if (this.selectionManager.isResizingState) {
-            // 调整大小模式
             this.selectionManager.resizeSelection(x, y, this.maskManager, shiftKey);
-            // 只在调整过程中隐藏工具栏
             this.hideAllToolbars();
         } else if (this.selectionManager.isAdjustingRadius) {
-            // 调整圆角模式
             this.selectionManager.adjustRadius(x, y, this.maskManager);
-            // 只在调整圆角过程中隐藏工具栏
             this.hideAllToolbars();
         }
-        // 如果既不在选择也不在移动状态，就不要隐藏工具栏
     }
 
     /**
@@ -212,11 +200,10 @@ export class ScreenshotController {
         if (action === 'move-end' || action === 'select-end' || action === 'resize-end' || action === 'radius-end') {
             const selection = this.selectionManager.getSelection();
             if (selection) {
-                // 更新遮罩层（包括圆角）
+                // 更新遮罩层
                 const borderRadius = this.selectionManager.getBorderRadius();
                 this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
-                
-                // show() 现在返回主工具栏的实际位置
+
                 const mainToolbarPosition = this.toolbarManager.show(selection);
                 
                 // 有选区时隐藏放大镜
@@ -227,7 +214,6 @@ export class ScreenshotController {
                 // 如果有激活的工具，显示对应的子工具栏
                 const currentTool = this.toolbarManager.getCurrentTool();
                 if (currentTool && mainToolbarPosition) {
-                    // 直接使用返回的位置
                     this.showSubToolbarForTool(currentTool, selection, mainToolbarPosition);
                 }
             } else {
@@ -238,7 +224,7 @@ export class ScreenshotController {
     }
 
     /**
-     * 隐藏所有工具栏（主工具栏和子工具栏）
+     * 隐藏所有工具栏
      */
     hideAllToolbars() {
         this.toolbarManager.hide();
@@ -246,7 +232,7 @@ export class ScreenshotController {
     }
 
     /**
-     * 禁用所有编辑工具（无选区时调用）
+     * 禁用所有编辑工具
      */
     disableAllTools() {
         // 停用当前激活的工具
@@ -267,6 +253,11 @@ export class ScreenshotController {
      * 处理右键点击
      */
     handleRightClick(x, y) {
+        // 长截屏激活时，右键不清除选区
+        if (this.scrollingScreenshotManager.isActive) {
+            return;
+        }
+        
         const selection = this.selectionManager.getSelection();
         
         if (selection) {
@@ -375,6 +366,10 @@ export class ScreenshotController {
      * 处理窗口获得焦点
      */
     handleWindowFocus() {
+        // 长截屏工具激活，不要重置UI
+        if (this.scrollingScreenshotManager && this.scrollingScreenshotManager.isActive) {
+            return;
+        }
         this.reset();
     }
 
@@ -382,6 +377,10 @@ export class ScreenshotController {
      * 处理窗口失去焦点
      */
     handleWindowBlur() {
+        // 长截屏工具激活，不要重置UI
+        if (this.scrollingScreenshotManager && this.scrollingScreenshotManager.isActive) {
+            return;
+        }
         this.reset();
     }
 
@@ -461,7 +460,7 @@ export class ScreenshotController {
                 this.magnifierManager.show();
             }
             
-            // 确保初始状态下工具是禁用的（因为没有选区）
+            // 确保初始状态下工具是禁用的
             this.disableAllTools();
         } catch (error) {
             console.error('处理截屏数据失败:', error);
@@ -484,6 +483,12 @@ export class ScreenshotController {
             // OCR工具特殊处理：显示子工具栏，不激活编辑工具
             this.toolbarManager.setActiveTool('ocr');
             this.showSubToolbarForTool('ocr');
+            return;
+        }
+        
+        if (toolName === 'scrolling') {
+            // 长截屏工具特殊处理
+            this.handleScrollingScreenshot();
             return;
         }
         
@@ -561,6 +566,47 @@ export class ScreenshotController {
     }
 
     /**
+     * 处理长截屏工具
+     */
+    async handleScrollingScreenshot() {
+        const selection = this.selectionManager.getSelection();
+        if (!selection) {
+            return;
+        }
+        
+        try {
+            // 隐藏工具栏
+            this.hideAllToolbars();
+            
+            this.scrollingScreenshotManager.setOnCancel(() => {;
+                const mainToolbarPosition = this.toolbarManager.show(selection);
+                // 取消工具激活状态
+                this.toolbarManager.setActiveTool(null);
+            });
+            
+            // 设置完成回调
+            this.scrollingScreenshotManager.setOnComplete(async () => {
+                //直接关闭截屏窗口
+                try {
+                    this.clearAllContent();
+                    
+                    this.toolbarManager.setActiveTool(null);
+                    
+  
+                    await ScreenshotAPI.hideWindow();
+                } catch (error) {
+                    console.error('完成长截屏失败:', error);
+                }
+            });
+            
+            // 激活长截屏
+            await this.scrollingScreenshotManager.activate(selection);
+        } catch (error) {
+            console.error('启动长截屏失败:', error);
+        }
+    }
+
+    /**
      * 为指定工具显示子工具栏
      */
     showSubToolbarForTool(toolName, selectionRect = null, mainToolbarPosition = null) {
@@ -579,7 +625,6 @@ export class ScreenshotController {
                 };
             }
             
-            // 显示对应工具的参数栏，传递选区信息用于智能定位
             this.subToolbarManager.showForTool(toolName, mainToolbarPosition, selection);
         }
     }
@@ -730,8 +775,6 @@ export class ScreenshotController {
         if (this.magnifierManager && this.backgroundManager?.isScreenshotLoaded) {
             this.magnifierManager.show();
         }
-        
-        this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
     }
 
     /**
@@ -770,6 +813,11 @@ export class ScreenshotController {
                 this.ocrManager.clear();
             }
             
+            // 清理长截屏界面元素
+            if (this.scrollingScreenshotManager?.clear) {
+                this.scrollingScreenshotManager.clear();
+            }
+            
             // 禁用所有编辑工具
             this.disableAllTools();
             
@@ -788,11 +836,6 @@ export class ScreenshotController {
                 this.subToolbarManager.initParameters();
             }
             
-            // 重置事件管理器状态
-            if (this.eventManager) {
-                this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
-            }
-            
             // 恢复默认光标
             this.editLayerManager.restoreCursor();
             
@@ -808,7 +851,6 @@ export class ScreenshotController {
         this.selectionManager.reset();
         this.disableAllTools(); // 重置状态时禁用所有工具
         this.maskManager.clear();
-        this.eventManager.showInfoText('拖拽选择截屏区域，选区内可拖拽移动，右键取消/关闭，按 ESC 键关闭');
         this.editLayerManager.restoreCursor(); // 恢复默认光标
     }
 
