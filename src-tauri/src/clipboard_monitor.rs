@@ -609,6 +609,11 @@ pub fn initialize_clipboard_state() {
 
 // 检查文件路径是否来自图片缓存目录
 fn is_from_image_cache(file_path: &str) -> bool {
+    // 检查文件路径中是否包含 scrolling_screenshots
+    if file_path.contains("scrolling_screenshots") {
+        return false;
+    }
+    
     // 获取图片缓存目录路径
     if let Some(app_data_dir) = dirs::data_local_dir() {
         let cache_dir = app_data_dir.join("quickclipboard").join("clipboard_images");

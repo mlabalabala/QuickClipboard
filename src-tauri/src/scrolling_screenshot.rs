@@ -172,8 +172,30 @@ impl ScrollingScreenshotManager {
         
         let png_bytes = ImageStitcher::bgra_to_png(&merged_data, width, height);
         
-        #[cfg(windows)]
-        crate::clipboard_content::set_windows_clipboard_image(&merged_data, &png_bytes, width, height)?;
+        // 保存到文件
+        let app_data_dir = crate::settings::get_data_directory()?;
+        let images_dir = app_data_dir.join("clipboard_images");
+        // 创建专门的长截屏子目录
+        let scrolling_dir = images_dir.join("scrolling_screenshots");
+        std::fs::create_dir_all(&scrolling_dir)
+            .map_err(|e| format!("创建长截屏目录失败: {}", e))?;
+        
+        // 生成唯一文件名（使用时间戳+毫秒）
+        let now = chrono::Local::now();
+        let timestamp = now.format("%Y%m%d_%H%M%S").to_string();
+        let millis = now.timestamp_subsec_millis();
+        let filename = format!("QC长截屏_{}_{:03}.png", timestamp, millis);
+        let file_path = scrolling_dir.join(&filename);
+        
+        // 保存PNG文件
+        std::fs::write(&file_path, &png_bytes)
+            .map_err(|e| format!("保存图片文件失败: {}", e))?;
+        
+        println!("长截屏已保存到: {:?}", file_path);
+        
+        // 将文件路径复制到剪贴板
+        let file_path_str = file_path.to_string_lossy().to_string();
+        crate::file_handler::set_clipboard_files(&[file_path_str])?;
         
         Ok(())
     }
