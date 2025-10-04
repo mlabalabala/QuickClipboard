@@ -147,7 +147,7 @@ fn start_drag_monitoring_thread() {
 
 // 获取虚拟桌面尺寸（screen_utils）
 pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
-    crate::screen_utils::ScreenUtils::get_virtual_screen_size()
+    crate::screenshot::screen_utils::ScreenUtils::get_virtual_screen_size()
 }
 
 // 获取窗口所在显示器的边界（screen_utils）
@@ -165,13 +165,13 @@ fn apply_magnetic_snap_and_bounds(
         
         // 使用通用物理像素边界约束
         let (constrained_x, constrained_y) = 
-            crate::screen_utils::ScreenUtils::constrain_to_physical_bounds(x, y, pw, ph, window)
+            crate::screenshot::screen_utils::ScreenUtils::constrain_to_physical_bounds(x, y, pw, ph, window)
                 .unwrap_or((x, y));
         
         // 应用磁性吸附（在约束后的位置基础上）
-        if let Ok(virtual_screen) = crate::screen_utils::ScreenUtils::get_virtual_screen_size() {
+        if let Ok(virtual_screen) = crate::screenshot::screen_utils::ScreenUtils::get_virtual_screen_size() {
             let (vx, vy, vw, vh) = virtual_screen;
-            let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+            let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
                 .map(|(_, my, _, mh)| my + mh)
                 .unwrap_or(vy + vh);
             

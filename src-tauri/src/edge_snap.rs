@@ -150,7 +150,7 @@ pub fn restore_window_from_snap(window: &WebviewWindow) -> Result<(), String> {
 
 // 获取虚拟桌面尺寸（screen_utils）
 pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
-    crate::screen_utils::ScreenUtils::get_virtual_screen_size()
+    crate::screenshot::screen_utils::ScreenUtils::get_virtual_screen_size()
 }
 
 // 检查是否需要吸附到边缘（通用边界信息）
@@ -158,9 +158,9 @@ fn get_snap_target(window: &WebviewWindow, window_rect: &RECT) -> Option<(SnapEd
     let snap_distance = EDGE_SNAP_CONFIG.snap_distance;
 
     // 使用通用函数获取边界信息
-    let virtual_desktop = crate::screen_utils::ScreenUtils::get_virtual_screen_size().ok()?;
+    let virtual_desktop = crate::screenshot::screen_utils::ScreenUtils::get_virtual_screen_size().ok()?;
     let (vx, vy, vw, vh) = virtual_desktop;
-    let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+    let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
         .map(|(_, my, _, mh)| my + mh)
         .unwrap_or(vy + vh);
 
@@ -209,7 +209,7 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     let hide_offset = EDGE_SNAP_CONFIG.hide_offset;
     let window_rect = get_window_rect(window)?;
     let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+        let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
 
@@ -275,7 +275,7 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
 
     let window_rect = get_window_rect(window)?;
     let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+        let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
 
@@ -495,7 +495,7 @@ fn check_mouse_near_edge(
         }
 
         let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-        let monitor_bottom = crate::screen_utils::ScreenUtils::get_monitor_bounds(window)
+        let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
         let trigger_distance = 10;

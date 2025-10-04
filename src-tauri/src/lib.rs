@@ -21,9 +21,9 @@ mod mouse_hook;
 mod paste_utils;
 mod preview_window;
 mod quick_texts;
-mod screenshot_window;
-mod scrolling_screenshot;
-mod image_stitcher;
+
+// 截屏功能模块
+mod screenshot;
 
 mod memory_manager;
 mod services;
@@ -38,7 +38,6 @@ mod window_management;
 mod edge_snap;
 mod state_manager;
 mod window_drag;
-mod screen_utils;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -256,7 +255,7 @@ pub fn run() {
             preview_window::init_preview_window();
 
             // 初始化截屏窗口
-            if let Err(e) = crate::screenshot_window::ScreenshotWindowManager::init_screenshot_window(app.handle()) {
+            if let Err(e) = crate::screenshot::ScreenshotWindowManager::init_screenshot_window(app.handle()) {
                 println!("截屏窗口初始化失败: {}", e);
             }
 
@@ -506,22 +505,22 @@ pub fn run() {
             commands::file_exists,
             
             // 截屏窗口相关命令
-            crate::screenshot_window::show_screenshot_window,
-            crate::screenshot_window::hide_screenshot_window,
-            crate::screenshot_window::toggle_screenshot_window,
-            crate::screenshot_window::is_screenshot_window_visible,
-            crate::screenshot_window::get_all_monitors,
-            crate::screenshot_window::get_css_monitors,
-            crate::screenshot_window::constrain_selection_bounds,
+            crate::screenshot::show_screenshot_window,
+            crate::screenshot::hide_screenshot_window,
+            crate::screenshot::toggle_screenshot_window,
+            crate::screenshot::is_screenshot_window_visible,
+            crate::screenshot::get_all_monitors,
+            crate::screenshot::get_css_monitors,
+            crate::screenshot::constrain_selection_bounds,
             commands::start_builtin_screenshot,
             
-            crate::scrolling_screenshot::init_scrolling_screenshot,
-            crate::scrolling_screenshot::start_scrolling_screenshot,
-            crate::scrolling_screenshot::pause_scrolling_screenshot,
-            crate::scrolling_screenshot::resume_scrolling_screenshot,
-            crate::scrolling_screenshot::stop_scrolling_screenshot,
-            crate::scrolling_screenshot::cancel_scrolling_screenshot,
-            crate::scrolling_screenshot::update_scrolling_panel_rect
+            crate::screenshot::init_scrolling_screenshot,
+            crate::screenshot::start_scrolling_screenshot,
+            crate::screenshot::pause_scrolling_screenshot,
+            crate::screenshot::resume_scrolling_screenshot,
+            crate::screenshot::stop_scrolling_screenshot,
+            crate::screenshot::cancel_scrolling_screenshot,
+            crate::screenshot::update_scrolling_panel_rect
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -12,7 +12,7 @@ use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 use serde::{Deserialize, Serialize};
 use image::RgbaImage;
 
-use crate::image_stitcher::{ImageStitcher, CapturedFrame};
+use super::image_stitcher::{ImageStitcher, CapturedFrame};
 
 const VERTICAL_PADDING: u32 = 40;
 

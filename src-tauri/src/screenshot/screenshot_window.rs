@@ -110,7 +110,7 @@ impl ScreenshotWindowManager {
         // 获取缩放因子并使用统一工具函数转换
         let scale_factor = window.scale_factor().unwrap_or(1.0);
         let (logical_x, logical_y, logical_width, logical_height) =
-            crate::screen_utils::ScreenUtils::get_css_virtual_screen_size(scale_factor)?;
+            super::screen_utils::ScreenUtils::get_css_virtual_screen_size(scale_factor)?;
 
         // 使用LogicalSize设置逻辑尺寸
         let size = LogicalSize::new(logical_width, logical_height);
@@ -129,8 +129,8 @@ impl ScreenshotWindowManager {
 
 
     /// 获取所有显示器信息
-    pub fn get_all_monitors() -> Result<Vec<crate::screen_utils::MonitorInfo>, String> {
-        crate::screen_utils::ScreenUtils::get_all_monitors()
+    pub fn get_all_monitors() -> Result<Vec<super::screen_utils::MonitorInfo>, String> {
+        super::screen_utils::ScreenUtils::get_all_monitors()
     }
 
     /// 初始化截屏窗口
@@ -162,9 +162,9 @@ impl ScreenshotWindowManager {
 #[tauri::command]
 pub fn get_css_monitors(
     window: tauri::WebviewWindow,
-) -> Result<Vec<crate::screen_utils::CssMonitorInfo>, String> {
+) -> Result<Vec<super::screen_utils::CssMonitorInfo>, String> {
     let scale_factor = window.scale_factor().unwrap_or(1.0);
-    crate::screen_utils::ScreenUtils::get_css_monitors(scale_factor)
+    super::screen_utils::ScreenUtils::get_css_monitors(scale_factor)
 }
 
 /// 约束选区位置到合适的显示器边界内
@@ -186,7 +186,7 @@ pub fn constrain_selection_bounds(
 
     // 使用物理像素边界约束
     let (constrained_physical_x, constrained_physical_y) =
-        crate::screen_utils::ScreenUtils::constrain_to_physical_bounds(
+        super::screen_utils::ScreenUtils::constrain_to_physical_bounds(
             physical_x,
             physical_y,
             physical_width,
@@ -231,7 +231,7 @@ pub fn is_screenshot_window_visible() -> bool {
 
 /// 获取所有显示器信息的命令
 #[tauri::command]
-pub fn get_all_monitors() -> Result<Vec<crate::screen_utils::MonitorInfo>, String> {
+pub fn get_all_monitors() -> Result<Vec<super::screen_utils::MonitorInfo>, String> {
     ScreenshotWindowManager::get_all_monitors()
 }
 
@@ -244,7 +244,7 @@ pub struct ScreenshotCapture {
 impl ScreenshotWindowManager {
     /// GDI截屏
     fn capture_screenshot_sync() -> Result<ScreenshotCapture, String> {
-        let (x, y, w, h) = crate::screen_utils::ScreenUtils::get_virtual_screen_size()?;
+        let (x, y, w, h) = super::screen_utils::ScreenUtils::get_virtual_screen_size()?;
         unsafe { Self::capture_with_gdi(x, y, w, h) }
     }
 
