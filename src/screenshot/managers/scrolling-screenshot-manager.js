@@ -220,9 +220,6 @@ export class ScrollingScreenshotManager {
         if (!this.isActive || this.isPaused) return;
         
         try {
-            // 显示选区 UI 元素
-            this.showSelectionElements();
-            
             await ScreenshotAPI.pauseScrollingScreenshot();
             this.isPaused = true;
             
@@ -541,6 +538,11 @@ export class ScrollingScreenshotManager {
             maskLayer.style.display = 'none';
         }
 
+        const helpPanel = document.getElementById('helpPanel');
+        if (helpPanel) {
+            helpPanel.style.display = 'none';
+        }
+
         this.elementsHidden = true;
     }
 
@@ -567,6 +569,11 @@ export class ScrollingScreenshotManager {
         const maskLayer = document.getElementById('maskLayer');
         if (maskLayer) {
             maskLayer.style.display = 'block';
+        }
+
+        const helpPanel = document.getElementById('helpPanel');
+        if (helpPanel) {
+            helpPanel.style.display = 'flex';
         }
         
         this.elementsHidden = false;
