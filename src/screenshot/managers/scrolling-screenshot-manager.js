@@ -12,6 +12,7 @@ export class ScrollingScreenshotManager {
         this.isPaused = false;
         this.previewImageUrl = null;
         this.selection = null;
+        this.lastPanelHeight = null;
         
         // DOM元素
         this.panel = null;
@@ -20,11 +21,6 @@ export class ScrollingScreenshotManager {
         // 回调函数
         this.onCancel = null;
         this.onComplete = null;
-        
-        // 预览更新节流控制
-        this.isUpdatingPreview = false;
-        this.pendingPreviewUpdate = null;
-        this.lastPreviewData = null;
         
         this.initUI();
     }
@@ -41,7 +37,7 @@ export class ScrollingScreenshotManager {
         
         this.panel.innerHTML = `
             <div class="scrolling-preview-wrapper">
-                <canvas class="scrolling-preview-canvas"></canvas>
+                <img class="scrolling-preview-image" alt="预览图" />
             </div>
             <div class="scrolling-controls-area">
                 <div class="scrolling-controls">
@@ -79,11 +75,7 @@ export class ScrollingScreenshotManager {
         
         document.body.appendChild(this.panel);
         
-        this.previewCanvas = this.panel.querySelector('.scrolling-preview-canvas');
-        this.previewCtx = this.previewCanvas.getContext('2d', { 
-            alpha: false, 
-            desynchronized: true 
-        });
+        this.previewImage = this.panel.querySelector('.scrolling-preview-image');
         this.previewWrapper = this.panel.querySelector('.scrolling-preview-wrapper');
 
         this.bindEvents();
@@ -126,19 +118,19 @@ export class ScrollingScreenshotManager {
         this.isPaused = false;
         this.selection = selection;
         
-        // 清理上次的预览状态
+        // 清理预览状态
         this.clearPreview();
         
-        // 隐藏选区内的UI元素
+        // 隐藏选区 UI 元素
         this.hideSelectionElements();
         
-        // 显示面板并定位
+        // 显示并定位控制面板
         this.showPanel(selection);
         
         // 隐藏截屏背景
         this.hideScreenshotBackground();
         
-        // 更新状态文本
+        // 设置初始状态
         this.updateStatus('准备开始');
         
         const stopBtn = document.getElementById('scrollingStopBtn');
@@ -148,7 +140,7 @@ export class ScrollingScreenshotManager {
             stopBtn.style.cursor = 'not-allowed';
         }
         
-        // 获取面板位置
+        // 计算控制面板区域
         const panelRect = this.panel.getBoundingClientRect();
         const panel = {
             left: Math.round(panelRect.left),
@@ -157,7 +149,7 @@ export class ScrollingScreenshotManager {
             height: Math.round(panelRect.height)
         };
         
-        // 初始化后端长截屏
+        // 初始化长截屏服务
         try {
             await ScreenshotAPI.initScrollingScreenshot(selection, panel);
         } catch (error) {
@@ -228,13 +220,13 @@ export class ScrollingScreenshotManager {
         if (!this.isActive || this.isPaused) return;
         
         try {
-            // 暂停时恢复选区UI元素
+            // 显示选区 UI 元素
             this.showSelectionElements();
             
             await ScreenshotAPI.pauseScrollingScreenshot();
             this.isPaused = true;
             
-            // 更新UI状态
+            // 切换按钮显示状态
             document.getElementById('scrollingPauseBtn').style.display = 'none';
             document.getElementById('scrollingResumeBtn').style.display = 'inline-block';
             this.updateStatus('已暂停');
@@ -270,7 +262,7 @@ export class ScrollingScreenshotManager {
         try {
             await ScreenshotAPI.stopScrollingScreenshot();
             
-            // 通知完成回调
+            // 调用完成回调
             if (this.onComplete) {
                 this.onComplete();
             }
@@ -287,12 +279,12 @@ export class ScrollingScreenshotManager {
         if (!this.isActive) return;
         
         try {
-            // 恢复选区UI元素显示
+            // 显示选区 UI 元素
             this.showSelectionElements();
             
             await ScreenshotAPI.cancelScrollingScreenshot();
             
-            // 通知取消回调
+            // 调用取消回调
             if (this.onCancel) {
                 this.onCancel();
             }
@@ -308,24 +300,18 @@ export class ScrollingScreenshotManager {
      * 清理预览状态
      */
     clearPreview() {
-        // 清理预览更新状态
-        this.isUpdatingPreview = false;
-        this.pendingPreviewUpdate = null;
-        this.lastPreviewData = null;
-        this.lastPanelHeight = null;
+        // 清空图片资源
+        if (this.previewImage) {
+            this.previewImage.onload = null;
+            this.previewImage.src = '';
+        }
         
-        // 释放旧的图片URL
+        // 释放 Blob URL 内存
         if (this.previewImageUrl && this.previewImageUrl.startsWith('blob:')) {
             URL.revokeObjectURL(this.previewImageUrl);
         }
         this.previewImageUrl = null;
-        
-        // 清理 Canvas
-        if (this.previewCtx && this.previewCanvas) {
-            this.previewCtx.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
-            this.previewCanvas.width = 0;
-            this.previewCanvas.height = 0;
-        }
+        this.lastPanelHeight = null;
     }
 
     /**
@@ -359,22 +345,22 @@ export class ScrollingScreenshotManager {
     }
 
     /**
-     * 监听预览图片更新
+     * 监听预览更新事件
      */
     listenForPreviewUpdates() {
-        // 监听后端发送的预览更新事件
+        // 监听预览更新事件
         window.__TAURI__.event.listen('scrolling-screenshot-preview', (event) => {
             const payload = event.payload;
-            this.schedulePreviewUpdate(payload);
+            this.updatePreview(payload);
         });
         
-        // 监听长截屏完成事件
+        // 监听截屏完成事件
         window.__TAURI__.event.listen('scrolling-screenshot-complete', (event) => {
             const payload = event.payload;
             this.handleComplete(payload);
         });
         
-        // 监听长截屏错误事件
+        // 监听截屏错误事件
         window.__TAURI__.event.listen('scrolling-screenshot-error', (event) => {
             const error = event.payload;
             this.updateStatus('错误: ' + error);
@@ -382,84 +368,39 @@ export class ScrollingScreenshotManager {
     }
 
     /**
-     * 调度预览更新
-     */
-    schedulePreviewUpdate(payload) {
-        // 保存最新的预览数据
-        this.pendingPreviewUpdate = payload;
-        
-        // 如果正在更新预览，跳过
-        if (this.isUpdatingPreview) {
-            return;
-        }
-        
-        // 标记正在更新
-        this.isUpdatingPreview = true;
-        
-        // 使用 requestAnimationFrame
-        requestAnimationFrame(() => {
-            if (this.pendingPreviewUpdate) {
-                this.updatePreview(this.pendingPreviewUpdate);
-                this.pendingPreviewUpdate = null;
-            }
-            this.isUpdatingPreview = false;
-        });
-    }
-
-    /**
      * 更新预览图片
      */
     updatePreview(payload) {
+        if (!payload || !this.previewImage) return;
+        
         const { image_url, height, frames } = payload;
 
-        // 更新信息显示
+        // 更新显示信息
         this.updateInfo(height, frames);
 
-        // 释放旧的图片URL
-        if (this.previewImageUrl && this.previewImageUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(this.previewImageUrl);
+        // 延迟释放前一个 Blob URL 避免闪烁
+        if (this.previewImageUrl && this.previewImageUrl !== image_url && this.previewImageUrl.startsWith('blob:')) {
+            setTimeout(() => URL.revokeObjectURL(this.previewImageUrl), 200);
         }
-        this.previewImageUrl = image_url;
 
-        // 加载图片并绘制到 Canvas
-        const img = new Image();
-        img.onload = () => {
-            const displayWidth = 150;
-            const scale = displayWidth / img.width;
-            const displayHeight = img.height * scale;
-            
-            this.previewCanvas.width = displayWidth;
-            this.previewCanvas.height = displayHeight;
-            
-            this.previewCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
-            
-            // 释放临时图片对象
-            img.onload = null;
-            img.onerror = null;
-            img.src = '';
-            
+        // 设置图片源
+        this.previewImageUrl = image_url;
+        this.previewImage.src = image_url;
+        
+        // 图片加载完成后的处理
+        this.previewImage.onload = () => {
+            // 自动滚动到预览底部
             if (this.previewWrapper) {
                 this.previewWrapper.scrollTop = this.previewWrapper.scrollHeight;
             }
             
-            // 动态调整面板扩展方向
-            this.adjustPanelExpansion();
-            
-            const newHeight = this.panel.getBoundingClientRect().height;
-            if (!this.lastPanelHeight || Math.abs(newHeight - this.lastPanelHeight) > 5) {
-                this.lastPanelHeight = newHeight;
+            // 检测面板高度变化并通知后端
+            const currentHeight = this.panel.getBoundingClientRect().height;
+            if (!this.lastPanelHeight || Math.abs(currentHeight - this.lastPanelHeight) > 10) {
+                this.lastPanelHeight = currentHeight;
                 this.updatePanelRect();
             }
         };
-        
-        img.onerror = () => {
-            console.error('预览图片加载失败');
-            img.onload = null;
-            img.onerror = null;
-            img.src = '';
-        };
-        
-        img.src = image_url;
     }
 
     /**
@@ -468,7 +409,7 @@ export class ScrollingScreenshotManager {
     handleComplete(payload) {
         const { image_url, height, frames } = payload;
         
-        // 更新信息显示
+        // 更新显示信息
         this.updateInfo(height, frames);
         this.updateStatus('长截屏完成！');
 
