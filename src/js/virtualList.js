@@ -368,7 +368,6 @@ export class VirtualList {
 
     return this.data.map((item, index) => {
       const html = this.renderItem(item, index);
-      // renderItem应该已经包含了正确的data-index属性，不需要重复添加
       return html;
     });
   }

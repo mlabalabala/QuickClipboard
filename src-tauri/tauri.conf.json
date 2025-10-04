@@ -87,7 +87,15 @@
         "preview",
         "text-editor",
         "screenshot"
-      ]
+      ],
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": [
+            "**"
+          ]
+        }
+      }
     }
   },
   "bundle": {

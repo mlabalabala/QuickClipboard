@@ -31,6 +31,11 @@ pub struct ScrollingScreenshotManager {
     selection: Arc<Mutex<Option<SelectionRect>>>,
     panel_rect: Arc<Mutex<Option<PanelRect>>>,
     app_handle: Arc<Mutex<Option<AppHandle>>>,
+    stitched_image: Arc<Mutex<Option<Vec<u8>>>>,  // 完整拼接图(BGRA)
+    stitched_width: Arc<Mutex<u32>>,
+    stitched_height: Arc<Mutex<u32>>,
+    temp_dir: Arc<Mutex<Option<std::path::PathBuf>>>,
+    pending_frames: Arc<Mutex<Vec<CapturedFrame>>>,  // 累积帧批量发送
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,6 +63,11 @@ impl ScrollingScreenshotManager {
             selection: Arc::new(Mutex::new(None)),
             panel_rect: Arc::new(Mutex::new(None)),
             app_handle: Arc::new(Mutex::new(None)),
+            stitched_image: Arc::new(Mutex::new(None)),
+            stitched_width: Arc::new(Mutex::new(0)),
+            stitched_height: Arc::new(Mutex::new(0)),
+            temp_dir: Arc::new(Mutex::new(None)),
+            pending_frames: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -81,12 +91,26 @@ impl ScrollingScreenshotManager {
         *self.selection.lock().unwrap() = Some(physical_selection);
         *self.state.lock().unwrap() = ScrollingState::Idle;
         self.captured_frames.lock().unwrap().clear();
-        self.is_active.store(true, Ordering::Relaxed);
+        *self.stitched_image.lock().unwrap() = None;
+        *self.stitched_width.lock().unwrap() = 0;
+        *self.stitched_height.lock().unwrap() = 0;
+        self.pending_frames.lock().unwrap().clear();
         
-        // 使用统一的方法设置面板区域
+        let app_data_dir = crate::settings::get_data_directory()?;
+        let temp_dir = app_data_dir.join("scrolling_temp");
+        std::fs::create_dir_all(&temp_dir)
+            .map_err(|e| format!("创建临时目录失败: {}", e))?;
+        
+        if let Ok(entries) = std::fs::read_dir(&temp_dir) {
+            for entry in entries.flatten() {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+        
+        *self.temp_dir.lock().unwrap() = Some(temp_dir);
+        self.is_active.store(true, Ordering::Relaxed);
         self.update_panel_rect(panel)?;
         
-        // 立即设置初始穿透状态（面板外穿透）
         if let Some(window) = app.get_webview_window("screenshot") {
             let _ = window.set_ignore_cursor_events(true);
         }
@@ -137,9 +161,19 @@ impl ScrollingScreenshotManager {
         thread::sleep(Duration::from_millis(100));
 
         let result = self.merge_frames()?;
-        self.save_to_clipboard(&result)?;
+        
+        let stitched_data = self.stitched_image.lock().unwrap().clone();
+        let app_handle = self.app_handle.lock().unwrap().clone();
+        let width = result.width;
+        let height = result.height;
+        
+        thread::spawn(move || {
+            if let Some(data) = stitched_data {
+                let _ = Self::save_to_clipboard_async(&data, width, height);
+            }
+        });
+        
         self.cleanup();
-
         Ok(result)
     }
 
@@ -150,50 +184,23 @@ impl ScrollingScreenshotManager {
         Ok(())
     }
 
-    fn save_to_clipboard(&self, result: &ScrollingResult) -> Result<(), String> {
-        let frames = self.captured_frames.lock().unwrap();
-        if frames.is_empty() {
-            return Err("没有捕获到任何帧".to_string());
-        }
-
-        let width = result.width;
-        let height = result.height;
-        let mut merged_data = vec![0u8; (width * height * 4) as usize];
-        let mut current_y = 0u32;
+    fn save_to_clipboard_async(data: &[u8], width: u32, height: u32) -> Result<(), String> {
+        let png_bytes = ImageStitcher::bgra_to_png(data, width, height);
         
-        for frame in frames.iter() {
-            let start_idx = (current_y * width * 4) as usize;
-            let frame_size = (frame.width * frame.height * 4) as usize;
-            if start_idx + frame_size <= merged_data.len() {
-                merged_data[start_idx..start_idx + frame_size].copy_from_slice(&frame.data);
-            }
-            current_y += frame.height;
-        }
-        
-        let png_bytes = ImageStitcher::bgra_to_png(&merged_data, width, height);
-        
-        // 保存到文件
         let app_data_dir = crate::settings::get_data_directory()?;
-        let images_dir = app_data_dir.join("clipboard_images");
-        // 创建专门的长截屏子目录
-        let scrolling_dir = images_dir.join("scrolling_screenshots");
+        let scrolling_dir = app_data_dir.join("clipboard_images/scrolling_screenshots");
         std::fs::create_dir_all(&scrolling_dir)
             .map_err(|e| format!("创建长截屏目录失败: {}", e))?;
         
-        // 生成唯一文件名（使用时间戳+毫秒）
         let now = chrono::Local::now();
         let timestamp = now.format("%Y%m%d_%H%M%S").to_string();
         let millis = now.timestamp_subsec_millis();
         let filename = format!("QC长截屏_{}_{:03}.png", timestamp, millis);
         let file_path = scrolling_dir.join(&filename);
         
-        // 保存PNG文件
         std::fs::write(&file_path, &png_bytes)
             .map_err(|e| format!("保存图片文件失败: {}", e))?;
         
-        println!("长截屏已保存到: {:?}", file_path);
-        
-        // 将文件路径复制到剪贴板
         let file_path_str = file_path.to_string_lossy().to_string();
         crate::file_handler::set_clipboard_files(&[file_path_str])?;
         
@@ -248,9 +255,13 @@ impl ScrollingScreenshotManager {
         let captured_frames = Arc::clone(&self.captured_frames);
         let selection = Arc::clone(&self.selection);
         let app_handle = Arc::clone(&self.app_handle);
+        let stitched_image = Arc::clone(&self.stitched_image);
+        let stitched_width = Arc::clone(&self.stitched_width);
+        let stitched_height = Arc::clone(&self.stitched_height);
+        let temp_dir = Arc::clone(&self.temp_dir);
+        let pending_frames = Arc::clone(&self.pending_frames);
 
         thread::spawn(move || {
-            let mut total_height = 0;
             let mut no_change_count = 0;
             let mut last_extended_rgba: Option<RgbaImage> = None;
             let mut last_content_height: u32 = 0;
@@ -295,26 +306,33 @@ impl ScrollingScreenshotManager {
                             {
                                 let mut frames_lock = captured_frames.lock().unwrap();
                                 if frames_lock.is_empty() {
-                                    // 第一帧：只截取实际内容区域
                                     let first_frame_data = ImageStitcher::extract_region(
                                         &frame_data,
                                         content_width as u32,
                                         VERTICAL_PADDING,
                                         content_height as u32,
                                     );
-                                    frames_lock.push(CapturedFrame {
+                                    
+                                    *stitched_image.lock().unwrap() = Some(first_frame_data.clone());
+                                    *stitched_width.lock().unwrap() = content_width as u32;
+                                    *stitched_height.lock().unwrap() = content_height as u32;
+                                    
+                                    let first_frame = CapturedFrame {
                                         data: first_frame_data,
                                         width: content_width as u32,
                                         height: content_height as u32,
-                                    });
-                                    total_height = content_height as u32;
+                                    };
+                                    
+                                    frames_lock.clear();
+                                    frames_lock.push(first_frame.clone());
+                                    pending_frames.lock().unwrap().push(first_frame);
+                                    
                                     last_extended_rgba = Some(current_extended_rgba);
                                     last_content_height = content_height as u32;
                                     should_update_preview = true;
                                     is_first_frame = true;
 
                                 } else if let Some(last_rgba) = &last_extended_rgba {
-                                    // 后续帧：使用扩展区域进行匹配
                                     if let Some(stitch_result) = ImageStitcher::should_stitch_frame_ex(
                                         &last_rgba, &current_extended_rgba,
                                         VERTICAL_PADDING, last_content_height,
@@ -329,13 +347,25 @@ impl ScrollingScreenshotManager {
                                             stitch_result.new_content_height
                                         );
                                         
-                                        frames_lock.push(CapturedFrame {
+                                        let mut stitched = stitched_image.lock().unwrap();
+                                        if let Some(ref mut img) = *stitched {
+                                            img.extend_from_slice(&new_data);
+                                        }
+                                        drop(stitched);
+                                        
+                                        let new_height = *stitched_height.lock().unwrap() + stitch_result.new_content_height;
+                                        *stitched_height.lock().unwrap() = new_height;
+                                        
+                                        let new_frame = CapturedFrame {
                                             data: new_data,
                                             width: content_width as u32,
                                             height: stitch_result.new_content_height,
-                                        });
+                                        };
                                         
-                                        total_height += stitch_result.new_content_height;
+                                        frames_lock.clear();
+                                        frames_lock.push(new_frame.clone());
+                                        pending_frames.lock().unwrap().push(new_frame);
+                                        
                                         last_extended_rgba = Some(current_extended_rgba);
                                         last_content_height = content_height as u32;
                                         should_update_preview = true;
@@ -345,30 +375,35 @@ impl ScrollingScreenshotManager {
                                 }
                             }
                             
-                            // 实时预览更新
                             if should_update_preview {
                                 let now = std::time::Instant::now();
                                 let elapsed = now.duration_since(last_preview_time);
                                 
-                                // 首帧强制发送
-                                if is_first_frame || elapsed >= Duration::from_millis(100) {
+                                let pending_lock = pending_frames.lock().unwrap();
+                                let pending_total_height: u32 = pending_lock.iter().map(|f| f.height).sum();
+                                let pending_frames_clone = pending_lock.clone();
+                                drop(pending_lock);
+                                
+                                let should_send = is_first_frame || pending_total_height >= 50 || elapsed >= Duration::from_millis(200);
+                                
+                                if should_send && !pending_frames_clone.is_empty() {
                                     last_preview_time = now;
                                     
                                     let app_clone = app_handle.lock().unwrap().as_ref().map(|a| a.clone());
-                                    let frames_clone = captured_frames.lock().unwrap().clone();
-                                    let total_height_clone = total_height;
+                                    let total_height = *stitched_height.lock().unwrap();
+                                    let temp_dir_clone = temp_dir.lock().unwrap().clone();
                                     
-                                    // 在新线程中快速处理预览
+                                    pending_frames.lock().unwrap().clear();
+                                    
                                     thread::spawn(move || {
-                                        if let Some(app) = app_clone {
-                                            // 快速预览生成
-                                            let preview_data = ImageStitcher::create_preview(&frames_clone);
-                                            let bmp_data = Self::create_bmp_from_bgra(&preview_data.data, preview_data.width, preview_data.height);
-                                            if let Ok(preview_url) = Self::serve_image_via_http(&bmp_data, preview_data.width, preview_data.height) {
+                                        if let (Some(app), Some(temp_dir)) = (app_clone, temp_dir_clone) {
+                                            let merged_frame = Self::merge_pending_frames(&pending_frames_clone);
+                                            
+                                            if let Ok((file_path, compressed_height)) = Self::save_compressed_frame(&merged_frame, &temp_dir, 216) {
                                                 let _ = app.emit("scrolling-screenshot-preview", serde_json::json!({
-                                                    "image_url": preview_url,
-                                                    "height": total_height_clone,
-                                                    "frames": frames_clone.len(),
+                                                    "file_path": file_path,
+                                                    "frame_height": compressed_height,
+                                                    "total_height": total_height,
                                                 }));
                                             }
                                         }
@@ -376,15 +411,11 @@ impl ScrollingScreenshotManager {
                                 }
                             }
 
-                            // 高速捕获模式：根据拼接成功率动态调整
                             if no_change_count > 20 {
-                                // 很久没拼接成功，降低频率节省资源
                                 thread::sleep(Duration::from_millis(60));
                             } else if no_change_count > 10 {
-                                // 中等频率
                                 thread::sleep(Duration::from_millis(35));
                             } else {
-                                // 高频捕获，快速响应用户滚动
                                 thread::sleep(Duration::from_millis(25));
                             }
                         }
@@ -457,105 +488,108 @@ impl ScrollingScreenshotManager {
     }
 
     fn merge_frames(&self) -> Result<ScrollingResult, String> {
-        let frames = self.captured_frames.lock().unwrap();
+        // 直接使用完整拼接图
+        let stitched = self.stitched_image.lock().unwrap();
+        let _stitched_data = stitched.as_ref()
+            .ok_or("没有拼接图数据".to_string())?;
+        
+        let width = *self.stitched_width.lock().unwrap();
+        let height = *self.stitched_height.lock().unwrap();
+        
+        if width == 0 || height == 0 {
+            return Err("无效的图像尺寸".to_string());
+        }
+        
+        Ok(ScrollingResult {
+            image_url: String::new(),
+            width,
+            height,
+        })
+    }
+
+    /// 合并待发送帧
+    fn merge_pending_frames(frames: &[CapturedFrame]) -> CapturedFrame {
         if frames.is_empty() {
-            return Err("没有捕获到任何帧".to_string());
+            return CapturedFrame { data: vec![], width: 0, height: 0 };
+        }
+        
+        if frames.len() == 1 {
+            return frames[0].clone();
         }
 
         let width = frames[0].width;
         let total_height: u32 = frames.iter().map(|f| f.height).sum();
-        let mut merged_data = vec![0u8; (width * total_height * 4) as usize];
-
-        let mut current_y = 0;
-        for frame in frames.iter() {
-            for y in 0..frame.height as usize {
-                let src_offset = y * (frame.width * 4) as usize;
-                let dst_offset = ((current_y + y) * width as usize * 4) as usize;
-                let row_size = (frame.width * 4) as usize;
-                if dst_offset + row_size <= merged_data.len() && src_offset + row_size <= frame.data.len() {
-                    merged_data[dst_offset..dst_offset + row_size].copy_from_slice(&frame.data[src_offset..src_offset + row_size]);
-                }
-            }
-            current_y += frame.height as usize;
+        let mut merged_data = Vec::with_capacity((width * total_height * 4) as usize);
+        
+        for frame in frames {
+            merged_data.extend_from_slice(&frame.data);
         }
-
-        let bmp_data = Self::create_bmp_from_bgra(&merged_data, width, total_height);
-        let image_url = Self::serve_image_via_http(&bmp_data, width, total_height)?;
-
-        Ok(ScrollingResult {
-            image_url,
-            width,
-            height: total_height,
-            frames: frames.len(),
-        })
-    }
-
-    fn create_bmp_from_bgra(pixel_data: &[u8], width: u32, height: u32) -> Vec<u8> {
-        let pixel_data_size = pixel_data.len() as u32;
-        let file_size = 54 + pixel_data_size;
-        let mut bmp_data = Vec::with_capacity(file_size as usize);
-
-        bmp_data.extend_from_slice(b"BM");
-        bmp_data.extend_from_slice(&file_size.to_le_bytes());
-        bmp_data.extend_from_slice(&0u16.to_le_bytes());
-        bmp_data.extend_from_slice(&0u16.to_le_bytes());
-        bmp_data.extend_from_slice(&54u32.to_le_bytes());
-        bmp_data.extend_from_slice(&40u32.to_le_bytes());
-        bmp_data.extend_from_slice(&width.to_le_bytes());
-        bmp_data.extend_from_slice(&(-(height as i32)).to_le_bytes());
-        bmp_data.extend_from_slice(&1u16.to_le_bytes());
-        bmp_data.extend_from_slice(&32u16.to_le_bytes());
-        bmp_data.extend_from_slice(&0u32.to_le_bytes());
-        bmp_data.extend_from_slice(&pixel_data_size.to_le_bytes());
-        bmp_data.extend_from_slice(&0u32.to_le_bytes());
-        bmp_data.extend_from_slice(&0u32.to_le_bytes());
-        bmp_data.extend_from_slice(&0u32.to_le_bytes());
-        bmp_data.extend_from_slice(&0u32.to_le_bytes());
-        bmp_data.extend_from_slice(pixel_data);
-
-        bmp_data
-    }
-
-    fn serve_image_via_http(bmp_data: &[u8], _width: u32, _height: u32) -> Result<String, String> {
-        use std::net::TcpListener;
         
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .map_err(|e| format!("绑定端口失败: {}", e))?;
-        let port = listener.local_addr().unwrap().port();
-        let image_data = Arc::new(bmp_data.to_vec());
+        CapturedFrame { data: merged_data, width, height: total_height }
+    }
 
-        thread::spawn(move || {
-            let start_time = std::time::Instant::now();
-            while start_time.elapsed() < Duration::from_secs(10) {
-                if let Ok((stream, _)) = listener.accept() {
-                    Self::handle_http_request(stream, &image_data);
-                }
+    /// 保存压缩帧到本地临时文件
+    fn save_compressed_frame(
+        frame: &CapturedFrame,
+        temp_dir: &std::path::Path,
+        target_width: u32,
+    ) -> Result<(String, u32), String> {
+        if let Ok(entries) = std::fs::read_dir(temp_dir) {
+            let mut files: Vec<_> = entries
+                .flatten()
+                .filter(|e| {
+                    if let Some(name) = e.file_name().to_str() {
+                        name.starts_with("frame_") && name.ends_with(".png")
+                    } else {
+                        false
+                    }
+                })
+                .collect();
+            
+            files.sort_by(|a, b| {
+                let time_a = a.metadata().and_then(|m| m.modified()).ok();
+                let time_b = b.metadata().and_then(|m| m.modified()).ok();
+                time_b.cmp(&time_a)
+            });
+            
+            for entry in files.iter().skip(2) {
+                let _ = std::fs::remove_file(entry.path());
             }
-        });
+        }
         
-        thread::sleep(Duration::from_millis(50));
-        let url = format!("http://127.0.0.1:{}/scrolling.bmp?t={}", port, 
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis());
-        Ok(url)
-    }
-
-    fn handle_http_request(stream: std::net::TcpStream, image_data: &[u8]) {
-        use std::io::{Read, Write};
+        let scale = target_width as f64 / frame.width as f64;
+        let target_height = (frame.height as f64 * scale).ceil() as u32;
         
-        let mut stream = stream;
-        let mut buffer = [0; 1024];
-        let _ = stream.read(&mut buffer);
-
-        let response = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: image/bmp\r\nContent-Length: {}\r\n\
-            Access-Control-Allow-Origin: *\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n",
-            image_data.len()
+        let rgba_image = ImageStitcher::bgra_to_rgba_image(&frame.data, frame.width, frame.height);
+        let resized = image::imageops::resize(
+            &rgba_image,
+            target_width,
+            target_height,
+            image::imageops::FilterType::Lanczos3
         );
-
-        let _ = stream.write_all(response.as_bytes());
-        let _ = stream.write_all(image_data);
-        let _ = stream.flush();
+        
+        let mut compressed_bgra = vec![0u8; (target_width * target_height * 4) as usize];
+        for (i, pixel) in resized.pixels().enumerate() {
+            compressed_bgra[i * 4] = pixel[2];
+            compressed_bgra[i * 4 + 1] = pixel[1];
+            compressed_bgra[i * 4 + 2] = pixel[0];
+            compressed_bgra[i * 4 + 3] = pixel[3];
+        }
+        
+        let png_bytes = ImageStitcher::bgra_to_png(&compressed_bgra, target_width, target_height);
+        
+        let file_name = format!("frame_{}.png", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis());
+        let file_path = temp_dir.join(&file_name);
+        
+        std::fs::write(&file_path, &png_bytes)
+            .map_err(|e| format!("保存帧文件失败: {}", e))?;
+        
+        Ok((file_path.to_string_lossy().to_string(), target_height))
     }
+
 
     pub fn update_panel_rect(&self, panel: PanelRect) -> Result<(), String> {
         let scale_factor = self.app_handle.lock().unwrap().as_ref()
@@ -570,7 +604,6 @@ impl ScrollingScreenshotManager {
             height: (panel.height as f64 * scale_factor) as i32,
         };
 
-        // 更新面板区域后，立即检查并更新穿透状态
         let mut cursor_pos = WIN_POINT { x: 0, y: 0 };
         if unsafe { GetCursorPos(&mut cursor_pos) }.is_ok() {
             let in_panel = cursor_pos.x >= physical_panel.left 
@@ -594,6 +627,19 @@ impl ScrollingScreenshotManager {
         self.captured_frames.lock().unwrap().clear();
         *self.selection.lock().unwrap() = None;
         *self.panel_rect.lock().unwrap() = None;
+        *self.stitched_image.lock().unwrap() = None;
+        *self.stitched_width.lock().unwrap() = 0;
+        *self.stitched_height.lock().unwrap() = 0;
+        self.pending_frames.lock().unwrap().clear();
+        
+        if let Some(temp_dir) = self.temp_dir.lock().unwrap().as_ref() {
+            if let Ok(entries) = std::fs::read_dir(temp_dir) {
+                for entry in entries.flatten() {
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }
+        }
+        *self.temp_dir.lock().unwrap() = None;
     }
 }
 
@@ -602,7 +648,6 @@ pub struct ScrollingResult {
     pub image_url: String,
     pub width: u32,
     pub height: u32,
-    pub frames: usize,
 }
 
 lazy_static::lazy_static! {

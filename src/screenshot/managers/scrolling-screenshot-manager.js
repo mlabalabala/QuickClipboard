@@ -16,11 +16,27 @@ export class ScrollingScreenshotManager {
         
         // DOM元素
         this.panel = null;
-        this.previewImage = null;
+        this.previewCanvas = null;
+        this.previewContext = null;
+        
+        // 离屏Canvas缓存渲染
+        this.offscreenCanvas = document.createElement('canvas');
+        this.offscreenContext = this.offscreenCanvas.getContext('2d');
+        this.offscreenCanvas.width = 216;
+        this.offscreenCanvas.height = 0;
+        this.currentCanvasHeight = 0;
+        this.isRendering = false;
+        this.renderQueue = [];
+        this.maxCanvasHeight = 20000;
         
         // 回调函数
         this.onCancel = null;
         this.onComplete = null;
+        
+        // 事件监听器引用
+        this.previewListener = null;
+        this.completeListener = null;
+        this.errorListener = null;
         
         this.initUI();
     }
@@ -29,7 +45,6 @@ export class ScrollingScreenshotManager {
      * 初始化UI元素
      */
     initUI() {
-        // 创建长截屏面板
         this.panel = document.createElement('div');
         this.panel.id = 'scrollingScreenshotPanel';
         this.panel.className = 'scrolling-screenshot-panel';
@@ -37,7 +52,7 @@ export class ScrollingScreenshotManager {
         
         this.panel.innerHTML = `
             <div class="scrolling-preview-wrapper">
-                <img class="scrolling-preview-image" alt="预览图" />
+                <canvas class="scrolling-preview-canvas"></canvas>
             </div>
             <div class="scrolling-controls-area">
                 <div class="scrolling-controls">
@@ -64,10 +79,6 @@ export class ScrollingScreenshotManager {
                             <i class="ti ti-ruler-measure"></i>
                             <span id="scrollingHeight">0px</span>
                         </div>
-                        <div class="scrolling-info-item">
-                            <i class="ti ti-photo"></i>
-                            <span id="scrollingFrames">0帧</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -75,15 +86,14 @@ export class ScrollingScreenshotManager {
         
         document.body.appendChild(this.panel);
         
-        this.previewImage = this.panel.querySelector('.scrolling-preview-image');
+        this.previewCanvas = this.panel.querySelector('.scrolling-preview-canvas');
+        this.previewContext = this.previewCanvas.getContext('2d');
         this.previewWrapper = this.panel.querySelector('.scrolling-preview-wrapper');
+        this.currentImageUrl = null;
 
         this.bindEvents();
     }
 
-    /**
-     * 绑定控制按钮事件
-     */
     bindEvents() {
         const startBtn = document.getElementById('scrollingStartBtn');
         const pauseBtn = document.getElementById('scrollingPauseBtn');
@@ -118,19 +128,10 @@ export class ScrollingScreenshotManager {
         this.isPaused = false;
         this.selection = selection;
         
-        // 清理预览状态
         this.clearPreview();
-        
-        // 隐藏选区 UI 元素
         this.hideSelectionElements();
-        
-        // 显示并定位控制面板
         this.showPanel(selection);
-        
-        // 隐藏截屏背景
         this.hideScreenshotBackground();
-        
-        // 设置初始状态
         this.updateStatus('准备开始');
         
         const stopBtn = document.getElementById('scrollingStopBtn');
@@ -140,7 +141,6 @@ export class ScrollingScreenshotManager {
             stopBtn.style.cursor = 'not-allowed';
         }
         
-        // 计算控制面板区域
         const panelRect = this.panel.getBoundingClientRect();
         const panel = {
             left: Math.round(panelRect.left),
@@ -149,7 +149,6 @@ export class ScrollingScreenshotManager {
             height: Math.round(panelRect.height)
         };
         
-        // 初始化长截屏服务
         try {
             await ScreenshotAPI.initScrollingScreenshot(selection, panel);
         } catch (error) {
@@ -168,7 +167,6 @@ export class ScrollingScreenshotManager {
         const panelWidth = 216;
         const screenWidth = window.innerWidth;
         
-        // 优先显示在选区右侧，顶部对齐选区顶部
         let panelLeft = left + width + 12;
         let panelTop = top;
 
@@ -223,7 +221,6 @@ export class ScrollingScreenshotManager {
             await ScreenshotAPI.pauseScrollingScreenshot();
             this.isPaused = true;
             
-            // 切换按钮显示状态
             document.getElementById('scrollingPauseBtn').style.display = 'none';
             document.getElementById('scrollingResumeBtn').style.display = 'inline-block';
             this.updateStatus('已暂停');
@@ -259,13 +256,11 @@ export class ScrollingScreenshotManager {
         try {
             await ScreenshotAPI.stopScrollingScreenshot();
             
-            // 调用完成回调
             if (this.onComplete) {
                 this.onComplete();
             }
         } catch (error) {
             console.error('结束长截屏失败:', error);
-            this.updateStatus('保存失败: ' + error.message);
         }
     }
 
@@ -276,12 +271,9 @@ export class ScrollingScreenshotManager {
         if (!this.isActive) return;
         
         try {
-            // 显示选区 UI 元素
             this.showSelectionElements();
-            
             await ScreenshotAPI.cancelScrollingScreenshot();
             
-            // 调用取消回调
             if (this.onCancel) {
                 this.onCancel();
             }
@@ -297,18 +289,23 @@ export class ScrollingScreenshotManager {
      * 清理预览状态
      */
     clearPreview() {
-        // 清空图片资源
-        if (this.previewImage) {
-            this.previewImage.onload = null;
-            this.previewImage.src = '';
+        if (this.previewCanvas && this.previewContext) {
+            this.previewContext.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
+            this.previewCanvas.width = 216;
+            this.previewCanvas.height = 0;
         }
         
-        // 释放 Blob URL 内存
-        if (this.previewImageUrl && this.previewImageUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(this.previewImageUrl);
+        if (this.offscreenCanvas && this.offscreenContext) {
+            this.offscreenContext.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+            this.offscreenCanvas.width = 216;
+            this.offscreenCanvas.height = 0;
         }
+        
+        this.currentCanvasHeight = 0;
         this.previewImageUrl = null;
         this.lastPanelHeight = null;
+        this.isRendering = false;
+        this.renderQueue = [];
     }
 
     /**
@@ -317,6 +314,8 @@ export class ScrollingScreenshotManager {
     deactivate() {
         this.isActive = false;
         this.isPaused = false;
+        
+        this.removeEventListeners();
 
         this.clearPreview();
         
@@ -338,79 +337,156 @@ export class ScrollingScreenshotManager {
         }
         
         this.updateStatus('准备开始');
-        this.updateInfo(0, 0);
+        this.updateInfo(0);
     }
 
     /**
      * 监听预览更新事件
      */
-    listenForPreviewUpdates() {
-        // 监听预览更新事件
-        window.__TAURI__.event.listen('scrolling-screenshot-preview', (event) => {
-            const payload = event.payload;
-            this.updatePreview(payload);
+    async listenForPreviewUpdates() {
+        this.removeEventListeners();
+        
+        this.previewListener = await window.__TAURI__.event.listen('scrolling-screenshot-preview', (event) => {
+            this.updatePreview(event.payload);
         });
         
-        // 监听截屏完成事件
-        window.__TAURI__.event.listen('scrolling-screenshot-complete', (event) => {
-            const payload = event.payload;
-            this.handleComplete(payload);
+        this.completeListener = await window.__TAURI__.event.listen('scrolling-screenshot-complete', (event) => {
+            this.handleComplete(event.payload);
         });
         
-        // 监听截屏错误事件
-        window.__TAURI__.event.listen('scrolling-screenshot-error', (event) => {
-            const error = event.payload;
-            this.updateStatus('错误: ' + error);
+        this.errorListener = await window.__TAURI__.event.listen('scrolling-screenshot-error', (event) => {
+            this.updateStatus('错误: ' + event.payload);
         });
     }
 
     /**
-     * 更新预览图片
+     * 移除事件监听器
      */
-    updatePreview(payload) {
-        if (!payload || !this.previewImage) return;
-        
-        const { image_url, height, frames } = payload;
-
-        // 更新显示信息
-        this.updateInfo(height, frames);
-
-        // 延迟释放前一个 Blob URL 避免闪烁
-        if (this.previewImageUrl && this.previewImageUrl !== image_url && this.previewImageUrl.startsWith('blob:')) {
-            setTimeout(() => URL.revokeObjectURL(this.previewImageUrl), 200);
+    removeEventListeners() {
+        if (this.previewListener) {
+            this.previewListener();
+            this.previewListener = null;
         }
+        if (this.completeListener) {
+            this.completeListener();
+            this.completeListener = null;
+        }
+        if (this.errorListener) {
+            this.errorListener();
+            this.errorListener = null;
+        }
+    }
 
-        // 设置图片源
-        this.previewImageUrl = image_url;
-        this.previewImage.src = image_url;
+    /**
+     * 更新预览图片 - 离屏Canvas增量渲染
+     */
+    async updatePreview(payload) {
+        if (!payload || !this.previewCanvas) return;
         
-        // 图片加载完成后的处理
-        this.previewImage.onload = () => {
-            // 自动滚动到预览底部
-            if (this.previewWrapper) {
-                this.previewWrapper.scrollTop = this.previewWrapper.scrollHeight;
-            }
+        const { file_path, frame_height, total_height } = payload;
+
+        this.updateInfo(total_height);
+        this.renderQueue.push({ file_path, frame_height });
+        
+        if (this.isRendering) return;
+        
+        this.processRenderQueue();
+    }
+
+    /**
+     * 处理渲染队列
+     */
+    async processRenderQueue() {
+        if (this.isRendering || this.renderQueue.length === 0) return;
+        
+        this.isRendering = true;
+        
+        while (this.renderQueue.length > 0) {
+            const task = this.renderQueue.shift();
             
-            // 检测面板高度变化并通知后端
-            const currentHeight = this.panel.getBoundingClientRect().height;
-            if (!this.lastPanelHeight || Math.abs(currentHeight - this.lastPanelHeight) > 10) {
-                this.lastPanelHeight = currentHeight;
-                this.updatePanelRect();
+            try {
+                await this.renderFrame(task);
+            } catch (error) {
+                // 跳过失败的帧
             }
-        };
+        }
+        
+        this.isRendering = false;
+    }
+
+    /**
+     * 渲染单个帧
+     */
+    async renderFrame({ file_path, frame_height }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const assetUrl = window.__TAURI__.core.convertFileSrc(file_path, 'asset');
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const frameHeight = img.height;
+                        const newCanvasHeight = this.currentCanvasHeight + frameHeight;
+                        
+                        if (newCanvasHeight > this.maxCanvasHeight) {
+                            resolve();
+                            return;
+                        }
+                        
+                        const oldHeight = this.offscreenCanvas.height;
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = 216;
+                        tempCanvas.height = oldHeight;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        if (oldHeight > 0) {
+                            tempCtx.drawImage(this.offscreenCanvas, 0, 0);
+                        }
+                        
+                        this.offscreenCanvas.height = newCanvasHeight;
+                        
+                        if (oldHeight > 0) {
+                            this.offscreenContext.drawImage(tempCanvas, 0, 0);
+                        }
+                        
+                        this.offscreenContext.drawImage(img, 0, oldHeight);
+                        
+                        this.previewCanvas.width = 216;
+                        this.previewCanvas.height = newCanvasHeight;
+                        this.previewContext.drawImage(this.offscreenCanvas, 0, 0);
+                        
+                        this.currentCanvasHeight = newCanvasHeight;
+                        
+                        if (this.previewWrapper) {
+                            this.previewWrapper.scrollTop = this.previewWrapper.scrollHeight;
+                        }
+                        
+                        const currentHeight = this.panel.getBoundingClientRect().height;
+                        if (!this.lastPanelHeight || Math.abs(currentHeight - this.lastPanelHeight) > 10) {
+                            this.lastPanelHeight = currentHeight;
+                            this.updatePanelRect();
+                        }
+                        
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                img.onerror = () => {
+                    reject(new Error('加载图片失败'));
+                };
+                
+                img.src = assetUrl;
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
 
     /**
      * 处理长截屏完成
      */
     handleComplete(payload) {
-        const { image_url, height, frames } = payload;
-        
-        // 更新显示信息
-        this.updateInfo(height, frames);
         this.updateStatus('长截屏完成！');
-
-        this.updatePreview(payload);
     }
 
     /**
@@ -426,15 +502,10 @@ export class ScrollingScreenshotManager {
     /**
      * 更新信息显示
      */
-    updateInfo(height, frames) {
+    updateInfo(height) {
         const heightElem = document.getElementById('scrollingHeight');
-        const framesElem = document.getElementById('scrollingFrames');
-        
         if (heightElem) {
             heightElem.textContent = `${height}px`;
-        }
-        if (framesElem) {
-            framesElem.textContent = `${frames}帧`;
         }
     }
 
@@ -484,7 +555,7 @@ export class ScrollingScreenshotManager {
                 width: Math.round(panelRect.width),
                 height: Math.round(panelRect.height)
             };
-            
+            console.log('更新面板区域:', panel);
             await ScreenshotAPI.updateScrollingPanelRect(panel);
         } catch (error) {
             console.error('更新面板区域失败:', error);
@@ -492,7 +563,7 @@ export class ScrollingScreenshotManager {
     }
 
     /**
-     * 动态调整面板位置
+     * 调整面板位置
      */
     adjustPanelExpansion() {
         if (!this.panel || this.panelInitialTop === undefined) return;
@@ -502,22 +573,14 @@ export class ScrollingScreenshotManager {
         const currentPanelHeight = panelRect.height;
         const panelLeft = parseInt(this.panel.style.left) || 0;
         
-        const constrained = boundsConstraint.constrain(
-            panelLeft, 
-            this.panelInitialTop, 
-            panelWidth, 
-            currentPanelHeight
-        );
-        
-        // 应用约束后的位置
+        const constrained = boundsConstraint.constrain(panelLeft, this.panelInitialTop, panelWidth, currentPanelHeight);
         this.panel.style.top = constrained.y + 'px';
     }
 
     /**
-     * 隐藏选区内的UI元素
+     * 隐藏选区UI
      */
     hideSelectionElements() {
-
         const resizeHandles = document.querySelectorAll('.resize-handle');
         resizeHandles.forEach(handle => {
             handle.style.display = 'none';
@@ -547,10 +610,9 @@ export class ScrollingScreenshotManager {
     }
 
     /**
-     * 显示选区内的UI元素
+     * 显示选区UI
      */
     showSelectionElements() {
-
         const resizeHandles = document.querySelectorAll('.resize-handle');
         resizeHandles.forEach(handle => {
             handle.style.display = 'block';
@@ -583,6 +645,8 @@ export class ScrollingScreenshotManager {
      * 清理资源
      */
     clear() {
+        this.removeEventListeners();
+        
         if (this.isActive) {
             this.cancel();
         }
