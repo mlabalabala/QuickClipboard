@@ -21,7 +21,11 @@ export class ScrollingScreenshotManager {
         
         // 离屏Canvas缓存渲染
         this.offscreenCanvas = document.createElement('canvas');
-        this.offscreenContext = this.offscreenCanvas.getContext('2d');
+        this.offscreenContext = this.offscreenCanvas.getContext('2d', {
+            alpha: true,
+            desynchronized: true,
+            willReadFrequently: false
+        });
         this.offscreenCanvas.width = 216;
         this.offscreenCanvas.height = 0;
         this.currentCanvasHeight = 0;
@@ -37,6 +41,8 @@ export class ScrollingScreenshotManager {
         this.previewListener = null;
         this.completeListener = null;
         this.errorListener = null;
+        
+        this.lastUpdatePanelRectTime = 0;
         
         this.initUI();
     }
@@ -87,7 +93,15 @@ export class ScrollingScreenshotManager {
         document.body.appendChild(this.panel);
         
         this.previewCanvas = this.panel.querySelector('.scrolling-preview-canvas');
-        this.previewContext = this.previewCanvas.getContext('2d');
+        this.previewContext = this.previewCanvas.getContext('2d', {
+            alpha: true,
+            desynchronized: true,
+            willReadFrequently: false
+        });
+        
+        this.previewCanvas.width = 216;
+        this.previewCanvas.height = 0;
+        
         this.previewWrapper = this.panel.querySelector('.scrolling-preview-wrapper');
         this.currentImageUrl = null;
 
@@ -433,18 +447,18 @@ export class ScrollingScreenshotManager {
                         }
                         
                         const oldHeight = this.offscreenCanvas.height;
-                        const tempCanvas = document.createElement('canvas');
-                        tempCanvas.width = 216;
-                        tempCanvas.height = oldHeight;
-                        const tempCtx = tempCanvas.getContext('2d');
+                        
                         if (oldHeight > 0) {
+                            const tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = 216;
+                            tempCanvas.height = oldHeight;
+                            const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: false });
                             tempCtx.drawImage(this.offscreenCanvas, 0, 0);
-                        }
-                        
-                        this.offscreenCanvas.height = newCanvasHeight;
-                        
-                        if (oldHeight > 0) {
+                            
+                            this.offscreenCanvas.height = newCanvasHeight;
                             this.offscreenContext.drawImage(tempCanvas, 0, 0);
+                        } else {
+                            this.offscreenCanvas.height = newCanvasHeight;
                         }
                         
                         this.offscreenContext.drawImage(img, 0, oldHeight);
@@ -542,24 +556,26 @@ export class ScrollingScreenshotManager {
     }
 
     /**
-     * 更新面板区域
+     * 更新面板区域（非阻塞 + 节流）
      */
-    async updatePanelRect() {
+    updatePanelRect() {
         if (!this.panel || !this.isActive) return;
         
-        try {
-            const panelRect = this.panel.getBoundingClientRect();
-            const panel = {
-                left: Math.round(panelRect.left),
-                top: Math.round(panelRect.top),
-                width: Math.round(panelRect.width),
-                height: Math.round(panelRect.height)
-            };
-            console.log('更新面板区域:', panel);
-            await ScreenshotAPI.updateScrollingPanelRect(panel);
-        } catch (error) {
-            console.error('更新面板区域失败:', error);
+        const now = Date.now();
+        if (now - this.lastUpdatePanelRectTime < 500) {
+            return;
         }
+        this.lastUpdatePanelRectTime = now;
+        
+        const panelRect = this.panel.getBoundingClientRect();
+        const panel = {
+            left: Math.round(panelRect.left),
+            top: Math.round(panelRect.top),
+            width: Math.round(panelRect.width),
+            height: Math.round(panelRect.height)
+        };
+        
+        ScreenshotAPI.updateScrollingPanelRect(panel).catch(() => {});
     }
 
     /**

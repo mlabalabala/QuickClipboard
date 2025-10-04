@@ -397,7 +397,11 @@ impl ScrollingScreenshotManager {
                                     
                                     thread::spawn(move || {
                                         if let (Some(app), Some(temp_dir)) = (app_clone, temp_dir_clone) {
-                                            let merged_frame = Self::merge_pending_frames(&pending_frames_clone);
+                                            let merged_frame = if is_first_frame && pending_frames_clone.len() == 1 {
+                                                pending_frames_clone[0].clone()
+                                            } else {
+                                                Self::merge_pending_frames(&pending_frames_clone)
+                                            };
                                             
                                             if let Ok((file_path, compressed_height)) = Self::save_compressed_frame(&merged_frame, &temp_dir, 216) {
                                                 let _ = app.emit("scrolling-screenshot-preview", serde_json::json!({
@@ -565,7 +569,7 @@ impl ScrollingScreenshotManager {
             &rgba_image,
             target_width,
             target_height,
-            image::imageops::FilterType::Lanczos3
+            image::imageops::FilterType::CatmullRom
         );
         
         let mut compressed_bgra = vec![0u8; (target_width * target_height * 4) as usize];
@@ -592,10 +596,13 @@ impl ScrollingScreenshotManager {
 
 
     pub fn update_panel_rect(&self, panel: PanelRect) -> Result<(), String> {
-        let scale_factor = self.app_handle.lock().unwrap().as_ref()
-            .and_then(|app| app.get_webview_window("screenshot"))
-            .and_then(|w| w.scale_factor().ok())
-            .unwrap_or(1.0);
+        let scale_factor = match self.app_handle.try_lock() {
+            Ok(handle) => handle.as_ref()
+                .and_then(|app| app.get_webview_window("screenshot"))
+                .and_then(|w| w.scale_factor().ok())
+                .unwrap_or(1.0),
+            Err(_) => return Ok(())
+        };
 
         let physical_panel = PanelRect {
             left: (panel.left as f64 * scale_factor) as i32,
@@ -603,22 +610,10 @@ impl ScrollingScreenshotManager {
             width: (panel.width as f64 * scale_factor) as i32,
             height: (panel.height as f64 * scale_factor) as i32,
         };
-
-        let mut cursor_pos = WIN_POINT { x: 0, y: 0 };
-        if unsafe { GetCursorPos(&mut cursor_pos) }.is_ok() {
-            let in_panel = cursor_pos.x >= physical_panel.left 
-                && cursor_pos.x <= physical_panel.left + physical_panel.width
-                && cursor_pos.y >= physical_panel.top 
-                && cursor_pos.y <= physical_panel.top + physical_panel.height;
-            
-            if let Some(app) = self.app_handle.lock().unwrap().as_ref() {
-                if let Some(window) = app.get_webview_window("screenshot") {
-                    let _ = window.set_ignore_cursor_events(!in_panel);
-                }
-            }
-        }
         
-        *self.panel_rect.lock().unwrap() = Some(physical_panel);
+        if let Ok(mut panel_lock) = self.panel_rect.try_lock() {
+            *panel_lock = Some(physical_panel);
+        }
         
         Ok(())
     }
