@@ -16,6 +16,14 @@ export class EventManager {
         this.onWindowFocus = null;
         this.onWindowBlur = null;
         
+        // 拖拽检测
+        this.mouseDownPos = null;
+        this.isDragging = false;
+        this.dragThreshold = 5; // 5像素移动阈值
+        
+        // 选区操作状态
+        this.isSelectionOperation = false;
+        
         this.initEvents();
     }
 
@@ -50,29 +58,73 @@ export class EventManager {
             return;
         }
         
-        // 如果点击的是拖拽节点，需要特殊处理
-        if (e.target.classList.contains('resize-handle')) {
+        // 如果点击的是操作节点或选区内部，立即触发选区事件（移动/调整）
+        if (e.target.classList.contains('resize-handle') || 
+            e.target.classList.contains('radius-handle') ||
+            e.target === this.selectionArea) {
             e.preventDefault();
-            // 不调用 stopPropagation，让拖拽节点事件正常处理
-        } else {
-            e.preventDefault();
-            e.stopPropagation();
+            this.isSelectionOperation = true;
+            this.isDragging = false;
+            this.mouseDownPos = null;
+            this.onSelectionStart?.(mouseX, mouseY, e.target);
+            return;
         }
         
-        // 传递目标元素给选区管理器
-        this.onSelectionStart?.(mouseX, mouseY, e.target);
+        // 在空白处按下：记录位置，等待判断是点击还是拖拽
+        e.preventDefault();
+        e.stopPropagation();
+        this.isSelectionOperation = false;
+        this.mouseDownPos = { x: mouseX, y: mouseY, target: e.target };
+        this.isDragging = false;
     }
 
     handleMouseMove(e) {
         const mouseX = e.clientX;
         const mouseY = e.clientY;
         
+        // 如果正在进行选区操作（移动/调整），始终更新
+        if (this.isSelectionOperation) {
+            this.onSelectionUpdate?.(mouseX, mouseY, e.shiftKey);
+            return;
+        }
+        
+        // 空白处：检查是否超过阈值开始拖拽
+        if (this.mouseDownPos && !this.isDragging) {
+            const dx = Math.abs(mouseX - this.mouseDownPos.x);
+            const dy = Math.abs(mouseY - this.mouseDownPos.y);
+            
+            if (dx > this.dragThreshold || dy > this.dragThreshold) {
+                // 超过阈值，开始拖拽（手动选区）
+                this.isDragging = true;
+                this.isSelectionOperation = true;
+                this.onSelectionStart?.(this.mouseDownPos.x, this.mouseDownPos.y, this.mouseDownPos.target);
+            }
+        }
+        
+        // 如果已经在拖拽，更新选区
+        if (this.isDragging) {
+            this.onSelectionUpdate?.(mouseX, mouseY, e.shiftKey);
+            return;
+        }
+
         this.onSelectionUpdate?.(mouseX, mouseY, e.shiftKey);
     }
 
     handleMouseUp(e) {
         if (e.button !== 0) return; // 只处理左键
         
+        // 如果记录了 mouseDown 但没有拖拽，说明是点击
+        if (this.mouseDownPos && !this.isDragging) {
+            // 触发点击事件（确认自动选区）
+            this.onSelectionStart?.(e.clientX, e.clientY, null);
+        }
+        
+        // 清除状态
+        this.mouseDownPos = null;
+        this.isDragging = false;
+        this.isSelectionOperation = false;
+        
+        // 结束选区操作
         this.onSelectionEnd?.();
     }
 

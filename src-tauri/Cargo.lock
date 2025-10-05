@@ -17,6 +17,7 @@ dependencies = [
  "imageproc",
  "lazy_static",
  "once_cell",
+ "parking_lot",
  "rayon",
  "regex",
  "reqwest 0.11.27",

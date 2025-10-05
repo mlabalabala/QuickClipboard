@@ -40,6 +40,35 @@ export class SelectionManager {
         // 缓存的显示器边界信息
         this.monitors = [];
         this.virtualBounds = null;
+        
+        // 操作节点显示状态
+        this.handlesVisible = false;
+    }
+
+    /**
+     * 显示操作节点
+     */
+    showHandles() {
+        if (this.handlesVisible) return;
+        
+        const handles = this.selectionArea.querySelectorAll('.resize-handle, .radius-handle');
+        handles.forEach(handle => {
+            handle.style.display = 'block';
+        });
+        this.handlesVisible = true;
+    }
+
+    /**
+     * 隐藏操作节点
+     */
+    hideHandles() {
+        if (!this.handlesVisible) return;
+        
+        const handles = this.selectionArea.querySelectorAll('.resize-handle, .radius-handle');
+        handles.forEach(handle => {
+            handle.style.display = 'none';
+        });
+        this.handlesVisible = false;
     }
 
     /**
@@ -90,6 +119,9 @@ export class SelectionManager {
             this.startY = mouseY;
             this.currentX = mouseX;
             this.currentY = mouseY;
+            
+            // 隐藏操作节点
+            this.hideHandles();
             
             // 立即重置选区样式，防止显示旧选区
             this.selectionArea.style.left = mouseX + 'px';
@@ -359,6 +391,8 @@ export class SelectionManager {
             if (width > 10 && height > 10) {
                 // 确保选区信息被正确保存
                 this.updateDisplay();
+                // 显示操作节点
+                this.showHandles();
                 return 'select-end';
             } else {
                 this.reset();
@@ -489,10 +523,29 @@ export class SelectionManager {
     }
 
     /**
+     * 直接设置选区
+     */
+    setSelection(left, top, width, height) {
+        // 设置选区数据
+        this.selectionRect = { left, top, width, height };
+        
+        // 更新显示
+        this.updateSelectionDisplay(left, top, width, height);
+        
+        // 显示操作节点
+        this.showHandles();
+        
+        // 显示选区区域
+        this.selectionArea.style.display = 'block';
+        document.body.classList.add('has-selection');
+    }
+
+    /**
      * 清除选区
      */
     clearSelection() {
         this.selectionRect = null;
+        this.hideHandles();
         // 清除样式，防止下次显示时闪现旧选区
         this.selectionArea.style.left = '0px';
         this.selectionArea.style.top = '0px';
@@ -514,6 +567,7 @@ export class SelectionManager {
         this.isResizing = false;
         this.isAdjustingRadius = false;
         this.selectionRect = null;
+        this.hideHandles();
         // 清除样式，防止下次显示时闪现旧选区
         this.selectionArea.style.left = '0px';
         this.selectionArea.style.top = '0px';

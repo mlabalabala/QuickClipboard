@@ -13,6 +13,9 @@ export class MaskManager {
         this.cornerAnglesCache = new Map();
         this.precomputeCornerAngles();
         
+        // 标记是否启用过渡动画
+        this.transitionEnabled = false;
+        
         // 窗口变化时更新尺寸
         window.addEventListener('resize', () => {
             this.screenWidth = window.innerWidth;
@@ -35,6 +38,26 @@ export class MaskManager {
             }
             this.cornerAnglesCache.set(pointsPerCorner, angles);
         });
+    }
+
+    /**
+     * 启用过渡动画
+     */
+    enableTransition() {
+        if (!this.transitionEnabled) {
+            this.transitionEnabled = true;
+            this.maskLayer.style.transition = 'clip-path 0.05s ease-out';
+        }
+    }
+    
+    /**
+     * 禁用过渡动画
+     */
+    disableTransition() {
+        if (this.transitionEnabled) {
+            this.transitionEnabled = false;
+            this.maskLayer.style.transition = 'none';
+        }
     }
 
     // 根据选区更新遮罩镂空区域
@@ -130,6 +153,7 @@ export class MaskManager {
 
     // 重置为全屏遮罩
     resetToFullscreen() {
+        this.disableTransition();
         this.maskLayer.style.clipPath = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
     }
 

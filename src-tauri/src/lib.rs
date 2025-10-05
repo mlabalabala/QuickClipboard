@@ -520,7 +520,12 @@ pub fn run() {
             crate::screenshot::resume_scrolling_screenshot,
             crate::screenshot::stop_scrolling_screenshot,
             crate::screenshot::cancel_scrolling_screenshot,
-            crate::screenshot::update_scrolling_panel_rect
+            crate::screenshot::update_scrolling_panel_rect,
+            
+            // 自动选区相关命令
+            crate::screenshot::start_auto_selection,
+            crate::screenshot::stop_auto_selection,
+            crate::screenshot::is_auto_selection_active
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

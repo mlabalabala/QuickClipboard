@@ -48,11 +48,13 @@ zip = "2.1"
 reqwest = { version = "0.11", features = ["json", "stream", "blocking"] }
 urlencoding = "2.1"
 lazy_static = "1.4"
+parking_lot = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.56.0", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Accessibility",
     "Win32_Foundation",
     "Win32_System_LibraryLoader",
     "Win32_System_DataExchange",
@@ -65,7 +67,8 @@ windows = { version = "0.56.0", features = [
     "Win32_UI_Shell",
     "Win32_System_Ole",
     "Win32_Storage_FileSystem",
-    "Win32_System_Com"
+    "Win32_System_Com",
+    "Win32_UI_Controls"
 ] }
 window-vibrancy = "0.6"
 
@@ -74,13 +77,13 @@ custom-protocol = ["tauri/custom-protocol"]
 
 # 发布版本优化配置
 [profile.release]
-# 启用链接时优化 (LTO)，可以显著减小二进制文件大小
+# 启用链接时优化 (LTO)
 lto = true
-# 优化代码大小而不是速度
-opt-level = "s"
+# 优化速度（高性能优化）
+opt-level = 3
 # 启用代码生成单元优化
 codegen-units = 1
-# 启用panic时立即终止，减小二进制大小
+# 启用panic时立即终止
 panic = "abort"
 # 去除调试符号
 strip = true

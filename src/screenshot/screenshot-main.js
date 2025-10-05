@@ -23,6 +23,7 @@ import { MagnifierManager } from './managers/magnifier-manager.js';
 import { OCRManager } from './managers/ocr-manager.js';
 import { HelpPanelManager } from './managers/help-panel-manager.js';
 import { ScrollingScreenshotManager } from './managers/scrolling-screenshot-manager.js';
+import { autoSelectionManager } from './managers/auto-selection-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
@@ -54,6 +55,7 @@ export class ScreenshotController {
         this.ocrManager = new OCRManager();
         this.helpPanelManager = new HelpPanelManager();
         this.scrollingScreenshotManager = new ScrollingScreenshotManager();
+        
         
         // 设置管理器之间的引用关系
         this.exportManager.setBackgroundManager(this.backgroundManager);
@@ -143,6 +145,48 @@ export class ScreenshotController {
      * 处理选择开始
      */
     handleSelectionStart(x, y, target) {
+        // target 为 null 表示点击（确认自动选区）
+        if (target === null && autoSelectionManager.isActive) {
+            const bounds = autoSelectionManager.confirmSelection();
+            
+            if (bounds) {
+                // 禁用遮罩层过渡
+                this.maskManager.disableTransition();
+                
+                // 创建正常选区
+                this.selectionManager.setSelection(
+                    bounds.x,
+                    bounds.y,
+                    bounds.width,
+                    bounds.height
+                );
+                
+                // 更新遮罩
+                this.maskManager.updateMask(
+                    bounds.x,
+                    bounds.y,
+                    bounds.width,
+                    bounds.height,
+                    this.selectionManager.borderRadius
+                );
+                
+                // 隐藏放大镜
+                if (this.magnifierManager) {
+                    this.magnifierManager.hide();
+                }
+                
+                // 显示工具栏
+                this.toolbarManager.show(this.selectionManager.selectionRect);
+            }
+            return;
+        }
+        
+        // target 不为 null 表示拖拽或点击操作节点
+        // 如果自动选区激活，先停止它
+        if (autoSelectionManager.isActive) {
+            autoSelectionManager.stop();
+        }
+        
         const action = this.selectionManager.startSelection(x, y, target);
         
         if (action === 'select') {
@@ -252,7 +296,7 @@ export class ScreenshotController {
     /**
      * 处理右键点击
      */
-    handleRightClick(x, y) {
+    async handleRightClick(x, y) {
         // 长截屏激活时，右键不清除选区
         if (this.scrollingScreenshotManager.isActive) {
             return;
@@ -262,7 +306,7 @@ export class ScreenshotController {
         
         if (selection) {
             // 有选区时：取消选区，回到初始状态
-            this.clearSelection();
+            await this.clearSelection();
         } else {
             // 没有选区时：关闭截屏窗口
             this.cancelScreenshot();
@@ -445,6 +489,16 @@ export class ScreenshotController {
                 this.backgroundManager.init();
             }
 
+            // 立即启动自动选区
+            const autoSelectionPromise = (async () => {
+                try {
+                    await autoSelectionManager.start();
+                } catch (error) {
+                    console.error('启动自动选区失败:', error);
+                }
+            })();
+
+            // 加载背景图
             await this.backgroundManager.loadScreenshot({ 
                 width: payload.width, 
                 height: payload.height, 
@@ -462,6 +516,8 @@ export class ScreenshotController {
             
             // 确保初始状态下工具是禁用的
             this.disableAllTools();
+            
+            await autoSelectionPromise;
         } catch (error) {
             console.error('处理截屏数据失败:', error);
         }
@@ -746,6 +802,11 @@ export class ScreenshotController {
      */
     async cancelScreenshot() {
         try {
+            // 停止自动选区
+            if (autoSelectionManager.isActive) {
+                await autoSelectionManager.stop();
+            }
+            
             // 清空所有内容，防止下次显示时看到旧内容
             this.clearAllContent();
             
@@ -758,10 +819,11 @@ export class ScreenshotController {
         }
     }
 
+
     /**
      * 清除选区
      */
-    clearSelection() {
+    async clearSelection() {
         this.selectionManager.clearSelection();
         this.disableAllTools(); // 清除选区时禁用所有工具
         this.maskManager.resetToFullscreen();
@@ -774,6 +836,15 @@ export class ScreenshotController {
         // 清除选区后重新显示放大镜
         if (this.magnifierManager && this.backgroundManager?.isScreenshotLoaded) {
             this.magnifierManager.show();
+        }
+        
+        // 重新启动自动选区
+        if (autoSelectionManager && !autoSelectionManager.isActive) {
+            try {
+                await autoSelectionManager.start();
+            } catch (error) {
+                console.error('重新启动自动选区失败:', error);
+            }
         }
     }
 
