@@ -37,6 +37,7 @@ export default defineConfig({
         settings: resolve(__dirname, 'src/settings.html'),
         preview: resolve(__dirname, 'src/preview.html'),
         textEditor: resolve(__dirname, 'src/textEditor.html'),
+        inputDialog: resolve(__dirname, 'src/plugins/input_dialog/inputDialog.html'),
       },
       output: {
         // 手动分割代码块，减小单个文件大小

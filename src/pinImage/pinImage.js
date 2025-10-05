@@ -2,12 +2,11 @@
  * 贴图窗口
  */
 
-import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu';
+import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-
 // 创建右键菜单
-async function createContextMenu(window, shadowState) {
+async function createContextMenu(window, shadowState, lockPositionState) {
     document.addEventListener('contextmenu', async (e) => {
         e.preventDefault();
         
@@ -40,6 +39,88 @@ async function createContextMenu(window, shadowState) {
                     console.error('切换阴影失败:', error);
                 }
             }
+        });
+        
+        const lockPositionItem = await CheckMenuItem.new({
+            id: 'toggle-lock-position',
+            text: '锁定位置',
+            checked: lockPositionState.locked,
+            action: async () => {
+                try {
+                    lockPositionState.locked = !lockPositionState.locked;
+                } catch (error) {
+                    console.error('切换锁定位置失败:', error);
+                }
+            }
+        });
+        
+        // 创建透明度子菜单
+        const opacityPresets = [100, 90, 80, 70, 60, 50];
+        const opacityMenuItems = [];
+        
+        // 获取当前透明度
+        const img = document.getElementById('pinImage');
+        const currentOpacity = img ? Math.round(parseFloat(img.style.opacity || 1) * 100) : 100;
+        
+        // 检查是否为自定义值
+        const isCustomOpacity = !opacityPresets.includes(currentOpacity);
+        
+        for (const opacity of opacityPresets) {
+            const item = await CheckMenuItem.new({
+                id: `opacity-${opacity}`,
+                text: `${opacity}%`,
+                checked: currentOpacity === opacity,
+                action: () => {
+                    const img = document.getElementById('pinImage');
+                    if (img) {
+                        img.style.opacity = opacity / 100;
+                    }
+                }
+            });
+            opacityMenuItems.push(item);
+        }
+        
+        // 分隔线
+        const opacitySeparator = await PredefinedMenuItem.new({
+            item: 'Separator'
+        });
+        opacityMenuItems.push(opacitySeparator);
+        
+        // 添加自定义选项
+        const customOpacityItem = await CheckMenuItem.new({
+            id: 'opacity-custom',
+            text: '自定义...',
+            checked: isCustomOpacity,
+            action: async () => {
+                try {
+                    const input = await invoke('show_input', {
+                        title: '自定义透明度',
+                        message: '请输入透明度:',
+                        placeholder: '0-100',
+                        defaultValue: String(currentOpacity),
+                        inputType: 'number',
+                        minValue: 0,
+                        maxValue: 100
+                    });
+                    
+                    if (input !== null) {
+                        const img = document.getElementById('pinImage');
+                        if (img) {
+                            img.style.opacity = parseInt(input) / 100;
+                        }
+                    }
+                } catch (error) {
+                    console.error('设置自定义透明度失败:', error);
+                }
+            }
+        });
+        opacityMenuItems.push(customOpacityItem);
+        
+        // 创建透明度子菜单
+        const opacitySubmenu = await Submenu.new({
+            id: 'opacity-submenu',
+            text: '透明度',
+            items: opacityMenuItems
         });
         
         const separator1 = await PredefinedMenuItem.new({
@@ -88,7 +169,7 @@ async function createContextMenu(window, shadowState) {
         
         // 创建菜单
         const menu = await Menu.new({
-            items: [alwaysOnTopItem, shadowItem, separator1, copyItem, saveAsItem, separator2, closeItem]
+            items: [alwaysOnTopItem, shadowItem, lockPositionItem, opacitySubmenu, separator1, copyItem, saveAsItem, separator2, closeItem]
         });
         
         await menu.popup();
@@ -117,6 +198,7 @@ async function createContextMenu(window, shadowState) {
     let dragStartImageY = 0;
     
     const shadowState = { enabled: false };
+    const lockPositionState = { locked: false };
     
     // 应用图片变换
     function applyImageTransform() {
@@ -250,7 +332,7 @@ async function createContextMenu(window, shadowState) {
     });
     
     // 创建右键菜单
-    await createContextMenu(currentWindow, shadowState);
+    await createContextMenu(currentWindow, shadowState, lockPositionState);
     
     // 按下鼠标
     img.addEventListener('mousedown', (e) => {
@@ -263,7 +345,7 @@ async function createContextMenu(window, shadowState) {
                 dragStartY = e.clientY;
                 dragStartImageX = imageX;
                 dragStartImageY = imageY;
-            } else {
+            } else if (!lockPositionState.locked) {
                 // 普通左键：拖动窗口
                 mouseDown = true;
                 hasMoved = false;
@@ -281,7 +363,7 @@ async function createContextMenu(window, shadowState) {
             imageY = dragStartImageY + deltaY;
             constrainImagePosition();
             applyImageTransform();
-        } else if (mouseDown && !hasMoved) {
+        } else if (mouseDown && !hasMoved && !lockPositionState.locked) {
             // 拖动窗口
             hasMoved = true;
             currentWindow.startDragging();

@@ -21,6 +21,7 @@ mod mouse_hook;
 mod paste_utils;
 mod preview_window;
 mod pin_image_window;
+mod plugins;
 mod quick_texts;
 
 // 截屏功能模块
@@ -382,6 +383,9 @@ pub fn run() {
             // 初始化边缘吸附功能
             let _ = crate::edge_snap::init_edge_snap();
 
+            // 初始化输入对话框插件
+            crate::plugins::input_dialog::init();
+
             // 标记后端初始化完成
             BACKEND_INITIALIZED.store(true, Ordering::Relaxed);
 
@@ -536,7 +540,12 @@ pub fn run() {
             crate::pin_image_window::get_pin_image_data,
             crate::pin_image_window::close_pin_image_window_by_self,
             crate::pin_image_window::copy_pin_image_to_clipboard,
-            crate::pin_image_window::save_pin_image_as
+            crate::pin_image_window::save_pin_image_as,
+            
+            // 输入对话框插件命令
+            crate::plugins::input_dialog::commands::show_input,
+            crate::plugins::input_dialog::commands::get_input_dialog_options,
+            crate::plugins::input_dialog::commands::submit_input_dialog
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

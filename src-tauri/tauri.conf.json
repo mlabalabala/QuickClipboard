@@ -87,7 +87,8 @@
         "preview",
         "text-editor",
         "screenshot",
-        "pin-image"
+        "pin-image",
+        "input-dialog"
       ],
       "assetProtocol": {
         "enable": true,
