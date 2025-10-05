@@ -285,14 +285,30 @@ pub fn log_debug(message: String) {
 
 // 浏览音效文件
 #[tauri::command]
-pub async fn browse_sound_file() -> Result<Option<String>, String> {
-    crate::services::file_dialog_service::FileDialogService::browse_sound_file().await
+pub async fn browse_sound_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let file = app.dialog()
+        .file()
+        .add_filter("音频文件", &["wav", "mp3", "ogg", "flac", "m4a", "aac"])
+        .set_title("选择音效文件")
+        .blocking_pick_file();
+    
+    Ok(file.and_then(|f| f.as_path().map(|p| p.to_string_lossy().to_string())))
 }
 
 // 浏览背景图片文件
 #[tauri::command]
-pub async fn browse_image_file() -> Result<Option<String>, String> {
-    crate::services::file_dialog_service::FileDialogService::browse_image_file().await
+pub async fn browse_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let file = app.dialog()
+        .file()
+        .add_filter("图片文件", &["png", "jpg", "jpeg", "bmp", "gif", "webp"])
+        .set_title("选择背景图片")
+        .blocking_pick_file();
+    
+    Ok(file.and_then(|f| f.as_path().map(|p| p.to_string_lossy().to_string())))
 }
 
 // 测试音效（异步版本）

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
 use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::WebviewWindow;
@@ -41,25 +41,22 @@ pub struct EdgeSnapState {
 }
 
 // 全局状态管理
-lazy_static::lazy_static! {
-    static ref EDGE_SNAP_CONFIG: EdgeSnapConfig = EdgeSnapConfig::default();
-    static ref EDGE_SNAP_MANAGER: Arc<Mutex<EdgeSnapState>> = Arc::new(Mutex::new(EdgeSnapState {
-        is_enabled: false,
-        is_snapped: false,
-        snapped_edge: None,
-        original_position: None,
-        is_hidden: false,
-    }));
-    // 鼠标监听线程控制
-    static ref MOUSE_MONITORING_ACTIVE: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-}
+use once_cell::sync::Lazy;
+static EDGE_SNAP_CONFIG: Lazy<EdgeSnapConfig> = Lazy::new(|| EdgeSnapConfig::default());
+static EDGE_SNAP_MANAGER: Lazy<Mutex<EdgeSnapState>> = Lazy::new(|| Mutex::new(EdgeSnapState {
+    is_enabled: false,
+    is_snapped: false,
+    snapped_edge: None,
+    original_position: None,
+    is_hidden: false,
+}));
+// 鼠标监听线程控制
+static MOUSE_MONITORING_ACTIVE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 // 初始化边缘吸附功能
 pub fn init_edge_snap() -> Result<(), String> {
     let settings = crate::settings::get_global_settings();
-    let mut state = EDGE_SNAP_MANAGER
-        .lock()
-        .map_err(|e| format!("锁定状态失败: {}", e))?;
+    let mut state = EDGE_SNAP_MANAGER.lock();
     state.is_enabled = settings.edge_hide_enabled;
     
     // 同步到状态管理器
@@ -81,9 +78,7 @@ pub fn check_window_snap(window: &WebviewWindow) -> Result<(), String> {
 
     // 处理状态更新
     {
-        let mut state = EDGE_SNAP_MANAGER
-            .lock()
-            .map_err(|e| format!("锁定状态失败: {}", e))?;
+        let mut state = EDGE_SNAP_MANAGER.lock();
 
         if !state.is_enabled {
             return Ok(());
@@ -131,9 +126,7 @@ pub fn restore_window_from_snap(window: &WebviewWindow) -> Result<(), String> {
     // 停止鼠标监听
     stop_mouse_monitoring();
     
-    let mut state = EDGE_SNAP_MANAGER
-        .lock()
-        .map_err(|e| format!("锁定状态失败: {}", e))?;
+    let mut state = EDGE_SNAP_MANAGER.lock();
 
     if let Some((orig_x, orig_y)) = state.original_position {
         set_window_position(window, orig_x, orig_y)?;
@@ -193,9 +186,7 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     }
 
     let edge = {
-        let state = EDGE_SNAP_MANAGER
-            .lock()
-            .map_err(|e| format!("锁定状态失败: {}", e))?;
+        let state = EDGE_SNAP_MANAGER.lock();
         if !state.is_snapped || state.is_hidden {
             return Ok(());
         }
@@ -233,7 +224,7 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
         hide_y,
         200,
     )?;
-    EDGE_SNAP_MANAGER.lock().unwrap().is_hidden = true;
+    EDGE_SNAP_MANAGER.lock().is_hidden = true;
 
     #[cfg(windows)]
     crate::mouse_hook::release_mouse_monitoring("main_window");
@@ -260,9 +251,7 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
 // 显示已隐藏的窗口
 pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     let edge = {
-        let state = EDGE_SNAP_MANAGER
-            .lock()
-            .map_err(|e| format!("锁定状态失败: {}", e))?;
+        let state = EDGE_SNAP_MANAGER.lock();
         if !state.is_snapped || !state.is_hidden {
             return Ok(());
         }
@@ -312,7 +301,7 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
         show_y,
         200,
     )?;
-    EDGE_SNAP_MANAGER.lock().unwrap().is_hidden = false;
+    EDGE_SNAP_MANAGER.lock().is_hidden = false;
 
     #[cfg(windows)]
     crate::mouse_hook::request_mouse_monitoring("main_window");
@@ -334,9 +323,7 @@ pub fn stop_mouse_monitoring() {
 // 重新启动鼠标监听（如果窗口处于贴边状态）
 pub fn restart_mouse_monitoring_if_snapped(window: &WebviewWindow) -> Result<(), String> {
     let is_snapped = {
-        let state = EDGE_SNAP_MANAGER
-            .lock()
-            .map_err(|e| format!("锁定状态失败: {}", e))?;
+        let state = EDGE_SNAP_MANAGER.lock();
         state.is_snapped
     };
     
@@ -359,7 +346,7 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
     
     // 启动新的监听线程
     MOUSE_MONITORING_ACTIVE.store(true, Ordering::Relaxed);
-    let monitoring_active = MOUSE_MONITORING_ACTIVE.clone();
+    let monitoring_active = &*MOUSE_MONITORING_ACTIVE;
     
     std::thread::spawn(move || {
         println!("启动新的鼠标监听线程");
@@ -381,10 +368,7 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
             
             // 检查是否还在吸附状态
             let (is_hidden, edge) = {
-                let state = match EDGE_SNAP_MANAGER.lock() {
-                    Ok(s) => s,
-                    Err(_) => break,
-                };
+                let state = EDGE_SNAP_MANAGER.lock();
 
                 if !state.is_enabled || !state.is_snapped {
                     println!("贴边状态已取消，鼠标监听线程退出");
@@ -622,11 +606,8 @@ pub fn restore_from_snap(window: &WebviewWindow) -> Result<(), String> {
 
 // 检查窗口是否处于边缘隐藏状态
 pub fn is_window_edge_hidden() -> bool {
-    if let Ok(state) = EDGE_SNAP_MANAGER.lock() {
-        state.is_snapped && state.is_hidden
-    } else {
-        false
-    }
+    let state = EDGE_SNAP_MANAGER.lock();
+    state.is_snapped && state.is_hidden
 }
 
 // 启动时恢复贴边隐藏状态
@@ -656,9 +637,7 @@ pub fn restore_edge_snap_on_startup(window: &WebviewWindow) -> Result<(), String
 
         // 设置贴边状态
         {
-            let mut state = EDGE_SNAP_MANAGER
-                .lock()
-                .map_err(|e| format!("锁定状态失败: {}", e))?;
+            let mut state = EDGE_SNAP_MANAGER.lock();
             state.is_snapped = true;
             state.is_hidden = true; // 恢复时应该是隐藏状态
             state.snapped_edge = Some(snapped_edge);

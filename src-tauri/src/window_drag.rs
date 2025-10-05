@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
 use std::time::Duration;
 use tauri::WebviewWindow;
 use windows::Win32::Foundation::{POINT, HWND};
@@ -17,9 +17,8 @@ pub struct CustomDragState {
 }
 
 // 全局拖拽状态管理
-lazy_static::lazy_static! {
-    static ref CUSTOM_DRAG_STATE: Arc<Mutex<Option<CustomDragState>>> = Arc::new(Mutex::new(None));
-}
+use once_cell::sync::Lazy;
+static CUSTOM_DRAG_STATE: Lazy<Mutex<Option<CustomDragState>>> = Lazy::new(|| Mutex::new(None));
 
 // 开始自定义拖拽
 pub fn start_custom_drag(window: WebviewWindow, mouse_screen_x: i32, mouse_screen_y: i32) -> Result<(), String> {
@@ -38,7 +37,7 @@ pub fn start_custom_drag(window: WebviewWindow, mouse_screen_x: i32, mouse_scree
     
     // 保存拖拽状态
     {
-        let mut drag_state = CUSTOM_DRAG_STATE.lock().map_err(|e| format!("锁定拖拽状态失败: {}", e))?;
+        let mut drag_state = CUSTOM_DRAG_STATE.lock();
         *drag_state = Some(CustomDragState {
             is_dragging: true,
             window: window.clone(),
@@ -58,7 +57,7 @@ pub fn start_custom_drag(window: WebviewWindow, mouse_screen_x: i32, mouse_scree
 pub fn stop_custom_drag() -> Result<(), String> {
     // 停止拖拽
     let window = {
-        let mut drag_state = CUSTOM_DRAG_STATE.lock().map_err(|e| format!("锁定拖拽状态失败: {}", e))?;
+        let mut drag_state = CUSTOM_DRAG_STATE.lock();
         if let Some(ref mut state) = drag_state.as_mut() {
             state.is_dragging = false;
             Some(state.window.clone())
@@ -84,24 +83,20 @@ fn start_drag_monitoring_thread() {
     std::thread::spawn(|| {
         loop {
             let (is_dragging, window, mouse_offset_x, mouse_offset_y, hwnd) = {
-                match CUSTOM_DRAG_STATE.lock() {
-                    Ok(state) => {
-                        if let Some(ref drag_state) = state.as_ref() {
-                            if !drag_state.is_dragging {
-                                break;
-                            }
-                            (
-                                drag_state.is_dragging,
-                                drag_state.window.clone(),
-                                drag_state.mouse_offset_x,
-                                drag_state.mouse_offset_y,
-                                drag_state.hwnd,
-                            )
-                        } else {
-                            break;
-                        }
+                let state = CUSTOM_DRAG_STATE.lock();
+                if let Some(ref drag_state) = state.as_ref() {
+                    if !drag_state.is_dragging {
+                        break;
                     }
-                    Err(_) => break,
+                    (
+                        drag_state.is_dragging,
+                        drag_state.window.clone(),
+                        drag_state.mouse_offset_x,
+                        drag_state.mouse_offset_y,
+                        drag_state.hwnd,
+                    )
+                } else {
+                    break;
                 }
             };
             
@@ -194,19 +189,13 @@ fn apply_magnetic_snap_and_bounds(
 
 // 检查是否正在拖拽
 pub fn is_dragging() -> bool {
-    if let Ok(state) = CUSTOM_DRAG_STATE.lock() {
-        state.as_ref().map_or(false, |s| s.is_dragging)
-    } else {
-        false
-    }
+    let state = CUSTOM_DRAG_STATE.lock();
+    state.as_ref().map_or(false, |s| s.is_dragging)
 }
 
 // 获取当前拖拽的窗口
 pub fn get_dragging_window() -> Option<WebviewWindow> {
-    if let Ok(state) = CUSTOM_DRAG_STATE.lock() {
-        state.as_ref().and_then(|s| if s.is_dragging { Some(s.window.clone()) } else { None })
-    } else {
-        None
-    }
+    let state = CUSTOM_DRAG_STATE.lock();
+    state.as_ref().map(|s| s.window.clone())
 }
 

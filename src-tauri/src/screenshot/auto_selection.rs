@@ -548,9 +548,8 @@ struct EnumData {
 }
 
 // 全局单例
-lazy_static::lazy_static! {
-    pub static ref AUTO_SELECTION_MANAGER: AutoSelectionManager = AutoSelectionManager::new();
-}
+use once_cell::sync::Lazy;
+pub static AUTO_SELECTION_MANAGER: Lazy<AutoSelectionManager> = Lazy::new(|| AutoSelectionManager::new());
 
 /// 启动自动选区检测
 #[tauri::command]

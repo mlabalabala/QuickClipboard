@@ -9,7 +9,6 @@ pub mod settings_service;
 pub mod drag_sort_service;
 pub mod group_service;
 pub mod sound_service;
-pub mod file_dialog_service;
 pub mod system_service;
 pub mod file_operation_service;
 pub mod image_service;

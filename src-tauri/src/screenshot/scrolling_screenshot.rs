@@ -645,9 +645,8 @@ pub struct ScrollingResult {
     pub height: u32,
 }
 
-lazy_static::lazy_static! {
-    pub static ref SCROLLING_SCREENSHOT_MANAGER: ScrollingScreenshotManager = ScrollingScreenshotManager::new();
-}
+use once_cell::sync::Lazy;
+pub static SCROLLING_SCREENSHOT_MANAGER: Lazy<ScrollingScreenshotManager> = Lazy::new(|| ScrollingScreenshotManager::new());
 
 #[tauri::command]
 pub fn init_scrolling_screenshot(app: AppHandle, selection: SelectionRect, panel: PanelRect) -> Result<(), String> {
