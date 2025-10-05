@@ -878,9 +878,29 @@ export async function getClipboardFiles() {
   }
 }
 
-// 钉图片到屏幕（已废弃）
+// 钉图片到屏幕
 async function pinImageToScreen(item) {
-  showNotification('钉图片功能已移除，不再支持外部截屏程序', 'warning');
+  try {
+    // 获取图片文件路径
+    const filePath = await invoke('get_image_file_path', { 
+      content: item.content 
+    });
+    
+    if (!filePath) {
+      showNotification('获取图片路径失败', 'error');
+      return;
+    }
+    
+    // 创建贴图窗口
+    await invoke('pin_image_from_file', { 
+      filePath 
+    });
+    
+    showNotification('已钉到屏幕', 'success', 2000);
+  } catch (error) {
+    console.error('钉图到屏幕失败:', error);
+    showNotification('钉图失败: ' + error, 'error');
+  }
 }
 
 

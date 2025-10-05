@@ -505,9 +505,9 @@ pub fn run() {
             commands::start_custom_drag,
             commands::stop_custom_drag,
             commands::get_image_file_path,
-            commands::pin_image_to_screen,
             commands::file_exists,
             commands::create_pin_image_window,
+            commands::pin_image_from_file,
             
             // 截屏窗口相关命令
             crate::screenshot::show_screenshot_window,

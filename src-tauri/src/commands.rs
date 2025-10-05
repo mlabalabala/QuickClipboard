@@ -386,12 +386,6 @@ pub fn get_image_file_path(content: String) -> Result<String, String> {
     crate::services::image_service::ImageService::get_image_file_path(content)
 }
 
-// 钉图片到屏幕
-#[tauri::command]
-pub async fn pin_image_to_screen(content: String) -> Result<(), String> {
-    crate::services::image_service::ImageService::pin_image_to_screen(content).await
-}
-
 // 保存图片到指定路径
 #[tauri::command]
 pub fn save_image_to_file(content: String, file_path: String) -> Result<(), String> {
@@ -940,4 +934,13 @@ pub async fn create_pin_image_window(
     y: i32,
 ) -> Result<(), String> {
     crate::pin_image_window::show_pin_image_window(app, image_data, width, height, x, y).await
+}
+
+// 从文件路径创建贴图窗口
+#[tauri::command]
+pub async fn pin_image_from_file(
+    app: tauri::AppHandle,
+    file_path: String,
+) -> Result<(), String> {
+    crate::pin_image_window::show_pin_image_from_file(app, file_path).await
 }

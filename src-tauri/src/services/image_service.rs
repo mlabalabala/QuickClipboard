@@ -78,9 +78,4 @@ impl ImageService {
             Err("不支持的图片格式".to_string())
         }
     }
-
-    /// 将图片固定到屏幕（已废弃，不再支持外部截屏程序）
-    pub async fn pin_image_to_screen(_content: String) -> Result<(), String> {
-        Err("钉图片功能已移除，不再支持外部截屏程序".to_string())
-    }
 }

@@ -70,6 +70,70 @@ window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
 Ok(())
 }
 
+// 从文件路径创建贴图窗口
+pub async fn show_pin_image_from_file(
+    app: AppHandle,
+    file_path: String,
+) -> Result<(), String> {
+    // 读取图片以获取尺寸
+    let image_data = std::fs::read(&file_path)
+        .map_err(|e| format!("读取图片文件失败: {}", e))?;
+    
+    let img = image::load_from_memory(&image_data)
+        .map_err(|e| format!("解析图片失败: {}", e))?;
+    
+    let width = img.width();
+    let height = img.height();
+    
+    let counter = PIN_IMAGE_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let window_label = format!("pin-image-{}", counter);
+    
+    // 存储图片数据
+    if let Some(data_map) = PIN_IMAGE_DATA_MAP.get() {
+        let mut map = data_map.lock().unwrap();
+        map.insert(
+            window_label.clone(),
+            PinImageData {
+                file_path,
+                width,
+                height,
+            },
+        );
+    }
+    
+    // 获取主屏幕尺寸并居中显示
+    let (x, y) = if let Ok(monitors) = app.primary_monitor() {
+        if let Some(monitor) = monitors {
+            let screen_size = monitor.size();
+            let screen_width = screen_size.width as f64 / monitor.scale_factor();
+            let screen_height = screen_size.height as f64 / monitor.scale_factor();
+            
+            let x = ((screen_width - width as f64) / 2.0).max(0.0) as i32;
+            let y = ((screen_height - height as f64) / 2.0).max(0.0) as i32;
+            (x, y)
+        } else {
+            (100, 100)
+        }
+    } else {
+        (100, 100)
+    };
+    
+    // 创建窗口
+    let window = create_pin_image_window(app, &window_label, width, height, x, y).await?;
+    
+    // 创建后立即设置尺寸
+    use tauri::Size;
+    window.set_size(Size::Logical(tauri::LogicalSize {
+        width: width as f64,
+        height: height as f64,
+    })).map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
+    
+    // 显示窗口
+    window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
+    
+    Ok(())
+}
+
 // 保存图片到应用数据目录
 fn save_pin_image_to_temp(image_data: &[u8], _counter: usize) -> Result<String, String> {
     // 获取应用数据目录

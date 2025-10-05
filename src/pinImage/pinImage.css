@@ -14,6 +14,9 @@ body {
     overflow: hidden;
     background: transparent;
     position: relative;
+    border: none !important;
+    height: 100vh;
+    width: 100vw;
 }
 
 body::after {
