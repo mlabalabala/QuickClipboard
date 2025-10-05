@@ -45,20 +45,29 @@ pub async fn show_pin_image_window(
     if let Some(data_map) = PIN_IMAGE_DATA_MAP.get() {
         let mut map = data_map.lock().unwrap();
         map.insert(
-            window_label.clone(),
-            PinImageData {
-                file_path,
-                width,
-                height,
-            },
-        );
-    }
-    
-    // 创建并显示窗口
-    let window = create_pin_image_window(app, &window_label, width, height, x, y).await?;
-    window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
-    
-    Ok(())
+        window_label.clone(),
+        PinImageData {
+            file_path,
+            width,
+            height,
+        },
+    );
+}
+
+// 创建窗口
+let window = create_pin_image_window(app, &window_label, width, height, x, y).await?;
+
+// 创建后立即设置尺寸
+use tauri::Size;
+window.set_size(Size::Logical(tauri::LogicalSize {
+    width: width as f64,
+    height: height as f64,
+})).map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
+
+// 显示窗口
+window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
+
+Ok(())
 }
 
 // 保存图片到应用数据目录
@@ -98,6 +107,7 @@ async fn create_pin_image_window(
     )
     .title("贴图")
     .inner_size(width as f64, height as f64)
+    .min_inner_size(5.0, 5.0)
     .position(x as f64, y as f64)
     .resizable(false)
     .maximizable(false)
