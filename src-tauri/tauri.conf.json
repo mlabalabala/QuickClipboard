@@ -86,7 +86,8 @@
         "settings",
         "preview",
         "text-editor",
-        "screenshot"
+        "screenshot",
+        "pin-image"
       ],
       "assetProtocol": {
         "enable": true,

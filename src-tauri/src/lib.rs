@@ -20,6 +20,7 @@ mod key_state_monitor;
 mod mouse_hook;
 mod paste_utils;
 mod preview_window;
+mod pin_image_window;
 mod quick_texts;
 
 // 截屏功能模块
@@ -253,6 +254,9 @@ pub fn run() {
 
             // 初始化预览窗口
             preview_window::init_preview_window();
+            
+            // 初始化贴图窗口
+            pin_image_window::init_pin_image_window();
 
             // 初始化截屏窗口
             if let Err(e) = crate::screenshot::ScreenshotWindowManager::init_screenshot_window(app.handle()) {
@@ -503,6 +507,7 @@ pub fn run() {
             commands::get_image_file_path,
             commands::pin_image_to_screen,
             commands::file_exists,
+            commands::create_pin_image_window,
             
             // 截屏窗口相关命令
             crate::screenshot::show_screenshot_window,
@@ -525,7 +530,13 @@ pub fn run() {
             // 自动选区相关命令
             crate::screenshot::start_auto_selection,
             crate::screenshot::stop_auto_selection,
-            crate::screenshot::is_auto_selection_active
+            crate::screenshot::is_auto_selection_active,
+            
+            // 贴图窗口相关命令
+            crate::pin_image_window::get_pin_image_data,
+            crate::pin_image_window::close_pin_image_window_by_self,
+            crate::pin_image_window::copy_pin_image_to_clipboard,
+            crate::pin_image_window::save_pin_image_as
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

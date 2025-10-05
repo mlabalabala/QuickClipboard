@@ -548,6 +548,12 @@ export class ScreenshotController {
             return;
         }
         
+        if (toolName === 'pin-image') {
+            // 贴图工具特殊处理
+            this.handlePinImage();
+            return;
+        }
+        
         if (toolName) {
             // 激活工具
             this.toolManager.activateTool(toolName);
@@ -618,6 +624,39 @@ export class ScreenshotController {
     handleOCRClose() {
         if (this.ocrManager && this.ocrManager.clear) {
             this.ocrManager.clear();
+        }
+    }
+
+    /**
+     * 处理贴图工具
+     */
+    async handlePinImage() {
+        const selection = this.selectionManager.getSelection();
+        if (!selection) return;
+        
+        try {
+            this.hideAllToolbars();
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            const borderRadius = this.selectionManager.getBorderRadius();
+            const blob = await this.exportManager.exportSelectionAsBlob(selection, borderRadius);
+            if (!blob) return;
+            
+            const arrayBuffer = await blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            await window.__TAURI__.core.invoke('create_pin_image_window', {
+                imageData: Array.from(uint8Array),
+                width: Math.round(selection.width),
+                height: Math.round(selection.height),
+                x: Math.round(selection.left),
+                y: Math.round(selection.top)
+            });
+            
+            this.clearAllContent();
+            await ScreenshotAPI.hideWindow();
+        } catch (error) {
+            console.error('创建贴图窗口失败:', error);
         }
     }
 

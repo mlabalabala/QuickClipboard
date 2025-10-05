@@ -928,3 +928,16 @@ pub fn set_shortcut_recording(recording: bool) -> Result<(), String> {
 pub fn file_exists(path: String) -> bool {
     std::path::Path::new(&path).exists()
 }
+
+// 创建贴图窗口
+#[tauri::command]
+pub async fn create_pin_image_window(
+    app: tauri::AppHandle,
+    image_data: Vec<u8>,
+    width: u32,
+    height: u32,
+    x: i32,
+    y: i32,
+) -> Result<(), String> {
+    crate::pin_image_window::show_pin_image_window(app, image_data, width, height, x, y).await
+}

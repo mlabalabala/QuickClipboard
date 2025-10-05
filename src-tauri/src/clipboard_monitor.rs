@@ -609,8 +609,8 @@ pub fn initialize_clipboard_state() {
 
 // 检查文件路径是否来自图片缓存目录
 fn is_from_image_cache(file_path: &str) -> bool {
-    // 检查文件路径中是否包含 scrolling_screenshots
-    if file_path.contains("scrolling_screenshots") {
+    // 白名单
+    if file_path.contains("scrolling_screenshots") || file_path.contains("pin_images") {
         return false;
     }
     

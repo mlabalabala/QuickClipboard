@@ -207,6 +207,31 @@ export class ExportManager {
     }
 
     /**
+     * 导出选区为Blob（用于贴图窗口）
+     */
+    async exportSelectionAsBlob(selection, borderRadius = 0) {
+        try {
+            const backgroundCanvas = this.backgroundManager?.canvas;
+            
+            if (!backgroundCanvas) {
+                throw new Error('背景Canvas未准备就绪');
+            }
+
+            // 创建选区Canvas
+            const selectionCanvas = await this.createSelectionCanvas(backgroundCanvas, selection, borderRadius);
+            
+            // 转换为Blob
+            const blob = await this.canvasToBlob(selectionCanvas);
+            
+            console.log('选区已导出为Blob');
+            return blob;
+        } catch (error) {
+            console.error('导出Blob失败:', error);
+            throw error;
+        }
+    }
+
+    /**
      * 合并背景层和编辑层
      * @returns {HTMLCanvasElement} - 合并后的Canvas
      */
