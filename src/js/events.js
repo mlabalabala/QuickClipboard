@@ -5,7 +5,6 @@ import {
   appWindow
 } from './config.js';
 import { refreshClipboardHistory } from './clipboard.js';
-import { hideContextMenu } from './contextMenu.js';
 import { forceClosePanel } from './toolsPanel.js';
 import { hideShortcutsHelp } from './navigation.js'
 
@@ -123,8 +122,6 @@ export async function setupCustomWindowDrag() {
       
       // 启动Rust后端拖拽
       startRustDrag(e);
-      
-      hideContextMenu()
     }
   };
 

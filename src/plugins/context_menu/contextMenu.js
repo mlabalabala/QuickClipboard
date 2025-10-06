@@ -272,9 +272,13 @@ async function loadAndRenderMenu() {
 loadAndRenderMenu();
 
 // 监听后端的重新加载事件（窗口复用时会触发）
-currentWindow.listen('reload-menu', () => {
-    loadAndRenderMenu();
-});
+let reloadListenerRegistered = false;
+if (!reloadListenerRegistered) {
+    currentWindow.listen('reload-menu', () => {
+        loadAndRenderMenu();
+    });
+    reloadListenerRegistered = true;
+}
 
 // 隐藏菜单窗口并清理状态
 async function hideMenu(itemId = null) {
@@ -282,8 +286,7 @@ async function hideMenu(itemId = null) {
     isClosing = true;
     
     try {
-        // 提交选择结果（后端会延迟 200ms 才设置菜单为不可见）
-        await invoke('submit_context_menu', { itemId });
+        await invoke('submit_context_menu', { itemId: itemId || null });
         
         // 清理所有子菜单状态
         document.querySelectorAll('.submenu-container').forEach(submenu => {

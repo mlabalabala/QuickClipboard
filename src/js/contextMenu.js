@@ -152,11 +152,6 @@ async function openLink(url) {
   }
 }
 
-// 隐藏当前显示的右键菜单（保留接口兼容性，但实际上新菜单会自动关闭）
-export function hideContextMenu() {
-  // 新的菜单插件会在点击外部时自动关闭，这里保留空函数以保持兼容性
-}
-
 // 显示通用右键菜单
 export async function showContextMenu(event, options) {
   event.preventDefault();
@@ -199,7 +194,7 @@ export async function showContextMenu(event, options) {
     // 创建主搜索菜单项（带子菜单）
     if (currentEngine && searchEngines.length > 0) {
       const searchMenuItem = createPluginMenuItem(
-        `search-${currentEngine.id}`, 
+        'search-menu',
         `在 ${currentEngine.name} 中搜索`, 
         {
           icon: 'ti ti-search'
