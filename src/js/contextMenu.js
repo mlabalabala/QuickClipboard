@@ -233,17 +233,16 @@ export async function showContextMenu(event, options) {
       menuItems.push(createPluginSeparator());
     }
 
-    options.items.forEach(item => {
+    options.items.forEach((item, index) => {
       if (item.type === 'separator') {
         menuItems.push(createPluginSeparator());
       } else {
-        // 修正图标格式：如果是 'ti-xxx' 格式，转换为 'ti ti-xxx'
         let icon = item.icon;
         if (icon && icon.startsWith('ti-') && !icon.startsWith('ti ti-')) {
           icon = 'ti ' + icon;
         }
         
-        menuItems.push(createPluginMenuItem(item.id || `custom-${menuItems.length}`, item.text, {
+        menuItems.push(createPluginMenuItem(item.id || `custom-${index}`, item.text, {
           icon: icon,
           disabled: item.disabled || false
         }));
@@ -302,10 +301,17 @@ export async function showContextMenu(event, options) {
   }
   // 处理自定义菜单项
   else if (options.items) {
-    const customItem = options.items.find(item => 
-      (item.id && item.id === result) || 
-      `custom-${options.items.indexOf(item)}` === result
-    );
+    // 查找匹配的自定义菜单项
+    let customItem = null;
+    for (let i = 0; i < options.items.length; i++) {
+      const item = options.items[i];
+      // 检查是否匹配
+      if ((item.id && item.id === result) || `custom-${i}` === result) {
+        customItem = item;
+        break;
+      }
+    }
+    
     if (customItem && customItem.onClick) {
       customItem.onClick();
     }
