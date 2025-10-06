@@ -2,7 +2,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';
-import { searchWithEngine, getSearchEngines } from './searchEngineManager.js';
+import { searchWithEngine, getSearchEngines, getCurrentSearchEngine, setCurrentSearchEngine } from './searchEngineManager.js';
 import { showContextMenu as showMenuPlugin, createMenuItem as createPluginMenuItem, createSeparator as createPluginSeparator } from '../plugins/context_menu/index.js';
 import { getCurrentSettings } from './settingsManager.js';
 
@@ -11,6 +11,10 @@ async function searchTextInBrowser(text, engineId = null) {
   try {
     const url = searchWithEngine(text, engineId);
     await openUrl(url);
+    if (engineId) {
+      setCurrentSearchEngine(engineId);
+    }
+    
     showNotification('已在浏览器中搜索选中文本', 'success', 2000);
   } catch (error) {
     console.error('搜索失败:', error);
@@ -187,17 +191,17 @@ export async function showContextMenu(event, options) {
       menuItems.push(createPluginSeparator());
     }
     
-    // 获取搜索引擎列表
+    // 获取搜索引擎列表和当前使用的引擎
     const searchEngines = getSearchEngines();
-    const currentEngine = searchEngines.find(e => e.default) || searchEngines[0];
+    const currentEngine = getCurrentSearchEngine(); // 使用上次使用的引擎
     
-    // 创建主搜索菜单项（带子菜单）
+    // 创建主搜索菜单项
     if (currentEngine && searchEngines.length > 0) {
       const searchMenuItem = createPluginMenuItem(
-        'search-menu',
+        `search-current`,
         `在 ${currentEngine.name} 中搜索`, 
         {
-          icon: 'ti ti-search'
+          favicon: currentEngine.favicon
         }
       );
       
@@ -283,8 +287,14 @@ export async function showContextMenu(event, options) {
     });
   }
   // 处理搜索引擎搜索
+  else if (result === 'search-current') {
+    // 点击父选项，使用当前引擎搜索
+    const currentEngine = getCurrentSearchEngine();
+    await searchTextInBrowser(plainTextForSearch, currentEngine.id);
+  }
   else if (result.startsWith('search-')) {
-    const engineId = result.substring(7); // 移除 'search-' 前缀
+    // 点击子选项，使用指定引擎搜索
+    const engineId = result.substring(7);
     await searchTextInBrowser(plainTextForSearch, engineId);
   }
   // 处理添加自定义搜索引擎

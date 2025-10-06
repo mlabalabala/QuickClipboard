@@ -160,6 +160,16 @@ function createMenuItem(item) {
         // 存储子菜单引用到菜单项，以便清理
         menuItem.submenuElement = submenu;
         
+        // 有子菜单的项也支持点击
+        if (!item.disabled) {
+            menuItem.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('menu-item-submenu-indicator')) {
+                    e.stopPropagation();
+                    hideMenu(item.id);
+                }
+            });
+        }
+        
         // 鼠标悬停显示子菜单
         let showTimeout;
         menuItem.addEventListener('mouseenter', () => {
