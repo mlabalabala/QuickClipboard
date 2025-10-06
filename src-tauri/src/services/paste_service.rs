@@ -126,7 +126,7 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
 
     // 处理图片内容到剪贴板
     if image_content.starts_with("image:") {
-        // 新格式：image:id，需要通过图片管理器获取完整数据
+        // 需要通过图片管理器获取完整数据
         let image_id = &image_content[6..];
 
         let image_manager = crate::image_manager::get_image_manager().map_err(|e| {
@@ -134,20 +134,20 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             format!("获取图片管理器失败: {}", e)
         })?;
 
-        let (image_data, image_info) = {
+        let (image_data, file_path) = {
             let manager = image_manager.lock().unwrap();
             let image_data = manager.get_image_data_url(image_id).map_err(|e| {
                 crate::clipboard_monitor::end_pasting_operation();
                 format!("获取图片数据失败: {}", e)
             })?;
 
-            let image_info = manager.get_image_info(image_id).map_err(|e| {
+            let file_path = manager.get_image_file_path(image_id).map_err(|e| {
                 crate::clipboard_monitor::end_pasting_operation();
-                format!("获取图片信息失败: {}", e)
+                format!("获取图片文件路径失败: {}", e)
             })?;
 
-            (image_data, image_info)
-        }; // 锁在这里自动释放
+            (image_data, file_path)
+        }; 
 
         // 直接设置剪贴板内容，包含图像数据和文件路径
         #[cfg(windows)]
@@ -159,10 +159,13 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             let settings = crate::settings::get_global_settings();
             let prefers_image_data = get_active_window_process_name()
                 .map(|process| {
-                    settings
+                    let process_lower = process.to_lowercase();
+                    let is_priority = settings
                         .image_data_priority_apps
                         .iter()
-                        .any(|app| process.contains(&app.to_lowercase()))
+                        .any(|app| process_lower.contains(&app.to_lowercase()));
+                    
+                    is_priority
                 })
                 .unwrap_or(false);
             let (bgra, png_bytes, width, height) =
@@ -170,13 +173,13 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
                     crate::clipboard_monitor::end_pasting_operation();
                     e
                 })?;
-            let file_path = if prefers_image_data {
+            let file_path_opt = if prefers_image_data {
                 None
             } else {
-                Some(image_info.file_path.as_str())
+                Some(file_path.as_str())
             };
             if let Err(e) =
-                set_windows_clipboard_image_with_file(&bgra, &png_bytes, width, height, file_path)
+                set_windows_clipboard_image_with_file(&bgra, &png_bytes, width, height, file_path_opt)
             {
                 crate::clipboard_monitor::end_pasting_operation();
                 return Err(e);

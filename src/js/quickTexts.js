@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import {
   quickTexts,
   setQuickTexts,
@@ -16,7 +16,6 @@ import {
   quickTextGroupSelect,
   pasteWithFormat
 } from './config.js';
-import { loadImageById } from './clipboard.js';
 import { showAlertModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { showConfirmModal } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
@@ -691,8 +690,9 @@ async function loadFileIcons() {
     const filePath = icon.getAttribute('data-file-path');
     if (filePath) {
       try {
-        const dataUrl = await invoke('read_image_file', { filePath });
-        icon.src = dataUrl;
+        // 直接使用文件路径
+        const assetUrl = convertFileSrc(filePath, 'asset');
+        icon.src = assetUrl;
         icon.style.objectFit = 'cover';
         icon.style.borderRadius = '2px';
         icon.removeAttribute('data-needs-load');
@@ -711,7 +711,10 @@ async function loadFileIcons() {
     const imageId = img.getAttribute('data-image-id');
     if (imageId) {
       try {
-        await loadImageById(img, imageId, true); // 先加载缩略图
+        // 使用文件路径
+        const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+        const assetUrl = convertFileSrc(filePath, 'asset');
+        img.src = assetUrl;
         img.removeAttribute('data-needs-load');
         img.removeAttribute('data-image-id');
       } catch (error) {

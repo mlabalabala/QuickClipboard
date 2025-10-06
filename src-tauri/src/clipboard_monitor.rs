@@ -515,8 +515,8 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
             if let Ok(image_manager) = get_image_manager() {
                 if let Ok(manager) = image_manager.lock() {
                     match manager.save_image(&data_url) {
-                        Ok(image_info) => {
-                            return Some((format!("image:{}", image_info.id), None));
+                        Ok(image_id) => {
+                            return Some((format!("image:{}", image_id), None));
                         }
                         Err(e) => {
                             println!("保存图片失败: {}, 使用原始data URL", e);
@@ -541,9 +541,9 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
             if let Ok(image_manager) = get_image_manager() {
                 if let Ok(manager) = image_manager.lock() {
                     match manager.save_image(&data_url) {
-                        Ok(image_info) => {
+                        Ok(image_id) => {
                             // 返回图片引用而不是完整的data URL
-                            return Some((format!("image:{}", image_info.id), None));
+                            return Some((format!("image:{}", image_id), None));
                         }
                         Err(e) => {
                             println!("保存图片失败: {}, 使用原始data URL", e);

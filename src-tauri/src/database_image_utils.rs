@@ -61,8 +61,8 @@ fn save_image_and_get_id(src: &str) -> Option<String> {
     // 1. 如果是data URL，直接保存
     if s.starts_with("data:") {
         if let Ok(guard) = image_manager.lock() {
-            if let Ok(info) = guard.save_image(s) {
-                return Some(info.id);
+            if let Ok(image_id) = guard.save_image(s) {
+                return Some(image_id);
             }
         }
         return None;
@@ -74,8 +74,8 @@ fn save_image_and_get_id(src: &str) -> Option<String> {
         if let Some(local_path) = convert_src_to_local_path_db(s) {
             if let Ok(data_url) = crate::services::file_operation_service::FileOperationService::read_image_file(local_path) {
                 if let Ok(guard) = image_manager.lock() {
-                    if let Ok(info) = guard.save_image(&data_url) {
-                        return Some(info.id);
+                    if let Ok(image_id) = guard.save_image(&data_url) {
+                        return Some(image_id);
                     }
                 }
             }
@@ -86,8 +86,8 @@ fn save_image_and_get_id(src: &str) -> Option<String> {
     if s.starts_with("http://") || s.starts_with("https://") {
         if let Ok(data_url) = download_image_sync(s) {
             if let Ok(guard) = image_manager.lock() {
-                if let Ok(info) = guard.save_image(&data_url) {
-                    return Some(info.id);
+                if let Ok(image_id) = guard.save_image(&data_url) {
+                    return Some(image_id);
                 }
             }
         }

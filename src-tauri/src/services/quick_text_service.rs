@@ -54,24 +54,25 @@ impl QuickTextService {
         quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, "全部".to_string())
     }
 
-    /// 处理图片内容，如果是图片则创建副本
+    /// 处理图片内容，直接使用图片ID
     fn process_image_content(content: String) -> Result<String, String> {
         if content.starts_with("image:") {
             // 提取图片ID
             let image_id = content.strip_prefix("image:").unwrap_or("");
             if !image_id.is_empty() {
-                // 创建图片副本
+                // 验证图片是否存在
                 match get_image_manager() {
                     Ok(image_manager) => {
                         match image_manager.lock() {
                             Ok(manager) => {
-                                match manager.copy_image(image_id) {
-                                    Ok(new_image_info) => {
-                                        Ok(format!("image:{}", new_image_info.id))
+                                match manager.get_image_file_path(image_id) {
+                                    Ok(_) => {
+                                        // 图片存在，直接使用原始ID
+                                        Ok(content)
                                     }
                                     Err(e) => {
-                                        println!("复制图片失败: {}, 使用原始引用", e);
-                                        Ok(content) // 如果复制失败，使用原始引用
+                                        println!("验证图片失败: {}, 使用原始引用", e);
+                                        Ok(content)
                                     }
                                 }
                             }

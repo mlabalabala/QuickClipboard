@@ -368,18 +368,6 @@ pub fn get_sound_status() -> Result<serde_json::Value, String> {
     crate::services::sound_service::SoundService::get_sound_status()
 }
 
-// 获取图片数据URL
-#[tauri::command]
-pub fn get_image_data_url(image_id: String) -> Result<String, String> {
-    crate::services::image_service::ImageService::get_image_data_url(image_id)
-}
-
-// 获取图片缩略图数据URL
-#[tauri::command]
-pub fn get_image_thumbnail_url(image_id: String) -> Result<String, String> {
-    crate::services::image_service::ImageService::get_image_thumbnail_data_url(Some(image_id), String::new(), None)
-}
-
 // 获取图片文件路径
 #[tauri::command]
 pub fn get_image_file_path(content: String) -> Result<String, String> {

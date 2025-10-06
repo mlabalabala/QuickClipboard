@@ -409,7 +409,7 @@ fn verify_clipboard_formats() {
     use windows::core::w;
     use windows::Win32::Foundation::HWND;
     use windows::Win32::System::DataExchange::{
-        CloseClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
+        CloseClipboard, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
     };
 
     unsafe {
@@ -535,7 +535,7 @@ fn set_clipboard_content_internal(content: String, add_to_history: bool) -> Resu
             .map_err(|e| format!("获取图片管理器锁失败: {}", e))?;
 
         let data_url = manager.get_image_data_url(image_id)?;
-        let image_info = manager.get_image_info(image_id)?;
+        let file_path = manager.get_image_file_path(image_id)?;
         drop(manager); // 释放锁
 
         // 设置剪贴板内容，同时包含图像数据和文件路径
@@ -547,7 +547,7 @@ fn set_clipboard_content_internal(content: String, add_to_history: bool) -> Resu
                 &png_bytes,
                 width,
                 height,
-                Some(&image_info.file_path),
+                Some(&file_path),
             )?;
         }
         #[cfg(not(windows))]

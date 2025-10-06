@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import {
   clipboardHistory,
@@ -26,10 +26,6 @@ import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { isLinkContent } from './utils/linkUtils.js';
 
 import { VirtualList } from './virtualList.js';
-
-// 图片缓存
-const imageCache = new Map();
-const thumbnailCache = new Map();
 
 // 虚拟列表实例
 let clipboardVirtualList = null;
@@ -458,8 +454,9 @@ async function loadFileIcons() {
     const filePath = icon.getAttribute('data-file-path');
     if (filePath) {
       try {
-        const dataUrl = await invoke('read_image_file', { filePath });
-        icon.src = dataUrl;
+        // 直接使用文件路径
+        const assetUrl = convertFileSrc(filePath, 'asset');
+        icon.src = assetUrl;
         icon.style.objectFit = 'cover';
         icon.style.borderRadius = '2px';
         icon.removeAttribute('data-needs-load');
@@ -478,7 +475,10 @@ async function loadFileIcons() {
     const imageId = img.getAttribute('data-image-id');
     if (imageId) {
       try {
-        await loadImageById(img, imageId, true); // 先加载缩略图
+        // 使用文件路径
+        const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+        const assetUrl = convertFileSrc(filePath, 'asset');
+        img.src = assetUrl;
         img.removeAttribute('data-needs-load');
         img.removeAttribute('data-image-id');
       } catch (error) {
@@ -825,37 +825,12 @@ async function openTextEditor(item, index) {
 
 
 
-// 根据图片ID加载图片
-export async function loadImageById(imgElement, imageId, useThumbnail = true) {
+// 加载图片
+export async function loadImageById(imgElement, imageId) {
   try {
-    const cacheKey = `${imageId}_${useThumbnail ? 'thumb' : 'full'}`;
-    const cache = useThumbnail ? thumbnailCache : imageCache;
-
-    // 检查缓存
-    if (cache.has(cacheKey)) {
-      imgElement.src = cache.get(cacheKey);
-      return;
-    }
-
-    // 从后端获取图片数据
-    const command = useThumbnail ? 'get_image_thumbnail_url' : 'get_image_data_url';
-    const dataUrl = await invoke(command, { imageId });
-
-    // 缓存图片数据
-    cache.set(cacheKey, dataUrl);
-
-    // 设置图片源
-    imgElement.src = dataUrl;
-
-    // 如果是缩略图，添加点击事件加载完整图片
-    if (useThumbnail) {
-      imgElement.style.cursor = 'pointer';
-      imgElement.addEventListener('click', async (e) => {
-        e.stopPropagation(); // 防止触发父元素的点击事件
-        await loadImageById(imgElement, imageId, false);
-      });
-    }
-
+    const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+    const assetUrl = convertFileSrc(filePath, 'asset');
+    imgElement.src = assetUrl;
   } catch (error) {
     console.error('加载图片失败:', error);
     imgElement.alt = '图片加载失败';

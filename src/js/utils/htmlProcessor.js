@@ -62,12 +62,13 @@ export async function loadPendingImages(container) {
 // 异步加载图片ID对应的图片
 async function loadImageByIdForHTML(imgElement, imageId) {
   try {
-    const { invoke } = window.__TAURI__.core;
+    const { invoke, convertFileSrc } = window.__TAURI__.core;
     
-    // 加载图片数据
-    const dataUrl = await invoke('get_image_data_url', { imageId });
+    // 使用文件路径
+    const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+    const assetUrl = convertFileSrc(filePath, 'asset');
     
-    imgElement.src = dataUrl;
+    imgElement.src = assetUrl;
   } catch (error) {
     console.error('加载HTML内图片失败:', error, 'imageId:', imageId);
     imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';

@@ -668,9 +668,10 @@ export class VirtualList {
         const filePath = icon.getAttribute('data-file-path');
         if (filePath) {
           try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const dataUrl = await invoke('read_image_file', { filePath });
-            icon.src = dataUrl;
+            const { convertFileSrc } = await import('@tauri-apps/api/core');
+            // 直接使用文件路径
+            const assetUrl = convertFileSrc(filePath, 'asset');
+            icon.src = assetUrl;
             icon.style.objectFit = 'cover';
             icon.style.borderRadius = '2px';
             icon.removeAttribute('data-needs-load');
@@ -738,9 +739,10 @@ export class VirtualList {
         const filePath = icon.getAttribute('data-file-path');
         if (filePath) {
           try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const dataUrl = await invoke('read_image_file', { filePath });
-            icon.src = dataUrl;
+            const { convertFileSrc } = await import('@tauri-apps/api/core');
+            // 直接使用文件路径
+            const assetUrl = convertFileSrc(filePath, 'asset');
+            icon.src = assetUrl;
             icon.style.objectFit = 'cover';
             icon.style.borderRadius = '2px';
             icon.removeAttribute('data-needs-load');

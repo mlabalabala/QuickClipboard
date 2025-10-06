@@ -438,8 +438,6 @@ pub fn run() {
             clear_sound_cache,
             get_active_sound_count,
             log_debug,
-            get_image_data_url,
-            get_image_thumbnail_url,
             save_image_to_file,
             set_preview_index,
             cancel_preview,

@@ -59,19 +59,13 @@ impl GroupService {
                     let guard = manager.lock().map_err(|e| format!("锁定图片管理器失败: {}", e))?;
                     match guard.get_image_data_url(image_id) {
                         Ok(data_url) => {
-                            // 创建新的图片副本
+                            // 直接使用原图片ID
                             drop(guard);
-                            match crate::image_manager::get_image_manager()?.lock().unwrap().save_image(&data_url) {
-                                Ok(new_image_info) => format!("image:{}", new_image_info.id),
-                                Err(e) => {
-                                    eprintln!("保存图片副本失败: {}", e);
-                                    content // 使用原始内容
-                                }
-                            }
+                            content
                         },
                         Err(e) => {
                             eprintln!("获取图片数据失败: {}", e);
-                            content // 使用原始内容
+                            content
                         }
                     }
                 },

@@ -43,6 +43,12 @@ body:hover::after {
     display: block;
     object-fit: fill;
     cursor: move;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    -webkit-font-smoothing: subpixel-antialiased;
+    image-rendering: -webkit-optimize-contrast;
 }
 
 .size-indicator {
