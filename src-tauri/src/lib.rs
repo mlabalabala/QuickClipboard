@@ -385,6 +385,10 @@ pub fn run() {
 
             // 初始化输入对话框插件
             crate::plugins::input_dialog::init();
+            
+            // 初始化右键菜单插件
+            crate::plugins::context_menu::init();
+            crate::plugins::context_menu::set_app_handle(app.app_handle().clone());
 
             // 标记后端初始化完成
             BACKEND_INITIALIZED.store(true, Ordering::Relaxed);
@@ -544,7 +548,13 @@ pub fn run() {
             // 输入对话框插件命令
             crate::plugins::input_dialog::commands::show_input,
             crate::plugins::input_dialog::commands::get_input_dialog_options,
-            crate::plugins::input_dialog::commands::submit_input_dialog
+            crate::plugins::input_dialog::commands::submit_input_dialog,
+            
+            // 右键菜单插件命令
+            crate::plugins::context_menu::commands::show_context_menu,
+            crate::plugins::context_menu::commands::get_context_menu_options,
+            crate::plugins::context_menu::commands::submit_context_menu,
+            crate::plugins::context_menu::commands::close_all_context_menus
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

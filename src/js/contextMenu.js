@@ -1,9 +1,10 @@
-// 通用右键菜单模块
+// 通用右键菜单模块 - 使用新的菜单窗口插件
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';
-import { searchWithEngine } from './searchEngineManager.js';
-import { createSearchEngineSelector } from './searchEngineSelector.js';
+import { searchWithEngine, getSearchEngines } from './searchEngineManager.js';
+import { showContextMenu as showMenuPlugin, createMenuItem as createPluginMenuItem, createSeparator as createPluginSeparator } from '../plugins/context_menu/index.js';
+import { getCurrentSettings } from './settingsManager.js';
 
 // 在浏览器中搜索文本
 async function searchTextInBrowser(text, engineId = null) {
@@ -69,7 +70,7 @@ function createLinkSelectionDialog(links, callback) {
   `;
   
   // 添加链接选项
-  links.forEach((link, index) => {
+  links.forEach((link) => {
     const item = document.createElement('div');
     item.className = 'dialog-item';
     item.style.cssText = `
@@ -151,100 +152,21 @@ async function openLink(url) {
   }
 }
 
-// 创建菜单项
-function createMenuItem(iconClass, text, onClick) {
-  const item = document.createElement('div');
-  item.className = 'context-menu-item';
-  item.style.cssText = `
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    cursor: pointer;
-    font-size: 13px;
-    color: #333;
-    transition: background-color 0.15s ease;
-    border-bottom: 1px solid #f5f5f5;
-  `;
-
-  item.innerHTML = `
-    <i class="ti ${iconClass}" style="margin-right: 8px; font-size: 14px;"></i>
-    <span>${text}</span>
-  `;
-
-  item.addEventListener('mouseenter', () => {
-    item.style.backgroundColor = '#f5f5f5';
-  });
-
-  item.addEventListener('mouseleave', () => {
-    item.style.backgroundColor = 'transparent';
-  });
-
-  item.addEventListener('click', onClick);
-  return item;
-}
-
-// 创建分隔线
-function createSeparator() {
-  const separator = document.createElement('div');
-  separator.className = 'context-menu-separator';
-  separator.style.cssText = `
-    height: 1px;
-    background: #e8e8e8;
-    margin: 4px 0;
-  `;
-  return separator;
-}
-
-// 根据需要添加分隔线
-function appendSeparatorIfNeeded(menuItems) {
-  if (menuItems.length === 0) {
-    return;
-  }
-
-  const lastItem = menuItems[menuItems.length - 1];
-  if (lastItem && lastItem.classList && lastItem.classList.contains('context-menu-separator')) {
-    return;
-  }
-
-  menuItems.push(createSeparator());
-}
-
-// 隐藏当前显示的右键菜单
+// 隐藏当前显示的右键菜单（保留接口兼容性，但实际上新菜单会自动关闭）
 export function hideContextMenu() {
-  const existingMenu = document.querySelector('.context-menu');
-  if (existingMenu) {
-    existingMenu.remove();
-  }
+  // 新的菜单插件会在点击外部时自动关闭，这里保留空函数以保持兼容性
 }
 
 // 显示通用右键菜单
-export function showContextMenu(event, options) {
-  // 移除已存在的菜单
-  hideContextMenu();
-
-  // 创建菜单容器
-  const menu = document.createElement('div');
-  menu.className = 'context-menu';
-  menu.style.cssText = `
-    position: fixed;
-    top: ${event.clientY}px;
-    left: ${event.clientX}px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    min-width: 150px;
-    padding: 4px 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  `;
+export async function showContextMenu(event, options) {
+  event.preventDefault();
+  event.stopPropagation();
 
   const menuItems = [];
   const plainTextForSearch = typeof options.content === 'string' ? options.content.trim() : '';
 
   // 检测并添加打开链接选项
   if (options.content || options.html_content) {
-    // 使用统一的链接提取工具函数
     const links = extractAllLinks({
       content: options.content,
       html_content: options.html_content
@@ -252,85 +174,140 @@ export function showContextMenu(event, options) {
     
     if (links.length === 1) {
       // 只有一个链接，直接显示打开选项
-      const openItem = createMenuItem('ti-external-link', '在浏览器中打开', async () => {
-        await openLink(links[0]);
-        menu.remove();
-      });
-      menuItems.push(openItem);
+      menuItems.push(createPluginMenuItem('open-link', '在浏览器中打开', {
+        icon: 'ti ti-external-link'
+      }));
     } else if (links.length > 1) {
       // 多个链接，显示选择链接选项
-      const openItem = createMenuItem('ti-external-link', `打开链接 (${links.length}个)`, async () => {
-        menu.remove();
-        createLinkSelectionDialog(links, async (selectedLinks) => {
-          // 打开所有选中的链接
-          for (const link of selectedLinks) {
-            await openLink(link);
-          }
-        });
-      });
-      menuItems.push(openItem);
+      menuItems.push(createPluginMenuItem('open-links', `打开链接 (${links.length}个)`, {
+        icon: 'ti ti-external-link'
+      }));
     }
   }
 
   // 添加浏览器搜索选项
   if (plainTextForSearch && (options.content_type === 'text' || options.content_type === 'rich_text')) {
-    appendSeparatorIfNeeded(menuItems);
-    const searchItem = createSearchEngineSelector(plainTextForSearch, async (engineId) => {
-      await searchTextInBrowser(plainTextForSearch, engineId);
-      menu.remove();
-    });
-    menuItems.push(searchItem);
+    // 如果已经有链接菜单项，添加分隔线
+    if (menuItems.length > 0) {
+      menuItems.push(createPluginSeparator());
+    }
+    
+    // 获取搜索引擎列表
+    const searchEngines = getSearchEngines();
+    const currentEngine = searchEngines.find(e => e.default) || searchEngines[0];
+    
+    // 创建主搜索菜单项（带子菜单）
+    if (currentEngine && searchEngines.length > 0) {
+      const searchMenuItem = createPluginMenuItem(
+        `search-${currentEngine.id}`, 
+        `在 ${currentEngine.name} 中搜索`, 
+        {
+          icon: 'ti ti-search'
+        }
+      );
+      
+      // 添加子菜单（包含所有引擎和添加自定义引擎选项）
+      if (searchEngines.length >= 1) {
+        searchMenuItem.children = [
+          ...searchEngines.map(engine => 
+            createPluginMenuItem(`search-${engine.id}`, engine.name, {
+              favicon: engine.favicon,
+              icon: engine.id === currentEngine.id ? 'ti ti-check' : undefined
+            })
+          ),
+          createPluginSeparator(),
+          createPluginMenuItem('add-custom-search-engine', '添加自定义搜索引擎', {
+            icon: 'ti ti-plus'
+          })
+        ];
+      }
+      
+      menuItems.push(searchMenuItem);
+    }
   }
 
   // 添加自定义菜单项
   if (options.items && options.items.length > 0) {
-    // 如果已经有链接菜单项，添加分隔线
-    appendSeparatorIfNeeded(menuItems);
+    // 如果已经有其他菜单项，添加分隔线
+    if (menuItems.length > 0) {
+      menuItems.push(createPluginSeparator());
+    }
 
     options.items.forEach(item => {
       if (item.type === 'separator') {
-        menuItems.push(createSeparator());
+        menuItems.push(createPluginSeparator());
       } else {
-        const menuItem = createMenuItem(item.icon, item.text, () => {
-          item.onClick();
-          menu.remove();
-        });
-
-        // 应用自定义样式
-        if (item.style) {
-          Object.assign(menuItem.style, item.style);
+        // 修正图标格式：如果是 'ti-xxx' 格式，转换为 'ti ti-xxx'
+        let icon = item.icon;
+        if (icon && icon.startsWith('ti-') && !icon.startsWith('ti ti-')) {
+          icon = 'ti ' + icon;
         }
-
-        menuItems.push(menuItem);
+        
+        menuItems.push(createPluginMenuItem(item.id || `custom-${menuItems.length}`, item.text, {
+          icon: icon,
+          disabled: item.disabled || false
+        }));
       }
     });
   }
 
-  // 添加所有菜单项到容器
-  menuItems.forEach(menuItem => {
-    menu.appendChild(menuItem);
+  // 如果没有任何菜单项，不显示菜单
+  if (menuItems.length === 0) {
+    return;
+  }
+
+  // 获取当前主题
+  const settings = getCurrentSettings();
+  const theme = settings.theme || 'auto';
+
+  // 显示菜单并等待用户选择
+  const result = await showMenuPlugin({
+    items: menuItems,
+    x: event.clientX,
+    y: event.clientY,
+    theme: theme
   });
 
-  document.body.appendChild(menu);
-
-  // 点击其他地方关闭菜单
-  const closeMenu = (e) => {
-    if (!menu.contains(e.target)) {
-      menu.remove();
-      document.removeEventListener('click', closeMenu);
-    }
-  };
-
-  setTimeout(() => {
-    document.addEventListener('click', closeMenu);
-  }, 0);
-
-  // 调整菜单位置，确保不超出屏幕
-  const rect = menu.getBoundingClientRect();
-  if (rect.right > window.innerWidth) {
-    menu.style.left = (event.clientX - rect.width) + 'px';
+  // 处理用户选择
+  if (!result) {
+    return; // 用户取消了
   }
-  if (rect.bottom > window.innerHeight) {
-    menu.style.top = (event.clientY - rect.height) + 'px';
+
+  // 处理链接打开
+  const links = extractAllLinks({
+    content: options.content,
+    html_content: options.html_content
+  });
+
+  if (result === 'open-link' && links.length === 1) {
+    await openLink(links[0]);
+  } else if (result === 'open-links' && links.length > 1) {
+    createLinkSelectionDialog(links, async (selectedLinks) => {
+      for (const link of selectedLinks) {
+        await openLink(link);
+      }
+    });
+  }
+  // 处理搜索引擎搜索
+  else if (result.startsWith('search-')) {
+    const engineId = result.substring(7); // 移除 'search-' 前缀
+    await searchTextInBrowser(plainTextForSearch, engineId);
+  }
+  // 处理添加自定义搜索引擎
+  else if (result === 'add-custom-search-engine') {
+    const { createCustomSearchEngineDialog } = await import('./searchEngineSelector.js');
+    createCustomSearchEngineDialog(() => {
+      // 添加成功后可以选择性地刷新某些内容
+    });
+  }
+  // 处理自定义菜单项
+  else if (options.items) {
+    const customItem = options.items.find(item => 
+      (item.id && item.id === result) || 
+      `custom-${options.items.indexOf(item)}` === result
+    );
+    if (customItem && customItem.onClick) {
+      customItem.onClick();
+    }
   }
 }

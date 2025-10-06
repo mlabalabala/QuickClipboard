@@ -137,6 +137,11 @@ where
     StateManager::global().register_callback(callback);
 }
 
+// 检查右键菜单是否显示
+pub fn is_context_menu_visible() -> bool {
+    crate::plugins::context_menu::is_menu_visible()
+}
+
 // 初始化状态管理器
 pub fn init_state_manager() {
     // 从设置文件初始化状态

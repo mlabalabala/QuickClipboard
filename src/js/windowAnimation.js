@@ -11,9 +11,9 @@ let animationEnabled = true;
  */
 async function closeAllOpenMenus() {
   try {
-    // 关闭右键菜单
-    const { hideContextMenu } = await import('./contextMenu.js');
-    hideContextMenu();
+    // 关闭右键菜单窗口
+    const { closeAllContextMenus } = await import('../plugins/context_menu/index.js');
+    await closeAllContextMenus();
     
     // 关闭搜索引擎下拉菜单
     const searchEngineDropdown = document.querySelector('.search-engine-dropdown-menu');

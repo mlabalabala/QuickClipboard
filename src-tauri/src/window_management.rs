@@ -81,6 +81,11 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
 
 /// 隐藏窗口
 pub fn hide_webview_window(window: tauri::WebviewWindow) {
+    // 如果右键菜单正在显示，不隐藏主窗口
+    if crate::state_manager::is_context_menu_visible() {
+        return;
+    }
+    
     // 检查是否处于边缘吸附隐藏状态
     if crate::edge_snap::is_window_edge_hidden() {
         // 如果窗口已经处于贴边隐藏状态，确保停止鼠标监听

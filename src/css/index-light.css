@@ -446,20 +446,6 @@ body.theme-light {
   color: #fff;
 }
 
-/* =================== 右键菜单 =================== */
-.theme-light .context-menu {
-  background: #ffffff !important;
-  border-color: var(--border-primary) !important;
-  color: var(--text-primary);
-}
-
-.theme-light .context-menu-item {
-  border-bottom-color: var(--border-primary);
-}
-
-.theme-light .context-menu-item:hover {
-  background-color: var(--bg-secondary) !important;
-}
 
 /* =================== 图标网格 =================== */
 .theme-light .icon-grid {

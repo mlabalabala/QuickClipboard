@@ -33,7 +33,7 @@ function createSearchEngineIcon(engine) {
 }
 
 // 创建自定义搜索引擎对话框
-function createCustomSearchEngineDialog(callback) {
+export function createCustomSearchEngineDialog(callback) {
   // 移除已存在的对话框
   const existingDialog = document.querySelector('.custom-search-dialog');
   if (existingDialog) {
@@ -231,11 +231,6 @@ function showSearchEngineDropdown(triggerElement, searchText, onSearch) {
       onSearch(engine.id);
       dropdown.remove();
       triggerElement.classList.remove('active');
-      // 移除上级菜单
-      const contextMenu = document.querySelector('.context-menu');
-      if (contextMenu) {
-        contextMenu.remove();
-      }
     });
 
     dropdown.appendChild(item);
@@ -258,11 +253,6 @@ function showSearchEngineDropdown(triggerElement, searchText, onSearch) {
   customItem.addEventListener('click', () => {
     dropdown.remove();
     triggerElement.classList.remove('active');
-    // 移除上级菜单
-    const contextMenu = document.querySelector('.context-menu');
-    if (contextMenu) {
-      contextMenu.remove();
-    }
     
     createCustomSearchEngineDialog((newEngine) => {
       setCurrentSearchEngine(newEngine.id);

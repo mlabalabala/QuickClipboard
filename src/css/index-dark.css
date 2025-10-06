@@ -496,25 +496,6 @@ body.theme-dark {
   color: #fff;
 }
 
-/* =================== 右键菜单 =================== */
-.theme-dark .context-menu {
-  background: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: var(--text-primary) !important;
-}
-
-.theme-dark .context-menu-item {
-  color: var(--text-primary) !important;
-  border-bottom-color: #404040;
-}
-
-.theme-dark .context-menu-item:last-child {
-  color: rgb(255, 77, 79) !important;
-}
-
-.theme-dark .context-menu-item:hover {
-  background-color: #404040 !important;
-}
 
 /* =================== 图标网格 =================== */
 .theme-dark .icon-grid {

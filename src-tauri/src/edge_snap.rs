@@ -180,6 +180,11 @@ fn get_snap_target(window: &WebviewWindow, window_rect: &RECT) -> Option<(SnapEd
 
 // 隐藏已吸附的窗口
 pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
+    // 如果右键菜单正在显示，不隐藏窗口
+    if crate::state_manager::is_context_menu_visible() {
+        return Ok(());
+    }
+    
     // 使用新的状态管理器检查是否应该启用贴边隐藏
     if !crate::state_manager::should_enable_edge_hide() {
         return Ok(());

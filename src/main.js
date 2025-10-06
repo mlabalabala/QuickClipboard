@@ -181,7 +181,7 @@ async function initApp() {
     refreshQuickTexts()
   ]);
 
-  // 数据获取完成后自动更新显示（refreshClipboardHistory和refreshQuickTexts内部会调用render函数）
+  // 数据获取完成后自动更新显示
   await dataPromise;
 
   // 从localStorage恢复筛选状态到config.js
@@ -325,7 +325,7 @@ async function initApp() {
   initShortcutsHelpPanel();
 
 
-  // 初始化统一工具管理器（需要在其他初始化之前）
+  // 初始化统一工具管理器
   initToolManager();
 
   // 初始化工具面板
@@ -447,9 +447,8 @@ function setupWindowSizeAndPositionListeners() {
         lastPosition = position;
       }
     } catch (error) {
-      // 静默处理错误，避免控制台噪音
     }
-  }, 1000); // 每秒检查一次位置变化
+  }, 1000); 
 }
 
 // 页面加载完成后初始化

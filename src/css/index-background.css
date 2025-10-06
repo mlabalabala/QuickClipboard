@@ -558,20 +558,6 @@ body.theme-background {
     color: #fff;
 }
 
-/* =================== 右键菜单 =================== */
-.theme-background .context-menu {
-    background: #ffffff !important;
-    border-color: var(--border-primary) !important;
-    color: var(--text-primary);
-}
-
-.theme-background .context-menu-item {
-    border-bottom-color: var(--border-primary);
-}
-
-.theme-background .context-menu-item:hover {
-    background-color: var(--bg-secondary) !important;
-}
 
 /* =================== 图标网格 =================== */
 .theme-background .icon-grid {

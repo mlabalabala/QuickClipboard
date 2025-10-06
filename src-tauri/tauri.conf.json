@@ -88,7 +88,8 @@
         "text-editor",
         "screenshot",
         "pin-image",
-        "input-dialog"
+        "input-dialog",
+        "context-menu"
       ],
       "assetProtocol": {
         "enable": true,
