@@ -141,7 +141,7 @@ impl SettingsService {
     /// 处理特殊设置逻辑
     fn handle_special_settings(
         app_handle: &AppHandle,
-        settings_filtered: &serde_json::Value,
+        _settings_filtered: &serde_json::Value,
         app_settings: &crate::settings::AppSettings,
     ) -> Result<(), String> {
         // 1. 更新快捷键拦截器配置
@@ -164,18 +164,6 @@ impl SettingsService {
             crate::shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
         }
 
-        // 2. 检查是否需要刷新文件图标
-        if settings_filtered.get("showImagePreview").is_some() {
-            // 异步刷新文件图标，不阻塞设置保存
-            let app_handle_clone = app_handle.clone();
-            std::thread::spawn(move || {
-                if let Err(e) = crate::commands::refresh_file_icons(app_handle_clone) {
-                    println!("刷新文件图标失败: {}", e);
-                }
-            });
-        }
-
-        // 3. 通知前端设置已更改
         use tauri::Emitter;
         if let Some(main_window) = app_handle.get_webview_window("main") {
             let _ = main_window.emit("settings-changed", app_settings.to_json());

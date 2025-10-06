@@ -240,26 +240,11 @@ pub fn delete_item_by_index(index: usize) -> Result<(), String> {
 
     let item = &items[index];
 
-    // 如果是图片，删除对应的图片文件
-    if item.content_type == crate::database::ContentType::Image {
-        if let Some(image_id) = &item.image_id {
-            match get_image_manager() {
-                Ok(image_manager) => {
-                    if let Ok(manager) = image_manager.lock() {
-                        if let Err(e) = manager.delete_image(image_id) {
-                            println!("删除图片文件失败: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    println!("获取图片管理器失败: {}", e);
-                }
-            }
-        }
-    }
-
     // 从数据库删除
     database::delete_clipboard_item(item.id)?;
+
+    // 清理未使用的图片
+    cleanup_orphaned_images();
 
     println!("已删除索引为 {} 的剪贴板项目", index);
     Ok(())
@@ -267,30 +252,11 @@ pub fn delete_item_by_index(index: usize) -> Result<(), String> {
 
 // 清空所有剪贴板历史
 pub fn clear_all() -> Result<(), String> {
-    // 获取所有图片项目并删除对应的图片文件
-    let items = database::get_clipboard_history(None)?;
-
-    for item in &items {
-        if item.content_type == crate::database::ContentType::Image {
-            if let Some(image_id) = &item.image_id {
-                match get_image_manager() {
-                    Ok(image_manager) => {
-                        if let Ok(manager) = image_manager.lock() {
-                            if let Err(e) = manager.delete_image(image_id) {
-                                println!("删除图片文件失败: {}", e);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        println!("获取图片管理器失败: {}", e);
-                    }
-                }
-            }
-        }
-    }
-
     // 清空数据库
     database::clear_clipboard_history()?;
+
+    // 清理未使用的图片
+    cleanup_orphaned_images();
 
     println!("已清空所有剪贴板历史记录");
     Ok(())
@@ -316,4 +282,80 @@ pub fn update_item_content(index: usize, new_content: String) -> Result<(), Stri
 
     println!("已更新索引为 {} 的剪贴板项目内容", index);
     Ok(())
+}
+
+// 清理未使用的图片文件（孤儿图片）
+pub fn cleanup_orphaned_images() {
+    // 收集所有正在使用的图片ID
+    let mut used_image_ids = Vec::new();
+    
+    // 从剪贴板历史中收集图片ID
+    if let Ok(clipboard_items) = database::get_clipboard_history(None) {
+        for item in clipboard_items {
+            // 从image_id字段收集（纯图片类型）
+            if item.content_type == crate::database::ContentType::Image {
+                if let Some(image_id) = item.image_id {
+                    used_image_ids.push(image_id);
+                }
+            }
+            
+            // 从html_content字段中提取图片ID（富文本中的图片）
+            if let Some(html) = &item.html_content {
+                extract_image_ids_from_html(html, &mut used_image_ids);
+            }
+        }
+    }
+    
+    // 从常用文本中收集图片ID
+    if let Ok(quick_texts) = crate::database::get_all_favorite_items() {
+        for text in quick_texts {
+            // 检查content是否为图片引用格式 "image:id"
+            if text.content.starts_with("image:") {
+                let image_id = text.content.strip_prefix("image:").unwrap_or("");
+                if !image_id.is_empty() {
+                    used_image_ids.push(image_id.to_string());
+                }
+            }
+            
+            // 从html_content字段中提取图片ID（富文本中的图片）
+            if let Some(html) = &text.html_content {
+                extract_image_ids_from_html(html, &mut used_image_ids);
+            }
+        }
+    }
+    
+    // 调用图片管理器清理未使用的图片
+    if let Ok(image_manager) = get_image_manager() {
+        if let Ok(manager) = image_manager.lock() {
+            if let Err(e) = manager.cleanup_unused_images(&used_image_ids) {
+                println!("清理未使用的图片失败: {}", e);
+            } else {
+                println!("已清理未使用的图片，保留 {} 个正在使用的图片", used_image_ids.len());
+            }
+        }
+    }
+}
+
+// 从HTML内容中提取所有图片ID
+fn extract_image_ids_from_html(html: &str, image_ids: &mut Vec<String>) {
+    // 也匹配 onerror 等属性中的图片ID
+    let patterns = [
+        r#"src="image-id:([a-f0-9]+)""#,
+        r#"src='image-id:([a-f0-9]+)'"#,
+        r#"onerror="[^"]*image-id:([a-f0-9]+)[^"]*""#,
+        r#"onerror='[^']*image-id:([a-f0-9]+)[^']*'"#,
+    ];
+    
+    for pattern in &patterns {
+        if let Ok(re) = regex::Regex::new(pattern) {
+            for cap in re.captures_iter(html) {
+                if let Some(id) = cap.get(1) {
+                    let image_id = id.as_str().to_string();
+                    if !image_ids.contains(&image_id) {
+                        image_ids.push(image_id);
+                    }
+                }
+            }
+        }
+    }
 }

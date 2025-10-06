@@ -213,7 +213,32 @@ pub fn copy_pin_image_to_clipboard(window: WebviewWindow) -> Result<(), String> 
             let file_path = data.file_path.clone();
             drop(map);
             
-            crate::file_handler::set_clipboard_files(&[file_path])?;
+            // 读取图片文件并转换为图片数据
+            #[cfg(windows)]
+            {
+                use crate::clipboard_content::{data_url_to_bgra_and_png, set_windows_clipboard_image_with_file};
+                
+                // 从文件读取图片数据
+                let image_data = std::fs::read(&file_path)
+                    .map_err(|e| format!("读取图片文件失败: {}", e))?;
+                
+                // 转换为 base64 data URL
+                use base64::{engine::general_purpose, Engine as _};
+                let base64_string = general_purpose::STANDARD.encode(&image_data);
+                let data_url = format!("data:image/png;base64,{}", base64_string);
+                
+                // 转换为 BGRA 和 PNG 格式
+                let (bgra, png_bytes, width, height) = data_url_to_bgra_and_png(&data_url)?;
+                
+                // 同时设置图片数据和文件路径
+                set_windows_clipboard_image_with_file(&bgra, &png_bytes, width, height, Some(&file_path))?;
+            }
+            
+            #[cfg(not(windows))]
+            {
+                // 非 Windows 平台，只设置文件路径
+                crate::file_handler::set_clipboard_files(&[file_path])?;
+            }
             
             return Ok(());
         }

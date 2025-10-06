@@ -89,6 +89,21 @@ function applySettings(settings) {
     console.log('剪贴板监听设置:', settings.clipboardMonitor);
   }
 
+  // 当图片预览设置改变时，刷新列表以更新图标显示
+  if (settings.showImagePreview !== undefined) {
+    // 刷新虚拟列表以重新渲染文件图标
+    if (window.clipboardModule?.clipboardVirtualList) {
+      window.clipboardModule.clipboardVirtualList.updateData(
+        window.clipboardModule.clipboardVirtualList.data
+      );
+    }
+    if (window.quickTextsModule?.quickTextsVirtualList) {
+      window.quickTextsModule.quickTextsVirtualList.updateData(
+        window.quickTextsModule.quickTextsVirtualList.data
+      );
+    }
+  }
+
   // 应用动画设置
   if (settings.clipboardAnimationEnabled !== undefined) {
     applyAnimationSettings(settings.clipboardAnimationEnabled);

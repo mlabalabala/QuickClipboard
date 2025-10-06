@@ -446,6 +446,7 @@ pub fn run() {
             emit_clipboard_updated,
             emit_quick_texts_updated,
             clear_clipboard_history,
+            cleanup_unused_images,
             open_text_editor_window,
             notify_preview_tab_change,
             get_main_window_state,

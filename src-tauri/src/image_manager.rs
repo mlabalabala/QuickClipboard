@@ -20,6 +20,16 @@ impl ImageManager {
         fs::create_dir_all(&images_dir)
             .map_err(|e| format!("创建图片目录失败: {}", e))?;
 
+        // 清理废弃的缩略图目录
+        let thumbnails_dir = images_dir.join("thumbnails");
+        if thumbnails_dir.exists() {
+            if let Err(e) = fs::remove_dir_all(&thumbnails_dir) {
+                println!("清理废弃的缩略图目录失败: {}", e);
+            } else {
+                println!("已清理废弃的缩略图目录");
+            }
+        }
+
         Ok(ImageManager { images_dir })
     }
 

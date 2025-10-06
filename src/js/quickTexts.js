@@ -1,4 +1,5 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { getCurrentSettings } from './settingsManager.js';
 import {
   quickTexts,
   setQuickTexts,
@@ -175,24 +176,22 @@ function generateFileIconHTML(file, size = 'medium') {
 
   // 获取图标数据
   let iconSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-  let needsAsyncLoad = false;
-  let filePath = '';
+  let iconStyle = 'object-fit: contain; border-radius: 0;';
 
-  if (file.icon_data) {
-    if (file.icon_data.startsWith('image_file://')) {
-      // 这是一个图片文件路径，需要异步加载
-      filePath = file.icon_data.substring(13);
-      needsAsyncLoad = true;
-    } else {
-      // 使用原有的base64数据
-      iconSrc = file.icon_data;
-    }
+  // 检查是否是图片文件且启用了预览
+  const settings = getCurrentSettings();
+  const isImageFile = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'].includes(file.file_type?.toUpperCase());
+  
+  if (isImageFile && settings.showImagePreview && file.path) {
+    // 使用文件路径直接加载图片预览
+    iconSrc = convertFileSrc(file.path, 'asset');
+    iconStyle = 'object-fit: cover; border-radius: 2px;';
+  } else if (file.icon_data) {
+    // 使用图标数据（base64）
+    iconSrc = file.icon_data;
   }
 
-  const dataAttributes = needsAsyncLoad ?
-    `data-file-path="${escapeHtml(filePath)}" data-needs-load="true"` : '';
-
-  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; object-fit: cover; border-radius: 2px;" ${dataAttributes}>`;
+  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
 }
 
 // 生成常用文本文件HTML
@@ -1124,3 +1123,18 @@ async function copyFilePaths(text) {
 window.addEventListener('format-mode-changed', (event) => {
   renderQuickTexts();
 });
+
+// 加载图片（用于虚拟列表的图片懒加载）
+export async function loadImageById(imgElement, imageId) {
+  try {
+    const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+    const assetUrl = convertFileSrc(filePath, 'asset');
+    imgElement.src = assetUrl;
+  } catch (error) {
+    console.error('加载图片失败:', error);
+    imgElement.alt = '图片加载失败';
+    imgElement.style.backgroundColor = '#ffebee';
+    imgElement.style.color = '#c62828';
+    imgElement.textContent = '图片加载失败';
+  }
+}

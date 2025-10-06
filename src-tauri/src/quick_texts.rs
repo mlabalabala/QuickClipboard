@@ -84,6 +84,10 @@ pub fn update_quick_text(
 // 删除常用文本
 pub fn delete_quick_text(id: &str) -> Result<(), String> {
     database::delete_favorite_item(id)?;
+    
+    // 清理未使用的图片
+    cleanup_orphaned_images();
+    
     Ok(())
 }
 
@@ -187,4 +191,9 @@ pub fn move_quick_text_to_group(id: String, group_name: String) -> Result<(), St
         id, old_group_name, group_name
     );
     Ok(())
+}
+
+// 清理未使用的图片文件（孤儿图片）
+fn cleanup_orphaned_images() {
+    crate::clipboard_history::cleanup_orphaned_images();
 }

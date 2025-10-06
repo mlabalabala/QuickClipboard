@@ -1,4 +1,6 @@
 // 文件图标工具函数
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { getCurrentSettings } from './settingsManager.js';
 
 // 图片加载管理器
 class ImageLoadManager {
@@ -172,27 +174,22 @@ const imageLoadManager = new ImageLoadManager();
 function setFileIcon(iconElement, file, defaultIcon = null) {
   const defaultIconData = defaultIcon || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
 
-  if (!file.icon_data) {
-    iconElement.src = defaultIconData;
-    return;
-  }
-
-  // 检查是否是图片文件路径格式（以 image_file:// 开头）
-  if (file.icon_data.startsWith('image_file://')) {
-    const filePath = file.icon_data.substring(13); // 移除 'image_file://' 前缀
-
-    // 设置图片样式，确保缩略图效果
+  // 检查是否是图片文件且启用了预览
+  const settings = getCurrentSettings();
+  const isImageFile = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'].includes(file.file_type?.toUpperCase());
+  
+  if (isImageFile && settings.showImagePreview && file.path) {
+    // 使用文件路径直接加载图片预览
+    iconElement.src = convertFileSrc(file.path, 'asset');
     iconElement.style.objectFit = 'cover';
     iconElement.style.borderRadius = '2px';
-
-    // 使用优化的懒加载机制
-    imageLoadManager.lazyLoadImage(iconElement, filePath, defaultIconData);
-
-  } else {
-    // 使用原有的base64数据
+  } else if (file.icon_data) {
+    // 使用图标数据（base64）
     iconElement.src = file.icon_data;
     iconElement.style.objectFit = 'contain';
     iconElement.style.borderRadius = '0';
+  } else {
+    iconElement.src = defaultIconData;
   }
 }
 

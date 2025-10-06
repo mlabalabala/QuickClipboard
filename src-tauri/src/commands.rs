@@ -410,6 +410,13 @@ pub fn clear_clipboard_history() -> Result<(), String> {
     clipboard_history::clear_all()
 }
 
+// 手动清理未使用的图片
+#[tauri::command]
+pub fn cleanup_unused_images() -> Result<String, String> {
+    crate::clipboard_history::cleanup_orphaned_images();
+    Ok("清理完成".to_string())
+}
+
 // 发送剪贴板更新事件
 #[tauri::command]
 pub async fn emit_clipboard_updated(app: tauri::AppHandle) -> Result<(), String> {
