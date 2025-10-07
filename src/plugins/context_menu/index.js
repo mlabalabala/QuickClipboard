@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-
+document.addEventListener('contextmenu', event => event.preventDefault());
 // 显示右键菜单
 export async function showContextMenu(options) {
     try {

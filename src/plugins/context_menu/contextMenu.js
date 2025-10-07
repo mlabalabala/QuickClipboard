@@ -4,7 +4,7 @@
 
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-
+document.addEventListener('contextmenu', event => event.preventDefault());
 const currentWindow = getCurrentWindow();
 const menuContainer = document.getElementById('menuContainer');
 

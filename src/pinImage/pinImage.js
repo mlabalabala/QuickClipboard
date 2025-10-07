@@ -6,7 +6,7 @@ import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem, Submenu } from '@tau
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 // 创建右键菜单
-async function createContextMenu(window, shadowState, lockPositionState) {
+async function createContextMenu(window, shadowState, lockPositionState, pixelRenderState) {
     document.addEventListener('contextmenu', async (e) => {
         e.preventDefault();
         
@@ -50,6 +50,27 @@ async function createContextMenu(window, shadowState, lockPositionState) {
                     lockPositionState.locked = !lockPositionState.locked;
                 } catch (error) {
                     console.error('切换锁定位置失败:', error);
+                }
+            }
+        });
+        
+        const pixelRenderItem = await CheckMenuItem.new({
+            id: 'toggle-pixel-render',
+            text: '像素级显示',
+            checked: pixelRenderState.enabled,
+            action: async () => {
+                try {
+                    pixelRenderState.enabled = !pixelRenderState.enabled;
+                    const img = document.getElementById('pinImage');
+                    if (img) {
+                        if (pixelRenderState.enabled) {
+                            img.style.imageRendering = 'pixelated';
+                        } else {
+                            img.style.imageRendering = 'auto';
+                        }
+                    }
+                } catch (error) {
+                    console.error('切换渲染模式失败:', error);
                 }
             }
         });
@@ -169,7 +190,7 @@ async function createContextMenu(window, shadowState, lockPositionState) {
         
         // 创建菜单
         const menu = await Menu.new({
-            items: [alwaysOnTopItem, shadowItem, lockPositionItem, opacitySubmenu, separator1, copyItem, saveAsItem, separator2, closeItem]
+            items: [alwaysOnTopItem, shadowItem, lockPositionItem, pixelRenderItem, opacitySubmenu, separator1, copyItem, saveAsItem, separator2, closeItem]
         });
         
         await menu.popup();
@@ -199,6 +220,7 @@ async function createContextMenu(window, shadowState, lockPositionState) {
     
     const shadowState = { enabled: false };
     const lockPositionState = { locked: false };
+    const pixelRenderState = { enabled: false };
     
     // 应用图片变换
     function applyImageTransform() {
@@ -225,14 +247,25 @@ async function createContextMenu(window, shadowState, lockPositionState) {
     
     // 显示大小指示器
     function showSizeIndicator(width, height, level, isImageScale = false) {
+        let mainText = '';
+        
         if (isImageScale) {
-            // 图片缩放模式：只显示缩放比例
-            sizeIndicator.textContent = `图片 ${level}%`;
+            // 图片缩放模式：显示缩放比例
+            mainText = `图片 ${level}%`;
         } else {
             // 窗口缩放模式：显示窗口大小和百分比
             const scalePercent = level * 10;
-            sizeIndicator.textContent = `${Math.round(width)} × ${Math.round(height)} (${scalePercent}%)`;
+            mainText = `${Math.round(width)} × ${Math.round(height)} (${scalePercent}%)`;
         }
+        
+        const hintText = `
+            <span style="font-size: 10px; opacity: 0.8;">
+                滚轮: 缩放窗口 | Shift+滚轮: 快速缩放窗口<br>
+                Alt+滚轮: 缩放图片 | Shift+Alt+滚轮: 快速缩放图片
+            </span>
+        `;
+        
+        sizeIndicator.innerHTML = `${mainText}<br>${hintText}`;
         sizeIndicator.classList.add('show');
         
         if (sizeIndicatorTimer) {
@@ -251,7 +284,10 @@ async function createContextMenu(window, shadowState, lockPositionState) {
         try {
             if (e.altKey) {
                 // Alt + 滚轮：缩放图片内容
-                const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                // Shift + Alt + 滚轮：更大幅度缩放（步长为0.5）
+                // Alt + 滚轮：正常缩放（步长为0.1）
+                const step = e.shiftKey ? 0.5 : 0.1;
+                const delta = e.deltaY < 0 ? step : -step;
                 const oldScale = imageScale;
                 imageScale = Math.max(1, imageScale + delta);
                 
@@ -289,10 +325,14 @@ async function createContextMenu(window, shadowState, lockPositionState) {
                     };
                 }
                 
+                // Shift + 滚轮：更大幅度缩放（步长为5）
+                // 普通滚轮：正常缩放（步长为1）
+                const step = e.shiftKey ? 5 : 1;
+                
                 if (e.deltaY < 0) {
-                    scaleLevel++;
+                    scaleLevel += step;
                 } else {
-                    scaleLevel = Math.max(1, scaleLevel - 1);
+                    scaleLevel = Math.max(1, scaleLevel - step);
                 }
                 
                 // 基于初始大小和缩放级别计算新尺寸
@@ -300,7 +340,7 @@ async function createContextMenu(window, shadowState, lockPositionState) {
                 const newHeight = initialSize.height * (scaleLevel / 10);
                 
                 await currentWindow.setSize(new LogicalSize(newWidth, newHeight));
-                showSizeIndicator(newWidth, newHeight, scaleLevel);
+                showSizeIndicator(newWidth, newHeight, scaleLevel, false);
                 
                 // 窗口大小变化后，重置图片缩放状态
                 if (imageScale > 1) {
@@ -332,7 +372,7 @@ async function createContextMenu(window, shadowState, lockPositionState) {
     });
     
     // 创建右键菜单
-    await createContextMenu(currentWindow, shadowState, lockPositionState);
+    await createContextMenu(currentWindow, shadowState, lockPositionState, pixelRenderState);
     
     // 按下鼠标
     img.addEventListener('mousedown', (e) => {

@@ -48,14 +48,13 @@ body:hover::after {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     -webkit-font-smoothing: subpixel-antialiased;
-    image-rendering: -webkit-optimize-contrast;
 }
 
 .size-indicator {
     position: fixed;
     top: 8px;
     left: 8px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
     font-size: 12px;
@@ -65,6 +64,7 @@ body:hover::after {
     opacity: 0;
     transition: opacity 0.3s;
     z-index: 1000;
+    line-height: 1.5;
 }
 
 .size-indicator.show {

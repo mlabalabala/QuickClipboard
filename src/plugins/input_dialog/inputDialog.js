@@ -4,7 +4,7 @@
 
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-
+document.addEventListener('contextmenu', event => event.preventDefault());
 const currentWindow = getCurrentWindow();
 const messageEl = document.getElementById('message');
 const inputEl = document.getElementById('input');
