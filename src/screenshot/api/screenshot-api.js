@@ -104,4 +104,16 @@ export class ScreenshotAPI {
         return await invoke('update_scrolling_panel_rect', { panel });
     }
 
+    /**
+     * 获取应用设置
+     */
+    static async getSettings() {
+        try {
+            return await invoke('get_settings');
+        } catch (error) {
+            console.error('获取设置失败:', error);
+            return {};
+        }
+    }
+
 }

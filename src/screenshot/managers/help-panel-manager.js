@@ -139,6 +139,10 @@ export class HelpPanelManager {
      * 显示面板
      */
     show() {
+        // 检查配置是否启用
+        if (window.screenshotController && !window.screenshotController.hintsEnabled) {
+            return;
+        }
         this.helpPanel.classList.remove('hidden');
         this.updatePosition();
     }

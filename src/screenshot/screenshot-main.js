@@ -29,6 +29,13 @@ import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 export class ScreenshotController {
     constructor() {
         this.monitors = [];
+        
+        // 设置变量（默认值）
+        this.magnifierEnabled = true;
+        this.hintsEnabled = true;
+        
+        // 待加载的截屏数据
+        this.pendingScreenshotData = null;
 
         if (typeof fabric === 'undefined') {
             setTimeout(() => this.initializeManagers(), 100);
@@ -39,7 +46,9 @@ export class ScreenshotController {
         registerArrowClass();
     }
     
-    initializeController() {
+    async initializeController() {
+        // 加载设置
+        await this.loadSettings();
         
         // 初始化各个管理器
         this.selectionManager = new SelectionManager();
@@ -70,7 +79,6 @@ export class ScreenshotController {
         
         this.initializeManagers();
         this.loadMonitorInfo();
-        this.showInitialInfo();
         
         // 设置全局引用，供工具使用
         window.screenshotController = this;
@@ -92,7 +100,7 @@ export class ScreenshotController {
         this.eventManager.setOnWindowBlur(() => this.handleWindowBlur());
         
         // 监听后端截屏完成事件
-        window.__TAURI__.event.listen('screenshot-ready', (event) => {
+        window.__TAURI__.event.listen('screenshot-ready', async (event) => {
             const payload = event.payload;
 
             if (!payload || typeof payload !== 'object') {
@@ -106,7 +114,9 @@ export class ScreenshotController {
                 return;
             }
 
-            this.handleScreenshotData({ width, height, image_url });
+            // 保存截屏数据并重新初始化
+            this.pendingScreenshotData = { width, height, image_url };
+            await this.reinitialize();
         });
 
         // 监听后端截屏错误事件
@@ -191,12 +201,8 @@ export class ScreenshotController {
         
         if (action === 'select') {
             this.hideAllToolbars();
-            // 清理之前的 OCR 界面元素
-            if (this.ocrManager?.clear) {
-                this.ocrManager.clear();
-            }
             // 开始新的选择时，显示放大镜
-            if (this.magnifierManager) {
+            if (this.magnifierManager && this.magnifierEnabled) {
                 this.magnifierManager.show();
             }
         } else if (action === 'move') {
@@ -429,6 +435,62 @@ export class ScreenshotController {
     }
 
     /**
+     * 加载设置
+     */
+    async loadSettings() {
+        try {
+            const settings = await ScreenshotAPI.getSettings();
+            this.magnifierEnabled = settings.screenshot_magnifier_enabled !== false;
+            this.hintsEnabled = settings.screenshot_hints_enabled !== false;
+        } catch (error) {
+            console.error('加载设置失败:', error);
+            this.magnifierEnabled = true;
+            this.hintsEnabled = true;
+        }
+    }
+    
+    /**
+     * 重新初始化（每次截屏时调用）
+     */
+    async reinitialize() {
+        try {
+            // 重新加载设置
+            await this.loadSettings();
+            // 初始化背景
+            if (!this.backgroundManager.canvas) {
+                this.backgroundManager.init();
+            }
+            
+            // 加载截屏图片
+            if (this.pendingScreenshotData) {
+                await this.backgroundManager.loadScreenshot(this.pendingScreenshotData);
+            }
+            
+            // 初始化编辑层
+            this.editLayerManager.init();
+            
+            // 根据配置显示放大镜
+            if (this.backgroundManager.canvas) {
+                this.magnifierManager.setBackgroundCanvas(this.backgroundManager.canvas);
+                if (this.magnifierEnabled) {
+                    this.magnifierManager.show();
+                }
+            }
+            
+            // 根据配置显示帮助面板
+            if (this.hintsEnabled) {
+                this.helpPanelManager.show();
+            }
+            
+            // 启动自动选区
+            await autoSelectionManager.start();
+            
+        } catch (error) {
+            console.error('重新初始化失败:', error);
+        }
+    }
+
+    /**
      * 加载显示器信息
      */
     async loadMonitorInfo() {
@@ -475,61 +537,6 @@ export class ScreenshotController {
         };
     }
 
-    /**
-     * 处理后端发送的BMP截屏数据
-     */
-    async handleScreenshotData(payload) {
-        try {
-            // 清理之前的 OCR 界面元素
-            if (this.ocrManager?.clear) {
-                this.ocrManager.clear();
-            }
-            
-            if (!this.backgroundManager.canvas) {
-                this.backgroundManager.init();
-            }
-
-            // 立即启动自动选区
-            const autoSelectionPromise = (async () => {
-                try {
-                    await autoSelectionManager.start();
-                } catch (error) {
-                    console.error('启动自动选区失败:', error);
-                }
-            })();
-
-            // 加载背景图
-            await this.backgroundManager.loadScreenshot({ 
-                width: payload.width, 
-                height: payload.height, 
-                image_url: payload.image_url 
-            });
-            
-            // 初始化编辑层
-            this.editLayerManager.init();
-            
-            // 设置放大镜的背景画布并显示
-            if (this.backgroundManager.canvas) {
-                this.magnifierManager.setBackgroundCanvas(this.backgroundManager.canvas);
-                this.magnifierManager.show();
-            }
-            
-            // 确保初始状态下工具是禁用的
-            this.disableAllTools();
-            
-            await autoSelectionPromise;
-        } catch (error) {
-            console.error('处理截屏数据失败:', error);
-        }
-    }
-
-    /**
-     * 显示初始信息
-     */
-    showInitialInfo() {
-        // 显示帮助面板
-        this.helpPanelManager.show();
-    }
 
     /**
      * 处理工具选择
@@ -683,11 +690,9 @@ export class ScreenshotController {
             this.scrollingScreenshotManager.setOnComplete(async () => {
                 //直接关闭截屏窗口
                 try {
-                    this.clearAllContent();
-                    
                     this.toolbarManager.setActiveTool(null);
                     
-  
+                    this.clearAllContent();
                     await ScreenshotAPI.hideWindow();
                 } catch (error) {
                     console.error('完成长截屏失败:', error);
@@ -826,10 +831,8 @@ export class ScreenshotController {
             // 使用导出管理器复制选区到剪贴板（自动合并编辑层）
             await this.exportManager.copySelectionToClipboard(selection, borderRadius);
             
-            // 清空所有内容，防止下次显示时看到旧内容
+            // 清理内容并关闭窗口
             this.clearAllContent();
-            
-            // 关闭窗口
             await ScreenshotAPI.hideWindow();
         } catch (error) {
             console.error('截屏失败:', error);
@@ -845,13 +848,12 @@ export class ScreenshotController {
             if (autoSelectionManager.isActive) {
                 await autoSelectionManager.stop();
             }
-            
-            // 清空所有内容，防止下次显示时看到旧内容
-            this.clearAllContent();
-            
+
             // 清理工具栏状态
             this.toolbarManager.setActiveTool(null);
             
+            // 清理内容并隐藏窗口
+            this.clearAllContent();
             await ScreenshotAPI.hideWindow();
         } catch (error) {
             console.error('隐藏窗口失败:', error);
@@ -867,13 +869,8 @@ export class ScreenshotController {
         this.disableAllTools(); // 清除选区时禁用所有工具
         this.maskManager.resetToFullscreen();
         
-        // 清理 OCR 界面元素
-        if (this.ocrManager?.clear) {
-            this.ocrManager.clear();
-        }
-        
-        // 清除选区后重新显示放大镜
-        if (this.magnifierManager && this.backgroundManager?.isScreenshotLoaded) {
+        // 清除选区后根据配置显示放大镜
+        if (this.magnifierManager && this.magnifierEnabled && this.backgroundManager?.isScreenshotLoaded) {
             this.magnifierManager.show();
         }
         
@@ -916,6 +913,11 @@ export class ScreenshotController {
             // 隐藏放大镜
             if (this.magnifierManager?.clear) {
                 this.magnifierManager.clear();
+            }
+            
+            // 隐藏帮助面板
+            if (this.helpPanelManager?.hide) {
+                this.helpPanelManager.hide();
             }
             
             // 清理 OCR 界面元素

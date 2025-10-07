@@ -33,6 +33,8 @@ pub struct AppSettings {
     pub screenshot_auto_save: bool,
     pub screenshot_show_hints: bool,
     pub screenshot_element_detection: String,
+    pub screenshot_magnifier_enabled: bool,
+    pub screenshot_hints_enabled: bool,
 
     // === 预览窗口设置 ===
     pub preview_enabled: bool,
@@ -143,6 +145,8 @@ impl Default for AppSettings {
             screenshot_auto_save: true,
             screenshot_show_hints: true,
             screenshot_element_detection: "all".to_string(),
+            screenshot_magnifier_enabled: true,
+            screenshot_hints_enabled: true,
 
             // 预览窗口设置
             preview_enabled: true,
