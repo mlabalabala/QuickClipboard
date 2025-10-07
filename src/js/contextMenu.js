@@ -6,6 +6,9 @@ import { searchWithEngine, getSearchEngines, getCurrentSearchEngine, setCurrentS
 import { showContextMenu as showMenuPlugin, createMenuItem as createPluginMenuItem, createSeparator as createPluginSeparator } from '../plugins/context_menu/index.js';
 import { getCurrentSettings } from '../settings/js/settingsManager.js';
 
+let menuRequestCounter = 0;
+let activeMenuRequestId = 0;
+
 // 在浏览器中搜索文本
 async function searchTextInBrowser(text, engineId = null) {
   try {
@@ -254,71 +257,84 @@ export async function showContextMenu(event, options) {
     return;
   }
 
+  const requestId = ++menuRequestCounter;
+  activeMenuRequestId = requestId;
+
   // 获取当前主题
   const settings = getCurrentSettings();
   const theme = settings.theme || 'auto';
 
-  // 显示菜单并等待用户选择
-  const result = await showMenuPlugin({
-    items: menuItems,
-    x: event.clientX,
-    y: event.clientY,
-    theme: theme
-  });
+  try {
+    // 显示菜单并等待用户选择
+    const result = await showMenuPlugin({
+      items: menuItems,
+      x: event.clientX,
+      y: event.clientY,
+      theme: theme
+    });
 
-  // 处理用户选择
-  if (!result) {
-    return; // 用户取消了
-  }
+    if (requestId !== activeMenuRequestId) {
+      return;
+    }
 
-  // 处理链接打开
-  const links = extractAllLinks({
-    content: options.content,
-    html_content: options.html_content
-  });
+    // 处理用户选择
+    if (!result) {
+      return; // 用户取消了
+    }
 
-  if (result === 'open-link' && links.length === 1) {
-    await openLink(links[0]);
-  } else if (result === 'open-links' && links.length > 1) {
-    createLinkSelectionDialog(links, async (selectedLinks) => {
-      for (const link of selectedLinks) {
-        await openLink(link);
+    // 处理链接打开
+    const links = extractAllLinks({
+      content: options.content,
+      html_content: options.html_content
+    });
+
+    if (result === 'open-link' && links.length === 1) {
+      await openLink(links[0]);
+    } else if (result === 'open-links' && links.length > 1) {
+      createLinkSelectionDialog(links, async (selectedLinks) => {
+        for (const link of selectedLinks) {
+          await openLink(link);
+        }
+      });
+    }
+    // 处理搜索引擎搜索
+    else if (result === 'search-current') {
+      // 点击父选项，使用当前引擎搜索
+      const currentEngine = getCurrentSearchEngine();
+      await searchTextInBrowser(plainTextForSearch, currentEngine.id);
+    }
+    else if (result.startsWith('search-')) {
+      // 点击子选项，使用指定引擎搜索
+      const engineId = result.substring(7);
+      await searchTextInBrowser(plainTextForSearch, engineId);
+    }
+    // 处理添加自定义搜索引擎
+    else if (result === 'add-custom-search-engine') {
+      const { createCustomSearchEngineDialog } = await import('./searchEngineSelector.js');
+      createCustomSearchEngineDialog(() => {
+        // 添加成功后可以选择性地刷新某些内容
+      });
+    }
+    // 处理自定义菜单项
+    else if (options.items) {
+      // 查找匹配的自定义菜单项
+      let customItem = null;
+      for (let i = 0; i < options.items.length; i++) {
+        const item = options.items[i];
+        // 检查是否匹配
+        if ((item.id && item.id === result) || `custom-${i}` === result) {
+          customItem = item;
+          break;
+        }
       }
-    });
-  }
-  // 处理搜索引擎搜索
-  else if (result === 'search-current') {
-    // 点击父选项，使用当前引擎搜索
-    const currentEngine = getCurrentSearchEngine();
-    await searchTextInBrowser(plainTextForSearch, currentEngine.id);
-  }
-  else if (result.startsWith('search-')) {
-    // 点击子选项，使用指定引擎搜索
-    const engineId = result.substring(7);
-    await searchTextInBrowser(plainTextForSearch, engineId);
-  }
-  // 处理添加自定义搜索引擎
-  else if (result === 'add-custom-search-engine') {
-    const { createCustomSearchEngineDialog } = await import('./searchEngineSelector.js');
-    createCustomSearchEngineDialog(() => {
-      // 添加成功后可以选择性地刷新某些内容
-    });
-  }
-  // 处理自定义菜单项
-  else if (options.items) {
-    // 查找匹配的自定义菜单项
-    let customItem = null;
-    for (let i = 0; i < options.items.length; i++) {
-      const item = options.items[i];
-      // 检查是否匹配
-      if ((item.id && item.id === result) || `custom-${i}` === result) {
-        customItem = item;
-        break;
+      
+      if (customItem && customItem.onClick) {
+        customItem.onClick();
       }
     }
-    
-    if (customItem && customItem.onClick) {
-      customItem.onClick();
+  } finally {
+    if (requestId === activeMenuRequestId) {
+      activeMenuRequestId = 0;
     }
   }
 }
