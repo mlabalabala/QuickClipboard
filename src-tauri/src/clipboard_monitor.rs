@@ -37,6 +37,10 @@ static PASTING_COUNT: AtomicUsize = AtomicUsize::new(0);
 static LAST_IGNORED_CACHE_FILES: Lazy<Arc<Mutex<Vec<String>>>> =
     Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 
+// 上次处理的文件路径列表
+static LAST_FILE_PATHS: Lazy<Arc<Mutex<Vec<String>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
 #[cfg(windows)]
 // Windows特定的剪贴板图片获取函数，支持更多格式
 fn try_get_windows_clipboard_image() -> Option<arboard::ImageData<'static>> {
@@ -467,6 +471,19 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
                 last_ignored.clear();
             }
 
+            // 检查文件路径是否与上次相同，避免重复获取图标
+            {
+                let mut last_paths = LAST_FILE_PATHS.lock().unwrap();
+                let paths_changed = last_paths.len() != file_paths.len()
+                    || !file_paths.iter().all(|path| last_paths.contains(path));
+                
+                if !paths_changed {
+                    return None;
+                }
+
+                *last_paths = file_paths.clone();
+            }
+
             // 处理文件列表
             let mut file_infos = Vec::new();
             for path in &file_paths {
@@ -493,6 +510,11 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
     if let Ok(text) = clipboard.get_text() {
         // 过滤空白内容：检查去除空白字符后是否为空
         if !text.is_empty() && !text.trim().is_empty() {
+            // 清空文件路径记录
+            if let Ok(mut last_paths) = LAST_FILE_PATHS.lock() {
+                last_paths.clear();
+            }
+            
             // 尝试获取HTML格式
             #[cfg(windows)]
             let html_content = try_get_windows_clipboard_html();
@@ -509,6 +531,11 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
         // 尝试Windows特定的方法获取图片
         #[cfg(windows)]
         if let Some(img) = try_get_windows_clipboard_image() {
+            // 清空文件路径记录
+            if let Ok(mut last_paths) = LAST_FILE_PATHS.lock() {
+                last_paths.clear();
+            }
+            
             let data_url = image_to_data_url(&img);
 
             // 尝试使用图片管理器保存图片
@@ -530,6 +557,11 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
 
         // 回退到arboard方法
         if let Ok(img) = clipboard.get_image() {
+            // 清空文件路径记录
+            if let Ok(mut last_paths) = LAST_FILE_PATHS.lock() {
+                last_paths.clear();
+            }
+            
             println!(
                 "通过arboard成功获取剪贴板图片: {}x{}",
                 img.width, img.height

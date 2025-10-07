@@ -289,7 +289,28 @@ pub fn get_file_icon(path: &str) -> Result<String, String> {
             flags,
         );
 
-        if result == 0 || file_info.hIcon.is_invalid() {
+        // 如果第一次失败且文件存在，尝试使用SHGFI_USEFILEATTRIBUTES标志重试
+        if (result == 0 || file_info.hIcon.is_invalid()) && path_obj.exists() && !use_file_attributes {
+            
+            let mut file_info_retry: SHFILEINFOW = std::mem::zeroed();
+            let flags_retry = SHGFI_ICON | SHGFI_USEFILEATTRIBUTES;
+            
+            let result_retry = SHGetFileInfoW(
+                windows::core::PCWSTR(wide_path.as_ptr()),
+                FILE_FLAGS_AND_ATTRIBUTES(0),
+                Some(&mut file_info_retry),
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                flags_retry,
+            );
+            
+            if result_retry != 0 && !file_info_retry.hIcon.is_invalid() {
+                // 重试成功，使用重试的结果
+                file_info = file_info_retry;
+            } else {
+                // 重试也失败，回退到简单图标
+                return Ok(get_fallback_icon(path));
+            }
+        } else if result == 0 || file_info.hIcon.is_invalid() {
             // 如果获取系统图标失败，回退到简单图标
             return Ok(get_fallback_icon(path));
         }
@@ -414,7 +435,9 @@ pub fn get_file_icon(path: &str) -> Result<String, String> {
                         let base64_data = general_purpose::STANDARD.encode(&png_data);
                         Ok(format!("data:image/png;base64,{}", base64_data))
                     }
-                    Err(_) => Ok(get_fallback_icon(path)),
+                    Err(_) => {
+                        Ok(get_fallback_icon(path))
+                    },
                 }
             }
             None => Ok(get_fallback_icon(path)),
