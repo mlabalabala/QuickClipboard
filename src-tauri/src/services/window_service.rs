@@ -64,6 +64,8 @@ impl WindowService {
                     .map_err(|e| format!("取消最小化设置窗口失败: {}", e))?;
             }
 
+            let _ = settings_window.set_always_on_top(true);
+            
             // 显示并聚焦窗口
             settings_window
                 .show()
@@ -71,6 +73,8 @@ impl WindowService {
             settings_window
                 .set_focus()
                 .map_err(|e| format!("聚焦设置窗口失败: {}", e))?;
+
+            let _ = settings_window.set_always_on_top(false);
         } else {
             // 如果窗口不存在，创建新窗口
             let settings_window = tauri::WebviewWindowBuilder::new(
@@ -86,7 +90,7 @@ impl WindowService {
             .maximizable(false)
             .decorations(false)
             .transparent(false)
-            .always_on_top(true)
+            .always_on_top(false)
             .skip_taskbar(false)
             .visible(true)
             .focused(true)
@@ -101,9 +105,13 @@ impl WindowService {
                 }
             }
 
+            let _ = settings_window.set_always_on_top(true);
+            
             settings_window
                 .show()
                 .map_err(|e| format!("显示设置窗口失败: {}", e))?;
+
+            let _ = settings_window.set_always_on_top(false);
 
             // 设置窗口关闭事件处理
             let app_handle = app.clone();
