@@ -2,9 +2,20 @@
  * 贴图窗口
  */
 
-import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { showContextMenuFromEvent, createMenuItem, createSeparator } from '../plugins/context_menu/index.js';
+
+// 获取当前主题设置
+async function getCurrentTheme() {
+    try {
+        const settings = await invoke('get_settings');
+        return settings.theme || 'auto';
+    } catch (error) {
+        console.error('获取主题设置失败:', error);
+        return 'auto';
+    }
+}
 
 // 保存设置到 localStorage
 function saveSettings(settings) {
@@ -43,65 +54,93 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
         // 获取当前置顶状态
         const isOnTop = await window.isAlwaysOnTop();
         
-        // 创建勾选菜单项
-        const alwaysOnTopItem = await CheckMenuItem.new({
-            id: 'toggle-top',
-            text: '窗口置顶',
-            checked: isOnTop,
-            action: async () => {
-                try {
-                    await window.setAlwaysOnTop(!isOnTop);
-                    // 保存设置
-                    const settings = loadSettings();
-                    settings.alwaysOnTop = !isOnTop;
-                    saveSettings(settings);
-                } catch (error) {
-                    console.error('切换置顶失败:', error);
-                }
-            }
+        // 获取当前透明度
+        const img = document.getElementById('pinImage');
+        const currentOpacity = img ? Math.round(parseFloat(img.style.opacity || 1) * 100) : 100;
+        
+        // 创建透明度子菜单项
+        const opacityPresets = [100, 90, 80, 70, 60, 50];
+        const isCustomOpacity = !opacityPresets.includes(currentOpacity);
+        
+        const opacityMenuItems = [
+            ...opacityPresets.map(opacity => 
+                createMenuItem(`opacity-${opacity}`, `${opacity}%`, {
+                    icon: currentOpacity === opacity ? 'ti ti-check' : undefined
+                })
+            ),
+            createSeparator(),
+            createMenuItem('opacity-custom', '自定义...', {
+                icon: isCustomOpacity ? 'ti ti-check' : undefined
+            })
+        ];
+        
+        // 构建菜单项数组
+        const menuItems = [
+            createMenuItem('toggle-top', '窗口置顶', {
+                icon: isOnTop ? 'ti ti-check' : 'ti ti-pin'
+            }),
+            createMenuItem('toggle-shadow', '窗口阴影', {
+                icon: shadowState.enabled ? 'ti ti-check' : 'ti ti-shadow'
+            }),
+            createMenuItem('toggle-lock-position', '锁定位置', {
+                icon: lockPositionState.locked ? 'ti ti-check' : 'ti ti-lock'
+            }),
+            createMenuItem('toggle-pixel-render', '像素级显示', {
+                icon: pixelRenderState.enabled ? 'ti ti-check' : 'ti ti-border-all'
+            }),
+            createMenuItem('opacity-submenu', '透明度', {
+                icon: 'ti ti-droplet-half',
+                children: opacityMenuItems
+            }),
+            createSeparator(),
+            createMenuItem('copy', '复制到剪贴板', {
+                icon: 'ti ti-copy'
+            }),
+            createMenuItem('save-as', '图像另存为...', {
+                icon: 'ti ti-device-floppy'
+            }),
+            createSeparator(),
+            createMenuItem('close', '关闭窗口', {
+                icon: 'ti ti-x'
+            })
+        ];
+        
+        // 获取当前主题
+        const theme = await getCurrentTheme();
+        
+        // 显示菜单并获取用户选择
+        const result = await showContextMenuFromEvent(e, menuItems, {
+            theme: theme
         });
         
-        const shadowItem = await CheckMenuItem.new({
-            id: 'toggle-shadow',
-            text: '窗口阴影',
-            checked: shadowState.enabled,
-            action: async () => {
-                try {
+        // 处理菜单选择
+        if (!result) return;
+        
+        try {
+            switch (result) {
+                case 'toggle-top':
+                    await window.setAlwaysOnTop(!isOnTop);
+                    const topSettings = loadSettings();
+                    topSettings.alwaysOnTop = !isOnTop;
+                    saveSettings(topSettings);
+                    break;
+                    
+                case 'toggle-shadow':
                     shadowState.enabled = !shadowState.enabled;
                     await window.setShadow(shadowState.enabled);
-                    // 保存设置
-                    const settings = loadSettings();
-                    settings.shadow = shadowState.enabled;
-                    saveSettings(settings);
-                } catch (error) {
-                    console.error('切换阴影失败:', error);
-                }
-            }
-        });
-        
-        const lockPositionItem = await CheckMenuItem.new({
-            id: 'toggle-lock-position',
-            text: '锁定位置',
-            checked: lockPositionState.locked,
-            action: async () => {
-                try {
+                    const shadowSettings = loadSettings();
+                    shadowSettings.shadow = shadowState.enabled;
+                    saveSettings(shadowSettings);
+                    break;
+                    
+                case 'toggle-lock-position':
                     lockPositionState.locked = !lockPositionState.locked;
-                    // 保存设置
-                    const settings = loadSettings();
-                    settings.lockPosition = lockPositionState.locked;
-                    saveSettings(settings);
-                } catch (error) {
-                    console.error('切换锁定位置失败:', error);
-                }
-            }
-        });
-        
-        const pixelRenderItem = await CheckMenuItem.new({
-            id: 'toggle-pixel-render',
-            text: '像素级显示',
-            checked: pixelRenderState.enabled,
-            action: async () => {
-                try {
+                    const lockSettings = loadSettings();
+                    lockSettings.lockPosition = lockPositionState.locked;
+                    saveSettings(lockSettings);
+                    break;
+                    
+                case 'toggle-pixel-render':
                     pixelRenderState.enabled = !pixelRenderState.enabled;
                     const img = document.getElementById('pinImage');
                     if (img) {
@@ -111,59 +150,12 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                             img.style.imageRendering = 'auto';
                         }
                     }
-                    // 保存设置
-                    const settings = loadSettings();
-                    settings.pixelRender = pixelRenderState.enabled;
-                    saveSettings(settings);
-                } catch (error) {
-                    console.error('切换渲染模式失败:', error);
-                }
-            }
-        });
-        
-        // 创建透明度子菜单
-        const opacityPresets = [100, 90, 80, 70, 60, 50];
-        const opacityMenuItems = [];
-        
-        // 获取当前透明度
-        const img = document.getElementById('pinImage');
-        const currentOpacity = img ? Math.round(parseFloat(img.style.opacity || 1) * 100) : 100;
-        
-        // 检查是否为自定义值
-        const isCustomOpacity = !opacityPresets.includes(currentOpacity);
-        
-        for (const opacity of opacityPresets) {
-            const item = await CheckMenuItem.new({
-                id: `opacity-${opacity}`,
-                text: `${opacity}%`,
-                checked: currentOpacity === opacity,
-                action: () => {
-                    const img = document.getElementById('pinImage');
-                    if (img) {
-                        img.style.opacity = opacity / 100;
-                        // 保存设置
-                        const settings = loadSettings();
-                        settings.opacity = opacity;
-                        saveSettings(settings);
-                    }
-                }
-            });
-            opacityMenuItems.push(item);
-        }
-        
-        // 分隔线
-        const opacitySeparator = await PredefinedMenuItem.new({
-            item: 'Separator'
-        });
-        opacityMenuItems.push(opacitySeparator);
-        
-        // 添加自定义选项
-        const customOpacityItem = await CheckMenuItem.new({
-            id: 'opacity-custom',
-            text: '自定义...',
-            checked: isCustomOpacity,
-            action: async () => {
-                try {
+                    const pixelSettings = loadSettings();
+                    pixelSettings.pixelRender = pixelRenderState.enabled;
+                    saveSettings(pixelSettings);
+                    break;
+                    
+                case 'opacity-custom':
                     const input = await invoke('show_input', {
                         title: '自定义透明度',
                         message: '请输入透明度:',
@@ -179,76 +171,44 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                         if (img) {
                             const opacity = parseInt(input);
                             img.style.opacity = opacity / 100;
-                            // 保存设置
-                            const settings = loadSettings();
-                            settings.opacity = opacity;
-                            saveSettings(settings);
+                            const opacitySettings = loadSettings();
+                            opacitySettings.opacity = opacity;
+                            saveSettings(opacitySettings);
                         }
                     }
-                } catch (error) {
-                    console.error('设置自定义透明度失败:', error);
-                }
-            }
-        });
-        opacityMenuItems.push(customOpacityItem);
-        
-        // 创建透明度子菜单
-        const opacitySubmenu = await Submenu.new({
-            id: 'opacity-submenu',
-            text: '透明度',
-            items: opacityMenuItems
-        });
-        
-        const separator1 = await PredefinedMenuItem.new({
-            item: 'Separator'
-        });
-        
-        const copyItem = await MenuItem.new({
-            id: 'copy',
-            text: '复制到剪贴板',
-            action: async () => {
-                try {
+                    break;
+                    
+                case 'copy':
                     await invoke('copy_pin_image_to_clipboard');
-                } catch (error) {
-                    console.error('复制到剪贴板失败:', error);
-                }
-            }
-        });
-        
-        const saveAsItem = await MenuItem.new({
-            id: 'save-as',
-            text: '图像另存为...',
-            action: async () => {
-                try {
+                    break;
+                    
+                case 'save-as':
                     await invoke('save_pin_image_as');
-                } catch (error) {
-                    console.error('保存图片失败:', error);
-                }
-            }
-        });
-        
-        const separator2 = await PredefinedMenuItem.new({
-            item: 'Separator'
-        });
-        
-        const closeItem = await MenuItem.new({
-            id: 'close',
-            text: '关闭窗口',
-            action: async () => {
-                try {
+                    break;
+                    
+                case 'close':
                     await invoke('close_pin_image_window_by_self');
-                } catch (error) {
-                    console.error('关闭窗口失败:', error);
-                }
+                    break;
+                    
+                default:
+                    // 处理透明度预设值
+                    if (result.startsWith('opacity-')) {
+                        const opacity = parseInt(result.substring(8));
+                        if (!isNaN(opacity)) {
+                            const img = document.getElementById('pinImage');
+                            if (img) {
+                                img.style.opacity = opacity / 100;
+                                const opacitySettings = loadSettings();
+                                opacitySettings.opacity = opacity;
+                                saveSettings(opacitySettings);
+                            }
+                        }
+                    }
+                    break;
             }
-        });
-        
-        // 创建菜单
-        const menu = await Menu.new({
-            items: [alwaysOnTopItem, shadowItem, lockPositionItem, pixelRenderItem, opacitySubmenu, separator1, copyItem, saveAsItem, separator2, closeItem]
-        });
-        
-        await menu.popup();
+        } catch (error) {
+            console.error('菜单操作失败:', error);
+        }
     });
 }
 
