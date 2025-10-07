@@ -11,12 +11,14 @@ pub fn get_context_menu_options() -> Result<ContextMenuOptions, String> {
 /// 前端提交菜单选择结果
 #[tauri::command]
 pub fn submit_context_menu(item_id: Option<String>) -> Result<(), String> {
+    let session_id = super::get_active_menu_session();
     super::set_result(item_id);
     
     // 延迟标记菜单为不可见，避免点击菜单项时主窗口被误隐藏
-    std::thread::spawn(|| {
+    std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        super::set_menu_visible(false);
+        super::clear_active_menu_session(session_id);
+        super::clear_options_for_session(session_id);
     });
     
     Ok(())
@@ -38,6 +40,7 @@ pub async fn show_context_menu(
         y,
         width,
         theme,
+        session_id: 0,
     };
     
     show_menu(app, options).await
@@ -51,7 +54,9 @@ pub fn close_all_context_menus(app: AppHandle) -> Result<(), String> {
         // 延迟标记菜单为不可见
         std::thread::spawn(|| {
             std::thread::sleep(std::time::Duration::from_millis(200));
-            super::set_menu_visible(false);
+            let session_id = super::get_active_menu_session();
+            super::clear_active_menu_session(session_id);
+            super::clear_options_for_session(session_id);
         });
     }
     Ok(())

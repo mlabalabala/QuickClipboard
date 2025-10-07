@@ -4,7 +4,7 @@ pub mod commands;
 pub mod window;
 
 use once_cell::sync::OnceCell;
-use std::sync::{Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
 use tauri::{AppHandle, Manager};
 
 /// 存储菜单选择结果
@@ -18,6 +18,11 @@ static APP_HANDLE: OnceCell<Mutex<Option<AppHandle>>> = OnceCell::new();
 
 /// 菜单可见状态标志
 static MENU_VISIBLE: AtomicBool = AtomicBool::new(false);
+
+/// 当前活动的菜单会话 ID
+static ACTIVE_MENU_SESSION: AtomicU64 = AtomicU64::new(0);
+/// 递增生成的菜单会话 ID
+static MENU_SESSION_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// 初始化右键菜单插件
 #[allow(dead_code)]
@@ -72,6 +77,19 @@ pub(crate) fn clear_options() {
     }
 }
 
+/// 按会话 ID 清空菜单配置
+pub fn clear_options_for_session(session_id: u64) {
+    if let Some(options_mutex) = MENU_OPTIONS.get() {
+        if let Ok(mut opts) = options_mutex.lock() {
+            if let Some(current) = opts.as_ref() {
+                if current.session_id == session_id {
+                    *opts = None;
+                }
+            }
+        }
+    }
+}
+
 /// 保存应用句柄
 pub fn set_app_handle(app: AppHandle) {
     let handle_mutex = APP_HANDLE.get_or_init(|| Mutex::new(None));
@@ -80,9 +98,29 @@ pub fn set_app_handle(app: AppHandle) {
     }
 }
 
-/// 设置菜单可见状态
-pub fn set_menu_visible(visible: bool) {
-    MENU_VISIBLE.store(visible, Ordering::Relaxed);
+/// 设置当前活动菜单会话
+pub fn set_active_menu_session(session_id: u64) {
+    ACTIVE_MENU_SESSION.store(session_id, Ordering::Relaxed);
+    MENU_VISIBLE.store(true, Ordering::Relaxed);
+}
+
+/// 清除当前活动菜单会话
+pub fn clear_active_menu_session(session_id: u64) {
+    let current = ACTIVE_MENU_SESSION.load(Ordering::Relaxed);
+    if current == session_id {
+        ACTIVE_MENU_SESSION.store(0, Ordering::Relaxed);
+        MENU_VISIBLE.store(false, Ordering::Relaxed);
+    }
+}
+
+/// 获取当前活动菜单会话 ID
+pub fn get_active_menu_session() -> u64 {
+    ACTIVE_MENU_SESSION.load(Ordering::Relaxed)
+}
+
+/// 生成新的菜单会话 ID
+pub fn next_menu_session_id() -> u64 {
+    MENU_SESSION_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
 /// 检查右键菜单是否显示

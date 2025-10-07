@@ -41,12 +41,14 @@ pub struct ContextMenuOptions {
     /// 主题
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
+    /// 菜单会话 ID
+    pub session_id: u64,
 }
 
 /// 创建并显示右键菜单窗口
 pub async fn show_menu(
     app: AppHandle,
-    options: ContextMenuOptions,
+    mut options: ContextMenuOptions,
 ) -> Result<Option<String>, String> {
     use tauri::{LogicalPosition, LogicalSize};
     
@@ -56,11 +58,14 @@ pub async fn show_menu(
     super::clear_result();
     super::clear_options();
     
+    // 分配新的菜单会话 ID
+    let session_id = super::next_menu_session_id();
+    options.session_id = session_id;
+
+    // 记录当前可见菜单会话
+    super::set_active_menu_session(session_id);
     // 保存配置供前端读取
     super::set_options(options.clone());
-    
-    // 立即标记菜单为可见状态
-    super::set_menu_visible(true);
 
     // 计算主菜单窗口尺寸
     let menu_width = options.width.unwrap_or(200);
@@ -166,11 +171,23 @@ pub async fn show_menu(
                 let _ = tx.send(());
                 break;
             }
+            if super::get_active_menu_session() != session_id {
+                let _ = tx.send(());
+                break;
+            }
         }
     });
 
     let _ = rx.await;
 
-    Ok(super::get_result())
+    if super::get_active_menu_session() == session_id {
+        let result = super::get_result();
+        super::clear_active_menu_session(session_id);
+        super::clear_options_for_session(session_id);
+        Ok(result)
+    } else {
+        super::clear_options_for_session(session_id);
+        Ok(None)
+    }
 }
 
