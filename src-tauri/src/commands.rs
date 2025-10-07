@@ -167,16 +167,17 @@ pub fn disable_mouse_monitoring_command() -> Result<(), String> {
 
 // =================== 设置相关命令 ===================
 
-// 设置开机自启动
+/// 设置开机自启动
 #[tauri::command]
 pub fn set_startup_launch(enabled: bool) -> Result<(), String> {
     crate::settings::SettingsService::set_startup_launch(enabled)
 }
 
-// 设置历史记录数量限制
+/// 设置历史记录数量限制
 #[tauri::command]
 pub fn set_history_limit(limit: usize) -> Result<(), String> {
-    crate::settings::SettingsService::set_history_limit(limit)
+    crate::clipboard_history::set_history_limit(limit);
+    Ok(())
 }
 
 // =================== 拖拽排序相关命令 ===================
@@ -243,10 +244,10 @@ pub fn move_quick_text_to_group(id: String, groupName: String) -> Result<(), Str
     crate::services::group_service::GroupService::move_quick_text_to_group(id, groupName)
 }
 
-// 打开设置窗口
+/// 打开设置窗口
 #[tauri::command]
 pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
-    crate::services::window_service::WindowService::open_settings_window(app).await
+    crate::settings::SettingsWindow::open(app).await
 }
 
 // =================== 文本编辑窗口命令 ===================
@@ -257,18 +258,26 @@ pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String
     crate::services::window_service::WindowService::open_text_editor_window(app).await
 }
 
-// 获取设置
+/// 获取设置
 #[tauri::command]
 pub fn get_settings() -> Result<serde_json::Value, String> {
-    crate::settings::SettingsService::get_settings()
+    let settings = crate::settings::get_global_settings();
+    Ok(crate::settings::SettingsConverter::to_json(&settings))
 }
 
+/// 重新加载设置
 #[tauri::command]
 pub fn reload_settings() -> Result<serde_json::Value, String> {
-    crate::settings::SettingsService::reload_settings()
+    let fresh_settings = crate::settings::SettingsStorage::load_or_default();
+    
+    if let Err(e) = crate::settings::update_global_settings(fresh_settings.clone()) {
+        println!("更新全局设置失败: {}", e);
+    }
+
+    Ok(crate::settings::SettingsConverter::to_json(&fresh_settings))
 }
 
-// 保存设置
+/// 保存设置
 #[tauri::command]
 pub fn save_settings(
     app_handle: tauri::AppHandle,
@@ -743,56 +752,53 @@ pub fn get_app_data_dir() -> Result<String, String> {
     crate::services::system_service::SystemService::get_app_data_dir()
 }
 
-// =================== 存储位置管理命令 ===================
+// =================== 存储管理 ===================
 
-// 获取存储信息
+/// 获取存储信息
 #[tauri::command]
 pub fn get_storage_info() -> Result<crate::settings::StorageInfo, String> {
     let settings = crate::settings::get_global_settings();
     settings.get_storage_info()
 }
 
-// 设置自定义存储位置
+/// 设置自定义存储位置
 #[tauri::command]
 pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle) -> Result<(), String> {
     let mut settings = crate::settings::get_global_settings();
     settings.set_custom_storage_path(new_path, Some(app)).await?;
-    crate::settings::update_global_settings(settings)?;
-    Ok(())
+    crate::settings::update_global_settings(settings)
 }
 
-// 重置为默认存储位置
+/// 重置为默认存储位置
 #[tauri::command]
 pub async fn reset_to_default_storage_location(app: tauri::AppHandle) -> Result<(), String> {
     let mut settings = crate::settings::get_global_settings();
     settings.reset_to_default_storage(Some(app)).await?;
-    crate::settings::update_global_settings(settings)?;
-    Ok(())
+    crate::settings::update_global_settings(settings)
 }
 
-// 打开存储文件夹
+/// 打开存储文件夹
 #[tauri::command]
 pub async fn open_storage_folder() -> Result<(), String> {
     let settings = crate::settings::get_global_settings();
-    let storage_path = settings.get_data_directory()?;
-    open_file_with_default_program(storage_path.to_string_lossy().to_string()).await
+    crate::settings::SettingsStorage::open_folder(&settings)
+}
+
+/// 保存窗口位置
+#[tauri::command]
+pub fn save_window_position(x: i32, y: i32) -> Result<(), String> {
+    crate::settings::save_window_position(x, y)
+}
+
+/// 保存窗口大小
+#[tauri::command]
+pub fn save_window_size(width: u32, height: u32) -> Result<(), String> {
+    crate::settings::save_window_size(width, height)
 }
 
 // 刷新所有文件类型项目的图标
 pub fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
     crate::services::system_service::SystemService::refresh_file_icons(app_handle)
-}
-
-// 保存窗口位置
-#[tauri::command]
-pub fn save_window_position(x: i32, y: i32) -> Result<(), String> {
-    crate::services::system_service::SystemService::save_window_position(x, y)
-}
-
-// 保存窗口大小
-#[tauri::command]
-pub fn save_window_size(width: u32, height: u32) -> Result<(), String> {
-    crate::services::system_service::SystemService::save_window_size(width, height)
 }
 
 // 获取保存的窗口位置

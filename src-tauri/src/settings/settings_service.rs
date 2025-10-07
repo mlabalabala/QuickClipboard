@@ -3,44 +3,28 @@ use tauri::{AppHandle, Manager};
 #[cfg(not(debug_assertions))]
 use auto_launch::AutoLaunch;
 
-/// 设置服务 - 处理应用设置相关的业务逻辑
+use super::converter::SettingsConverter;
+use super::model::AppSettings;
+use super::state;
+use super::storage::SettingsStorage;
+
+/// 设置服务 - 专注于复杂的业务逻辑
 pub struct SettingsService;
 
 impl SettingsService {
-    /// 获取当前设置
-    pub fn get_settings() -> Result<serde_json::Value, String> {
-        let settings = super::get_global_settings();
-        Ok(settings.to_json())
-    }
-
-    /// 重新加载设置
-    pub fn reload_settings() -> Result<serde_json::Value, String> {
-        // 强制从文件重新加载设置
-        let fresh_settings = super::AppSettings::load();
-
-        // 更新全局设置
-        if let Err(e) = super::update_global_settings(fresh_settings.clone()) {
-            println!("更新全局设置失败: {}", e);
-        }
-
-        Ok(fresh_settings.to_json())
-    }
-
     /// 保存设置
     pub fn save_settings(app_handle: AppHandle, settings: serde_json::Value) -> Result<(), String> {
-        // 由于设置窗口可能持有过期的窗口尺寸/位置，
-        // 这里过滤掉 savedWindowSize 与 savedWindowPosition，避免覆盖最新值
         let mut settings_filtered = settings.clone();
         if let Some(obj) = settings_filtered.as_object_mut() {
             obj.remove("savedWindowSize");
             obj.remove("savedWindowPosition");
         }
 
-        // 更新全局设置（使用过滤后的对象）
-        super::update_global_settings_from_json(&settings_filtered)?;
+        // 更新全局设置
+        state::update_global_settings_from_json(&settings_filtered)?;
 
         // 获取更新后的设置
-        let app_settings = super::get_global_settings();
+        let app_settings = state::get_global_settings();
 
         // 应用各种设置
         Self::apply_settings(&app_settings)?;
@@ -53,7 +37,6 @@ impl SettingsService {
 
     /// 设置开机自启动
     pub fn set_startup_launch(enabled: bool) -> Result<(), String> {
-        // 在开发模式下跳过开机自启动设置
         #[cfg(debug_assertions)]
         {
             println!("开发模式下跳过开机自启动设置: enabled = {}", enabled);
@@ -81,42 +64,28 @@ impl SettingsService {
         }
     }
 
-    /// 设置历史记录数量限制
-    pub fn set_history_limit(limit: usize) -> Result<(), String> {
-        crate::clipboard_history::set_history_limit(limit);
-        Ok(())
-    }
-
     /// 应用所有设置
-    fn apply_settings(app_settings: &super::AppSettings) -> Result<(), String> {
-        // 1. 历史记录数量限制
+    fn apply_settings(app_settings: &AppSettings) -> Result<(), String> {
         crate::clipboard_history::set_history_limit(app_settings.history_limit as usize);
 
-        // 2. 开机自启动
         if let Err(e) = Self::set_startup_launch(app_settings.auto_start) {
             println!("设置开机自启动失败: {}", e);
         }
 
-        // 3. 剪贴板监听设置
         crate::clipboard_history::set_monitoring_enabled(app_settings.clipboard_monitor);
 
-        // 4. 忽略重复内容设置
         crate::clipboard_history::set_ignore_duplicates(app_settings.ignore_duplicates);
 
-        // 5. 保存图片设置
         crate::clipboard_history::set_save_images(app_settings.save_images);
 
-        // 6. 数字快捷键设置
         #[cfg(windows)]
         crate::global_state::set_number_shortcuts_enabled(app_settings.number_shortcuts);
         #[cfg(windows)]
         crate::global_state::update_number_shortcuts_modifier(&app_settings.number_shortcuts_modifier);
 
-        // 7. 预览窗口快捷键设置
         #[cfg(windows)]
         crate::global_state::update_preview_shortcut_config(&app_settings.preview_shortcut);
 
-        // 8. 更新音效设置
         let sound_settings = crate::sound_manager::SoundSettings {
             enabled: app_settings.sound_enabled,
             volume: (app_settings.sound_volume / 100.0) as f32, // 转换为0.0-1.0范围
@@ -126,8 +95,7 @@ impl SettingsService {
         };
         crate::sound_manager::update_sound_settings(sound_settings);
 
-        // 9. 截屏设置应用
-        let updated_settings = super::get_global_settings();
+        let updated_settings = state::get_global_settings();
         println!(
             "截屏设置已更新: 启用={}, 快捷键={}, 质量={}",
             updated_settings.screenshot_enabled,
@@ -142,9 +110,8 @@ impl SettingsService {
     fn handle_special_settings(
         app_handle: &AppHandle,
         _settings_filtered: &serde_json::Value,
-        app_settings: &super::AppSettings,
+        app_settings: &AppSettings,
     ) -> Result<(), String> {
-        // 1. 更新快捷键拦截器配置
         #[cfg(windows)]
         {
             // 更新主窗口快捷键
@@ -166,10 +133,10 @@ impl SettingsService {
 
         use tauri::Emitter;
         if let Some(main_window) = app_handle.get_webview_window("main") {
-            let _ = main_window.emit("settings-changed", app_settings.to_json());
+            let _ = main_window.emit("settings-changed", SettingsConverter::to_json(app_settings));
         }
         if let Some(settings_window) = app_handle.get_webview_window("settings") {
-            let _ = settings_window.emit("settings-changed", app_settings.to_json());
+            let _ = settings_window.emit("settings-changed", SettingsConverter::to_json(app_settings));
         }
         // 同步托盘"剪贴板监听"菜单文案
         if let Some(item) = crate::tray::TOGGLE_MONITOR_ITEM.get() {

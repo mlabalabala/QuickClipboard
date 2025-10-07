@@ -44,19 +44,4 @@ impl SystemService {
         Ok(())
     }
 
-    /// 保存窗口位置
-    pub fn save_window_position(x: i32, y: i32) -> Result<(), String> {
-        let mut settings = crate::settings::get_global_settings();
-        settings.saved_window_position = Some((x, y));
-        crate::settings::update_global_settings(settings)?;
-        Ok(())
-    }
-
-    /// 保存窗口尺寸
-    pub fn save_window_size(width: u32, height: u32) -> Result<(), String> {
-        let mut settings = crate::settings::get_global_settings();
-        settings.saved_window_size = Some((width, height));
-        crate::settings::update_global_settings(settings)?;
-        Ok(())
-    }
 }
