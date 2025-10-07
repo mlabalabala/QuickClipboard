@@ -1,7 +1,4 @@
-/**
- * 设置管理器
- * 主窗口的设置状态同步和应用
- */
+// 设置管理器 - 主窗口的设置状态同步和应用
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { refreshClipboardHistory } from '../../js/clipboard.js';
@@ -11,23 +8,19 @@ import { applyBackgroundImage } from '../../js/backgroundManager.js';
 
 let currentSettings = {};
 
-/**
- * 初始化设置管理器
- */
+// 初始化设置管理器
 export async function initializeSettingsManager() {
   await loadSettings();
-  applySettings(currentSettings);
+  await applySettings(currentSettings);
   
-  await listen('settings-changed', (event) => {
+  await listen('settings-changed', async (event) => {
     const newSettings = event.payload;
     currentSettings = { ...currentSettings, ...newSettings };
-    applySettings(newSettings);
+    await applySettings(newSettings);
   });
 }
 
-/**
- * 加载设置
- */
+// 加载设置
 async function loadSettings() {
   try {
     const savedSettings = await invoke('get_settings');
@@ -37,10 +30,8 @@ async function loadSettings() {
   }
 }
 
-/**
- * 应用设置
- */
-function applySettings(settings) {
+// 应用设置
+async function applySettings(settings) {
   if (settings.theme) {
     applyTheme(settings.theme);
   }
@@ -49,8 +40,14 @@ function applySettings(settings) {
     applyOpacity(settings.opacity);
   }
 
+  // 背景图处理
   if (settings.theme !== undefined || settings.backgroundImagePath !== undefined) {
-    applyBackgroundImageToMainWindow();
+    const theme = settings.theme || currentSettings.theme;
+    if (theme === 'background' && currentSettings.backgroundImagePath) {
+      await applyBackgroundImageToMainWindow();
+    } else {
+      clearBackgroundImageInMainWindow();
+    }
   }
 
   if (settings.historyLimit) {
@@ -75,9 +72,7 @@ function applySettings(settings) {
   }
 }
 
-/**
- * 刷新虚拟列表
- */
+// 刷新虚拟列表
 function refreshVirtualLists() {
   if (window.clipboardModule?.clipboardVirtualList) {
     window.clipboardModule.clipboardVirtualList.updateData(
@@ -91,9 +86,7 @@ function refreshVirtualLists() {
   }
 }
 
-/**
- * 应用主题
- */
+// 应用主题（主窗口直接切换，无动画）
 function applyTheme(theme) {
   const body = document.body;
   body.classList.remove('theme-light', 'theme-dark', 'theme-transparent', 'theme-background', 'theme-auto');
@@ -107,18 +100,14 @@ function applyTheme(theme) {
   body.classList.add(`theme-${resolvedTheme}`);
 }
 
-/**
- * 应用透明度
- */
+// 应用透明度
 function applyOpacity(opacity) {
   if (currentSettings.theme === 'transparent') {
     document.documentElement.style.setProperty('--window-opacity', opacity);
   }
 }
 
-/**
- * 应用背景图
- */
+// 应用背景图到主窗口
 async function applyBackgroundImageToMainWindow() {
   await applyBackgroundImage({
     containerSelector: '.container',
@@ -128,9 +117,25 @@ async function applyBackgroundImageToMainWindow() {
   });
 }
 
-/**
- * 应用标题栏位置设置
- */
+// 清除主窗口背景图
+function clearBackgroundImageInMainWindow() {
+  const container = document.querySelector('.container');
+  if (container) {
+    container.style.backgroundImage = '';
+  }
+  
+  // 移除CSS变量
+  document.documentElement.style.removeProperty('--titlebar-bg-dynamic');
+  document.documentElement.style.removeProperty('--titlebar-text-dynamic');
+  document.documentElement.style.removeProperty('--titlebar-border-dynamic');
+  document.documentElement.style.removeProperty('--primary-color');
+  document.documentElement.style.removeProperty('--primary-hover');
+  document.documentElement.style.removeProperty('--primary-light');
+  document.documentElement.style.removeProperty('--primary-dark');
+  document.body.classList.remove('has-dynamic-titlebar');
+}
+
+// 应用标题栏位置设置
 function applyTitleBarPosition(position) {
   const body = document.body;
   if (!body) return;
@@ -143,32 +148,30 @@ function applyTitleBarPosition(position) {
   }, 50);
 }
 
-/**
- * 获取当前设置
- */
+// 获取当前设置
 export function getCurrentSettings() {
   return { ...currentSettings };
 }
 
-/**
- * 更新单个设置项
- */
+// 更新单个设置项
 export function updateSetting(key, value) {
   currentSettings[key] = value;
   applySettings({ [key]: value });
 }
 
 /**
- * 初始化主题（用于应用启动时）
+ * 初始化主题
  */
-export function initializeTheme() {
+export async function initializeTheme() {
   const theme = currentSettings.theme || 'light';
   applyTheme(theme);
+  
+  if (theme === 'background' && currentSettings.backgroundImagePath) {
+    await applyBackgroundImageToMainWindow();
+  }
 }
 
-/**
- * 监听系统主题变化
- */
+// 监听系统主题变化
 export function setupThemeListener() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     if (currentSettings.theme === 'auto' || currentSettings.theme === 'system') {
@@ -178,9 +181,7 @@ export function setupThemeListener() {
   });
 }
 
-/**
- * 更新快捷键显示
- */
+// 更新快捷键显示
 export function updateShortcutDisplay() {
   const toggleShortcutElement = document.getElementById('toggle-shortcut-display');
   if (toggleShortcutElement && currentSettings.toggleShortcut) {

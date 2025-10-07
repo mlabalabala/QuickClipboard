@@ -163,8 +163,8 @@ async function loadSettings() {
 
 async function saveSettings() {
   try {
+    emit('settings-changed', settings);
     await invoke('save_settings', { settings });
-    await emit('settings-changed', settings);
     showNotification('设置已保存', 'success');
   } catch (error) {
     console.error('保存设置失败:', error);
@@ -336,7 +336,7 @@ function initializeModules() {
   dataManager.init();
   
   // 应用初始状态
-  themeManager.setActiveTheme(settings.theme);
+  themeManager.setActiveTheme(settings.theme, { withAnimation: false });
   themeManager.updateOpacityDisplay(settings.opacity);
   soundManager.updateVolumeDisplay(settings.soundVolume);
   aiManager.updateInputSpeedDisplay(settings.aiInputSpeed);

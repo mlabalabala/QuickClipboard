@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { applyBackgroundImage } from '../../../js/backgroundManager.js';
 import { setTheme } from '../../../js/themeManager.js';
 import { showNotification } from '../../../js/notificationManager.js';
+import { applyThemeWithTransition, getClickPosition } from '../../../js/themeTransition.js';
 
 export class ThemeManager {
     constructor(settings, saveCallback) {
@@ -26,19 +27,30 @@ export class ThemeManager {
      */
     bindThemeSelection() {
         document.querySelectorAll('.theme-option').forEach(option => {
-            option.addEventListener('click', () => {
+            option.addEventListener('click', async (event) => {
                 const theme = option.dataset.theme;
-                this.setActiveTheme(theme);
+                
+                // 立即更新设置并保存
                 this.settings.theme = theme;
-                
-                // 切换背景图设置显隐
-                const bgSetting = document.getElementById('background-image-setting');
-                if (bgSetting) {
-                    bgSetting.style.display = theme === 'background' ? '' : 'none';
-                }
-                
-                this.applyBackgroundToSettingsContainer();
                 this.saveSettings();
+                
+                const clickPos = getClickPosition(event);
+                await applyThemeWithTransition(async () => {
+
+                    this.setActiveTheme(theme, { withAnimation: false });
+                    
+                    // 切换背景图设置显隐
+                    const bgSetting = document.getElementById('background-image-setting');
+                    if (bgSetting) {
+                        bgSetting.style.display = theme === 'background' ? '' : 'none';
+                    }
+
+                    await this.applyBackgroundToSettingsContainer();
+                }, {
+                    ...clickPos,
+                    duration: 600,
+                    easing: 'ease-in-out'
+                });
             });
         });
     }
@@ -85,7 +97,7 @@ export class ThemeManager {
     /**
      * 设置活动主题
      */
-    setActiveTheme(theme) {
+    setActiveTheme(theme, options = {}) {
         document.querySelectorAll('.theme-option').forEach(option => {
             option.classList.remove('active');
         });
@@ -95,7 +107,7 @@ export class ThemeManager {
             themeOption.classList.add('active');
         }
 
-        setTheme(theme);
+        setTheme(theme, options);
     }
 
     /**

@@ -156,8 +156,8 @@ async function initApp() {
   // 初始化主题管理器（必须等待完成）
   await initThemeManager();
 
-  // 初始化主题（同步主题管理器的状态）
-  initializeTheme();
+  // 初始化主题
+  await initializeTheme();
 
   // 设置主题监听器
   setupThemeListener();

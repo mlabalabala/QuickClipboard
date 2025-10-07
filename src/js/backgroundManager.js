@@ -18,7 +18,6 @@ export async function applyBackgroundImage(options) {
   try {
     const container = document.querySelector(containerSelector);
     if (!container) {
-      console.warn(`未找到容器: ${containerSelector}`);
       return;
     }
 
@@ -26,6 +25,11 @@ export async function applyBackgroundImage(options) {
     if (theme === 'background' && backgroundImagePath) {
       // 使用 convertFileSrc 直接转换文件路径
       const assetUrl = convertFileSrc(backgroundImagePath, 'asset');
+      
+      // 预加载图片
+      await preloadBackgroundImage(assetUrl);
+      
+      // 设置背景图
       container.style.backgroundImage = `url("${assetUrl}")`;
 
       // 分析背景图主色调并应用到标题栏
@@ -33,7 +37,6 @@ export async function applyBackgroundImage(options) {
         const dominantColor = await getDominantColor(assetUrl);
         const titleBarColors = generateTitleBarColors(dominantColor);
         applyTitleBarColors(titleBarColors);
-        console.log(`${windowName}背景图已应用，主色调分析完成`);
       } catch (colorError) {
         console.warn(`${windowName}分析背景图颜色失败:`, colorError);
         removeTitleBarColors();
@@ -48,9 +51,22 @@ export async function applyBackgroundImage(options) {
   }
 }
 
-/**
- * 清除背景图
- */
+// 预加载背景图片
+function preloadBackgroundImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => {
+      console.warn('背景图预加载失败，继续应用');
+      resolve();
+    };
+    img.src = url;
+
+    setTimeout(() => resolve(), 3000);
+  });
+}
+
+// 清除背景图
 export function clearBackgroundImage(containerSelector) {
   try {
     const container = document.querySelector(containerSelector);
