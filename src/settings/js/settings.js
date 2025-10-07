@@ -282,19 +282,12 @@ async function initializeUI() {
     }
   }, 500);
 
-  // 设置主题和显示
-  themeManager?.setActiveTheme(settings.theme);
-  themeManager?.updateOpacityDisplay(settings.opacity);
-  soundManager?.updateVolumeDisplay(settings.soundVolume);
-  aiManager?.updateInputSpeedDisplay(settings.aiInputSpeed);
-
   // 加载版本和背景
   loadAppVersion();
   const bgSetting = document.getElementById('background-image-setting');
   if (bgSetting) {
     bgSetting.style.display = (settings.theme === 'background') ? '' : 'none';
   }
-  themeManager?.applyBackgroundToSettingsContainer();
 
   // 初始化更新检测
   try {
@@ -341,6 +334,13 @@ function initializeModules() {
   themeManager.bindEvents();
   aiManager.bindEvents();
   dataManager.init();
+  
+  // 应用初始状态
+  themeManager.setActiveTheme(settings.theme);
+  themeManager.updateOpacityDisplay(settings.opacity);
+  soundManager.updateVolumeDisplay(settings.soundVolume);
+  aiManager.updateInputSpeedDisplay(settings.aiInputSpeed);
+  themeManager.applyBackgroundToSettingsContainer();
 }
 
 // =================== 事件绑定 ===================

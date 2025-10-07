@@ -1,8 +1,8 @@
 /**
  * 主题设置模块
  */
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from '../../../js/colorAnalyzer.js';
+import { invoke } from '@tauri-apps/api/core';
+import { applyBackgroundImage } from '../../../js/backgroundManager.js';
 import { setTheme } from '../../../js/themeManager.js';
 import { showNotification } from '../../../js/notificationManager.js';
 
@@ -102,38 +102,12 @@ export class ThemeManager {
      * 应用背景图到设置容器
      */
     async applyBackgroundToSettingsContainer() {
-        try {
-            const container = document.querySelector('.settings-container');
-            const path = this.settings.backgroundImagePath || '';
-            
-            if (container) {
-                if (path && this.settings.theme === 'background') {
-                    let url = '';
-                    try {
-                        const dataUrl = await invoke('read_image_file', { filePath: path });
-                        url = dataUrl;
-                    } catch (e) {
-                        url = convertFileSrc ? convertFileSrc(path) : path;
-                    }
-                    
-                    container.style.backgroundImage = `url("${url.replaceAll('"', '\\"')}")`;
-
-                    try {
-                        const dominantColor = await getDominantColor(url);
-                        const titleBarColors = generateTitleBarColors(dominantColor);
-                        applyTitleBarColors(titleBarColors);
-                    } catch (colorError) {
-                        console.warn('设置页面分析背景图颜色失败:', colorError);
-                        removeTitleBarColors();
-                    }
-                } else {
-                    container.style.backgroundImage = '';
-                    removeTitleBarColors();
-                }
-            }
-        } catch (e) {
-            console.warn('应用背景图片失败:', e);
-        }
+        await applyBackgroundImage({
+            containerSelector: '.settings-container',
+            theme: this.settings.theme,
+            backgroundImagePath: this.settings.backgroundImagePath,
+            windowName: '设置窗口'
+        });
     }
 
     /**

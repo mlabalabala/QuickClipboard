@@ -7,6 +7,7 @@ import { listen } from '@tauri-apps/api/event';
 import { refreshClipboardHistory } from '../../js/clipboard.js';
 import { setPasteWithFormat } from '../../js/config.js';
 import { updateFormatButtonStatus } from '../../js/toolsPanel.js';
+import { applyBackgroundImage } from '../../js/backgroundManager.js';
 
 let currentSettings = {};
 
@@ -46,6 +47,10 @@ function applySettings(settings) {
 
   if (settings.opacity !== undefined) {
     applyOpacity(settings.opacity);
+  }
+
+  if (settings.theme !== undefined || settings.backgroundImagePath !== undefined) {
+    applyBackgroundImageToMainWindow();
   }
 
   if (settings.historyLimit) {
@@ -109,6 +114,18 @@ function applyOpacity(opacity) {
   if (currentSettings.theme === 'transparent') {
     document.documentElement.style.setProperty('--window-opacity', opacity);
   }
+}
+
+/**
+ * 应用背景图
+ */
+async function applyBackgroundImageToMainWindow() {
+  await applyBackgroundImage({
+    containerSelector: '.container',
+    theme: currentSettings.theme,
+    backgroundImagePath: currentSettings.backgroundImagePath,
+    windowName: '主窗口'
+  });
 }
 
 /**
