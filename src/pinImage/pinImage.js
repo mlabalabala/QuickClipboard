@@ -5,6 +5,36 @@
 import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+
+// 保存设置到 localStorage
+function saveSettings(settings) {
+    try {
+        localStorage.setItem('pinImageSettings', JSON.stringify(settings));
+    } catch (error) {
+        console.error('保存设置失败:', error);
+    }
+}
+
+// 从 localStorage 加载设置
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('pinImageSettings');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (error) {
+        console.error('加载设置失败:', error);
+    }
+    // 返回默认设置
+    return {
+        alwaysOnTop: false,
+        shadow: false,
+        lockPosition: false,
+        pixelRender: false,
+        opacity: 100
+    };
+}
+
 // 创建右键菜单
 async function createContextMenu(window, shadowState, lockPositionState, pixelRenderState) {
     document.addEventListener('contextmenu', async (e) => {
@@ -21,6 +51,10 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
             action: async () => {
                 try {
                     await window.setAlwaysOnTop(!isOnTop);
+                    // 保存设置
+                    const settings = loadSettings();
+                    settings.alwaysOnTop = !isOnTop;
+                    saveSettings(settings);
                 } catch (error) {
                     console.error('切换置顶失败:', error);
                 }
@@ -35,6 +69,10 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                 try {
                     shadowState.enabled = !shadowState.enabled;
                     await window.setShadow(shadowState.enabled);
+                    // 保存设置
+                    const settings = loadSettings();
+                    settings.shadow = shadowState.enabled;
+                    saveSettings(settings);
                 } catch (error) {
                     console.error('切换阴影失败:', error);
                 }
@@ -48,6 +86,10 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
             action: async () => {
                 try {
                     lockPositionState.locked = !lockPositionState.locked;
+                    // 保存设置
+                    const settings = loadSettings();
+                    settings.lockPosition = lockPositionState.locked;
+                    saveSettings(settings);
                 } catch (error) {
                     console.error('切换锁定位置失败:', error);
                 }
@@ -69,6 +111,10 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                             img.style.imageRendering = 'auto';
                         }
                     }
+                    // 保存设置
+                    const settings = loadSettings();
+                    settings.pixelRender = pixelRenderState.enabled;
+                    saveSettings(settings);
                 } catch (error) {
                     console.error('切换渲染模式失败:', error);
                 }
@@ -95,6 +141,10 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                     const img = document.getElementById('pinImage');
                     if (img) {
                         img.style.opacity = opacity / 100;
+                        // 保存设置
+                        const settings = loadSettings();
+                        settings.opacity = opacity;
+                        saveSettings(settings);
                     }
                 }
             });
@@ -127,7 +177,12 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                     if (input !== null) {
                         const img = document.getElementById('pinImage');
                         if (img) {
-                            img.style.opacity = parseInt(input) / 100;
+                            const opacity = parseInt(input);
+                            img.style.opacity = opacity / 100;
+                            // 保存设置
+                            const settings = loadSettings();
+                            settings.opacity = opacity;
+                            saveSettings(settings);
                         }
                     }
                 } catch (error) {
@@ -218,9 +273,12 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
     let dragStartImageX = 0;
     let dragStartImageY = 0;
     
-    const shadowState = { enabled: false };
-    const lockPositionState = { locked: false };
-    const pixelRenderState = { enabled: false };
+    // 加载保存的设置
+    const savedSettings = loadSettings();
+    
+    const shadowState = { enabled: savedSettings.shadow };
+    const lockPositionState = { locked: savedSettings.lockPosition };
+    const pixelRenderState = { enabled: savedSettings.pixelRender };
     
     // 应用图片变换
     function applyImageTransform() {
@@ -245,8 +303,15 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
         imageY = Math.max(-maxOffsetY, Math.min(maxOffsetY, imageY));
     }
     
+    // 检查鼠标是否在大小指示器上
+    function isMouseOverIndicator(mouseX, mouseY) {
+        const rect = sizeIndicator.getBoundingClientRect();
+        return mouseX >= rect.left && mouseX <= rect.right && 
+               mouseY >= rect.top && mouseY <= rect.bottom;
+    }
+    
     // 显示大小指示器
-    function showSizeIndicator(width, height, level, isImageScale = false) {
+    function showSizeIndicator(width, height, level, isImageScale = false, mouseX = 0, mouseY = 0) {
         let mainText = '';
         
         if (isImageScale) {
@@ -266,6 +331,17 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
         `;
         
         sizeIndicator.innerHTML = `${mainText}<br>${hintText}`;
+        
+        // 检查鼠标是否在提示信息上，如果是则不显示
+        if (isMouseOverIndicator(mouseX, mouseY)) {
+            sizeIndicator.classList.remove('show');
+            if (sizeIndicatorTimer) {
+                clearTimeout(sizeIndicatorTimer);
+                sizeIndicatorTimer = null;
+            }
+            return;
+        }
+        
         sizeIndicator.classList.add('show');
         
         if (sizeIndicatorTimer) {
@@ -313,7 +389,7 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                 }
                 
                 applyImageTransform();
-                showSizeIndicator(0, 0, Math.round(imageScale * 100), true);
+                showSizeIndicator(0, 0, Math.round(imageScale * 100), true, e.clientX, e.clientY);
             } else {
                 // 普通滚轮：缩放窗口
                 if (!initialSize) {
@@ -340,7 +416,7 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                 const newHeight = initialSize.height * (scaleLevel / 10);
                 
                 await currentWindow.setSize(new LogicalSize(newWidth, newHeight));
-                showSizeIndicator(newWidth, newHeight, scaleLevel, false);
+                showSizeIndicator(newWidth, newHeight, scaleLevel, false, e.clientX, e.clientY);
                 
                 // 窗口大小变化后，重置图片缩放状态
                 if (imageScale > 1) {
@@ -368,6 +444,15 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
     document.addEventListener('keyup', (e) => {
         if (e.key === 'Alt') {
             e.preventDefault();
+        }
+    });
+    
+    // 大小指示器鼠标事件：鼠标悬停时隐藏提示
+    sizeIndicator.addEventListener('mouseenter', () => {
+        sizeIndicator.classList.remove('show');
+        if (sizeIndicatorTimer) {
+            clearTimeout(sizeIndicatorTimer);
+            sizeIndicatorTimer = null;
         }
     });
     
@@ -434,6 +519,27 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
             // 转换为 asset 协议 URL
             const assetUrl = convertFileSrc(data.file_path, 'asset');
             img.src = assetUrl;
+        }
+        
+        // 应用保存的设置
+        // 应用置顶设置
+        if (savedSettings.alwaysOnTop) {
+            await currentWindow.setAlwaysOnTop(true);
+        }
+        
+        // 应用阴影设置
+        if (savedSettings.shadow) {
+            await currentWindow.setShadow(true);
+        }
+        
+        // 应用透明度设置
+        if (savedSettings.opacity !== 100) {
+            img.style.opacity = savedSettings.opacity / 100;
+        }
+        
+        // 应用像素渲染模式
+        if (savedSettings.pixelRender) {
+            img.style.imageRendering = 'pixelated';
         }
     } catch (error) {
         console.error('加载图片失败:', error);

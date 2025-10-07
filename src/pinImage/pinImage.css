@@ -65,8 +65,10 @@ body:hover::after {
     transition: opacity 0.3s;
     z-index: 1000;
     line-height: 1.5;
+    cursor: default;
 }
 
 .size-indicator.show {
     opacity: 1;
+    pointer-events: auto;
 }
