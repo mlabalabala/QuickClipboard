@@ -32,6 +32,7 @@ pub struct AppSettings {
     pub screenshot_quality: u8,
     pub screenshot_auto_save: bool,
     pub screenshot_show_hints: bool,
+    pub screenshot_element_detection: String,
 
     // === 预览窗口设置 ===
     pub preview_enabled: bool,
@@ -141,6 +142,7 @@ impl Default for AppSettings {
             screenshot_quality: 85,
             screenshot_auto_save: true,
             screenshot_show_hints: true,
+            screenshot_element_detection: "all".to_string(),
 
             // 预览窗口设置
             preview_enabled: true,

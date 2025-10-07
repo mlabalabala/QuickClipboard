@@ -4,7 +4,6 @@ use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
 use parking_lot::Mutex;
-use rayon::prelude::*;
 use tauri::{AppHandle, Emitter, Manager};
 use windows::Win32::Foundation::{POINT, HWND, RECT, BOOL, LPARAM};
 use windows::Win32::UI::Accessibility::{
@@ -19,6 +18,25 @@ use windows::Win32::System::Com::{
     CoCreateInstance, CLSCTX_INPROC_SERVER,
 };
 use serde::Serialize;
+
+/// 元素检测模式
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DetectionMode {
+    None,     // 不检测
+    Window,   // 仅窗口
+    All,      // 全部元素
+}
+
+impl DetectionMode {
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "none" => DetectionMode::None,
+            "window" => DetectionMode::Window,
+            "all" => DetectionMode::All,
+            _ => DetectionMode::All, // 默认
+        }
+    }
+}
 
 /// 自动选区管理器
 pub struct AutoSelectionManager {
@@ -121,6 +139,24 @@ impl AutoSelectionManager {
         let mut last_hwnd: Option<isize> = None;
 
         while is_active.load(Ordering::Relaxed) {
+            // 从全局设置读取检测模式
+            let settings = crate::settings::get_global_settings();
+            let current_mode = DetectionMode::from_string(&settings.screenshot_element_detection);
+            
+            // 如果模式为 None，清除选区并跳过检测
+            if current_mode == DetectionMode::None {
+                if last_bounds.is_some() {
+                    last_bounds = None;
+                    if let Some(app) = app_handle.lock().as_ref() {
+                        if let Some(window) = app.get_webview_window("screenshot") {
+                            let _ = window.emit("auto-selection-clear", ());
+                        }
+                    }
+                }
+                thread::sleep(Duration::from_millis(50));
+                continue;
+            }
+            
             // 获取鼠标位置
             let mut cursor_pos = POINT { x: 0, y: 0 };
             if unsafe { GetCursorPos(&mut cursor_pos) }.is_err() {
@@ -157,7 +193,7 @@ impl AutoSelectionManager {
             // 检查窗口是否已缓存
             if !cache.contains_key(&hwnd_value) {
                 // 首次访问此窗口，使用流式缓存 + 即时查找
-                match Self::stream_cache_and_find(&automation, hwnd, cursor_pos, &app_handle, &mut last_bounds) {
+                match Self::stream_cache_and_find(&automation, hwnd, cursor_pos, &app_handle, &mut last_bounds, current_mode) {
                     Ok(elements) => {
                         cache.insert(hwnd_value, elements);
                     }
@@ -181,7 +217,7 @@ impl AutoSelectionManager {
 
             // 从缓存中查找匹配的元素层级
             if let Some(elements) = cache.get(&hwnd_value) {
-                match Self::find_element_hierarchy_from_cache(elements, cursor_pos) {
+                match Self::find_element_hierarchy_from_cache(elements, cursor_pos, current_mode) {
                     Ok(Some(hierarchy_bounds)) => {
                         // 检查最小元素的边界是否变化
                         let smallest_bounds = &hierarchy_bounds[0];
@@ -316,6 +352,7 @@ impl AutoSelectionManager {
         point: POINT,
         app_handle: &Arc<Mutex<Option<AppHandle>>>,
         last_bounds: &mut Option<ElementBounds>,
+        detection_mode: DetectionMode,
     ) -> Result<Vec<CachedElement>, String> {
         unsafe {
             let window_element = automation.ElementFromHandle(target_hwnd)
@@ -360,6 +397,15 @@ impl AutoSelectionManager {
                         *last_bounds = Some(window_bounds.clone());
                     }
                 }
+            }
+
+            // 如果只检测窗口，将窗口本身作为缓存元素返回
+            if detection_mode == DetectionMode::Window {
+                let window_area = window_width * window_height;
+                return Ok(vec![CachedElement {
+                    rect: window_rect,
+                    area: window_area,
+                }]);
             }
 
             let condition = automation.CreateTrueCondition()
@@ -498,6 +544,7 @@ impl AutoSelectionManager {
     fn find_element_hierarchy_from_cache(
         elements: &[CachedElement],
         point: POINT,
+        _detection_mode: DetectionMode,
     ) -> Result<Option<Vec<ElementBounds>>, String> {
         // 找出所有包含该点的元素
         let mut matching_elements: Vec<_> = elements

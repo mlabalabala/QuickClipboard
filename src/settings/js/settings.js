@@ -51,6 +51,7 @@ const defaultSettings = {
   screenshot_quality: 85,
   screenshot_auto_save: false,
   screenshot_show_hints: true,
+  screenshot_element_detection: 'all',
   previewEnabled: true,
   previewItemsCount: 5,
   previewAutoPaste: true,
@@ -220,6 +221,7 @@ async function initializeUI() {
   setInputValue('screenshot-quality', settings.screenshot_quality);
   setInputValue('screenshot-auto-save', settings.screenshot_auto_save);
   setInputValue('screenshot-show-hints', settings.screenshot_show_hints);
+  setInputValue('screenshot-element-detection', settings.screenshot_element_detection || 'all');
 
   // AI配置
   const aiConfig = getCurrentAIConfig();
@@ -437,7 +439,7 @@ function bindBasicSettingEvents() {
     'preview-enabled', 'preview-shortcut', 'preview-items-count', 'preview-auto-paste',
     'preview-scroll-sound', 'preview-scroll-sound-path',
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
-    'screenshot-auto-save', 'screenshot-show-hints',
+    'screenshot-auto-save', 'screenshot-show-hints', 'screenshot-element-detection',
     'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'mouse-middle-button-modifier', 'clipboard-animation-enabled',

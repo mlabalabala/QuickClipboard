@@ -32,6 +32,7 @@ impl SettingsConverter {
             "screenshot_quality": settings.screenshot_quality,
             "screenshot_auto_save": settings.screenshot_auto_save,
             "screenshot_show_hints": settings.screenshot_show_hints,
+            "screenshot_element_detection": settings.screenshot_element_detection,
             "previewEnabled": settings.preview_enabled,
             "previewShortcut": settings.preview_shortcut,
             "previewItemsCount": settings.preview_items_count,
@@ -159,6 +160,7 @@ impl SettingsConverter {
         update_u8!(screenshot_quality, "screenshot_quality");
         update_bool!(screenshot_auto_save, "screenshot_auto_save");
         update_bool!(screenshot_show_hints, "screenshot_show_hints");
+        update_string!(screenshot_element_detection, "screenshot_element_detection");
 
         // 预览窗口设置
         update_bool!(preview_enabled, "previewEnabled");
