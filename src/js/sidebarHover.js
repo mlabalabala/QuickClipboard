@@ -36,6 +36,9 @@ export function initSidebarHover() {
 
   // 为侧边栏添加鼠标离开事件
   groupsSidebar.addEventListener('mouseleave', handleMouseLeave);
+
+  // 处理右键点击事件
+  sidebarTrigger.addEventListener('contextmenu', handleContextMenu);
 }
 
 // 处理鼠标进入事件
@@ -112,6 +115,36 @@ function hideSidebar() {
   groupsSidebar.style.transform = '';
   groupsSidebar.style.right = '';
   isSidebarVisible = false;
+}
+
+// 处理右键菜单事件
+function handleContextMenu(e) {
+  sidebarTrigger.style.pointerEvents = 'none';
+  
+  // 在当前鼠标位置获取下层元素
+  const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+  
+  // 重新启用触发区域的指针事件
+  setTimeout(() => {
+    sidebarTrigger.style.pointerEvents = 'auto';
+  }, 0);
+  
+  // 如果下层有元素，触发它的右键菜单事件
+  if (elementBelow) {
+    const contextMenuEvent = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      button: 2,
+      clientX: e.clientX,
+      clientY: e.clientY
+    });
+    elementBelow.dispatchEvent(contextMenuEvent);
+  }
+  
+  // 阻止默认行为和事件冒泡
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 // 从设置中读取侧边栏悬停延迟
