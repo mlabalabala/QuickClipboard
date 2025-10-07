@@ -9,17 +9,17 @@ pub struct SettingsService;
 impl SettingsService {
     /// 获取当前设置
     pub fn get_settings() -> Result<serde_json::Value, String> {
-        let settings = crate::settings::get_global_settings();
+        let settings = super::get_global_settings();
         Ok(settings.to_json())
     }
 
     /// 重新加载设置
     pub fn reload_settings() -> Result<serde_json::Value, String> {
         // 强制从文件重新加载设置
-        let fresh_settings = crate::settings::AppSettings::load();
+        let fresh_settings = super::AppSettings::load();
 
         // 更新全局设置
-        if let Err(e) = crate::settings::update_global_settings(fresh_settings.clone()) {
+        if let Err(e) = super::update_global_settings(fresh_settings.clone()) {
             println!("更新全局设置失败: {}", e);
         }
 
@@ -37,10 +37,10 @@ impl SettingsService {
         }
 
         // 更新全局设置（使用过滤后的对象）
-        crate::settings::update_global_settings_from_json(&settings_filtered)?;
+        super::update_global_settings_from_json(&settings_filtered)?;
 
         // 获取更新后的设置
-        let app_settings = crate::settings::get_global_settings();
+        let app_settings = super::get_global_settings();
 
         // 应用各种设置
         Self::apply_settings(&app_settings)?;
@@ -88,7 +88,7 @@ impl SettingsService {
     }
 
     /// 应用所有设置
-    fn apply_settings(app_settings: &crate::settings::AppSettings) -> Result<(), String> {
+    fn apply_settings(app_settings: &super::AppSettings) -> Result<(), String> {
         // 1. 历史记录数量限制
         crate::clipboard_history::set_history_limit(app_settings.history_limit as usize);
 
@@ -127,7 +127,7 @@ impl SettingsService {
         crate::sound_manager::update_sound_settings(sound_settings);
 
         // 9. 截屏设置应用
-        let updated_settings = crate::settings::get_global_settings();
+        let updated_settings = super::get_global_settings();
         println!(
             "截屏设置已更新: 启用={}, 快捷键={}, 质量={}",
             updated_settings.screenshot_enabled,
@@ -142,7 +142,7 @@ impl SettingsService {
     fn handle_special_settings(
         app_handle: &AppHandle,
         _settings_filtered: &serde_json::Value,
-        app_settings: &crate::settings::AppSettings,
+        app_settings: &super::AppSettings,
     ) -> Result<(), String> {
         // 1. 更新快捷键拦截器配置
         #[cfg(windows)]
@@ -171,7 +171,7 @@ impl SettingsService {
         if let Some(settings_window) = app_handle.get_webview_window("settings") {
             let _ = settings_window.emit("settings-changed", app_settings.to_json());
         }
-        // 同步托盘“剪贴板监听”菜单文案
+        // 同步托盘"剪贴板监听"菜单文案
         if let Some(item) = crate::tray::TOGGLE_MONITOR_ITEM.get() {
             let _ = item.set_text(if app_settings.clipboard_monitor { "禁用剪贴板监听" } else { "启用剪贴板监听" });
         }
@@ -179,3 +179,4 @@ impl SettingsService {
         Ok(())
     }
 }
+

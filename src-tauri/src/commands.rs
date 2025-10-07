@@ -170,13 +170,13 @@ pub fn disable_mouse_monitoring_command() -> Result<(), String> {
 // 设置开机自启动
 #[tauri::command]
 pub fn set_startup_launch(enabled: bool) -> Result<(), String> {
-    crate::services::settings_service::SettingsService::set_startup_launch(enabled)
+    crate::settings::SettingsService::set_startup_launch(enabled)
 }
 
 // 设置历史记录数量限制
 #[tauri::command]
 pub fn set_history_limit(limit: usize) -> Result<(), String> {
-    crate::services::settings_service::SettingsService::set_history_limit(limit)
+    crate::settings::SettingsService::set_history_limit(limit)
 }
 
 // =================== 拖拽排序相关命令 ===================
@@ -260,12 +260,12 @@ pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String
 // 获取设置
 #[tauri::command]
 pub fn get_settings() -> Result<serde_json::Value, String> {
-    crate::services::settings_service::SettingsService::get_settings()
+    crate::settings::SettingsService::get_settings()
 }
 
 #[tauri::command]
 pub fn reload_settings() -> Result<serde_json::Value, String> {
-    crate::services::settings_service::SettingsService::reload_settings()
+    crate::settings::SettingsService::reload_settings()
 }
 
 // 保存设置
@@ -274,7 +274,7 @@ pub fn save_settings(
     app_handle: tauri::AppHandle,
     settings: serde_json::Value,
 ) -> Result<(), String> {
-    crate::services::settings_service::SettingsService::save_settings(app_handle, settings)
+    crate::settings::SettingsService::save_settings(app_handle, settings)
 }
 
 // 调试日志

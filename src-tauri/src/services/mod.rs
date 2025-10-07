@@ -5,7 +5,6 @@ pub mod edge_snap_service;
 pub mod clipboard_service;
 pub mod quick_text_service;
 pub mod mouse_service;
-pub mod settings_service;
 pub mod drag_sort_service;
 pub mod group_service;
 pub mod sound_service;

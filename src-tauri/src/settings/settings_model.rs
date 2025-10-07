@@ -684,7 +684,6 @@ impl AppSettings {
         // 获取当前存储目录
         let current_dir = self.get_data_directory()?;
 
-        // 如果新路径与当前路径相同，无需迁移
         if current_dir == new_dir {
             return Ok(());
         }
@@ -780,3 +779,4 @@ pub struct StorageInfo {
     pub is_default: bool,
     pub custom_path: Option<String>,
 }
+
