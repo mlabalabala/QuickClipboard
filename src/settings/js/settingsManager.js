@@ -1,10 +1,10 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { getCurrentTheme } from './themeManager.js';
-import { refreshClipboardHistory } from './clipboard.js';
-import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from './colorAnalyzer.js';
-import { setPasteWithFormat } from './config.js';
-import { updateFormatButtonStatus } from './toolsPanel.js';
+import { getCurrentTheme } from '../../js/themeManager.js';
+import { refreshClipboardHistory } from '../../js/clipboard.js';
+import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from '../../js/colorAnalyzer.js';
+import { setPasteWithFormat } from '../../js/config.js';
+import { updateFormatButtonStatus } from '../../js/toolsPanel.js';
 
 // 当前设置
 let currentSettings = {
@@ -216,7 +216,7 @@ async function applyAnimationSettings(animationEnabled) {
     }
 
     //设置开关状态
-    const { setAnimationEnabled } = await import('./windowAnimation.js');
+    const { setAnimationEnabled } = await import('../../js/windowAnimation.js');
     setAnimationEnabled(animationEnabled);
     console.log('动画设置已应用:', animationEnabled);
   } catch (error) {

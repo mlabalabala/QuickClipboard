@@ -56,7 +56,7 @@ function detectWindowType() {
   const url = window.location.href;
   const pathname = window.location.pathname;
   
-  if (pathname.includes('settings.html')) {
+  if (pathname.includes('settings')) {
     return 'settings';
   } else if (pathname.includes('textEditor.html')) {
     return 'textEditor';

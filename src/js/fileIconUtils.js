@@ -1,6 +1,6 @@
 // 文件图标工具函数
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { getCurrentSettings } from './settingsManager.js';
+import { getCurrentSettings } from '../settings/js/settingsManager.js';
 
 // 图片加载管理器
 class ImageLoadManager {

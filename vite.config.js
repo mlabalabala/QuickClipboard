@@ -34,7 +34,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'src/index.html'),
-        settings: resolve(__dirname, 'src/settings.html'),
+        settings: resolve(__dirname, 'src/settings/index.html'),
         preview: resolve(__dirname, 'src/preview.html'),
         textEditor: resolve(__dirname, 'src/textEditor.html'),
         inputDialog: resolve(__dirname, 'src/plugins/input_dialog/inputDialog.html'),

@@ -1,6 +1,6 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { getCurrentSettings } from './settingsManager.js';
+import { getCurrentSettings } from '../settings/js/settingsManager.js';
 import {
   clipboardHistory,
   setClipboardHistory,

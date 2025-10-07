@@ -98,7 +98,7 @@ import {
   initializeTheme,
   setupThemeListener,
   updateShortcutDisplay
-} from './js/settingsManager.js';
+} from './settings/js/settingsManager.js';
 document.addEventListener('contextmenu', function (e) {
   e.preventDefault();
 });

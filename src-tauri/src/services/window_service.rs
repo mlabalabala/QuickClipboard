@@ -76,7 +76,7 @@ impl WindowService {
             let settings_window = tauri::WebviewWindowBuilder::new(
                 &app,
                 "settings",
-                tauri::WebviewUrl::App("settings.html".into()),
+                tauri::WebviewUrl::App("settings/index.html".into()),
             )
             .title("设置 - 快速剪贴板")
             .inner_size(900.0, 630.0)

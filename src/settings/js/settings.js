@@ -1,19 +1,19 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from './colorAnalyzer.js';
+import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from '../../js/colorAnalyzer.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit, listen } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { setTheme, getCurrentTheme, getAvailableThemes, addThemeChangeListener } from './themeManager.js';
+import { setTheme, getCurrentTheme, getAvailableThemes, addThemeChangeListener } from '../../js/themeManager.js';
 import { updateShortcutDisplay } from './settingsManager.js';
-import { showNotification } from './notificationManager.js';
+import { showNotification } from '../../js/notificationManager.js';
 import {
   initAIConfig,
   getCurrentAIConfig,
   saveAIConfig
-} from './aiConfig.js';
+} from '../../js/aiConfig.js';
 import { settingsSearch } from './settingsSearch.js';
-import { initDisableBrowserShortcuts } from './utils/disableBrowserShortcuts.js';
+import { initDisableBrowserShortcuts } from '../../js/utils/disableBrowserShortcuts.js';
 
 // =================== 启动横幅 ===================
 function printSettingsBanner() {
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDisableBrowserShortcuts();
 
   // 初始化主题管理器
-  const { initThemeManager } = await import('./themeManager.js');
+  const { initThemeManager } = await import('../../js/themeManager.js');
   initThemeManager();
 
   // 初始化AI配置管理器
@@ -388,7 +388,7 @@ async function initializeUI() {
 
   // 初始化更新检测
   try {
-    const { setupUpdateChecker } = await import('./updateChecker.js');
+    const { setupUpdateChecker } = await import('../../js/updateChecker.js');
     setupUpdateChecker();
 
     // 监听模块发出的可更新事件，弹出一次性通知
@@ -1360,7 +1360,7 @@ async function clearSoundCache() {
 // 检查更新
 async function checkForUpdates() {
   try {
-    const { handleCheckUpdatesClick } = await import('./updateChecker.js');
+    const { handleCheckUpdatesClick } = await import('../../js/updateChecker.js');
     await handleCheckUpdatesClick();
   } catch (error) {
     console.error('检查更新失败:', error);
@@ -1582,7 +1582,7 @@ function bindAiConfigEvents() {
         testConfigButton.innerHTML = '<i class="ti ti-loader"></i> 测试中...';
 
         // 动态导入AI配置模块的函数
-        const { testAIConfig } = await import('./aiConfig.js');
+        const { testAIConfig } = await import('../../js/aiConfig.js');
 
         const testResult = await testAIConfig();
         if (testResult) {
@@ -1624,7 +1624,7 @@ async function refreshAiConfigModelsList(silent = false) {
     }
 
     // 动态导入AI配置模块的函数
-    const { getAvailableAIModels, getModelDisplayName } = await import('./aiConfig.js');
+    const { getAvailableAIModels, getModelDisplayName } = await import('../../js/aiConfig.js');
 
     // 获取可用模型列表
     const models = await getAvailableAIModels();

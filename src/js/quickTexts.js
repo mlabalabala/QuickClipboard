@@ -1,5 +1,5 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { getCurrentSettings } from './settingsManager.js';
+import { getCurrentSettings } from '../settings/js/settingsManager.js';
 import {
   quickTexts,
   setQuickTexts,

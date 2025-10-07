@@ -4,7 +4,7 @@ import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';
 import { searchWithEngine, getSearchEngines, getCurrentSearchEngine, setCurrentSearchEngine } from './searchEngineManager.js';
 import { showContextMenu as showMenuPlugin, createMenuItem as createPluginMenuItem, createSeparator as createPluginSeparator } from '../plugins/context_menu/index.js';
-import { getCurrentSettings } from './settingsManager.js';
+import { getCurrentSettings } from '../settings/js/settingsManager.js';
 
 // 在浏览器中搜索文本
 async function searchTextInBrowser(text, engineId = null) {
