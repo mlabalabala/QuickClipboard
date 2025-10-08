@@ -164,7 +164,7 @@ async fn create_pin_image_window(
     x: i32,
     y: i32,
 ) -> Result<WebviewWindow, String> {
-    WebviewWindowBuilder::new(
+    let window = WebviewWindowBuilder::new(
         &app,
         label,
         tauri::WebviewUrl::App("pinImage/pinImage.html".into()),
@@ -181,10 +181,14 @@ async fn create_pin_image_window(
     .always_on_top(true)
     .skip_taskbar(true)
     .focused(false)
-    .focusable(false)
     .visible(false)
     .build()
-    .map_err(|e| format!("创建贴图窗口失败: {}", e))
+    .map_err(|e| format!("创建贴图窗口失败: {}", e))?;
+    
+    window.set_focusable(false)
+        .map_err(|e| format!("设置贴图窗口 focusable 失败: {}", e))?;
+    
+    Ok(window)
 }
 
 // 前端请求获取图片数据

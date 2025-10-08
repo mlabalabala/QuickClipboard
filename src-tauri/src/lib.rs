@@ -214,6 +214,9 @@ pub fn run() {
 
             // 获取主窗口
             let main_window = app.get_webview_window("main").unwrap();
+            
+            let _ = main_window.set_focusable(false);
+            
             #[cfg(windows)]
             {
                 mouse_hook::MAIN_WINDOW_HANDLE.set(main_window.clone()).ok();
@@ -255,6 +258,10 @@ pub fn run() {
 
             // 初始化预览窗口
             preview_window::init_preview_window();
+
+            if let Some(preview_window) = app.get_webview_window("preview") {
+                let _ = preview_window.set_focusable(false);
+            }
             
             // 初始化贴图窗口
             pin_image_window::init_pin_image_window();
