@@ -742,6 +742,15 @@ body.theme-dark {
   color: white;
 }
 
+/* =================== 颜色预览样式 =================== */
+.theme-dark .color-preview-container {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.theme-dark .color-preview-swatch {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* =================== 透明主题兼容 =================== */
 .theme-dark.theme-transparent {
   /* 如果需要透明主题的特殊处理，在这里添加 */

@@ -27,6 +27,7 @@ import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { VirtualList } from './virtualList.js';
 import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
+import { detectColor, generateColorPreviewHTML } from './utils/colorUtils.js';
 
 
 // 虚拟列表实例
@@ -68,23 +69,37 @@ function generateQuickTextItemHTML(text, index) {
       // 纯文本内容，使用原有逻辑
       const searchTerms = getCurrentSearchTerms();
       const titleResult = highlightMultipleSearchTermsWithPosition(text.title, searchTerms);
-      const contentResult = highlightMultipleSearchTermsWithPosition(text.content, searchTerms);
       
-      // 如果有搜索关键字，添加滚动定位功能
-      if (searchTerms.length > 0) {
-        const hasKeywordInTitle = titleResult.firstKeywordPosition !== -1;
-        const hasKeywordInContent = contentResult.firstKeywordPosition !== -1;
-        
-        contentHTML = `
-          <div class="quick-text-title searchable" ${hasKeywordInTitle ? `data-first-keyword="${titleResult.firstKeywordPosition}"` : ''}>${titleResult.html}</div>
-          <div class="quick-text-content searchable" ${hasKeywordInContent ? `data-first-keyword="${contentResult.firstKeywordPosition}"` : ''}><div>${contentResult.html}</div></div>
-        `;
+      // 检测内容是否为颜色值
+      const colorInfo = detectColor(text.content);
+      let displayContent;
+      let contentDataAttr = '';
+      
+      if (colorInfo) {
+        // 是颜色值，生成颜色预览
+        displayContent = generateColorPreviewHTML(colorInfo);
       } else {
-        contentHTML = `
-          <div class="quick-text-title">${titleResult.html}</div>
-          <div class="quick-text-content"><div>${contentResult.html}</div></div>
-        `;
+        // 不是颜色值，正常处理高亮
+        const contentResult = highlightMultipleSearchTermsWithPosition(text.content, searchTerms);
+        displayContent = contentResult.html;
+        
+        // 如果有搜索关键字，添加滚动定位功能
+        if (searchTerms.length > 0 && contentResult.firstKeywordPosition !== -1) {
+          contentDataAttr = `data-first-keyword="${contentResult.firstKeywordPosition}"`;
+        }
       }
+      
+      // 构建完整的 HTML
+      const titleDataAttr = searchTerms.length > 0 && titleResult.firstKeywordPosition !== -1 
+        ? `data-first-keyword="${titleResult.firstKeywordPosition}"` 
+        : '';
+      const titleClass = titleDataAttr ? 'quick-text-title searchable' : 'quick-text-title';
+      const contentClass = contentDataAttr ? 'quick-text-content searchable' : 'quick-text-content';
+      
+      contentHTML = `
+        <div class="${titleClass}" ${titleDataAttr}>${titleResult.html}</div>
+        <div class="${contentClass}" ${contentDataAttr}><div>${displayContent}</div></div>
+      `;
     }
   }
 

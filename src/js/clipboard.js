@@ -25,6 +25,7 @@ import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition,
 import { processHTMLImages } from './utils/htmlProcessor.js';
 import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { isLinkContent } from './utils/linkUtils.js';
+import { detectColor, generateColorPreviewHTML } from './utils/colorUtils.js';
 
 import { VirtualList } from './virtualList.js';
 
@@ -63,14 +64,26 @@ function generateClipboardItemHTML(item, index) {
     } else {
       // 纯文本内容，使用原有逻辑
       const searchTerms = getCurrentSearchTerms();
-      const highlightResult = highlightMultipleSearchTermsWithPosition(item.content, searchTerms);
-
-      // 如果有搜索关键字，添加滚动定位功能
-      if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
-        contentHTML = `<div class="clipboard-text searchable" data-first-keyword="${highlightResult.firstKeywordPosition}"><div>${highlightResult.html}</div></div>`;
+      let displayText = item.content;
+      let dataAttr = '';
+      
+      // 检测是否为颜色值，如果是则添加颜色预览
+      const colorInfo = detectColor(item.content);
+      if (colorInfo) {
+        displayText = generateColorPreviewHTML(colorInfo);
       } else {
-        contentHTML = `<div class="clipboard-text"><div>${highlightResult.html}</div></div>`;
+        // 不是颜色值，正常处理高亮
+        const highlightResult = highlightMultipleSearchTermsWithPosition(item.content, searchTerms);
+        displayText = highlightResult.html;
+        
+        // 如果有搜索关键字，添加滚动定位功能
+        if (searchTerms.length > 0 && highlightResult.firstKeywordPosition !== -1) {
+          dataAttr = `data-first-keyword="${highlightResult.firstKeywordPosition}"`;
+        }
       }
+      
+      const className = dataAttr ? 'clipboard-text searchable' : 'clipboard-text';
+      contentHTML = `<div class="${className}" ${dataAttr}><div>${displayText}</div></div>`;
     }
   }
 

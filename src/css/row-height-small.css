@@ -79,3 +79,19 @@
 .row-height-small .quick-text-meta {
     display: none !important;
 }
+
+/* 颜色预览 */
+.row-height-small .color-preview-container {
+    gap: 6px !important;
+    padding: 2px 6px !important;
+}
+
+.row-height-small .color-preview-swatch {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.row-height-small .color-preview-value {
+    padding: 1px 4px !important;
+    font-size: 10px !important;
+}
