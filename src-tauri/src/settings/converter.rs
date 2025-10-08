@@ -35,6 +35,7 @@ impl SettingsConverter {
             "screenshot_element_detection": settings.screenshot_element_detection,
             "screenshot_magnifier_enabled": settings.screenshot_magnifier_enabled,
             "screenshot_hints_enabled": settings.screenshot_hints_enabled,
+            "screenshot_color_include_format": settings.screenshot_color_include_format,
             "previewEnabled": settings.preview_enabled,
             "previewShortcut": settings.preview_shortcut,
             "previewItemsCount": settings.preview_items_count,
@@ -165,6 +166,7 @@ impl SettingsConverter {
         update_string!(screenshot_element_detection, "screenshot_element_detection");
         update_bool!(screenshot_magnifier_enabled, "screenshot_magnifier_enabled");
         update_bool!(screenshot_hints_enabled, "screenshot_hints_enabled");
+        update_bool!(screenshot_color_include_format, "screenshot_color_include_format");
 
         // 预览窗口设置
         update_bool!(preview_enabled, "previewEnabled");

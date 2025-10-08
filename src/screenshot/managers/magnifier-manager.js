@@ -23,8 +23,24 @@ export class MagnifierManager {
         // 背景画布（用于获取像素颜色）
         this.backgroundCanvas = null;
         
+        // 设置项
+        this.includeColorFormat = true; // 默认包含格式名
+        
+        this.onColorCopiedCallback = null;
+        
         this.initMagnifier();
         this.initKeyboardEvents();
+    }
+    
+    /**
+     * 设置是否包含颜色格式名
+     */
+    setColorIncludeFormat(includeFormat) {
+        this.includeColorFormat = includeFormat !== false;
+    }
+
+    setOnColorCopied(callback) {
+        this.onColorCopiedCallback = callback;
     }
     
     /**
@@ -417,11 +433,31 @@ export class MagnifierManager {
      * 复制颜色到剪贴板
      */
     async copyColor() {
-        const color = this.getPixelColor(this.currentX, this.currentY);
+        let color = this.getPixelColor(this.currentX, this.currentY);
+        
+        // 如果设置为不包含格式名，则去除格式前缀
+        if (!this.includeColorFormat) {
+            if (color.startsWith('#')) {
+                // HEX格式：去除#号
+                color = color.substring(1);
+            } else {
+                // RGB或HSL格式：提取括号内的值
+                const match = color.match(/\((.+)\)/);
+                if (match) {
+                    color = match[1];
+                }
+            }
+        }
         
         try {
             await navigator.clipboard.writeText(color);
             this.showCopyFeedback();
+            
+            if (this.onColorCopiedCallback) {
+                setTimeout(() => {
+                    this.onColorCopiedCallback();
+                }, 300);
+            }
         } catch (err) {
             console.error('复制颜色失败:', err);
         }

@@ -54,6 +54,7 @@ const defaultSettings = {
   screenshot_element_detection: 'all',
   screenshot_magnifier_enabled: true,
   screenshot_hints_enabled: true,
+  screenshot_color_include_format: true,
   previewEnabled: true,
   previewItemsCount: 5,
   previewAutoPaste: true,
@@ -226,6 +227,7 @@ async function initializeUI() {
   setInputValue('screenshot-element-detection', settings.screenshot_element_detection || 'all');
   setInputValue('screenshot-magnifier-enabled', settings.screenshot_magnifier_enabled !== undefined ? settings.screenshot_magnifier_enabled : true);
   setInputValue('screenshot-hints-enabled', settings.screenshot_hints_enabled !== undefined ? settings.screenshot_hints_enabled : true);
+  setInputValue('screenshot-color-include-format', settings.screenshot_color_include_format !== undefined ? settings.screenshot_color_include_format : true);
 
   // AI配置
   const aiConfig = getCurrentAIConfig();
@@ -444,7 +446,7 @@ function bindBasicSettingEvents() {
     'preview-scroll-sound', 'preview-scroll-sound-path',
     'screenshot-enabled', 'screenshot-shortcut', 'screenshot-quality',
     'screenshot-auto-save', 'screenshot-show-hints', 'screenshot-element-detection',
-    'screenshot-magnifier-enabled', 'screenshot-hints-enabled',
+    'screenshot-magnifier-enabled', 'screenshot-hints-enabled', 'screenshot-color-include-format',
     'ai-target-language', 'ai-translate-on-copy', 'ai-translate-on-paste',
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'mouse-middle-button-modifier', 'clipboard-animation-enabled',

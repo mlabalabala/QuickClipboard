@@ -72,6 +72,14 @@ export class ScreenshotController {
         this.editLayerManager.setBackgroundManager(this.backgroundManager);
         this.toolManager.setEditLayerManager(this.editLayerManager);
         
+        // 应用设置到放大镜管理器
+        this.magnifierManager.setColorIncludeFormat(this.colorIncludeFormat);
+        
+        // 设置放大镜复制颜色后的回调
+        this.magnifierManager.setOnColorCopied(() => {
+            this.cancelScreenshot();
+        });
+        
         // 设置子工具栏参数变化回调
         this.subToolbarManager.onParameterChange((toolName, paramName, value) => {
             this.handleParameterChange(toolName, paramName, value);
@@ -442,10 +450,12 @@ export class ScreenshotController {
             const settings = await ScreenshotAPI.getSettings();
             this.magnifierEnabled = settings.screenshot_magnifier_enabled !== false;
             this.hintsEnabled = settings.screenshot_hints_enabled !== false;
+            this.colorIncludeFormat = settings.screenshot_color_include_format !== false;
         } catch (error) {
             console.error('加载设置失败:', error);
             this.magnifierEnabled = true;
             this.hintsEnabled = true;
+            this.colorIncludeFormat = true;
         }
     }
     
@@ -456,6 +466,12 @@ export class ScreenshotController {
         try {
             // 重新加载设置
             await this.loadSettings();
+            
+            // 应用设置到放大镜管理器
+            if (this.magnifierManager) {
+                this.magnifierManager.setColorIncludeFormat(this.colorIncludeFormat);
+            }
+            
             // 初始化背景
             if (!this.backgroundManager.canvas) {
                 this.backgroundManager.init();
