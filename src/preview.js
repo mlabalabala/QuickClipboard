@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { createFileIconElement } from './js/fileIconUtils.js';
 import { initDisableBrowserShortcuts } from './js/utils/disableBrowserShortcuts.js';
@@ -363,10 +363,10 @@ function createPreviewItem(item, index, position = 'current') {
     imgElement.className = 'preview-image';
 
     if (item.image_id) {
-      loadImageById(imgElement, item.image_id, true);
+      loadImageById(imgElement, item.image_id);
     } else if (itemText.startsWith('image:')) {
       const imageId = itemText.substring(6);
-      loadImageById(imgElement, imageId, true);
+      loadImageById(imgElement, imageId);
     } else if (itemText.startsWith('data:image/')) {
       imgElement.src = itemText;
     }
@@ -455,11 +455,11 @@ function createPreviewItem(item, index, position = 'current') {
 
 
 // 根据图片ID加载图片
-async function loadImageById(imgElement, imageId, useThumbnail = true) {
+async function loadImageById(imgElement, imageId) {
   try {
-    const command = useThumbnail ? 'get_image_thumbnail_url' : 'get_image_data_url';
-    const dataUrl = await invoke(command, { imageId });
-    imgElement.src = dataUrl;
+    const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+    const assetUrl = convertFileSrc(filePath, 'asset');
+    imgElement.src = assetUrl;
   } catch (error) {
     console.error('加载图片失败:', error);
     imgElement.alt = '图片加载失败';
