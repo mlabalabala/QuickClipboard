@@ -78,14 +78,6 @@ impl WindowService {
             .build()
             .map_err(|e| format!("创建文本编辑窗口失败: {}", e))?;
 
-            // 设置窗口圆角（Windows 11）
-            #[cfg(windows)]
-            {
-                if let Err(e) = crate::window_effects::set_window_rounded(&editor_window) {
-                    println!("设置文本编辑窗口圆角失败: {}", e);
-                }
-            }
-
             editor_window
                 .show()
                 .map_err(|e| format!("显示文本编辑窗口失败: {}", e))?;

@@ -360,11 +360,9 @@ pub fn add_clipboard_to_group(index: usize, groupName: String) -> Result<Favorit
 #[tauri::command]
 pub fn set_super_topmost(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        #[cfg(windows)]
-        {
-            crate::window_management::setup_window_properties(&window)
-                .map_err(|e| format!("设置窗口属性失败: {}", e))?;
-        }
+        window
+            .set_always_on_top(true)
+            .map_err(|e| format!("设置窗口置顶失败: {}", e))?;
         Ok(())
     } else {
         Err("找不到主窗口".to_string())

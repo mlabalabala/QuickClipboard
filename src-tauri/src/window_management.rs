@@ -70,8 +70,6 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     // Windows平台特定设置
     #[cfg(windows)]
     {
-        // 设置窗口属性：置顶 + 不抢占焦点
-        let _ = setup_window_properties(&window);
         // 启用导航按键监听
         crate::shortcut_interceptor::enable_navigation_keys();
         // 启用鼠标监听
@@ -252,53 +250,6 @@ pub fn simulate_click_on_window(window: &tauri::WebviewWindow) {
     }
 }
 
-// 统一的窗口属性设置函数
-#[cfg(windows)]
-pub fn setup_window_properties(window: &tauri::WebviewWindow) -> Result<(), String> {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, HWND_TOPMOST,
-        SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, WS_EX_NOACTIVATE,
-    };
-
-    if let Ok(hwnd_raw) = window.hwnd() {
-        let hwnd = HWND(hwnd_raw.0 as usize as isize);
-
-        unsafe {
-            // 获取当前扩展样式
-            let current_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-
-            // 添加无激活样式
-            let new_style = current_style | (WS_EX_NOACTIVATE.0 as isize);
-            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
-
-            // 设置窗口置顶且不激活
-            let _ = SetWindowPos(
-                hwnd,
-                HWND_TOPMOST,
-                0,
-                0,
-                0,
-                0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
-            );
-        }
-
-        // 禁用窗口阴影
-        disable_window_shadow(window)?;
-
-        Ok(())
-    } else {
-        Err("获取窗口句柄失败".to_string())
-    }
-}
-
-#[cfg(not(windows))]
-pub fn setup_window_properties(_window: &tauri::WebviewWindow) -> Result<(), String> {
-    // 非Windows平台暂不实现
-    Ok(())
-}
-
 // 如果主窗口是自动显示的，则隐藏它
 pub fn hide_main_window_if_auto_shown(window: &WebviewWindow) -> Result<(), String> {
     if MAIN_WINDOW_AUTO_SHOWN.load(Ordering::SeqCst) {
@@ -313,44 +264,6 @@ pub fn hide_main_window_if_auto_shown(window: &WebviewWindow) -> Result<(), Stri
     Ok(())
 }
 
-// 禁用窗口阴影
-#[cfg(windows)]
-pub fn disable_window_shadow(window: &WebviewWindow) -> Result<(), String> {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::Graphics::Dwm::{
-        DwmSetWindowAttribute, DWMWA_NCRENDERING_POLICY, DWMWA_WINDOW_CORNER_PREFERENCE,
-    };
-
-    if let Ok(hwnd_raw) = window.hwnd() {
-        let hwnd = HWND(hwnd_raw.0 as usize as isize);
-
-        unsafe {
-            // 禁用非客户区渲染（包括阴影）
-            let policy: u32 = 2; // DWMNCRP_DISABLED
-            let _ = DwmSetWindowAttribute(
-                hwnd,
-                DWMWA_NCRENDERING_POLICY,
-                &policy as *const u32 as *const std::ffi::c_void,
-                std::mem::size_of::<u32>() as u32,
-            );
-
-            // 设置窗口圆角为不圆角（这也有助于移除阴影）
-            let corner_preference: u32 = 1; // DWMWCP_DONOTROUND
-            let _ = DwmSetWindowAttribute(
-                hwnd,
-                DWMWA_WINDOW_CORNER_PREFERENCE,
-                &corner_preference as *const u32 as *const std::ffi::c_void,
-                std::mem::size_of::<u32>() as u32,
-            );
-
-            // println!("窗口阴影已禁用");
-        }
-
-        Ok(())
-    } else {
-        Err("获取窗口句柄失败".to_string())
-    }
-}
 
 // 智能窗口定位算法：计算最佳窗口位置
 #[cfg(windows)]

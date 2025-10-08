@@ -97,10 +97,6 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
             .map_err(|e| format!("显示预览窗口失败: {}", e))?;
         println!("窗口显示命令已发送");
 
-        // 设置窗口属性
-        #[cfg(windows)]
-        set_preview_window_properties(window)?;
-
         PREVIEW_WINDOW_VISIBLE.store(true, Ordering::SeqCst);
 
         // 重置索引
@@ -205,8 +201,9 @@ async fn create_preview_window(app: AppHandle) -> Result<WebviewWindow, String> 
     .always_on_top(true)
     .skip_taskbar(true)
     .focused(false)
+    .focusable(false)
     .visible(false)
-    // .shadow(false) // 禁用阴影
+    .shadow(false)
     .build()
     .map_err(|e| format!("创建预览窗口失败: {}", e))?;
 
@@ -277,31 +274,6 @@ fn position_preview_window(window: &WebviewWindow) -> Result<(), String> {
                 y: 300,
             }))
             .map_err(|e| format!("设置窗口位置失败: {}", e))?;
-    }
-
-    Ok(())
-}
-
-// 设置预览窗口属性（Windows特定）
-#[cfg(windows)]
-fn set_preview_window_properties(window: &WebviewWindow) -> Result<(), String> {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{
-        SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE,
-        WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
-    };
-
-    if let Ok(hwnd) = window.hwnd() {
-        let hwnd = HWND(hwnd.0 as isize);
-
-        unsafe {
-            // 设置扩展样式：无焦点、工具窗口、置顶
-            let ex_style = WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0 | WS_EX_TOPMOST.0;
-            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style as isize);
-
-            // 设置为最顶层
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE).ok();
-        }
     }
 
     Ok(())

@@ -29,6 +29,7 @@
         "visible": false,
         "resizable": true,
         "focus": false,
+        "focusable": false,
         "maximizable": false,
         "dragDropEnabled": false,
         "shadow": false,
@@ -53,6 +54,7 @@
         "visible": false,
         "resizable": false,
         "focus": false,
+        "focusable": false,
         "maximizable": false,
         "minimizable": false,
         "dragDropEnabled": false

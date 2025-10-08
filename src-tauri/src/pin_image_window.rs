@@ -181,6 +181,7 @@ async fn create_pin_image_window(
     .always_on_top(true)
     .skip_taskbar(true)
     .focused(false)
+    .focusable(false)
     .visible(false)
     .build()
     .map_err(|e| format!("创建贴图窗口失败: {}", e))
