@@ -326,6 +326,15 @@ unsafe extern "system" fn shortcut_hook_proc(
                 }
             }
         }
+
+        // 监听 Ctrl+V 触发粘贴音效（不拦截事件）
+        if wparam.0 as u32 == WM_KEYDOWN {
+            if vk_code == 0x56 && ctrl_pressed && !shift_pressed && !alt_pressed && !win_pressed {
+                std::thread::spawn(|| {
+                    crate::sound_manager::play_paste_sound();
+                });
+            }
+        }
     }
 
     CallNextHookEx(None, code, wparam, lparam)
