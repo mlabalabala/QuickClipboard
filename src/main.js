@@ -90,6 +90,7 @@ import { initGroups } from './js/groups.js';
 import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
 import { initToolManager } from './js/toolManager.js';
+import { initMusicPlayer } from './musicPlayer/index.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
 import { initSidebarHover } from './js/sidebarHover.js';
@@ -330,6 +331,9 @@ async function initApp() {
 
   // 初始化工具面板
   initToolsPanel();
+  
+  // 初始化音乐播放器
+  initMusicPlayer();
 
   // 初始化标题栏拖拽功能
   initTitlebarDrag();

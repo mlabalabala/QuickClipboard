@@ -4,6 +4,7 @@ mod admin_privileges;
 mod ai_config;
 mod ai_translator;
 mod app_filter;
+mod audio_scanner;
 mod clipboard_content;
 mod clipboard_history;
 mod clipboard_monitor;
@@ -490,6 +491,10 @@ pub fn run() {
             commands::paste_content,
             commands::open_file_location,
             commands::open_file_with_default_program,
+            
+            // 音频扫描
+            audio_scanner::scan_folder_for_audio,
+            audio_scanner::get_audio_metadata,
 
             app_filter::get_all_windows_info_cmd,
             commands::read_image_file,

@@ -14,6 +14,7 @@ dependencies = [
  "fastrand",
  "futures-util",
  "image",
+ "lofty",
  "once_cell",
  "parking_lot",
  "rayon",
@@ -1051,6 +1052,12 @@ name = "dasp_sample"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
+
+[[package]]
+name = "data-encoding"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "deflate64"
@@ -2755,6 +2762,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "lofty"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8bc4717ff10833a623b009e9254ae8667c7a59edc3cfb01c37aeeef4b6d54a7"
+dependencies = [
+ "byteorder",
+ "data-encoding",
+ "flate2",
+ "lofty_attr",
+ "log",
+ "ogg_pager",
+ "paste",
+]
+
+[[package]]
+name = "lofty_attr"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed9983e64b2358522f745c1251924e3ab7252d55637e80f6a0a3de642d6a9efc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3402,6 +3435,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ogg_pager"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87b0bef808533c5890ab77279538212efdbbbd9aa4ef1ccdfcfbf77a42f7e6fa"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3532,6 +3574,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.52.6",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pathdiff"

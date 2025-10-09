@@ -4,6 +4,7 @@ import { setPasteWithFormat, getPasteWithFormat, setIsPinned, isPinned, setIsOne
 import { openSettingsWindow } from './window.js';
 import { startScreenshot } from './screenshot.js';
 import { toggleAiTranslation, updateAllAiTranslationButtons } from './aiTranslation.js';
+import { toggleMusicPlayer, getMusicPlayerState, setMusicPlayerState } from '../musicPlayer/index.js';
 
 // 工具注册表 - 单一数据源
 const TOOL_REGISTRY = {
@@ -63,6 +64,16 @@ const TOOL_REGISTRY = {
     getState: getPasteWithFormat,
     setState: setPasteWithFormat,
     defaultActive: true  // 默认开启格式粘贴
+  },
+  'music-player-button': {
+    id: 'music-player-button',
+    icon: 'ti ti-music',
+    title: '音乐播放器',
+    type: 'toggle',
+    defaultLocation: 'panel',
+    action: 'toggleMusicPlayer',
+    getState: getMusicPlayerState,
+    setState: setMusicPlayerState
   }
 };
 
@@ -139,6 +150,14 @@ const TOOL_ACTIONS = {
       }));
     } catch (error) {
       console.error('保存格式设置失败:', error);
+    }
+  },
+  
+  toggleMusicPlayer: (toolId) => {
+    toggleMusicPlayer();
+    const tool = TOOL_REGISTRY[toolId];
+    if (tool && tool.getState) {
+      updateToolState(toolId, tool.getState());
     }
   }
 };
