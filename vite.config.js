@@ -37,6 +37,9 @@ export default defineConfig({
         settings: resolve(__dirname, 'src/settings/index.html'),
         preview: resolve(__dirname, 'src/preview.html'),
         textEditor: resolve(__dirname, 'src/textEditor.html'),
+        screenshot: resolve(__dirname, 'src/screenshot/index.html'),
+        pinImage: resolve(__dirname, 'src/pinImage/pinImage.html'),
+        contextMenu: resolve(__dirname, 'src/plugins/context_menu/contextMenu.html'),
         inputDialog: resolve(__dirname, 'src/plugins/input_dialog/inputDialog.html'),
       },
       output: {
