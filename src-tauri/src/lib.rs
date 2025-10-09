@@ -134,6 +134,15 @@ pub fn run() {
             "toggle" => {
                 let _ = commands::toggle_window_visibility(app.app_handle().clone());
             }
+            "screenshot" => {
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(280)).await;
+                    if let Err(e) = crate::commands::start_builtin_screenshot(app_handle) {
+                        eprintln!("启动截屏失败: {}", e);
+                    }
+                });
+            }
             "settings" => {
                 let app_handle = app.app_handle().clone();
                 tauri::async_runtime::spawn(async move {
@@ -239,7 +248,6 @@ pub fn run() {
             match groups::init_groups() {
                 Ok(_) => {}
                 Err(_e) => {
-                    // 不要因为分组系统失败而阻止应用启动
                 }
             }
 
@@ -273,7 +281,6 @@ pub fn run() {
             }
 
             // 加载并应用设置
-            // println!("正在加载应用设置...");
             let app_settings = settings::get_global_settings();
 
             // 检查管理员运行设置
@@ -281,9 +288,7 @@ pub fn run() {
                 println!("设置要求以管理员权限运行，但当前不是管理员权限，正在重启...");
                 if let Err(e) = admin_privileges::restart_as_admin() {
                     println!("以管理员权限重启失败: {}", e);
-                    // 继续运行，但可能某些功能受限
                 } else {
-                    // 重启成功，当前进程会退出
                     return Ok(());
                 }
             }
@@ -367,7 +372,7 @@ pub fn run() {
                 // 启动按键监控系统（仅 Windows）
                 #[cfg(windows)]
                 {
-                    // 启动新的按键状态监控系统
+                    // 按键状态监控系统
                     key_state_monitor::start_keyboard_polling_system();
                     // 安装鼠标钩子（用于全局鼠标中键监听）
                     mouse_hook::install_mouse_hook();

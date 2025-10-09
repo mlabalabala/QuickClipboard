@@ -18,6 +18,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let toggle_item = MenuItem::with_id(app, "toggle", "显示/隐藏", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
+    let screenshot_item = MenuItem::with_id(app, "screenshot", "截屏", true, None::<&str>)?;
     // 根据当前状态设置切换项的初始文本
     let any_hotkeys_enabled = {
         let hook = crate::shortcut_interceptor::is_interception_enabled();
@@ -60,6 +61,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             &toggle_item,
             &separator,
             &settings_item,
+            &screenshot_item,
             &separator2,
             &toggle_hotkeys_item,
             &toggle_monitor_item,
