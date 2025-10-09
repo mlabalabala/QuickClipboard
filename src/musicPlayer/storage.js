@@ -1,4 +1,4 @@
-// 音乐播放器状态持久化
+// 音频播放器状态持久化
 import { STORAGE_KEY } from './constants.js';
 import { playerState, updateState } from './state.js';
 
@@ -12,7 +12,8 @@ export function savePlayerState() {
       volume: playerState.volume,
       repeatMode: playerState.repeatMode,
       playMode: playerState.playMode,
-      currentList: playerState.currentList
+      currentList: playerState.currentList,
+      selectedList: playerState.selectedList
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
@@ -33,7 +34,8 @@ export function restorePlayerState() {
         volume: state.volume !== undefined ? state.volume : 0.7,
         repeatMode: state.repeatMode || 'none',
         playMode: state.playMode || 'sequence',
-        currentList: state.currentList || 'clipboard'
+        currentList: state.currentList || 'clipboard',
+        selectedList: state.selectedList || state.currentList || 'clipboard'
       });
       return true;
     }

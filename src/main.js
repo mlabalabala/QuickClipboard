@@ -332,7 +332,7 @@ async function initApp() {
   // 初始化工具面板
   initToolsPanel();
   
-  // 初始化音乐播放器
+  // 初始化音频播放器
   initMusicPlayer();
 
   // 初始化标题栏拖拽功能

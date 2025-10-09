@@ -1,4 +1,4 @@
-// 音乐播放器常量定义
+// 音频播放器常量定义
 
 // 支持的音频文件扩展名
 export const AUDIO_EXTENSIONS = [
@@ -42,7 +42,8 @@ export const DEFAULT_CONFIG = {
   volume: 0.7,
   repeatMode: REPEAT_MODES.NONE,
   playMode: PLAY_MODES.SEQUENCE,
-  currentList: LIST_TYPES.CLIPBOARD
+  currentList: LIST_TYPES.CLIPBOARD,
+  selectedList: LIST_TYPES.CLIPBOARD
 };
 
 

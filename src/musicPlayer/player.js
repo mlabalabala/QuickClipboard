@@ -1,4 +1,4 @@
-// 音乐播放器控制模块
+// 音频播放器控制模块
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { playerState, setState } from './state.js';
 import { REPEAT_MODES, PLAY_MODES } from './constants.js';
@@ -22,6 +22,14 @@ export function playAudioByIndex(index, addToHistory = true) {
   
   setState('currentIndex', index);
   const audioFile = playerState.audioFiles[index];
+
+  if (audioFile?.fileMissing) {
+    import('./index.js').then(({ showNotification, refreshAudioList }) => {
+      showNotification('文件不存在，无法播放', 'warning');
+      refreshAudioList();
+    });
+    return;
+  }
   
   // 添加到播放历史
   if (addToHistory && playerState.playMode === PLAY_MODES.RANDOM) {
@@ -88,22 +96,20 @@ export function playPrevious() {
   if (playerState.audioFiles.length === 0) return;
   
   if (playerState.playMode === PLAY_MODES.RANDOM) {
-    if (playerState.playHistory.length > 1) {
-      playerState.playHistory.pop(); // 移除当前
-      const prevIndex = playerState.playHistory[playerState.playHistory.length - 1];
-      playAudioByIndex(prevIndex, false); // 不记录历史
-    } else {
-      // 没有历史，随机播放一首
-      const randomIndex = getRandomIndex();
+    const previousIndex = getPreviousFromHistory();
+    if (previousIndex !== null) {
+      playAudioByIndex(previousIndex, false);
+      return;
+    }
+    const randomIndex = getNextValidRandomIndex();
+    if (randomIndex !== null) {
       playAudioByIndex(randomIndex);
     }
   } else {
-    // 顺序模式
-    let newIndex = playerState.currentIndex - 1;
-    if (newIndex < 0) {
-      newIndex = playerState.audioFiles.length - 1;
+    const prevIndex = getNextValidSequentialIndex(-1);
+    if (prevIndex !== null) {
+      playAudioByIndex(prevIndex);
     }
-    playAudioByIndex(newIndex);
   }
 }
 
@@ -114,16 +120,15 @@ export function playNext() {
   if (playerState.audioFiles.length === 0) return;
   
   if (playerState.playMode === PLAY_MODES.RANDOM) {
-    // 随机模式：播放随机曲目
-    const randomIndex = getRandomIndex();
-    playAudioByIndex(randomIndex);
-  } else {
-    // 顺序模式
-    let newIndex = playerState.currentIndex + 1;
-    if (newIndex >= playerState.audioFiles.length) {
-      newIndex = 0;
+    const randomIndex = getNextValidRandomIndex();
+    if (randomIndex !== null) {
+      playAudioByIndex(randomIndex);
     }
-    playAudioByIndex(newIndex);
+  } else {
+    const nextIndex = getNextValidSequentialIndex(1);
+    if (nextIndex !== null) {
+      playAudioByIndex(nextIndex);
+    }
   }
 }
 
@@ -141,6 +146,64 @@ function getRandomIndex() {
   } while (randomIndex === playerState.currentIndex);
   
   return randomIndex;
+}
+
+function getNextValidSequentialIndex(direction = 1) {
+  const list = playerState.audioFiles;
+  const length = list.length;
+
+  if (length === 0) return null;
+
+  let attempts = 0;
+  let index = playerState.currentIndex;
+
+  do {
+    index = (index + direction + length) % length;
+    attempts++;
+    const audio = list[index];
+    if (!audio?.fileMissing) {
+      return index;
+    }
+  } while (attempts < length && index !== playerState.currentIndex);
+
+  return null;
+}
+
+function getNextValidRandomIndex() {
+  const available = playerState.audioFiles
+    .map((audio, idx) => ({ audio, idx }))
+    .filter(({ audio }) => !audio?.fileMissing);
+
+  if (available.length === 0) {
+    import('./index.js').then(({ showNotification }) => {
+      showNotification('没有可播放的音频文件', 'warning');
+    });
+    return null;
+  }
+
+  if (available.length === 1) {
+    return available[0].idx;
+  }
+
+  let randomIndex;
+  const currentIndex = playerState.currentIndex;
+  do {
+    randomIndex = available[Math.floor(Math.random() * available.length)].idx;
+  } while (randomIndex === currentIndex && available.length > 1);
+
+  return randomIndex;
+}
+
+function getPreviousFromHistory() {
+  if (playerState.playHistory.length > 1) {
+    playerState.playHistory.pop();
+    const prevIndex = playerState.playHistory[playerState.playHistory.length - 1];
+    if (playerState.audioFiles[prevIndex]?.fileMissing) {
+      return getNextValidSequentialIndex(-1);
+    }
+    return prevIndex;
+  }
+  return null;
 }
 
 /**
@@ -276,8 +339,15 @@ export function handleMetadataLoaded() {
  * 音频错误处理
  */
 export function handleAudioError(e) {
-  import('./index.js').then(({ showNotification }) => {
-    showNotification('音频加载失败', 'error');
+  const currentAudio = playerState.audioFiles[playerState.currentIndex];
+
+  if (currentAudio) {
+    currentAudio.fileMissing = true;
+  }
+
+  import('./index.js').then(({ showNotification, refreshAudioList }) => {
+    showNotification('音频加载失败，源文件可能已被删除', 'error');
+    refreshAudioList();
   });
   
   // 尝试播放下一首

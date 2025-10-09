@@ -1,7 +1,8 @@
-// 音乐播放器事件处理
+// 音频播放器事件处理
 import { playerState, setState } from './state.js';
 import { LIST_TYPES } from './constants.js';
-import { musicPanel, titleIcon, hidePanel, showPanel } from './ui.js';
+import { invoke } from '@tauri-apps/api/core';
+import { musicPanel, titleIcon, hidePanel, showPanel, highlightSelectedList, updateMusicItemFileStatus } from './ui.js';
 import { 
   togglePlayPause, 
   playPrevious, 
@@ -176,21 +177,39 @@ function togglePanel() {
  * 切换音乐标签页
  */
 function switchMusicTab(tab) {
-  setState('currentList', tab);
-  
-  // 更新标签按钮状态
-  const tabButtons = musicPanel.querySelectorAll('.music-tab-btn');
-  tabButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
-  });
-  
-  // 更新列表容器显示
-  const listContainers = musicPanel.querySelectorAll('.music-list-container');
-  listContainers.forEach(container => {
-    container.classList.toggle('active', container.getAttribute('data-list') === tab);
-  });
-  
+  setState('selectedList', tab);
+  highlightSelectedList(tab);
   refreshAudioList();
+}
+
+async function prepareListForPlayback(listType) {
+  if (!listType) {
+    return playerState.audioFiles;
+  }
+  
+  if (playerState.currentList === listType && playerState.audioFiles.length > 0) {
+    return playerState.audioFiles;
+  }
+  
+  setState('currentList', listType);
+  setState('selectedList', listType);
+  
+  const { extractAudioFiles } = await import('./audioExtractor.js');
+  const { scanFoldersForAudio } = await import('./folderManager.js');
+  const { clipboardHistory, quickTexts } = await import('../js/config.js');
+  const { LIST_TYPES } = await import('./constants.js');
+  
+  let currentFiles = [];
+  if (listType === LIST_TYPES.CLIPBOARD) {
+    currentFiles = extractAudioFiles(clipboardHistory);
+  } else if (listType === LIST_TYPES.QUICK_TEXTS) {
+    currentFiles = extractAudioFiles(quickTexts);
+  } else if (listType === LIST_TYPES.CUSTOM_FOLDER) {
+    currentFiles = await scanFoldersForAudio();
+  }
+  
+  setState('audioFiles', currentFiles);
+  return currentFiles;
 }
 
 /**
@@ -235,14 +254,45 @@ function handleProgressClick(e) {
 /**
  * 处理音乐项点击
  */
-export function handleMusicItemClick(index) {
+export async function handleMusicItemClick(index, listType, isMissing = false) {
+  if (isMissing) {
+    import('./index.js').then(({ showNotification }) => {
+      showNotification('文件不存在，无法播放', 'warning');
+    });
+    return;
+  }
+
+  if (listType && playerState.currentList !== listType) {
+    await prepareListForPlayback(listType);
+  }
+
+  const container = musicPanel.querySelector(`.music-list-container[data-list="${listType}"]`);
+  const itemElement = container?.querySelector(`.music-item[data-index="${index}"]`);
+
+  if (itemElement) {
+    const exists = await updateMusicItemFileStatus(itemElement);
+    if (!exists) {
+      import('./index.js').then(({ showNotification }) => {
+        showNotification('文件不存在，无法播放', 'warning');
+      });
+      return;
+    }
+  }
+
   playAudioByIndex(index);
 }
 
 /**
  * 处理播放按钮点击
  */
-export async function handlePlayButtonClick(index, listType) {
+export async function handlePlayButtonClick(index, listType, isMissing = false) {
+  if (isMissing) {
+    import('./index.js').then(({ showNotification }) => {
+      showNotification('文件不存在，无法播放', 'warning');
+    });
+    return;
+  }
+
   // 如果点击的是当前播放的歌曲，切换播放/暂停
   if (playerState.currentList === listType && playerState.currentIndex === index) {
     togglePlayPause();
@@ -251,27 +301,21 @@ export async function handlePlayButtonClick(index, listType) {
   
   // 如果不是当前列表，先切换列表并等待完成
   if (playerState.currentList !== listType) {
-    setState('currentList', listType);
-    
-    // 立即更新当前列表的音频文件
-    const { extractAudioFiles } = await import('./audioExtractor.js');
-    const { scanFoldersForAudio } = await import('./folderManager.js');
-    const { clipboardHistory, quickTexts } = await import('../js/config.js');
-    const { LIST_TYPES } = await import('./constants.js');
-    
-    let currentFiles = [];
-    if (listType === LIST_TYPES.CLIPBOARD) {
-      currentFiles = extractAudioFiles(clipboardHistory);
-    } else if (listType === LIST_TYPES.QUICK_TEXTS) {
-      currentFiles = extractAudioFiles(quickTexts);
-    } else if (listType === LIST_TYPES.CUSTOM_FOLDER) {
-      currentFiles = await scanFoldersForAudio();
-    }
-    
-    setState('audioFiles', currentFiles);
-    
-    // 更新UI显示（但不重新渲染列表）
+    await prepareListForPlayback(listType);
     switchMusicTab(listType);
+  }
+
+  const container = musicPanel.querySelector(`.music-list-container[data-list="${listType}"]`);
+  const itemElement = container?.querySelector(`.music-item[data-index="${index}"]`);
+
+  if (itemElement) {
+    const exists = await updateMusicItemFileStatus(itemElement);
+    if (!exists) {
+      import('./index.js').then(({ showNotification }) => {
+        showNotification('文件不存在，无法播放', 'warning');
+      });
+      return;
+    }
   }
   
   // 然后播放指定歌曲

@@ -1,6 +1,6 @@
-/* 音乐播放器样式 */
+/* 音频播放器样式 */
 
-/* 标题栏图标集成音乐播放器 */
+/* 标题栏图标集成音频播放器 */
 .title-bar .title {
   position: relative;
   display: flex;
@@ -79,7 +79,7 @@
   border-color: #764ba2;
 }
 
-/* 音乐播放中状态 */
+/* 音频播放中状态 */
 .music-icon-wrapper.is-playing {
   animation: musicIconPulse 1.5s ease-in-out infinite;
 }
@@ -540,6 +540,19 @@
   background: #667eea;
   color: white;
   transform: scale(1.1);
+}
+
+.music-item.file-missing .music-item-icon {
+  background: linear-gradient(135deg, #ff7676 0%, #ffa3a3 100%);
+}
+
+.music-item.file-missing .music-item-artist {
+  color: #ff7676;
+}
+
+.music-item.file-missing .music-item-play {
+  background: rgba(255, 118, 118, 0.2);
+  color: #ff7676;
 }
 
 /* 播放器控制区域 */

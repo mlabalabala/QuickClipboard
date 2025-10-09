@@ -1,4 +1,4 @@
-// 音乐播放器状态管理
+// 音频播放器状态管理
 import { DEFAULT_CONFIG } from './constants.js';
 
 // 播放器状态
@@ -7,6 +7,7 @@ export const playerState = {
   isPlaying: false,
   currentIndex: -1,
   currentList: DEFAULT_CONFIG.currentList,
+  selectedList: DEFAULT_CONFIG.selectedList,
   volume: DEFAULT_CONFIG.volume,
   isPanelExpanded: false,
   audioFiles: [],
@@ -37,6 +38,8 @@ export function resetState() {
     ...DEFAULT_CONFIG,
     isPlaying: false,
     currentIndex: -1,
+    currentList: DEFAULT_CONFIG.currentList,
+    selectedList: DEFAULT_CONFIG.selectedList,
     isPanelExpanded: false,
     audioFiles: [],
     playHistory: [],

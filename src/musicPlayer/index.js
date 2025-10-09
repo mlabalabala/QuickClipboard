@@ -1,4 +1,4 @@
-// 音乐播放器主入口文件
+// 音频播放器主入口文件
 import { clipboardHistory, quickTexts } from '../js/config.js';
 import { showNotification as notify } from '../js/notificationManager.js';
 import { playerState, setState } from './state.js';
@@ -17,6 +17,8 @@ import {
   renderAudioList,
   updateRepeatButton,
   updatePlayModeButton,
+  highlightMissingFiles,
+  highlightSelectedList,
   audioElement
 } from './ui.js';
 import { bindAudioEvents } from './player.js';
@@ -25,7 +27,7 @@ import { setupEventListeners, handleMusicItemClick, handlePlayButtonClick } from
 export const showNotification = notify;
 
 /**
- * 初始化音乐播放器
+ * 初始化音频播放器
  */
 export function initMusicPlayer() {
   // 创建UI元素
@@ -114,16 +116,23 @@ export async function refreshAudioList() {
   
   // 更新当前音频文件列表
   let currentFiles = [];
-  if (playerState.currentList === LIST_TYPES.CLIPBOARD) {
+  const playbackList = playerState.currentList || LIST_TYPES.CLIPBOARD;
+
+  if (playbackList === LIST_TYPES.CLIPBOARD) {
     currentFiles = clipboardAudioFiles;
-  } else if (playerState.currentList === LIST_TYPES.QUICK_TEXTS) {
+  } else if (playbackList === LIST_TYPES.QUICK_TEXTS) {
     currentFiles = quickTextsAudioFiles;
   } else {
     currentFiles = customFolderAudioFiles;
   }
   
   setState('audioFiles', currentFiles);
+
+  const selectedList = playerState.selectedList || playbackList;
+  highlightSelectedList(selectedList);
   
+  highlightMissingFiles();
+
   // 异步预加载元数据
   if (currentFiles.length > 0) {
     const filePaths = currentFiles.map(f => f.filePath);
@@ -187,7 +196,7 @@ function escapeHtml(text) {
 }
 
 /**
- * 切换音乐播放器开关
+ * 切换音频播放器开关
  */
 export function toggleMusicPlayer() {
   setState('enabled', !playerState.enabled);
@@ -195,7 +204,7 @@ export function toggleMusicPlayer() {
   if (playerState.enabled) {
     enableMusicIcon();
     refreshAudioList();
-    showNotification('音乐播放器已开启，点击左上角图标打开', 'success');
+    showNotification('音频播放器已开启，点击左上角图标打开', 'success');
   } else {
     disableMusicIcon();
     
@@ -204,7 +213,7 @@ export function toggleMusicPlayer() {
       audioElement.pause();
     }
     
-    showNotification('音乐播放器已关闭', 'info');
+    showNotification('音频播放器已关闭', 'info');
   }
   
   savePlayerState();

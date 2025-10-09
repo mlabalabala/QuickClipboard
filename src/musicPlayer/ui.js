@@ -1,4 +1,5 @@
-// 音乐播放器 UI 管理
+// 音频播放器 UI 管理
+import { invoke } from '@tauri-apps/api/core';
 import { playerState } from './state.js';
 import { escapeHtml } from './audioExtractor.js';
 
@@ -187,7 +188,7 @@ export function createMusicPanel() {
 }
 
 /**
- * 启用/禁用音乐播放器图标
+ * 启用/禁用音频播放器图标
  */
 export function enableMusicIcon() {
   if (!titleIcon) return;
@@ -202,7 +203,7 @@ export function enableMusicIcon() {
     
     // 添加状态类
     titleIcon.classList.add('music-enabled');
-    musicWrapper.title = '音乐播放器（点击打开）';
+    musicWrapper.title = '音频播放器（点击打开）';
     
     // 检查当前是否有播放的音乐，如果有则加载封面
     if (playerState.currentIndex >= 0 && playerState.audioFiles.length > 0) {
@@ -305,6 +306,90 @@ export function updateTabCount(tab, count) {
   }
 }
 
+export function highlightSelectedList(selectedList) {
+  if (!musicPanel || !selectedList) return;
+
+  const tabButtons = musicPanel.querySelectorAll('.music-tab-btn');
+  tabButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === selectedList);
+  });
+
+  const listContainers = musicPanel.querySelectorAll('.music-list-container');
+  listContainers.forEach(container => {
+    container.classList.toggle('active', container.getAttribute('data-list') === selectedList);
+  });
+}
+
+export function highlightMissingFiles() {
+  if (!musicPanel) return;
+
+  const items = musicPanel.querySelectorAll('.music-item');
+  if (items.length === 0) return;
+
+  items.forEach(item => {
+    const audioIndex = Number(item.getAttribute('data-index'));
+    const audioList = playerState.audioFiles;
+    const isMissing = audioIndex >= 0 && audioList[audioIndex]?.fileMissing;
+    applyMissingStyles(item, Boolean(isMissing));
+  });
+}
+
+export async function updateMusicItemFileStatus(item) {
+  const filePath = item.getAttribute('data-file-path');
+  if (!filePath) {
+    applyMissingStyles(item, false);
+    return true;
+  }
+
+  let exists = true;
+  try {
+    exists = await invoke('file_exists', { path: filePath });
+  } catch (error) {
+    // 调用失败时，保守地认为存在以避免误报
+    exists = true;
+  }
+
+  applyMissingStyles(item, !exists);
+  return exists;
+}
+
+function applyMissingStyles(item, isMissing) {
+  item.classList.toggle('file-missing', isMissing);
+  item.setAttribute('data-file-missing', isMissing ? 'true' : 'false');
+
+  const artistElement = item.querySelector('.music-item-artist');
+  if (artistElement) {
+    if (isMissing) {
+      artistElement.textContent = '文件不存在';
+    } else if (artistElement.textContent === '文件不存在' || !artistElement.textContent) {
+      artistElement.textContent = '加载中...';
+    }
+  }
+
+  const playButton = item.querySelector('.music-item-play');
+  const icon = playButton?.querySelector('i');
+
+  if (playButton) {
+    playButton.title = isMissing ? '文件不存在' : '播放';
+    playButton.disabled = isMissing;
+  }
+
+  if (icon) {
+    if (isMissing) {
+      icon.className = 'ti ti-alert-triangle';
+    } else {
+      const isActive = item.classList.contains('active');
+      icon.className = `ti ${isActive && playerState.isPlaying ? 'ti-player-pause' : 'ti-player-play'}`;
+    }
+  }
+
+  const listType = item.getAttribute('data-list');
+  const index = Number(item.getAttribute('data-index'));
+  if (!Number.isNaN(index) && listType === playerState.currentList && playerState.audioFiles[index]) {
+    playerState.audioFiles[index].fileMissing = isMissing;
+  }
+}
+
 /**
  * 渲染音频列表
  */
@@ -324,20 +409,26 @@ export function renderAudioList(listType, audioFiles, onItemClick, onPlayClick) 
   emptyMessage.style.display = 'none';
   
   const html = audioFiles.map((audio, index) => {
-    const isActive = playerState.currentList === listType && 
+    const isActive = playerState.currentList === listType &&
                      playerState.currentIndex === index;
+    const isMissing = Boolean(audio.fileMissing);
+    const title = escapeHtml(audio.fileName);
+    const artistText = isMissing ? '文件不存在' : '加载中...';
+    const playTitle = isMissing ? '文件不存在' : '播放';
+    const iconClass = isMissing ? 'ti ti-alert-triangle' : `ti ${isActive && playerState.isPlaying ? 'ti-player-pause' : 'ti-player-play'}`;
+    const disabledAttr = isMissing ? 'disabled' : '';
     
     return `
-      <div class="music-item ${isActive ? 'active' : ''}" data-index="${index}" data-file-path="${escapeHtml(audio.filePath)}">
+      <div class="music-item ${isActive ? 'active' : ''} ${isMissing ? 'file-missing' : ''}" data-index="${index}" data-file-path="${escapeHtml(audio.filePath)}" data-file-missing="${isMissing ? 'true' : 'false'}" data-list="${listType}">
         <div class="music-item-icon">
           <i class="ti ti-music"></i>
         </div>
         <div class="music-item-info">
-          <div class="music-item-title">${escapeHtml(audio.fileName)}</div>
-          <div class="music-item-artist">加载中...</div>
+          <div class="music-item-title">${title}</div>
+          <div class="music-item-artist">${artistText}</div>
         </div>
-        <button class="music-item-play" title="播放">
-          <i class="ti ${isActive && playerState.isPlaying ? 'ti-player-pause' : 'ti-player-play'}"></i>
+        <button class="music-item-play" title="${playTitle}" ${disabledAttr}>
+          <i class="${iconClass}"></i>
         </button>
       </div>
     `;
@@ -348,16 +439,20 @@ export function renderAudioList(listType, audioFiles, onItemClick, onPlayClick) 
   // 绑定事件
   const musicItems = musicList.querySelectorAll('.music-item');
   musicItems.forEach((item, index) => {
+    updateMusicItemFileStatus(item);
+    
     item.addEventListener('click', (e) => {
       if (!e.target.closest('.music-item-play')) {
-        onItemClick(index);
+        const isMissing = item.getAttribute('data-file-missing') === 'true';
+        onItemClick(index, listType, isMissing);
       }
     });
     
     const playBtn = item.querySelector('.music-item-play');
     playBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      onPlayClick(index, listType);
+      const isMissing = item.getAttribute('data-file-missing') === 'true';
+      onPlayClick(index, listType, isMissing);
     });
   });
   

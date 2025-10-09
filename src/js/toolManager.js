@@ -68,7 +68,7 @@ const TOOL_REGISTRY = {
   'music-player-button': {
     id: 'music-player-button',
     icon: 'ti ti-music',
-    title: '音乐播放器',
+    title: '音频播放器',
     type: 'toggle',
     defaultLocation: 'panel',
     action: 'toggleMusicPlayer',
