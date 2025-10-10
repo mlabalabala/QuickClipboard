@@ -290,6 +290,67 @@ export class SubToolbarManager {
                 }
             },
             
+            // 马赛克工具参数
+            mosaic: {
+                _skipCommonParams: true,
+                drawMode: {
+                    type: 'select',
+                    label: '绘制模式',
+                    default: 'brush',
+                    options: [
+                        { value: 'brush', label: '画笔', icon: 'ti ti-brush' },
+                        { value: 'area', label: '区域', icon: 'ti ti-square' }
+                    ],
+                    icon: 'ti ti-brush'
+                },
+                effectType: {
+                    type: 'select',
+                    label: '图形模式',
+                    default: 'mosaic',
+                    options: [
+                        { value: 'mosaic', label: '马赛克', icon: 'ti ti-grid-dots' },
+                        { value: 'blur', label: '模糊', icon: 'ti ti-blur' }
+                    ],
+                    icon: 'ti ti-grid-dots'
+                },
+                brushSize: {
+                    type: 'slider',
+                    label: '画笔大小',
+                    default: 30,
+                    min: 10,
+                    max: 100,
+                    step: 5,
+                    unit: 'px',
+                    icon: 'ti ti-circle',
+                    dependsOn: 'drawMode',
+                    dependsValue: 'brush'
+                },
+                mosaicSize: {
+                    type: 'slider',
+                    label: '马赛克大小',
+                    default: 10,
+                    min: 3,
+                    max: 30,
+                    step: 1,
+                    unit: 'px',
+                    icon: 'ti ti-box',
+                    dependsOn: 'effectType',
+                    dependsValue: 'mosaic'
+                },
+                blurRadius: {
+                    type: 'slider',
+                    label: '模糊半径',
+                    default: 10,
+                    min: 1,
+                    max: 30,
+                    step: 1,
+                    unit: 'px',
+                    icon: 'ti ti-blur',
+                    dependsOn: 'effectType',
+                    dependsValue: 'blur'
+                }
+            },
+            
             // OCR工具（特殊配置：只有操作按钮，没有参数）
             ocr: {
                 _actions: true,  // 标记这是操作按钮工具
@@ -398,16 +459,22 @@ export class SubToolbarManager {
         // 检查是否是纯操作按钮工具（如 OCR）
         const isActionsOnly = toolConfig._actions === true;
         
-        // 如果不是纯操作工具，则合并公共参数
+        // 检查是否跳过公共参数
+        const skipCommonParams = toolConfig._skipCommonParams === true;
+        
+        // 构建配置对象，排除特殊标记
         let allConfig;
         if (isActionsOnly) {
             // 只使用工具特定参数，排除 _actions 标记
             const { _actions, ...restConfig } = toolConfig;
             allConfig = restConfig;
+        } else if (skipCommonParams) {
+            const { _skipCommonParams, ...restConfig } = toolConfig;
+            allConfig = restConfig;
         } else {
-            // 合并公共参数和工具特定参数
             const commonConfig = this.toolConfigs.common || {};
-            allConfig = { ...commonConfig, ...toolConfig };
+            const { _actions, _skipCommonParams, ...restConfig } = toolConfig;
+            allConfig = { ...commonConfig, ...restConfig };
         }
         
         // 清空现有内容
@@ -430,10 +497,18 @@ export class SubToolbarManager {
         // 检查依赖条件
         if (config.dependsOn) {
             const dependValue = this.getParameter(toolName, config.dependsOn);
-            if (!dependValue) {
-                wrapper.style.display = 'none';
+            if (config.dependsValue !== undefined) {
+                if (dependValue !== config.dependsValue) {
+                    wrapper.style.display = 'none';
+                }
+                wrapper.dataset.dependsOn = config.dependsOn;
+                wrapper.dataset.dependsValue = config.dependsValue;
+            } else {
+                if (!dependValue) {
+                    wrapper.style.display = 'none';
+                }
+                wrapper.dataset.dependsOn = config.dependsOn;
             }
-            wrapper.dataset.dependsOn = config.dependsOn;
         }
         
         // 根据参数类型创建不同的控件
@@ -1124,10 +1199,19 @@ export class SubToolbarManager {
         const paramValue = this.getParameter(toolName, changedParam);
         
         dependentItems.forEach(item => {
-            if (paramValue) {
-                item.style.display = '';
+            const dependsValue = item.dataset.dependsValue;
+            if (dependsValue !== undefined) {
+                if (paramValue === dependsValue) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
             } else {
-                item.style.display = 'none';
+                if (paramValue) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
             }
         });
     }
