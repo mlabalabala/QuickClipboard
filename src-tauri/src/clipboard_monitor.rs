@@ -6,7 +6,7 @@ use std::sync::{
 };
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 use crate::clipboard_content::image_to_data_url;
 use crate::clipboard_history;
@@ -29,8 +29,7 @@ static MONITOR_RUNNING: AtomicBool = AtomicBool::new(false);
 static LAST_CLIPBOARD_CONTENT: Lazy<Arc<Mutex<String>>> =
     Lazy::new(|| Arc::new(Mutex::new(String::new())));
 
-// 粘贴状态计数器 - 用于区分真正的复制和粘贴过程中的剪贴板设置
-// 使用计数器而不是布尔值，避免并发粘贴操作的竞态条件
+// 粘贴状态计数器
 static PASTING_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 // 上次忽略的缓存文件路径 - 避免重复检测相同的缓存文件
@@ -53,17 +52,15 @@ fn try_get_windows_clipboard_image() -> Option<arboard::ImageData<'static>> {
 
         // 尝试多种图片格式
         let formats_to_try = [
-            // PNG格式
             RegisterClipboardFormatW(w!("PNG")),
-            // DIB格式 (Device Independent Bitmap)
-            8u32, // CF_DIB
-            // Bitmap格式
-            2u32, // CF_BITMAP
+
+            8u32,
+            2u32,
         ];
 
         for &format in &formats_to_try {
             if format == 0 {
-                continue; // 跳过注册失败的格式
+                continue;
             }
 
             if IsClipboardFormatAvailable(format).is_ok() {
@@ -103,11 +100,11 @@ fn process_clipboard_format(
         let data_slice = std::slice::from_raw_parts(ptr as *const u8, size);
 
         let result = match format {
-            // PNG格式
+
             format if format == RegisterClipboardFormatW(w!("PNG")) => process_png_data(data_slice),
-            // DIB格式
+
             8 => process_dib_data(data_slice),
-            // 其他格式暂时跳过
+
             _ => None,
         };
 
@@ -145,14 +142,13 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
     use std::borrow::Cow;
 
     if data.len() < 40 {
-        return None; // DIB头至少40字节
+        return None; 
     }
 
-    // 解析BITMAPINFOHEADER
     let width = i32::from_le_bytes([data[4], data[5], data[6], data[7]]) as u32;
     let height_raw = i32::from_le_bytes([data[8], data[9], data[10], data[11]]);
     let height = height_raw.abs() as u32;
-    let is_bottom_up = height_raw > 0; // 正数表示bottom-up，负数表示top-down
+    let is_bottom_up = height_raw > 0;
     let bit_count = u16::from_le_bytes([data[14], data[15]]);
 
     if bit_count != 32 && bit_count != 24 {
@@ -193,10 +189,8 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
     for y in 0..height {
         // 根据DIB格式确定实际的行索引
         let actual_y = if is_bottom_up {
-            // bottom-up: 第0行对应DIB数据的最后一行
             height - 1 - y
         } else {
-            // top-down: 第0行对应DIB数据的第一行
             y
         };
 
@@ -219,15 +213,13 @@ fn process_dib_data(data: &[u8]) -> Option<arboard::ImageData<'static>> {
                         let b = pixel_data[pixel_start];
                         let g = pixel_data[pixel_start + 1];
                         let r = pixel_data[pixel_start + 2];
-                        rgba_data.extend_from_slice(&[r, g, b, 255]); // 完全不透明
+                        rgba_data.extend_from_slice(&[r, g, b, 255]);
                     }
                     _ => {
-                        // 不支持的格式，使用白色像素
                         rgba_data.extend_from_slice(&[255, 255, 255, 255]);
                     }
                 }
             } else {
-                // 数据不足，使用白色像素
                 rgba_data.extend_from_slice(&[255, 255, 255, 255]);
             }
         }
@@ -282,18 +274,15 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
             continue;
         }
 
-        // 尝试获取剪贴板内容
         let current_content = get_clipboard_content(&mut clipboard);
 
         if let Some((content, html_content)) = current_content {
             // 检查内容是否发生变化
             let mut last_content = LAST_CLIPBOARD_CONTENT.lock().unwrap();
             if *last_content != content {
-                // println!("检测到剪贴板内容变化");
 
-                // 更新最后的内容
                 *last_content = content.clone();
-                drop(last_content); // 释放锁
+                drop(last_content); 
 
                 // 先检查内容是否已存在，以便正确区分新增和移动
                 let is_existing = matches!(
@@ -314,7 +303,7 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
 
                 // 通知前端
                 if was_added {
-                    // 获取最新添加的项目（索引0）
+                    // 获取最新添加的项目
                     if let Ok(items) = crate::database::get_clipboard_history(Some(1)) {
                         if let Some(latest_item) = items.first() {
                             use tauri::Emitter;
@@ -326,7 +315,6 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
                             
                             // 根据是否已存在来判断发送哪个事件
                             if is_existing {
-                                // 已存在的内容被移动到前面
                                 let payload = ClipboardUpdatePayload {
                                     item: latest_item.clone(),
                                     is_new: false,
@@ -336,7 +324,6 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
                                     println!("发射剪贴板移动事件失败: {}", e);
                                 }
                             } else {
-                                // 新增的内容
                                 let payload = ClipboardUpdatePayload {
                                     item: latest_item.clone(),
                                     is_new: true,
@@ -355,8 +342,6 @@ fn clipboard_monitor_loop(app_handle: AppHandle) {
         // 等待一段时间再检查
         thread::sleep(Duration::from_millis(200));
     }
-
-    println!("剪贴板监听循环结束");
 }
 
 // Windows HTML剪贴板读取函数
@@ -402,7 +387,6 @@ fn try_get_windows_clipboard_html() -> Option<String> {
 // 从Windows HTML格式中提取HTML片段
 #[cfg(windows)]
 fn extract_html_fragment(html_format: &str) -> String {
-    // Windows HTML格式包含头部信息，需要提取实际的HTML内容
     if let Some(start_fragment_pos) = html_format.find("StartFragment:") {
         if let Some(end_fragment_pos) = html_format.find("EndFragment:") {
             let start_line = &html_format[start_fragment_pos..];
@@ -460,10 +444,8 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
                     || !file_paths.iter().all(|path| last_ignored.contains(path));
 
                 if paths_changed {
-                    // 文件路径发生了变化，更新记录
                     *last_ignored = file_paths.clone();
                 }
-                // 无论是否变化，都忽略这次剪贴板变化
                 return None;
             } else {
                 // 不是缓存文件，清空上次忽略的记录
@@ -528,71 +510,40 @@ fn get_clipboard_content(clipboard: &mut Clipboard) -> Option<(String, Option<St
 
     // 尝试获取图片
     if clipboard_history::is_save_images() {
-        // 尝试Windows特定的方法获取图片
         #[cfg(windows)]
         if let Some(img) = try_get_windows_clipboard_image() {
-            // 清空文件路径记录
             if let Ok(mut last_paths) = LAST_FILE_PATHS.lock() {
                 last_paths.clear();
             }
-            
-            let data_url = image_to_data_url(&img);
-
-            // 尝试使用图片管理器保存图片
-            if let Ok(image_manager) = get_image_manager() {
-                if let Ok(manager) = image_manager.lock() {
-                    match manager.save_image(&data_url) {
-                        Ok(image_id) => {
-                            return Some((format!("image:{}", image_id), None));
-                        }
-                        Err(e) => {
-                            println!("保存图片失败: {}, 使用原始data URL", e);
-                            return Some((data_url, None));
-                        }
-                    }
-                }
-            }
-            return Some((data_url, None));
+            return save_image_optimized(&img);
         }
 
-        // 回退到arboard方法
         if let Ok(img) = clipboard.get_image() {
-            // 清空文件路径记录
             if let Ok(mut last_paths) = LAST_FILE_PATHS.lock() {
                 last_paths.clear();
             }
-            
-            println!(
-                "通过arboard成功获取剪贴板图片: {}x{}",
-                img.width, img.height
-            );
-            // 将图片转换为 data URL
-            let data_url = image_to_data_url(&img);
-
-            // 尝试使用图片管理器保存图片
-            if let Ok(image_manager) = get_image_manager() {
-                if let Ok(manager) = image_manager.lock() {
-                    match manager.save_image(&data_url) {
-                        Ok(image_id) => {
-                            // 返回图片引用而不是完整的data URL
-                            return Some((format!("image:{}", image_id), None));
-                        }
-                        Err(e) => {
-                            println!("保存图片失败: {}, 使用原始data URL", e);
-                            return Some((data_url, None));
-                        }
-                    }
-                }
-            }
-
-            // 如果图片管理器不可用，回退到原始方式
-            return Some((data_url, None));
+            return save_image_optimized(&img);
         }
     }
 
     None
 }
 
+// 图片保存：RGBA→PNG，使用Fast压缩
+fn save_image_optimized(img: &arboard::ImageData) -> Option<(String, Option<String>)> {
+    let rgba_data = img.bytes.to_vec();
+    
+    if let Ok(image_manager) = get_image_manager() {
+        if let Ok(manager) = image_manager.lock() {
+            if let Ok(image_id) = manager.save_image_from_rgba_sync(img.width, img.height, &rgba_data) {
+                return Some((format!("image:{}", image_id), None));
+            }
+        }
+    }
+    
+    // 回退到data URL
+    Some((image_to_data_url(img), None))
+}
 
 // 开始粘贴操作 - 增加粘贴计数器
 pub fn start_pasting_operation() {
@@ -626,13 +577,9 @@ pub fn initialize_clipboard_state() {
     if let Ok(mut clipboard) = Clipboard::new() {
         // 使用与监听器相同的逻辑获取剪贴板内容
         if let Some((content, html_content)) = get_clipboard_content(&mut clipboard) {
-            // 过滤空白内容：检查去除空白字符后是否为空
             if !content.trim().is_empty() {
-                // 使用与监听器相同的逻辑：检查重复并决定是否添加/移动
-                // 初始化时不移动重复内容，只是确保内容在历史记录中
                 let _was_added =
                     clipboard_history::add_to_history_with_check_and_move_html(content.clone(), html_content, false);
-                // 初始化监听器的最后内容，避免重复添加
                 initialize_last_content(content);
             }
         }

@@ -2,6 +2,8 @@ use base64::{engine::general_purpose as b64_engine, Engine as _};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
+use image::{ImageEncoder, codecs::png::PngEncoder};
+use std::io::BufWriter;
 
 // 图片存储配置
 const IMAGES_DIR: &str = "clipboard_images";
@@ -33,27 +35,45 @@ impl ImageManager {
         Ok(ImageManager { images_dir })
     }
 
-    /// 保存图片并返回图片ID
-    /// 使用内容的SHA256哈希前16位作为图片ID（自动去重）
-    pub fn save_image(&self, data_url: &str) -> Result<String, String> {
-        // 解析data URL获取图片数据
-        let image_data = self.parse_data_url(data_url)?;
-
-        // 计算内容hash作为唯一ID（自动去重）
-        let mut hasher = Sha256::new();
-        hasher.update(&image_data);
-        let hash = format!("{:x}", hasher.finalize());
-        let image_id = hash[..16].to_string();
-
-        // 构建文件路径
+    /// 从RGBA数据保存图片（Fast压缩 + NoFilter）
+    pub fn save_image_from_rgba_sync(&self, width: usize, height: usize, rgba_data: &[u8]) -> Result<String, String> {
+        let image_id = self.calculate_image_id(rgba_data);
         let file_path = self.images_dir.join(format!("{}.png", image_id));
 
-        // 如果文件已存在，直接返回ID（自动去重）
         if file_path.exists() {
             return Ok(image_id);
         }
 
-        // 保存图片为PNG格式
+        let file = fs::File::create(&file_path)
+            .map_err(|e| format!("创建图片文件失败: {}", e))?;
+        let writer = BufWriter::new(file);
+        
+        let encoder = PngEncoder::new_with_quality(
+            writer,
+            image::codecs::png::CompressionType::Fast,
+            image::codecs::png::FilterType::NoFilter,
+        );
+
+        encoder.write_image(
+            rgba_data,
+            width as u32,
+            height as u32,
+            image::ExtendedColorType::Rgba8,
+        ).map_err(|e| format!("写入PNG数据失败: {}", e))?;
+
+        Ok(image_id)
+    }
+
+    /// 从data URL保存图片
+    pub fn save_image(&self, data_url: &str) -> Result<String, String> {
+        let image_data = self.parse_data_url(data_url)?;
+        let image_id = self.calculate_image_id(&image_data);
+        let file_path = self.images_dir.join(format!("{}.png", image_id));
+
+        if file_path.exists() {
+            return Ok(image_id);
+        }
+
         let img = image::load_from_memory(&image_data)
             .map_err(|e| format!("解析图片失败: {}", e))?;
         
@@ -63,28 +83,32 @@ impl ImageManager {
         Ok(image_id)
     }
 
+    /// 计算图片内容的哈希ID
+    fn calculate_image_id(&self, data: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        let hash = format!("{:x}", hasher.finalize());
+        hash[..16].to_string()
+    }
+
     /// 获取图片文件路径
     pub fn get_image_file_path(&self, image_id: &str) -> Result<String, String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
-        
         if !file_path.exists() {
             return Err(format!("图片文件不存在: {}", image_id));
         }
-        
         Ok(file_path.to_string_lossy().to_string())
     }
 
-    /// 获取图片数据URL（用于粘贴到其他应用）
+    /// 获取图片data URL（用于粘贴）
     pub fn get_image_data_url(&self, image_id: &str) -> Result<String, String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
-
         if !file_path.exists() {
             return Err(format!("图片文件不存在: {}", image_id));
         }
 
         let image_data = fs::read(&file_path)
             .map_err(|e| format!("读取图片文件失败: {}", e))?;
-
         let base64_string = b64_engine::STANDARD.encode(&image_data);
         Ok(format!("data:image/png;base64,{}", base64_string))
     }
@@ -92,12 +116,10 @@ impl ImageManager {
     /// 删除图片
     pub fn delete_image(&self, image_id: &str) -> Result<(), String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
-
         if file_path.exists() {
             fs::remove_file(&file_path)
                 .map_err(|e| format!("删除图片失败: {}", e))?;
         }
-
         Ok(())
     }
 
@@ -123,20 +145,14 @@ impl ImageManager {
         Ok(())
     }
 
-    /// 解析data URL，提取图片二进制数据
+    /// 解析data URL
     fn parse_data_url(&self, data_url: &str) -> Result<Vec<u8>, String> {
         if !data_url.starts_with("data:image/") {
             return Err("不是有效的图片data URL".to_string());
         }
-
-        let comma_pos = data_url
-            .find(',')
+        let comma_pos = data_url.find(',')
             .ok_or_else(|| "无效的data URL格式".to_string())?;
-
-        let encoded = &data_url[(comma_pos + 1)..];
-
-        b64_engine::STANDARD
-            .decode(encoded)
+        b64_engine::STANDARD.decode(&data_url[(comma_pos + 1)..])
             .map_err(|e| format!("Base64解码失败: {}", e))
     }
 }
