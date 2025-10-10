@@ -35,9 +35,9 @@ const configChangeListeners = [];
 /**
  * 初始化AI配置管理器
  */
-export async function initAIConfig() {
+export async function initAIConfig(settings = null) {
   try {
-    await loadAIConfig();
+    await loadAIConfig(settings);
     setupEventListeners();
   } catch (error) {
     console.error('AI配置管理器初始化失败:', error);
@@ -48,12 +48,14 @@ export async function initAIConfig() {
 /**
  * 加载AI配置
  */
-export async function loadAIConfig() {
+export async function loadAIConfig(settings = null) {
   try {
-    const settings = await invoke('get_settings');
+    if (!settings) {
+      settings = await invoke('get_settings');
+    }
 
     currentAIConfig = {
-      enabled: !!(settings.aiApiKey && settings.aiApiKey.trim() !== ''), // 基于API密钥是否配置来判断AI功能是否可用
+      enabled: !!(settings.aiApiKey && settings.aiApiKey.trim() !== ''),
       apiKey: settings.aiApiKey || '',
       model: settings.aiModel || DEFAULT_AI_CONFIG.model,
       baseUrl: settings.aiBaseUrl || DEFAULT_AI_CONFIG.baseUrl,

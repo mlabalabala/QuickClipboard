@@ -121,14 +121,21 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // =================== 页面初始化 ===================
 document.addEventListener('DOMContentLoaded', async () => {
+  const perfStart = performance.now();
   printSettingsBanner();
   initDisableBrowserShortcuts();
   
-  const { initThemeManager } = await import('../../js/themeManager.js');
-  initThemeManager();
+  const themeStart = performance.now();
+  const [{ initThemeManager }] = await Promise.all([
+    import('../../js/themeManager.js'),
+    loadSettings()
+  ]);
   
-  await initAIConfig();
-  await loadSettings();
+  initThemeManager();
+  initAIConfig(settings);
+  
+  // 初始化 UI
+  const uiStart = performance.now();
   await initializeUI();
   
   // 初始化功能模块
@@ -140,12 +147,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindBasicSettingEvents();
   bindAppFilterEvents();
   bindAdminRunEvents();
+  bindAboutPageEvents();
   
   // 监听设置变更
-  await setupSettingsSync();
+  setupSettingsSync();
   
   // 初始化搜索
-  setTimeout(() => settingsSearch.init(), 100);
+  setTimeout(() => settingsSearch.init(), 50);
 });
 
 // =================== 加载和保存设置 ===================
@@ -272,47 +280,66 @@ async function initializeUI() {
   renderAddedAppsGrid();
   renderAvailableAppsGrid();
 
-  // 首次获取应用列表
-  setTimeout(async () => {
-    try {
-      if (!window.allWindowsInfo || window.allWindowsInfo.length === 0) {
-        const windows = await invoke('get_all_windows_info_cmd');
+  const lazyLoadApps = () => {
+    if (window.allWindowsInfo && window.allWindowsInfo.length > 0) {
+      return;
+    }
+    
+    const availableGrid = document.getElementById('available-apps-grid');
+    if (!availableGrid) return;
+
+    availableGrid.innerHTML = '<div class="empty-grid">正在加载应用列表...</div>';
+    
+    invoke('get_all_windows_info_cmd')
+      .then(windows => {
         window.allWindowsInfo = windows;
         renderAddedAppsGrid();
         renderAvailableAppsGrid();
-      }
-    } catch (error) {
-      console.warn('首次获取应用列表失败:', error);
-      const availableGrid = document.getElementById('available-apps-grid');
-      if (availableGrid) {
+      })
+      .catch(error => {
+        console.warn('获取应用列表失败:', error);
         availableGrid.innerHTML = '<div class="empty-grid">点击"刷新"按钮获取应用列表</div>';
-      }
-    }
-  }, 500);
+      });
+  };
 
-  // 加载版本和背景
-  loadAppVersion();
+  const appFilterSection = document.getElementById('app-filter-section');
+  if (appFilterSection) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          lazyLoadApps();
+          observer.disconnect(); 
+        }
+      });
+    }, { threshold: 0.1 });
+    observer.observe(appFilterSection);
+  }
+
+  // 加载版本信息
+  loadAppVersion().catch(err => console.warn('加载版本信息失败:', err));
   const bgSetting = document.getElementById('background-image-setting');
   if (bgSetting) {
     bgSetting.style.display = (settings.theme === 'background') ? '' : 'none';
   }
 
-  // 初始化更新检测
-  try {
-    const { setupUpdateChecker } = await import('../../js/updateChecker.js');
-    setupUpdateChecker();
-    
-    let notified = false;
-    window.addEventListener('qc-update-available', (e) => {
-      if (notified) return;
-      notified = true;
-      const rel = e?.detail?.latestRelease;
-      const ver = (rel?.tagName || rel?.name || '').toString();
-      showNotification(`发现新版本 ${ver}，点击"关于 → 检查更新"查看详情`, 'success');
-    }, { once: true });
-  } catch (e) {
-    console.warn('初始化更新检测失败:', e);
-  }
+  // 延迟初始化更新检测
+  setTimeout(async () => {
+    try {
+      const { setupUpdateChecker } = await import('../../js/updateChecker.js');
+      setupUpdateChecker();
+      
+      let notified = false;
+      window.addEventListener('qc-update-available', (e) => {
+        if (notified) return;
+        notified = true;
+        const rel = e?.detail?.latestRelease;
+        const ver = (rel?.tagName || rel?.name || '').toString();
+        showNotification(`发现新版本 ${ver}，点击"关于 → 检查更新"查看详情`, 'success');
+      }, { once: true });
+    } catch (e) {
+      console.warn('初始化更新检测失败:', e);
+    }
+  }, 500);
 }
 
 // =================== 辅助函数 ===================
@@ -784,6 +811,23 @@ function addAppToFilterList(processName) {
     renderAvailableAppsGrid();
     showNotification(`已添加 ${processName} 到应用过滤列表`, 'success');
   }
+}
+
+// =================== 关于页面事件 ===================
+function bindAboutPageEvents() {
+  const checkUpdatesBtn = document.getElementById('check-updates');
+  if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener('click', async () => {
+      await checkForUpdates();
+    });
+  }
+
+  const githubButtons = document.querySelectorAll('.open-github');
+  githubButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await openGitHub();
+    });
+  });
 }
 
 // =================== 管理员运行功能 ===================

@@ -65,7 +65,7 @@ const DISABLED_SHORTCUTS = [
   { ctrl: true, shift: true, key: 'y' }, // 历史记录页面
   
   // 开发者工具
-  { key: 'F12' },                // 开发者工具
+  // { key: 'F12' },                // 开发者工具
   { ctrl: true, shift: true, key: 'i' }, // 开发者工具
   { ctrl: true, shift: true, key: 'j' }, // 控制台
   { ctrl: true, shift: true, key: 'c' }, // 元素选择器
