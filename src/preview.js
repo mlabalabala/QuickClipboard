@@ -158,7 +158,7 @@ async function setupEventListeners() {
     // 重置索引
     currentIndex = 0;
 
-    // 根据新的数据源刷新数据
+    // 根据数据源刷新数据
     await refreshDataSource(tab, groupId);
   });
 }
@@ -399,7 +399,7 @@ function createPreviewItem(item, index, position = 'current') {
         const fileContainer = document.createElement('div');
         fileContainer.className = 'preview-file-container';
 
-        // 文件图标 - 使用新的工具函数
+        // 文件图标 - 使用工具函数
         const fileIcon = createFileIconElement(firstFile, 'medium');
         fileIcon.className = 'preview-file-icon';
 

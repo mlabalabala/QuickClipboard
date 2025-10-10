@@ -118,8 +118,10 @@ export class AutoSelectionManager {
      * 处理元素层级
      */
     handleElementHierarchy(hierarchyData) {
-        // 如果已经停止，忽略事件
-        if (!this.isActive) {
+        if (!this.isActive || (window.screenshotApp && window.screenshotApp.selectionManager.isSelectingState)) {
+            if (this.isActive) {
+                this.stop();
+            }
             return;
         }
 

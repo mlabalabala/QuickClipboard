@@ -106,7 +106,7 @@ function handleThrottledNavigation(key) {
       clearTimeout(pendingNavigationUpdate);
     }
 
-    // 设置新的延迟执行
+    // 设置延迟执行
     pendingNavigationUpdate = setTimeout(() => {
       executeNavigation(key);
       pendingNavigationUpdate = null;
@@ -566,7 +566,7 @@ export async function focusSearchBox() {
     // 然后聚焦输入框
     searchInput.focus();
 
-    // 选中搜索框中的所有文本，方便用户直接输入新的搜索内容
+    // 选中搜索框中的所有文本，方便用户直接输入搜索内容
     searchInput.select();
   }
 }

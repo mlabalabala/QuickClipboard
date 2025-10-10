@@ -1,4 +1,4 @@
-// 通用右键菜单模块 - 使用新的菜单窗口插件
+// 通用右键菜单模块 - 使用菜单窗口插件
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { showNotification } from './notificationManager.js';
 import { extractAllLinks } from './utils/linkUtils.js';

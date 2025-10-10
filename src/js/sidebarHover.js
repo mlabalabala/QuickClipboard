@@ -65,7 +65,7 @@ function handleMouseEnter() {
     return;
   }
 
-  // 设置新的定时器，延迟显示侧边栏
+  // 设置定时器，延迟显示侧边栏
   sidebarHoverTimer = setTimeout(() => {
     showSidebar();
     isSidebarVisible = true;

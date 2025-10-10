@@ -82,7 +82,7 @@ function initControlsSortable() {
     },
 
     onAdd: function(evt) {
-      // 使用新的工具管理器处理移动
+      // 使用工具管理器处理移动
       const toolId = getToolIdFromElement(evt.item);
       if (toolId) {
         moveToolToLocation(toolId, 'panel', 'titlebar', evt.newIndex);
@@ -127,7 +127,7 @@ function initToolsPanelSortable() {
     },
 
     onAdd: function(evt) {
-      // 使用新的工具管理器处理移动
+      // 使用工具管理器处理移动
       const toolId = getToolIdFromElement(evt.item);
       if (toolId) {
         moveToolToLocation(toolId, 'titlebar', 'panel', evt.newIndex);

@@ -57,7 +57,7 @@ const DISABLED_SHORTCUTS = [
   { ctrl: true, key: '-' },      // 缩小
   { ctrl: true, key: '0' },      // 重置缩放
   { ctrl: true, shift: true, key: 'delete' }, // 清除浏览数据
-  { ctrl: true, shift: true, key: 'n' }, // 新的隐身窗口
+  { ctrl: true, shift: true, key: 'n' }, // 隐身窗口
   { ctrl: true, shift: true, key: 't' }, // 重新打开关闭的标签页
   { ctrl: true, shift: true, key: 'b' }, // 书签管理器
   { ctrl: true, shift: true, key: 'o' }, // 书签管理器
