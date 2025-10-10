@@ -1,6 +1,28 @@
 // 类型筛选和搜索工具函数
 import { itemContainsLinks } from './linkUtils.js';
 
+let htmlTextParser = null;
+
+function getPlainTextFromHtml(htmlContent) {
+  if (!htmlContent) {
+    return '';
+  }
+
+  try {
+    if (!htmlTextParser) {
+      htmlTextParser = new DOMParser();
+    }
+
+    // 避免解析过程中触发图片加载，移除 img 标签的 src 属性
+    const sanitizedHtml = htmlContent.replace(/(<img[^>]*?)\s+src=("|')[^"']*("|')/gi, '$1');
+    const doc = htmlTextParser.parseFromString(sanitizedHtml, 'text/html');
+    return (doc.body && doc.body.textContent) ? doc.body.textContent : '';
+  } catch (error) {
+    console.warn('解析HTML内容失败:', error);
+    return htmlContent.replace(/<[^>]+>/g, ' ');
+  }
+}
+
 // 类型筛选工具函数
 export function matchesFilter(contentType, filterType, item = null) {
   if (filterType === 'all') {
@@ -62,16 +84,8 @@ export function matchesSearch(item, searchTerm, contentType) {
     // 如果有HTML内容，也搜索HTML中的纯文本内容
     let htmlTextMatch = false;
     if (item.html_content) {
-      try {
-        // 创建临时DOM元素来提取HTML中的纯文本
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = item.html_content;
-        const htmlText = tempDiv.textContent || tempDiv.innerText || '';
-        htmlTextMatch = htmlText.toLowerCase().includes(term);
-      } catch (error) {
-        // 如果解析HTML失败，忽略HTML内容搜索
-        htmlTextMatch = false;
-      }
+      const htmlText = getPlainTextFromHtml(item.html_content);
+      htmlTextMatch = htmlText.toLowerCase().includes(term);
     }
     
     return contentMatch || titleMatch || htmlTextMatch;

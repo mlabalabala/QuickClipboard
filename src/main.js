@@ -106,7 +106,7 @@ document.addEventListener('contextmenu', function (e) {
 // 等待后端初始化完成
 async function waitForBackendInitialization() {
   let attempts = 0;
-  const maxAttempts = 30; // 最多等待3秒
+  const maxAttempts = 30;
 
   while (attempts < maxAttempts) {
     try {
@@ -115,10 +115,8 @@ async function waitForBackendInitialization() {
         return;
       }
     } catch (error) {
-      // 静默处理错误
     }
 
-    // 等待时间50ms
     await new Promise(resolve => setTimeout(resolve, 50));
     attempts++;
   }

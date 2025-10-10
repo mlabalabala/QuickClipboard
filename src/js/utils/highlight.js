@@ -47,9 +47,18 @@ export function highlightMultipleSearchTermsInHTML(htmlContent, searchTerms, hig
     return htmlContent;
   }
 
+  const TEMP_IMG_SRC_ATTR = 'data-quickclipboard-temp-src';
+
+  const sanitizedHtmlContent = htmlContent.replace(/<img\b[^>]*?>/gi, (tag) => {
+    if (!/\ssrc\s*=/.test(tag)) {
+      return tag;
+    }
+    return tag.replace(/(\s)src(\s*=)/i, `$1${TEMP_IMG_SRC_ATTR}$2`);
+  });
+
   // 创建临时DOM元素来解析HTML
   const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlContent;
+  tempDiv.innerHTML = sanitizedHtmlContent;
 
   // 递归处理文本节点
   function highlightTextNodes(node) {
@@ -92,7 +101,7 @@ export function highlightMultipleSearchTermsInHTML(htmlContent, searchTerms, hig
   }
 
   highlightTextNodes(tempDiv);
-  return tempDiv.innerHTML;
+  return tempDiv.innerHTML.replace(new RegExp(TEMP_IMG_SRC_ATTR, 'gi'), 'src');
 }
 
 /**
