@@ -47,7 +47,6 @@ export async function initAiTranslation() {
 
 /**
  * AI配置变化监听器
- * @param {Object} aiConfig - 变化后的AI配置
  */
 function onAIConfigChanged(aiConfig) {
   console.log('AI配置发生变化:', aiConfig);
@@ -508,8 +507,6 @@ function getTranslationErrorMessage(error) {
 
 /**
  * 复制时翻译文本并直接输入到目标位置
- * @param {string} text - 要翻译的文本
- * @returns {Promise<void>}
  */
 export async function translateAndInputOnCopy(text) {
   // 检查是否应该进行翻译
@@ -669,98 +666,6 @@ export function isTextSuitableForTranslation(text) {
   if (!text || typeof text !== 'string') {
     return false;
   }
-
-  // const trimmedText = text.trim();
-
-  // // 过滤掉太短的文本
-  // if (trimmedText.length < 2) {
-  //   return false;
-  // }
-
-  // // 过滤掉太长的文本（超过5000字符）
-  // if (trimmedText.length > 5000) {
-  //   console.warn('文本过长，不适合翻译:', trimmedText.length);
-  //   return false;
-  // }
-
-  // // 过滤掉纯数字、纯符号等
-  // const hasLetters = /[a-zA-Z\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(trimmedText);
-  // if (!hasLetters) {
-  //   return false;
-  // }
-
-  // // 过滤掉URL（更严格的检测）
-  // const urlPatterns = [
-  //   /^https?:\/\/[^\s]+$/i,
-  //   /^ftp:\/\/[^\s]+$/i,
-  //   /^www\.[^\s]+\.[a-z]{2,}$/i,
-  //   /^[a-zA-Z0-9-]+\.[a-z]{2,}(\/[^\s]*)?$/i
-  // ];
-
-  // for (const pattern of urlPatterns) {
-  //   if (pattern.test(trimmedText)) {
-  //     return false;
-  //   }
-  // }
-
-  // // 过滤掉邮箱地址
-  // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  // if (emailPattern.test(trimmedText)) {
-  //   return false;
-  // }
-
-  // // 过滤掉文件路径（Windows和Unix）
-  // const filePathPatterns = [
-  //   /^[a-zA-Z]:\\[^\s]*$/,  // Windows路径
-  //   /^\/[^\s]*$/,           // Unix路径
-  //   /^~\/[^\s]*$/,          // 用户目录路径
-  //   /^\.\/[^\s]*$/,         // 相对路径
-  //   /^\.\.\/[^\s]*$/        // 上级目录路径
-  // ];
-
-  // for (const pattern of filePathPatterns) {
-  //   if (pattern.test(trimmedText)) {
-  //     return false;
-  //   }
-  // }
-  // // 过滤掉代码片段（更全面的检测）
-  // const codePatterns = [
-  //   /^\s*[\{\[\(].*[\}\]\)]\s*$/s, // 包含大括号、方括号、圆括号的内容
-  //   /^\s*<[^>]+>.*<\/[^>]+>\s*$/s, // HTML标签
-  //   /^\s*function\s+\w+\s*\(/i, // JavaScript函数
-  //   /^\s*def\s+\w+\s*\(/i, // Python函数
-  //   /^\s*class\s+\w+/i, // 类定义
-  //   /^\s*import\s+/i, // 导入语句
-  //   /^\s*#include\s+/i, // C/C++包含语句
-  //   /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL查询
-  //   /^\s*\w+\s*=\s*\w+\s*\([^)]*\)\s*;?\s*$/i, // 函数调用
-  //   /^\s*\/\*.*\*\/\s*$/s, // 多行注释
-  //   /^\s*\/\/.*$/m, // 单行注释
-  //   /^\s*#.*$/m, // Shell注释或预处理指令
-  //   /^\s*<!--.*-->\s*$/s, // HTML注释
-  //   /^\s*\{[^}]*\}\s*$/s, // JSON对象
-  //   /^\s*\[[^\]]*\]\s*$/s, // JSON数组
-  // ];
-  // for (const pattern of codePatterns) {
-  //   if (pattern.test(trimmedText)) {
-  //     return false;
-  //   }
-  // }
-
-  // // 过滤掉特殊字符过多的文本
-  // const specialCharCount = (trimmedText.match(/[^\w\s\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
-  // const specialCharRatio = specialCharCount / trimmedText.length;
-  // if (specialCharRatio > 0.5) {
-  //   return false;
-  // }
-
-  // // 过滤掉重复字符过多的文本（调整阈值，避免误判正常英文文本）
-  // const uniqueChars = new Set(trimmedText.toLowerCase()).size;
-  // const uniqueRatio = uniqueChars / trimmedText.length;
-  // if (uniqueRatio < 0.03 && trimmedText.length > 20) {
-  //   return false;
-  // }
-
   return true;
 }
 

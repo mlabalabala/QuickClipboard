@@ -25,8 +25,6 @@ export class ExportManager {
 
     /**
      * 将选区内容复制到系统剪贴板
-     * @param {Object} selection - 选区信息 {left, top, width, height}
-     * @param {number} borderRadius - 圆角半径，默认0
      */
     async copySelectionToClipboard(selection, borderRadius = 0) {
         try {
@@ -37,7 +35,6 @@ export class ExportManager {
                 throw new Error('背景Canvas未准备就绪');
             }
 
-            // 创建选区Canvas（会自动合并编辑层内容）
             const selectionCanvas = await this.createSelectionCanvas(backgroundCanvas, selection, borderRadius);
             
             // 转换为PNG格式的Blob
@@ -55,10 +52,6 @@ export class ExportManager {
 
     /**
      * 创建选区Canvas
-     * @param {HTMLCanvasElement} sourceCanvas - 源Canvas
-     * @param {Object} selection - 选区信息
-     * @param {number} borderRadius - 圆角半径
-     * @returns {Promise<HTMLCanvasElement>} - 选区Canvas
      */
     async createSelectionCanvas(sourceCanvas, selection, borderRadius = 0) {
         // 计算Canvas实际尺寸与显示尺寸的比例
@@ -71,7 +64,7 @@ export class ExportManager {
         const actualTop = selection.top * scaleY;
         const actualWidth = selection.width * scaleX;
         const actualHeight = selection.height * scaleY;
-        const actualRadius = borderRadius * scaleX; // 圆角也需要缩放
+        const actualRadius = borderRadius * scaleX; 
 
         console.log('选区坐标转换:', {
             original: selection,
@@ -98,7 +91,6 @@ export class ExportManager {
                 console.log('已合并编辑层内容');
             } catch (error) {
                 console.warn('合并编辑层失败，使用背景层:', error);
-                // 如果Fabric方式失败，尝试原来的方式
                 const editCanvas = this.editLayerManager.getCanvas?.() || this.editLayerManager.canvas;
                 if (editCanvas) {
                     try {
@@ -128,8 +120,8 @@ export class ExportManager {
         // 从完整Canvas复制选区部分
         selectionCtx.drawImage(
             fullCanvas,
-            actualLeft, actualTop, actualWidth, actualHeight,  // 源区域（Canvas实际坐标）
-            0, 0, actualWidth, actualHeight  // 目标区域
+            actualLeft, actualTop, actualWidth, actualHeight,  
+            0, 0, actualWidth, actualHeight  
         );
 
         // 应用圆角裁剪
@@ -142,8 +134,6 @@ export class ExportManager {
 
     /**
      * 对Canvas应用圆角裁剪
-     * @param {HTMLCanvasElement} canvas - 要裁剪的Canvas
-     * @param {number} radius - 圆角半径
      */
     applyRoundedCorners(canvas, radius) {
         const width = canvas.width;
@@ -175,15 +165,12 @@ export class ExportManager {
         
         // 裁剪
         ctx.clip();
-        
-        // 将临时canvas的图像绘制回来（受clip影响）
+
         ctx.drawImage(tempCanvas, 0, 0);
     }
 
     /**
      * 将Canvas转换为Blob
-     * @param {HTMLCanvasElement} canvas - Canvas元素
-     * @returns {Promise<Blob>} - Blob对象
      */
     async canvasToBlob(canvas) {
         return new Promise((resolve) => {
@@ -193,7 +180,6 @@ export class ExportManager {
 
     /**
      * 写入系统剪贴板
-     * @param {Blob} blob - 图片Blob
      */
     async writeToClipboard(blob) {
         if (navigator.clipboard && navigator.clipboard.write) {
@@ -233,7 +219,6 @@ export class ExportManager {
 
     /**
      * 合并背景层和编辑层
-     * @returns {HTMLCanvasElement} - 合并后的Canvas
      */
     mergeLayersCanvas() {
         const backgroundCanvas = this.backgroundManager.canvas;

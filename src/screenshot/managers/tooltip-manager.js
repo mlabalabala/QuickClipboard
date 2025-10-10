@@ -27,7 +27,6 @@ export class TooltipManager {
     handleMouseEnter(e) {
         const element = e.target.closest('[data-tooltip]');
         if (!element) return;
-新
         requestAnimationFrame(() => {
             this.updateTooltipPosition(element);
         });
@@ -99,12 +98,9 @@ export class TooltipManager {
      * 批量更新所有tooltip位置
      */
     updateAllTooltips() {
-        this.tooltipElements.forEach(element => {
-            if (document.contains(element)) {
-                this.updateTooltipPosition(element);
-            } else {
-                this.tooltipElements.delete(element);
-            }
+        const elements = document.querySelectorAll('[data-tooltip]');
+        elements.forEach(element => {
+            this.updateTooltipPosition(element);
         });
     }
 

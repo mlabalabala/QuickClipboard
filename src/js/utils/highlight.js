@@ -146,7 +146,6 @@ function escapeHtml(text) {
 
 /**
  * 获取当前搜索关键字
- * @returns {string} 当前搜索关键字
  */
 export function getCurrentSearchTerm() {
   const clipboardSearch = document.getElementById('search-input');

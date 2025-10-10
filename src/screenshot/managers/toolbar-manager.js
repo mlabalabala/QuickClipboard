@@ -258,8 +258,6 @@ export class ToolbarManager {
 
     /**
      * 更新历史按钮状态
-     * @param {boolean} canUndo - 是否可以撤销
-     * @param {boolean} canRedo - 是否可以重做
      */
     updateHistoryButtons(canUndo, canRedo) {
         if (this.undoBtn) {

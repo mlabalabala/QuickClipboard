@@ -2,8 +2,6 @@
 
 /**
  * 检查纯文本内容是否是单个URL
- * @param {string} text - 要检查的文本
- * @returns {boolean} 是否是单个URL
  */
 export function isSingleUrl(text) {
   if (!text) return false;
@@ -14,8 +12,6 @@ export function isSingleUrl(text) {
 
 /**
  * 检查文本中是否包含URL（可以是多个或混合内容）
- * @param {string} text - 要检查的文本
- * @returns {boolean} 是否包含URL
  */
 export function containsUrl(text) {
   if (!text) return false;
@@ -26,8 +22,6 @@ export function containsUrl(text) {
 
 /**
  * 从HTML内容中提取所有链接
- * @param {string} htmlContent - HTML内容
- * @returns {string[]} 链接数组
  */
 export function extractLinksFromHtml(htmlContent) {
   if (!htmlContent) return [];
@@ -54,8 +48,6 @@ export function extractLinksFromHtml(htmlContent) {
 
 /**
  * 从文本中提取所有链接（包括www开头的）
- * @param {string} text - 要检查的文本
- * @returns {string[]} 链接数组
  */
 export function extractLinksFromText(text) {
   if (!text) return [];
@@ -81,10 +73,6 @@ export function extractLinksFromText(text) {
 
 /**
  * 从剪贴板项目中提取所有链接（支持纯文本和HTML）
- * @param {Object} item - 剪贴板项目对象
- * @param {string} item.content - 纯文本内容
- * @param {string} [item.html_content] - HTML内容
- * @returns {string[]} 链接数组
  */
 export function extractAllLinks(item) {
   if (!item) return [];
@@ -113,10 +101,6 @@ export function extractAllLinks(item) {
 
 /**
  * 判断剪贴板项目是否包含链接
- * @param {Object} item - 剪贴板项目对象
- * @param {string} item.content - 纯文本内容
- * @param {string} [item.html_content] - HTML内容
- * @returns {boolean} 是否包含链接
  */
 export function itemContainsLinks(item) {
   if (!item) return false;
@@ -137,10 +121,6 @@ export function itemContainsLinks(item) {
 
 /**
  * 判断剪贴板项目是否是纯链接内容（用于显示优化）
- * @param {Object} item - 剪贴板项目对象
- * @param {string} item.content - 纯文本内容
- * @param {string} [item.html_content] - HTML内容
- * @returns {boolean} 是否是纯链接内容
  */
 export function isLinkContent(item) {
   if (!item || !item.html_content || !item.content) {

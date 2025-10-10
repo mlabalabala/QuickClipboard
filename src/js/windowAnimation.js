@@ -154,7 +154,6 @@ export async function playWindowHideAnimation() {
 
 /**
  * 高度展开动画 - 从上到下展开
- * @param {HTMLElement} container - 要动画的容器元素
  */
 async function animateHeightExpand(container) {
     const footer = document.querySelector('.footer');
@@ -239,7 +238,6 @@ async function animateHeightExpand(container) {
 
 /**
  * 高度收起动画 - 从下到上收起
- * @param {HTMLElement} container - 要动画的容器元素
  */
 async function animateHeightCollapse(container) {
   const footer = document.querySelector('.footer');
@@ -301,7 +299,6 @@ async function animateHeightCollapse(container) {
 
 /**
  * 贴边显示弹动效果 - 专门用于贴边隐藏显示时的弹动
- * @param {string} direction - 弹动方向：'top', 'bottom', 'left', 'right'
  */
 export async function playEdgeSnapBounceEffect(direction = 'top') {
   const container = document.querySelector('body');
@@ -450,7 +447,6 @@ export async function setupWindowAnimationListeners() {
 
 /**
  * 处理自动聚焦搜索框
- * @param {boolean} isShowing - true表示窗口显示，false表示窗口隐藏
  */
 async function handleAutoFocusSearch(isShowing) {
   try {
@@ -510,7 +506,6 @@ export function setupAnimationFallback() {
 
 /**
  * 设置动画开关状态
- * @param {boolean} enabled - 是否启用动画
  */
 export function setAnimationEnabled(enabled) {
   animationEnabled = enabled;
@@ -519,7 +514,6 @@ export function setAnimationEnabled(enabled) {
 
 /**
  * 获取动画开关状态
- * @returns {boolean} 动画是否启用
  */
 export function isAnimationEnabled() {
   return animationEnabled;

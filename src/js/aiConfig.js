@@ -7,14 +7,6 @@ import { emit, listen } from '@tauri-apps/api/event';
 
 /**
  * AI配置对象
- * @typedef {Object} AIConfig
- * @property {boolean} enabled - AI功能是否启用
- * @property {string} apiKey - API密钥
- * @property {string} model - AI模型名称
- * @property {string} baseUrl - API基础URL
- * @property {number} timeoutSecs - 请求超时时间（秒）
- * @property {number} temperature - 模型温度参数
- * @property {number} maxTokens - 最大输出token数量
  */
 
 /**
@@ -37,7 +29,6 @@ let currentAIConfig = { ...DEFAULT_AI_CONFIG };
 
 /**
  * AI配置变更监听器列表
- * @type {Array<Function>}
  */
 const configChangeListeners = [];
 
@@ -122,8 +113,6 @@ export function getCurrentAIConfig() {
 
 /**
  * 验证AI配置是否有效
- * @param {AIConfig} config - 要验证的配置
- * @returns {boolean}
  */
 export function isAIConfigValid(config = currentAIConfig) {
   return !!(

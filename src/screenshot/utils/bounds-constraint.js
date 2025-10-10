@@ -19,11 +19,6 @@ export class BoundsConstraint {
 
     /**
      * 边界约束核心逻辑
-     * @param {number} x - 元素X坐标
-     * @param {number} y - 元素Y坐标  
-     * @param {number} width - 元素宽度
-     * @param {number} height - 元素高度
-     * @returns {{x: number, y: number}} 约束后的坐标
      */
     constrain(x, y, width, height) {
         if (!this.monitors || this.monitors.length === 0) {
