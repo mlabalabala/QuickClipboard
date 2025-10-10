@@ -551,6 +551,7 @@ export class SubToolbarManager {
         button.dataset.tooltip = config.label;
         
         const currentValue = this.getParameter(toolName, paramName);
+        button.style.setProperty('--color-bg', currentValue);
         button.style.backgroundColor = currentValue;
         
         // 颜色选择器图标
@@ -1163,6 +1164,7 @@ export class SubToolbarManager {
      */
     selectColor(toolName, paramName, button, color) {
         this.setParameter(toolName, paramName, color);
+        button.style.setProperty('--color-bg', color);
         button.style.backgroundColor = color;
         
         // 更新按钮显示的颜色

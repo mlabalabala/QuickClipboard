@@ -261,9 +261,9 @@ body {
     border: 1px solid #cccccc;
 }
 
-/* Tooltip 箭头（颜色按钮除外） */
-.toolbar button[data-tooltip]:not(.param-color)::before,
-.sub-toolbar button[data-tooltip]:not(.param-color)::before,
+/* Tooltip 箭头*/
+.toolbar button[data-tooltip]::before,
+.sub-toolbar button[data-tooltip]::before,
 .param-slider-container[data-tooltip]::before,
 .param-number-container[data-tooltip]::before,
 .param-text-container[data-tooltip]::before,
@@ -283,10 +283,33 @@ body {
     z-index: 10001;
 }
 
+/* Tooltip 向上显示样式 */
+.toolbar button[data-tooltip].tooltip-top::after,
+.sub-toolbar button[data-tooltip].tooltip-top::after,
+.param-slider-container[data-tooltip].tooltip-top::after,
+.param-number-container[data-tooltip].tooltip-top::after,
+.param-text-container[data-tooltip].tooltip-top::after {
+    top: auto;
+    bottom: calc(100% + 8px);
+}
+
+/* Tooltip 箭头向上显示 */
+.toolbar button[data-tooltip].tooltip-top::before,
+.sub-toolbar button[data-tooltip].tooltip-top::before,
+.param-slider-container[data-tooltip].tooltip-top::before,
+.param-number-container[data-tooltip].tooltip-top::before,
+.param-text-container[data-tooltip].tooltip-top::before {
+    top: auto;
+    bottom: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Tooltip hover 显示*/
 .toolbar button[data-tooltip]:hover::after,
-.toolbar button[data-tooltip]:not(.param-color):hover::before,
+.toolbar button[data-tooltip]:hover::before,
 .sub-toolbar button[data-tooltip]:hover::after,
-.sub-toolbar button[data-tooltip]:not(.param-color):hover::before,
+.sub-toolbar button[data-tooltip]:hover::before,
 .param-slider-container[data-tooltip]:hover::after,
 .param-slider-container[data-tooltip]:hover::before,
 .param-number-container[data-tooltip]:hover::after,
@@ -392,7 +415,7 @@ body {
 
 /* 颜色选择器 */
 .param-color {
-    background: rgba(255, 255, 255, 0.12);
+    background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), var(--color-bg, rgba(255, 255, 255, 0.12));
     color: white;
     border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 6px;
@@ -409,21 +432,7 @@ body {
     overflow: visible;
 }
 
-.param-color::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: currentColor;
-    opacity: 0.3;
-    z-index: 1;
-}
-
 .param-color i {
-    position: relative;
-    z-index: 2;
     color: white;
     /* 阴影效果，确保在任何背景下都清晰可见 */
     text-shadow: 

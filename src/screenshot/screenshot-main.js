@@ -24,6 +24,7 @@ import { OCRManager } from './managers/ocr-manager.js';
 import { HelpPanelManager } from './managers/help-panel-manager.js';
 import { ScrollingScreenshotManager } from './managers/scrolling-screenshot-manager.js';
 import { autoSelectionManager } from './managers/auto-selection-manager.js';
+import { TooltipManager } from './managers/tooltip-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
 
 export class ScreenshotController {
@@ -64,6 +65,7 @@ export class ScreenshotController {
         this.ocrManager = new OCRManager();
         this.helpPanelManager = new HelpPanelManager();
         this.scrollingScreenshotManager = new ScrollingScreenshotManager();
+        this.tooltipManager = new TooltipManager();
         
         
         // 设置管理器之间的引用关系
@@ -87,6 +89,8 @@ export class ScreenshotController {
         
         this.initializeManagers();
         this.loadMonitorInfo();
+
+        this.tooltipManager.init();
         
         // 设置全局引用，供工具使用
         window.screenshotController = this;
@@ -195,6 +199,12 @@ export class ScreenshotController {
                 
                 // 显示工具栏
                 this.toolbarManager.show(this.selectionManager.selectionRect);
+
+                if (this.tooltipManager) {
+                    requestAnimationFrame(() => {
+                        this.tooltipManager.updateAllTooltips();
+                    });
+                }
             }
             return;
         }
@@ -267,6 +277,12 @@ export class ScreenshotController {
                 // 有选区时隐藏放大镜
                 if (this.magnifierManager) {
                     this.magnifierManager.hide();
+                }
+
+                if (this.tooltipManager) {
+                    requestAnimationFrame(() => {
+                        this.tooltipManager.updateAllTooltips();
+                    });
                 }
                 
                 // 如果有激活的工具，显示对应的子工具栏
@@ -701,6 +717,13 @@ export class ScreenshotController {
             
             this.scrollingScreenshotManager.setOnCancel(() => {;
                 const mainToolbarPosition = this.toolbarManager.show(selection);
+
+                if (this.tooltipManager) {
+                    requestAnimationFrame(() => {
+                        this.tooltipManager.updateAllTooltips();
+                    });
+                }
+                
                 // 取消工具激活状态
                 this.toolbarManager.setActiveTool(null);
             });
@@ -745,6 +768,12 @@ export class ScreenshotController {
             }
             
             this.subToolbarManager.showForTool(toolName, mainToolbarPosition, selection);
+
+            if (this.tooltipManager) {
+                requestAnimationFrame(() => {
+                    this.tooltipManager.updateAllTooltips();
+                });
+            }
         }
     }
 

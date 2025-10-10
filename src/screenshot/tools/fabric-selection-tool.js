@@ -302,12 +302,9 @@ export class FabricSelectionTool {
     handleKeyDown(e) {
         if (!this.isActive || !this.fabricCanvas) return;
         
-        // 检查是否按下了 Delete 或 Backspace 键
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            // 防止 Backspace 导致页面后退
             e.preventDefault();
             
-            // 删除选中的对象
             this.deleteSelected();
         }
     }
