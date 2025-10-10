@@ -362,7 +362,7 @@ export class ScreenshotController {
                 return 'arrow';
             case 'mosaic':
             case 'mosaic-path':
-                return 'mosaic';
+                return null;
             case 'rectangle':
             case 'circle':
             case 'ellipse':           // 椭圆

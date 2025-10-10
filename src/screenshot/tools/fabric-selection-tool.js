@@ -19,6 +19,7 @@ export class FabricSelectionTool {
         this.handleMouseDown = this.handleMouseDown.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
+        this.handleKeyDown = this.handleKeyDown.bind(this);
     }
 
     /**
@@ -63,6 +64,9 @@ export class FabricSelectionTool {
             this.fabricCanvas.on('mouse:up', this.handleMouseUp);
         }
         
+        // 添加键盘事件监听
+        document.addEventListener('keydown', this.handleKeyDown);
+        
     }
 
     /**
@@ -87,6 +91,9 @@ export class FabricSelectionTool {
             this.fabricCanvas.off('mouse:move', this.handleMouseMove);
             this.fabricCanvas.off('mouse:up', this.handleMouseUp);
         }
+        
+        // 移除键盘事件监听
+        document.removeEventListener('keydown', this.handleKeyDown);
         
         this.fabricCanvas = null;
         this.editLayerManager = null;
@@ -287,6 +294,22 @@ export class FabricSelectionTool {
         
         this.fabricCanvas.discardActiveObject();
         this.fabricCanvas.renderAll();
+    }
+
+    /**
+     * 处理键盘按下事件
+     */
+    handleKeyDown(e) {
+        if (!this.isActive || !this.fabricCanvas) return;
+        
+        // 检查是否按下了 Delete 或 Backspace 键
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            // 防止 Backspace 导致页面后退
+            e.preventDefault();
+            
+            // 删除选中的对象
+            this.deleteSelected();
+        }
     }
 
     /**
