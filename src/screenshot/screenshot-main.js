@@ -625,7 +625,6 @@ export class ScreenshotController {
         const selection = this.selectionManager.getSelection();
         if (!selection) {
             console.warn('请先选择要识别的区域');
-            this.ocrManager.showNotification('请先选择要识别的区域', 'warning');
             return;
         }
         
@@ -647,7 +646,6 @@ export class ScreenshotController {
         } catch (error) {
             console.error('OCR识别失败:', error);
             this.ocrManager.hideLoadingDialog();
-            this.ocrManager.showNotification('OCR识别失败: ' + error.message, 'error');
         }
     }
 

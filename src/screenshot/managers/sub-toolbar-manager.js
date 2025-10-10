@@ -351,13 +351,19 @@ export class SubToolbarManager {
                 }
             },
             
-            // OCR工具（特殊配置：只有操作按钮，没有参数）
+            // OCR工具
             ocr: {
-                _actions: true,  // 标记这是操作按钮工具
+                _actions: true,
                 recognize: {
                     type: 'action',
                     label: '识别文字',
                     icon: 'ti ti-scan'
+                },
+                advancedRecognize: {
+                    type: 'action',
+                    label: '高级识别',
+                    icon: 'ti ti-wand',
+                    disabled: true
                 },
                 copy: {
                     type: 'action',
@@ -916,10 +922,17 @@ export class SubToolbarManager {
         button.dataset.tooltip = config.label;
         
         button.innerHTML = `<i class="${config.icon}"></i><span>${config.label}</span>`;
+
+        if (config.disabled) {
+            button.disabled = true;
+            button.classList.add('disabled');
+        }
         
         // 点击事件：触发回调
         button.addEventListener('click', () => {
-            this.triggerParameterChange(toolName, paramName, 'action');
+            if (!config.disabled) {
+                this.triggerParameterChange(toolName, paramName, 'action');
+            }
         });
         
         return button;

@@ -20,7 +20,6 @@ export class OCRManager {
         if (this.isInitialized) return;
         
         try {
-            // v6 API: 创建 Worker，优先使用中文语言包
             this.worker = await Tesseract.createWorker('chi_sim+eng', 1, {
                 errorHandler: err => console.error('OCR错误:', err)
             });
@@ -40,8 +39,6 @@ export class OCRManager {
 
     /**
      * 识别图像中的文字
-     * @param {HTMLCanvasElement|ImageData|string} image - 图像源
-     * @returns {Promise<string>} 识别出的文字
      */
     async recognize(image) {
         if (!this.isInitialized) {
@@ -67,9 +64,6 @@ export class OCRManager {
 
     /**
      * 识别选区内的文字（带位置信息）
-     * @param {HTMLCanvasElement} backgroundCanvas - 背景画布
-     * @param {Object} selection - 选区信息 {left, top, width, height}
-     * @returns {Promise<Object>} 识别结果 {text, lines, words}
      */
     async recognizeSelection(backgroundCanvas, selection) {
         if (!selection || !backgroundCanvas) {
@@ -115,15 +109,12 @@ export class OCRManager {
 
         try {
             this.isProcessing = true;
-            
-            // 关键：在 recognize() 时明确指定输出格式（v6 API）
             const result = await this.worker.recognize(tempCanvas, {}, {
                 blocks: true,
                 text: true
             });
             const data = result.data;
-            
-            // 从 blocks 层级结构提取行和词的位置信息
+
             const lines = [];
             const words = [];
             
@@ -180,11 +171,10 @@ export class OCRManager {
 
     /**
      * 在原图上显示OCR文字覆盖层
-     * @param {Object} result - OCR识别结果
      */
     showOverlayResult(result) {
         if (!result || !result.lines || result.lines.length === 0) {
-            this.showNotification('未识别到文字', 'warning');
+            console.warn('未识别到文字');
             return;
         }
 
@@ -196,7 +186,7 @@ export class OCRManager {
             overlay.className = 'ocr-overlay';
             document.body.appendChild(overlay);
         } else {
-            overlay.innerHTML = ''; // 清空之前的内容
+            overlay.innerHTML = ''; 
         }
 
         // 为每一行创建文字覆盖元素
@@ -209,25 +199,28 @@ export class OCRManager {
             // 计算位置：bbox 是物理像素坐标，需要转换为 CSS 像素坐标
             const { selection, canvasSize } = result;
             
-            // bbox 坐标相对于 tempCanvas（物理像素），转换为相对于选区的 CSS 坐标
             const scaleX = selection.width / canvasSize.width;
             const scaleY = selection.height / canvasSize.height;
             
-            const left = selection.left + line.bbox.x0 * scaleX;
-            const top = selection.top + line.bbox.y0 * scaleY;
-            const width = (line.bbox.x1 - line.bbox.x0) * scaleX;
-            const height = (line.bbox.y1 - line.bbox.y0) * scaleY;
+            const paddingX = 8;
+            const paddingY = 4;
+            
+            const bboxLeft = selection.left + line.bbox.x0 * scaleX;
+            const bboxTop = selection.top + line.bbox.y0 * scaleY;
+            const bboxWidth = (line.bbox.x1 - line.bbox.x0) * scaleX;
+            const bboxHeight = (line.bbox.y1 - line.bbox.y0) * scaleY;
+            const left = bboxLeft - paddingX;
+            const top = bboxTop - paddingY;
             
             lineElement.style.left = `${left}px`;
             lineElement.style.top = `${top}px`;
-            lineElement.style.height = `${height}px`;
             
-            // 精确匹配字体大小
-            const fontSize = height * 0.90;
+            lineElement.style.height = `${bboxHeight}px`;
+            const fontSize = bboxHeight * 0.85;
             lineElement.style.fontSize = `${fontSize}px`;
-            lineElement.style.lineHeight = `${height}px`;
+            lineElement.style.lineHeight = `${bboxHeight}px`;
             
-            // 计算理想的文字宽度（不设置固定宽度，使用 transform scale）
+            // 计算理想的文字宽度
             const textLength = line.text.length;
             if (textLength > 0) {
                 // 创建临时元素测量实际文字宽度
@@ -245,21 +238,21 @@ export class OCRManager {
                 document.body.removeChild(tempSpan);
                 
                 // 计算缩放比例，使文字精确匹配 bbox 宽度
-                const scaleX = width / naturalWidth;
-                if (scaleX > 0.7 && scaleX < 1.3) {  // 合理范围内缩放
-                    lineElement.style.transform = `scaleX(${scaleX})`;
+                const scaleXRatio = bboxWidth / naturalWidth;
+                if (scaleXRatio > 0.7 && scaleXRatio < 1.3) {
+                    lineElement.style.transform = `scaleX(${scaleXRatio})`;
                     lineElement.style.transformOrigin = 'left center';
                     lineElement.style.width = `${naturalWidth}px`;
                 } else {
                     // 如果缩放比例过大/过小，使用字间距调整
-                    lineElement.style.width = `${width}px`;
-                    const letterSpacing = (width - naturalWidth) / Math.max(textLength - 1, 1);
+                    lineElement.style.width = `${bboxWidth}px`;
+                    const letterSpacing = (bboxWidth - naturalWidth) / Math.max(textLength - 1, 1);
                     if (Math.abs(letterSpacing) < fontSize * 0.3) {
                         lineElement.style.letterSpacing = `${letterSpacing}px`;
                     }
                 }
             } else {
-                lineElement.style.width = `${width}px`;
+                lineElement.style.width = `${bboxWidth}px`;
             }
             
             overlay.appendChild(lineElement);
@@ -272,26 +265,34 @@ export class OCRManager {
     async copyText() {
         const overlay = document.getElementById('ocrOverlay');
         if (!overlay) {
-            this.showNotification('没有可复制的文字', 'warning');
+            console.warn('没有可复制的文字');
             return;
         }
 
         try {
-            // 优先复制用户选中的文本，否则复制全部
             const selection = window.getSelection();
             let textToCopy = selection.toString().trim();
             
             if (!textToCopy) {
                 // 如果没有选中文字，复制全部
-                const lines = overlay.querySelectorAll('.ocr-text-line');
-                textToCopy = Array.from(lines).map(line => line.textContent).join('\n');
+                const range = document.createRange();
+                range.selectNodeContents(overlay);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // 获取选中的文本
+                textToCopy = selection.toString().trim();
+                
+                // 清除选中状态
+                selection.removeAllRanges();
             }
             
-            await navigator.clipboard.writeText(textToCopy);
-            this.showNotification('已复制到剪贴板', 'info');
+            if (textToCopy) {
+                await navigator.clipboard.writeText(textToCopy);
+                console.log('已复制到剪贴板');
+            }
         } catch (err) {
             console.error('复制失败:', err);
-            this.showNotification('复制失败', 'error');
         }
     }
 
@@ -322,26 +323,7 @@ export class OCRManager {
     }
 
     /**
-     * 显示通知消息
-     */
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `ocr-notification ocr-notification-${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        
-        // 自动消失
-        setTimeout(() => {
-            notification.classList.add('ocr-notification-fade');
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-
-    /**
      * 图像预处理：增强对比度，提高OCR识别率
-     * @param {CanvasRenderingContext2D} ctx - 画布上下文
-     * @param {number} width - 图像宽度
-     * @param {number} height - 图像高度
      */
     enhanceImageForOCR(ctx, width, height) {
         const imageData = ctx.getImageData(0, 0, width, height);
@@ -352,7 +334,6 @@ export class OCRManager {
         const brightness = 10; // 亮度增加 10
         
         for (let i = 0; i < data.length; i += 4) {
-            // 增强对比度和亮度
             data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128 + brightness));     // R
             data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128 + brightness)); // G
             data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128 + brightness)); // B
@@ -376,10 +357,6 @@ export class OCRManager {
         if (loading) {
             loading.remove();
         }
-        
-        // 移除所有通知
-        const notifications = document.querySelectorAll('.ocr-notification');
-        notifications.forEach(notification => notification.remove());
     }
 
     /**

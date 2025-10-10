@@ -673,7 +673,7 @@ body {
     appearance: textfield;
 }
 
-/* 操作按钮（用于 OCR 等工具） */
+/* 操作按钮 */
 .param-action-btn {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
@@ -708,6 +708,24 @@ body {
 
 .param-action-btn:active {
     transform: translateY(0);
+}
+
+/* 禁用状态的操作按钮 */
+.param-action-btn:disabled,
+.param-action-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.param-action-btn:disabled:hover,
+.param-action-btn.disabled:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: none;
 }
 
 /* 颜色选择面板 */
@@ -1319,7 +1337,7 @@ body {
 
 .ocr-text-line {
     position: absolute;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.35);
     color: white;
     font-family: system-ui, -apple-system, 'Microsoft YaHei', 'SimHei', sans-serif;
     white-space: nowrap;
@@ -1328,63 +1346,25 @@ body {
     user-select: text;
     -webkit-user-select: text;
     overflow: visible;
-    padding: 0;
+    padding: 4px 8px;
     margin: 0;
-    box-sizing: border-box;
+    box-sizing: content-box;
     font-weight: normal;
     font-style: normal;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    backdrop-filter: blur(100px);
 }
 
-/* 通知消息 */
-.ocr-notification {
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
+/* 选中文字时的样式 */
+.ocr-text-line::selection {
+    background: rgba(1, 162, 255, 0.616);
     color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-    z-index: 10003;
-    animation: ocr-notification-in 0.3s ease;
-    pointer-events: none;
-}
-
-.ocr-notification-warning {
-    background: rgba(255, 152, 0, 0.95);
-}
-
-.ocr-notification-error {
-    background: rgba(244, 67, 54, 0.95);
-}
-
-.ocr-notification-fade {
-    animation: ocr-notification-out 0.3s ease forwards;
-}
-
-@keyframes ocr-notification-in {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-@keyframes ocr-notification-out {
-    from {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-    to {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
-    }
 }
 
 /* ======================长截屏相关样式====================== */
