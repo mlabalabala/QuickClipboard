@@ -22,6 +22,7 @@ import './js/utils/htmlProcessor.js';
 import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
 import { initShortcutDisplay } from './js/shortcutDisplay.js';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
   initDOMReferences,
   setCurrentFilter,
@@ -39,6 +40,7 @@ import {
 } from './js/config.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
+let cachedSettings = null;
 // 筛选tabs容器
 let filterTabsContainer;
 let filterTabsIndicator;
@@ -145,6 +147,18 @@ async function initApp() {
 
   // 初始化设置管理器
   await initializeSettingsManager();
+
+  // 初始化设置缓存
+  try {
+    cachedSettings = await invoke('get_settings');
+  } catch (error) {
+    console.error('初始化设置缓存失败:', error);
+  }
+
+  // 监听设置变化事件，更新缓存
+  await listen('settings-changed', (event) => {
+    cachedSettings = event.payload;
+  });
 
   // 初始化快捷键显示
   await initShortcutDisplay();
@@ -392,7 +406,6 @@ async function setupFileIconRefreshListener() {
 // 设置窗口大小和位置监听器
 function setupWindowSizeAndPositionListeners() {
   let resizeTimeout;
-  let moveTimeout;
 
   // 监听窗口大小变化
   window.addEventListener('resize', async () => {
@@ -400,9 +413,8 @@ function setupWindowSizeAndPositionListeners() {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(async () => {
       try {
-        // 获取当前设置
-        const settings = await invoke('get_settings');
-        if (settings.rememberWindowSize) {
+        // 使用缓存的设置
+        if (cachedSettings && cachedSettings.rememberWindowSize) {
           // 获取当前窗口大小
           const size = await getCurrentWindow().outerSize();
           // 保存窗口大小
@@ -418,39 +430,6 @@ function setupWindowSizeAndPositionListeners() {
     }, 500); // 500ms防抖
   });
 
-  // 监听窗口位置变化（仅在记住位置模式下）
-  let lastPosition = null;
-
-  // 定期检查窗口位置变化
-  setInterval(async () => {
-    try {
-      const settings = await invoke('get_settings');
-      if (settings.windowPositionMode === 'remember') {
-        const position = await getCurrentWindow().outerPosition();
-        // 检查位置是否发生变化
-        if (lastPosition &&
-          (lastPosition.x !== position.x || lastPosition.y !== position.y)) {
-          // 使用防抖
-          clearTimeout(moveTimeout);
-          moveTimeout = setTimeout(async () => {
-            try {
-              console.log(position.x, position.y)
-              await invoke('save_window_position', {
-                x: position.x,
-                y: position.y
-              });
-              console.log('窗口位置已保存:', position.x, ',', position.y);
-            } catch (error) {
-              console.error('保存窗口位置失败:', error);
-            }
-          }, 500);
-        }
-
-        lastPosition = position;
-      }
-    } catch (error) {
-    }
-  }, 1000); 
 }
 
 // 页面加载完成后初始化

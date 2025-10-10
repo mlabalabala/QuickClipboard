@@ -66,12 +66,20 @@ pub fn stop_custom_drag() -> Result<(), String> {
         }
     };
     
-    // 延迟检查边缘吸附（如果有窗口）
+    // 延迟检查边缘吸附和保存位置
     if let Some(window) = window {
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(100));
+            
             // 通知边缘吸附模块检查窗口位置
             let _ = crate::edge_snap::check_window_snap(&window);
+
+            let settings = crate::settings::get_global_settings();
+            if settings.window_position_mode == "remember" {
+                if let Ok(position) = window.outer_position() {
+                    let _ = crate::settings::save_window_position(position.x, position.y);
+                }
+            }
         });
     }
     
@@ -82,14 +90,13 @@ pub fn stop_custom_drag() -> Result<(), String> {
 fn start_drag_monitoring_thread() {
     std::thread::spawn(|| {
         loop {
-            let (is_dragging, window, mouse_offset_x, mouse_offset_y, hwnd) = {
+            let (window, mouse_offset_x, mouse_offset_y, hwnd) = {
                 let state = CUSTOM_DRAG_STATE.lock();
                 if let Some(ref drag_state) = state.as_ref() {
                     if !drag_state.is_dragging {
                         break;
                     }
                     (
-                        drag_state.is_dragging,
                         drag_state.window.clone(),
                         drag_state.mouse_offset_x,
                         drag_state.mouse_offset_y,
@@ -194,6 +201,7 @@ pub fn is_dragging() -> bool {
 }
 
 // 获取当前拖拽的窗口
+#[allow(dead_code)]
 pub fn get_dragging_window() -> Option<WebviewWindow> {
     let state = CUSTOM_DRAG_STATE.lock();
     state.as_ref().map(|s| s.window.clone())
