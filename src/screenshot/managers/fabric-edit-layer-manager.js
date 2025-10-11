@@ -83,7 +83,7 @@ export class FabricEditLayerManager {
      * 自定义选择框和控制节点样式
      */
     customizeSelectionStyle() {
-        // 设置全局对象控制样式（Fabric.js v6 兼容）
+        // 设置全局对象控制样式
         const controlStyle = {
             // 边框样式
             borderColor: '#4395ff',           // 边框颜色（蓝色）
@@ -991,14 +991,14 @@ export class FabricEditLayerManager {
     }
 
     /**
-     * 获取原生Canvas（兼容性）
+     * 获取原生Canvas
      */
     getCanvas() {
         return this.canvas;
     }
 
     /**
-     * 获取原生Context（兼容性）
+     * 获取原生Context
      */
     getContext() {
         return this.canvas?.getContext('2d');

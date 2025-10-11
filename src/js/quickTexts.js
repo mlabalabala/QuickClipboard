@@ -17,8 +17,8 @@ import {
   quickTextGroupSelect,
   pasteWithFormat
 } from './config.js';
-import { showAlertModal, showNotification, showPasteIndicator, hidePasteIndicator, showPasteLoading, hidePasteLoading } from './notificationManager.js';
-import { showConfirmModal } from './ui.js';
+import { showNotification } from './notificationManager.js';
+import { showConfirmModal, showAlertModal } from './ui.js';
 import { getCurrentGroupId, updateGroupSelects, getGroups } from './groups.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
@@ -810,7 +810,8 @@ function handleQuickTextItemContextMenu(index, event) {
 // 处理常用文本项目粘贴
 async function handleQuickTextItemPaste(text, element = null) {
   try {
-    showPasteLoading(element, '正在粘贴...');
+    if (element) element.classList.add('paste-loading');
+    showNotification('正在粘贴...', 'info');
 
     // 调用后端统一粘贴接口
     await invoke('paste_content', {
@@ -825,11 +826,12 @@ async function handleQuickTextItemPaste(text, element = null) {
       }, 100);
     }
 
-    hidePasteLoading(element, true, '粘贴成功');
+    if (element) element.classList.remove('paste-loading');
+    showNotification('粘贴成功', 'success', 1500);
   } catch (error) {
     console.error('粘贴常用文本失败:', error);
-    hidePasteLoading(element, false, '粘贴失败');
-    showNotification('粘贴失败', 'error');
+    if (element) element.classList.remove('paste-loading');
+    showNotification('粘贴失败', 'error', 2000);
   }
 }
 

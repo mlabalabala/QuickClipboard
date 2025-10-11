@@ -12,7 +12,7 @@ import {
   isOneTimePaste,
   pasteWithFormat
 } from './config.js';
-import { showNotification, showPasteLoading, hidePasteLoading } from './notificationManager.js';
+import { showNotification } from './notificationManager.js';
 import { showContextMenu } from './contextMenu.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
@@ -553,7 +553,8 @@ function handleClipboardItemContextMenu(index, event) {
 // 处理剪贴板项目粘贴
 async function handleClipboardItemPaste(item, index, element = null) {
   try {
-    showPasteLoading(element, '正在粘贴...');
+    if (element) element.classList.add('paste-loading');
+    showNotification('正在粘贴...', 'info');
 
     // 调用后端统一粘贴接口
     await invoke('paste_content', { 
@@ -567,11 +568,12 @@ async function handleClipboardItemPaste(item, index, element = null) {
       setTimeout(() => deleteClipboardItem(item.id), 100);
     }
 
-    hidePasteLoading(element, true, '粘贴成功');
+    if (element) element.classList.remove('paste-loading');
+    showNotification('粘贴成功', 'success', 1500);
   } catch (error) {
     console.error('粘贴失败:', error);
-    hidePasteLoading(element, false, '粘贴失败');
-    showNotification('粘贴失败', 'error');
+    if (element) element.classList.remove('paste-loading');
+    showNotification('粘贴失败', 'error', 2000);
   }
 }
 

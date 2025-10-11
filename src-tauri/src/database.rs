@@ -780,37 +780,6 @@ pub fn reorder_clipboard_items_by_ids(ids: &[i64]) -> Result<(), String> {
     })
 }
 
-// 通过内容重新排序剪贴板项目（保留兼容性）
-pub fn reorder_clipboard_items(contents: &[String]) -> Result<(), String> {
-    with_connection(|conn| {
-        let tx = conn.unchecked_transaction()?;
-
-        // 获取当前最大时间戳，确保排序后的项目时间戳都小于未来可能的新项目
-        let max_timestamp: i64 = conn.query_row(
-            "SELECT COALESCE(MAX(created_at), 0) FROM clipboard",
-            [],
-            |row| row.get(0),
-        )?;
-
-        // 使用比当前最大时间戳小的值作为基准，为排序项目分配时间戳
-        // 这样确保新复制的内容（使用当前时间戳）总是在最前面
-        let base_timestamp = max_timestamp.saturating_sub(contents.len() as i64 * 2);
-
-        // 为每个文本分配新的时间戳，第一个项目时间戳最大（但仍小于未来的新项目）
-        for (index, content) in contents.iter().enumerate() {
-            let new_timestamp = base_timestamp + (contents.len() - index) as i64;
-
-            tx.execute(
-                "UPDATE clipboard SET updated_at = ?1 WHERE content = ?2",
-                params![new_timestamp, content],
-            )?;
-        }
-
-        tx.commit()?;
-        Ok(())
-    })
-}
-
 // =================== 收藏项目数据库操作 ===================
 
 // 添加收藏项目
@@ -993,8 +962,6 @@ pub fn update_group_info(old_name: &str, new_name: &str, new_icon: &str, new_ord
 
 // 删除分组（将分组下的所有项目移动到全部）
 pub fn delete_group_items(group_name: &str) -> Result<(), String> {
-    let now = chrono::Local::now().timestamp();
-    
     with_connection(|conn| {
         let tx = conn.unchecked_transaction()?;
         
@@ -1003,8 +970,6 @@ pub fn delete_group_items(group_name: &str) -> Result<(), String> {
             "DELETE FROM groups WHERE name = ?1",
             params![group_name],
         )?;
-        
-
         
         tx.commit()?;
         Ok(())

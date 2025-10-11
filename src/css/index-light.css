@@ -477,12 +477,6 @@ body.theme-light {
   color: #1890ff;
 }
 
-/* =================== 外置滚动条 =================== */
-.theme-light .external-scrollbar__track {
-  background: rgba(0, 0, 0, 0.1);
-  border-color: rgba(58, 128, 249, 0.5);
-}
-
 /* =================== 占位符文本 =================== */
 .theme-light ::placeholder,
 .theme-light ::-webkit-input-placeholder,

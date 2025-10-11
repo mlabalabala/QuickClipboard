@@ -188,15 +188,6 @@ pub fn move_item(from_index: usize, to_index: usize) -> Result<(), String> {
     Ok(())
 }
 
-// 重新排序历史记录
-pub fn reorder_history(items: Vec<String>) {
-    if let Err(e) = database::reorder_clipboard_items(&items) {
-        println!("数据库重新排序失败: {}", e);
-    } else {
-        println!("剪贴板历史顺序已在数据库中更新");
-    }
-}
-
 // 设置剪贴板监听状态
 pub fn set_monitoring_enabled(enabled: bool) {
     MONITORING_ENABLED.store(enabled, Ordering::Relaxed);

@@ -444,8 +444,6 @@ export class Arrow extends fabric.Path {
 }
 Arrow.fromObject = (object, callback) => Promise.resolve(Arrow._fromObjectInternal(object, callback));
 Arrow.async = true;
-
-// 兼容 Fabric 的 enliven 管线
 if (fabric?.util?.enlivenObjectEnliveners) {
   fabric.util.enlivenObjectEnliveners[Arrow.TYPE] = Arrow._fromObjectInternal;
   fabric.util.enlivenObjectAsyncEnliveners[Arrow.TYPE] = Arrow._fromObjectInternal;

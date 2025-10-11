@@ -845,8 +845,7 @@ export class ScreenshotController {
         if (this.toolManager && this.toolManager.canUseKeyboardShortcuts) {
             return this.toolManager.canUseKeyboardShortcuts();
         }
-        
-        // 传统方式检查（兼容性）
+
         if (this.editLayerManager && this.editLayerManager.getFabricCanvas) {
             const canvas = this.editLayerManager.getFabricCanvas();
             if (canvas) {

@@ -527,11 +527,6 @@ body.theme-dark {
   color: var(--primary-color);
 }
 
-/* =================== 外置滚动条 =================== */
-.theme-dark .external-scrollbar__track {
-  background: rgba(255, 255, 255, 0.2);
-}
-
 /* =================== 占位符文本 =================== */
 .theme-dark ::placeholder,
 .theme-dark ::-webkit-input-placeholder,
@@ -749,11 +744,6 @@ body.theme-dark {
 
 .theme-dark .color-preview-swatch {
   border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* =================== 透明主题兼容 =================== */
-.theme-dark.theme-transparent {
-  /* 如果需要透明主题的特殊处理，在这里添加 */
 }
 
 /* =================== 系统主题响应 =================== */

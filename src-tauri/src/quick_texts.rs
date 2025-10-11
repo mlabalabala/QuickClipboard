@@ -131,41 +131,6 @@ pub fn move_quick_text_within_group(
     database::reorder_favorite_items(&group_texts)
 }
 
-// 重新排序常用文本
-pub fn reorder_quick_texts(items: Vec<FavoriteItem>) -> Result<(), String> {
-    // 验证传入的项目，确保它们都存在且 group_name 一致
-    let mut group_name_check: Option<String> = None;
-    for item in &items {
-        if let Ok(exists) = database::favorite_item_exists(&item.id) {
-            if !exists {
-                return Err(format!("常用文本 {} 不存在", item.id));
-            }
-
-            if let Ok(existing_texts) = database::get_all_favorite_items() {
-                if let Some(existing) = existing_texts.iter().find(|t| t.id == item.id) {
-                    if group_name_check.is_none() {
-                        group_name_check = Some(existing.group_name.clone());
-                    } else if group_name_check.as_ref() != Some(&existing.group_name) {
-                        return Err("不能跨分组排序常用文本".to_string());
-                    }
-                }
-            }
-        } else {
-            return Err(format!("验证常用文本 {} 失败", item.id));
-        }
-    }
-
-    database::reorder_favorite_items(&items)?;
-
-    let group_name = group_name_check.unwrap_or_else(|| "未知".to_string());
-    println!(
-        "已在数据库中重新排序分组 {} 中的 {} 个常用文本",
-        group_name,
-        items.len()
-    );
-    Ok(())
-}
-
 // 移动常用文本到指定分组
 pub fn move_quick_text_to_group(id: String, group_name: String) -> Result<(), String> {
     // 获取现有的常用文本

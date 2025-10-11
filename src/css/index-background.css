@@ -592,7 +592,6 @@ body.theme-background {
 /* =================== 外置滚动条 =================== */
 .theme-background .external-scrollbar__track {
     background: color-mix(in srgb, var(--titlebar-bg-dynamic) 50%, transparent) !important;
-    border-color: var(--primary-color);
 }
 
 .theme-background .external-scrollbar__thumb {

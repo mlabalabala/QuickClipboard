@@ -296,31 +296,6 @@ export function clearAllNotifications() {
   notifications.forEach(hideNotification);
 }
 
-// =================== 向后兼容的必要函数 ===================
-
-export const showPasteIndicator = showNotification;
-export const hidePasteIndicator = () => {
-  const notifications = document.querySelectorAll('.unified-notification, .translation-notification');
-  notifications.forEach(hideNotification);
-};
-export const showPasteLoading = (element, message) => {
-  if (element) element.classList.add('paste-loading');
-  return showNotification(message || '正在粘贴...', 'info');
-};
-export const hidePasteLoading = (element, success, message) => {
-  if (element) element.classList.remove('paste-loading');
-  const type = success !== false ? 'success' : 'error';
-  const text = message || (success !== false ? '粘贴成功' : '粘贴失败');
-  return showNotification(text, type, success !== false ? 1500 : 2000);
-};
-export const showAlertModal = (title, message) => alert(`${title}\n\n${message}`);
-export const showConfirmModal = (title, message, onConfirm, onCancel) => {
-  const result = confirm(`${title}\n\n${message}`);
-  if (result && onConfirm) onConfirm();
-  else if (!result && onCancel) onCancel();
-  return result;
-};
-
 // 窗口卸载时清理所有通知
 window.addEventListener('beforeunload', clearAllNotifications);
 

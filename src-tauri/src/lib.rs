@@ -430,8 +430,6 @@ pub fn run() {
             disable_mouse_monitoring_command,
             set_startup_launch,
             set_history_limit,
-            reorder_clipboard_history,
-            reorder_quick_texts,
             get_groups,
             add_group,
             update_group,

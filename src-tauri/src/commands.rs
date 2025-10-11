@@ -77,7 +77,6 @@ pub fn toggle_window_visibility(app: tauri::AppHandle) -> Result<(), String> {
     crate::services::window_service::WindowService::toggle_visibility(&app)
 }
 
-// 保留原有的greet函数以兼容现有代码
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -192,18 +191,6 @@ pub fn move_clipboard_item(from_index: usize, to_index: usize) -> Result<(), Str
 #[tauri::command]
 pub fn move_quick_text_item(item_id: String, to_index: usize) -> Result<(), String> {
     crate::services::drag_sort_service::DragSortService::move_quick_text_item(item_id, to_index)
-}
-
-// 重新排序剪贴板历史（保留兼容性）
-#[tauri::command]
-pub fn reorder_clipboard_history(items: Vec<String>) -> Result<(), String> {
-    crate::services::drag_sort_service::DragSortService::reorder_clipboard_history(items)
-}
-
-// 重新排序常用文本（保留兼容性）
-#[tauri::command]
-pub fn reorder_quick_texts(items: Vec<FavoriteItem>) -> Result<(), String> {
-    crate::services::drag_sort_service::DragSortService::reorder_quick_texts(items)
 }
 
 // =================== 分组相关命令 ===================
