@@ -53,18 +53,17 @@ impl GroupService {
             // 提取图片ID
             let image_id = content.strip_prefix("image:").unwrap_or("");
             
-            // 复制图片到新的存储位置
+            // 验证图片是否存在
             match crate::image_manager::get_image_manager() {
                 Ok(manager) => {
                     let guard = manager.lock().map_err(|e| format!("锁定图片管理器失败: {}", e))?;
-                    match guard.get_image_data_url(image_id) {
-                        Ok(data_url) => {
-                            // 直接使用原图片ID
+                    match guard.get_image_file_path(image_id) {
+                        Ok(_) => {
                             drop(guard);
                             content
                         },
                         Err(e) => {
-                            eprintln!("获取图片数据失败: {}", e);
+                            eprintln!("图片文件不存在: {}", e);
                             content
                         }
                     }

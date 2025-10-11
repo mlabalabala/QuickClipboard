@@ -113,6 +113,27 @@ impl ImageManager {
         Ok(format!("data:image/png;base64,{}", base64_string))
     }
 
+    /// 获取BGRA数据和PNG字节
+    pub fn get_image_bgra_and_png(&self, image_id: &str) -> Result<(Vec<u8>, Vec<u8>, u32, u32), String> {
+        let file_path = self.images_dir.join(format!("{}.png", image_id));
+        if !file_path.exists() {
+            return Err(format!("图片文件不存在: {}", image_id));
+        }
+
+        let png_bytes = fs::read(&file_path)
+            .map_err(|e| format!("读取图片文件失败: {}", e))?;
+
+        let img = image::load_from_memory(&png_bytes)
+            .map_err(|e| format!("解析PNG失败: {}", e))?
+            .to_rgba8();
+        
+        let (width, height) = img.dimensions();
+
+        let bgra = rgba_to_bgra(img.as_raw());
+
+        Ok((bgra, png_bytes, width, height))
+    }
+
     /// 删除图片
     pub fn delete_image(&self, image_id: &str) -> Result<(), String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
@@ -171,4 +192,23 @@ static IMAGE_MANAGER: Lazy<Result<Mutex<ImageManager>, String>> =
 
 pub fn get_image_manager() -> Result<&'static Mutex<ImageManager>, String> {
     IMAGE_MANAGER.as_ref().map_err(|e| e.clone())
+}
+
+/// 转换RGBA到BGRA
+fn rgba_to_bgra(rgba: &[u8]) -> Vec<u8> {
+    use rayon::prelude::*;
+    
+    let mut bgra = vec![0u8; rgba.len()];
+
+    bgra.par_chunks_mut(4)
+        .enumerate()
+        .for_each(|(i, bgra_chunk)| {
+            let offset = i * 4;
+            bgra_chunk[0] = rgba[offset + 2]; // B
+            bgra_chunk[1] = rgba[offset + 1]; // G
+            bgra_chunk[2] = rgba[offset];     // R
+            bgra_chunk[3] = rgba[offset + 3]; // A
+        });
+    
+    bgra
 }

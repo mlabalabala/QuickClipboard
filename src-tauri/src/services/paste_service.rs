@@ -185,9 +185,10 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             format!("获取图片管理器失败: {}", e)
         })?;
 
-        let (image_data, file_path) = {
+        let (bgra, png_bytes, width, height, file_path) = {
             let manager = image_manager.lock().unwrap();
-            let image_data = manager.get_image_data_url(image_id).map_err(|e| {
+            
+            let (bgra, png_bytes, width, height) = manager.get_image_bgra_and_png(image_id).map_err(|e| {
                 crate::clipboard_monitor::end_pasting_operation();
                 format!("获取图片数据失败: {}", e)
             })?;
@@ -197,15 +198,13 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
                 format!("获取图片文件路径失败: {}", e)
             })?;
 
-            (image_data, file_path)
+            (bgra, png_bytes, width, height, file_path)
         }; 
 
         // 直接设置剪贴板内容，包含图像数据和文件路径
         #[cfg(windows)]
         {
-            use crate::clipboard_content::{
-                data_url_to_bgra_and_png, set_windows_clipboard_image_with_file,
-            };
+            use crate::clipboard_content::set_windows_clipboard_image_with_file;
             use crate::utils::window_utils::get_active_window_process_name;
             let settings = crate::settings::get_global_settings();
             let prefers_image_data = get_active_window_process_name()
@@ -219,11 +218,6 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
                     is_priority
                 })
                 .unwrap_or(false);
-            let (bgra, png_bytes, width, height) =
-                data_url_to_bgra_and_png(&image_data).map_err(|e| {
-                    crate::clipboard_monitor::end_pasting_operation();
-                    e
-                })?;
             let file_path_opt = if prefers_image_data {
                 None
             } else {
