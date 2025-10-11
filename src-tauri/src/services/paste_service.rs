@@ -233,8 +233,7 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
             // 检测目标应用是否为文件管理器，只对文件管理器延迟
             let is_file_manager = crate::utils::window_utils::is_target_file_manager();
             if is_file_manager {
-                // 延迟重置粘贴状态，防止剪贴板监听器立即检测到CF_HDROP格式
-                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
             }
         }
         #[cfg(not(windows))]

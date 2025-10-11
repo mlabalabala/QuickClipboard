@@ -1,8 +1,12 @@
 use arboard::Clipboard;
 use base64::{engine::general_purpose as b64_engine, Engine as _};
 use image::{ImageBuffer, Rgba};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 const CF_DIB: u32 = 8;
+
+pub static CLIPBOARD_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 pub fn image_to_data_url(image: &arboard::ImageData) -> String {
     use image::codecs::png::PngEncoder;
@@ -68,64 +72,102 @@ pub fn set_windows_clipboard_image_with_file(
     file_path: Option<&str>,
 ) -> Result<(), String> {
     use windows::core::w;
-    use windows::Win32::Foundation::{HANDLE, HGLOBAL, HWND};
+    use windows::Win32::Foundation::{HANDLE, HWND};
     use windows::Win32::System::DataExchange::{
-        CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
+        EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
     };
     use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+
+    const MAX_IMAGE_SIZE: usize = 100 * 1024 * 1024;
+    if bgra.len() > MAX_IMAGE_SIZE || png_bytes.len() > MAX_IMAGE_SIZE {
+        return Err("图片太大，超过100MB限制".to_string());
+    }
+
+    // 获取全局锁，防止并发访问剪贴板
+    let _lock = CLIPBOARD_LOCK.lock().map_err(|e| format!("获取剪贴板锁失败: {}", e))?;
 
     unsafe {
         if OpenClipboard(HWND(0)).is_err() {
             return Err("打开剪贴板失败".into());
         }
-        let _ = EmptyClipboard();
-
-        // ---------- 写入 CF_DIB ----------
-        let mut dib: Vec<u8> = Vec::with_capacity(40 + bgra.len());
-        dib.extend_from_slice(&(40u32).to_le_bytes()); // biSize
-        dib.extend_from_slice(&(width as i32).to_le_bytes()); // biWidth
-        dib.extend_from_slice(&(-(height as i32)).to_le_bytes()); // biHeight (负值 = top-down)
-        dib.extend_from_slice(&(1u16).to_le_bytes()); // biPlanes
-        dib.extend_from_slice(&(32u16).to_le_bytes()); // biBitCount
-        dib.extend_from_slice(&(0u32).to_le_bytes()); // biCompression = BI_RGB
-        dib.extend_from_slice(&(0u32).to_le_bytes()); // biSizeImage
-        dib.extend_from_slice(&(0i32).to_le_bytes()); // biXPelsPerMeter
-        dib.extend_from_slice(&(0i32).to_le_bytes()); // biYPelsPerMeter
-        dib.extend_from_slice(&(0u32).to_le_bytes()); // biClrUsed
-        dib.extend_from_slice(&(0u32).to_le_bytes()); // biClrImportant
-        dib.extend_from_slice(bgra);
-
-        let hmem_dib: HGLOBAL =
-            GlobalAlloc(GMEM_MOVEABLE, dib.len()).map_err(|e| format!("GlobalAlloc失败: {e}"))?;
-        if !hmem_dib.0.is_null() {
-            let ptr = GlobalLock(hmem_dib) as *mut u8;
-            if !ptr.is_null() {
-                std::ptr::copy_nonoverlapping(dib.as_ptr(), ptr, dib.len());
-                let _ = GlobalUnlock(hmem_dib);
-                let _ = SetClipboardData(CF_DIB, HANDLE(hmem_dib.0 as isize));
-            }
+        
+        let _guard = ClipboardGuard;
+        
+        if EmptyClipboard().is_err() {
+            return Err("清空剪贴板失败".into());
         }
-        let fmt_png = RegisterClipboardFormatW(w!("PNG"));
-        if fmt_png != 0 {
-            let hmem_png: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, png_bytes.len())
-                .map_err(|e| format!("GlobalAlloc失败: {e}"))?;
-            if !hmem_png.0.is_null() {
-                let ptr = GlobalLock(hmem_png) as *mut u8;
-                if !ptr.is_null() {
-                    std::ptr::copy_nonoverlapping(png_bytes.as_ptr(), ptr, png_bytes.len());
-                    let _ = GlobalUnlock(hmem_png);
-                    let _ = SetClipboardData(fmt_png, HANDLE(hmem_png.0 as isize));
+
+        let mut dib: Vec<u8> = Vec::with_capacity(40 + bgra.len());
+        dib.extend_from_slice(&(40u32).to_le_bytes());
+        dib.extend_from_slice(&(width as i32).to_le_bytes());
+        dib.extend_from_slice(&(-(height as i32)).to_le_bytes());
+        dib.extend_from_slice(&(1u16).to_le_bytes());
+        dib.extend_from_slice(&(32u16).to_le_bytes());
+        dib.extend_from_slice(&(0u32).to_le_bytes());
+        dib.extend_from_slice(&(0u32).to_le_bytes());
+        dib.extend_from_slice(&(0i32).to_le_bytes());
+        dib.extend_from_slice(&(0i32).to_le_bytes());
+        dib.extend_from_slice(&(0u32).to_le_bytes());
+        dib.extend_from_slice(&(0u32).to_le_bytes());
+        dib.extend_from_slice(bgra);
+        match GlobalAlloc(GMEM_MOVEABLE, dib.len()) {
+            Ok(hmem_dib) if !hmem_dib.0.is_null() => {
+                let ptr = GlobalLock(hmem_dib);
+                if ptr.is_null() {
+                    return Err("锁定DIB内存失败".to_string());
+                }
+                
+                std::ptr::copy_nonoverlapping(dib.as_ptr(), ptr as *mut u8, dib.len());
+                let _ = GlobalUnlock(hmem_dib);
+                
+                if SetClipboardData(CF_DIB, HANDLE(hmem_dib.0 as isize)).is_err() {
+                    return Err("设置DIB数据到剪贴板失败".to_string());
                 }
             }
+            _ => return Err("分配DIB内存失败".to_string()),
         }
-        if let Some(path) = file_path {
-            if let Err(_e) = set_clipboard_hdrop_internal(&[path.to_string()]) {
+
+        let fmt_png = RegisterClipboardFormatW(w!("PNG"));
+        if fmt_png != 0 {
+            match GlobalAlloc(GMEM_MOVEABLE, png_bytes.len()) {
+                Ok(hmem_png) if !hmem_png.0.is_null() => {
+                    let ptr = GlobalLock(hmem_png);
+                    if ptr.is_null() {
+                        eprintln!("锁定PNG内存失败");
+                    } else {
+                        std::ptr::copy_nonoverlapping(png_bytes.as_ptr(), ptr as *mut u8, png_bytes.len());
+                        let _ = GlobalUnlock(hmem_png);
+                        
+                        if SetClipboardData(fmt_png, HANDLE(hmem_png.0 as isize)).is_err() {
+                            eprintln!("设置PNG数据失败");
+                        }
+                    }
+                }
+                _ => eprintln!("分配PNG内存失败"),
             }
         }
 
-        let _ = CloseClipboard();
+        if let Some(path) = file_path {
+            if let Err(e) = set_clipboard_hdrop_internal(&[path.to_string()]) {
+                eprintln!("设置文件路径失败: {}", e);
+            }
+        }
     }
+    
     Ok(())
+}
+
+#[cfg(windows)]
+struct ClipboardGuard;
+
+#[cfg(windows)]
+impl Drop for ClipboardGuard {
+    fn drop(&mut self) {
+        unsafe {
+            use windows::Win32::System::DataExchange::CloseClipboard;
+            let _ = CloseClipboard();
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -138,18 +180,16 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
     use windows::Win32::System::Ole::CF_HDROP;
 
     unsafe {
-        // 计算所需内存大小
         let mut total_size = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>();
         for path in file_paths {
             let wide_path: Vec<u16> = OsStr::new(path)
                 .encode_wide()
                 .chain(std::iter::once(0))
                 .collect();
-            total_size += wide_path.len() * 2; // UTF-16 字符
+            total_size += wide_path.len() * 2;
         }
-        total_size += 2; // 双重空终止符
+        total_size += 2;
 
-        // 分配全局内存
         let hmem = GlobalAlloc(GMEM_MOVEABLE, total_size)
             .map_err(|e| format!("GlobalAlloc失败: {}", e))?;
 
@@ -157,20 +197,18 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
             return Err("无法分配内存".to_string());
         }
 
-        let ptr = GlobalLock(hmem) as *mut u8;
+        let ptr = GlobalLock(hmem);
         if ptr.is_null() {
             return Err("无法锁定内存".to_string());
         }
 
-        // 设置 DROPFILES 结构
         let dropfiles = ptr as *mut windows::Win32::UI::Shell::DROPFILES;
         (*dropfiles).pFiles = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>() as u32;
         (*dropfiles).pt.x = 0;
         (*dropfiles).pt.y = 0;
         (*dropfiles).fNC = windows::Win32::Foundation::BOOL(0);
-        (*dropfiles).fWide = windows::Win32::Foundation::BOOL(1); // Unicode
+        (*dropfiles).fWide = windows::Win32::Foundation::BOOL(1);
 
-        // 复制文件路径
         let mut offset = std::mem::size_of::<windows::Win32::UI::Shell::DROPFILES>();
         for path in file_paths {
             let wide_path: Vec<u16> = OsStr::new(path)
@@ -183,13 +221,11 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
             offset += wide_path.len() * 2;
         }
 
-        // 添加双重空终止符
         let final_ptr = (ptr as *mut u8).add(offset) as *mut u16;
         *final_ptr = 0;
 
         let _ = GlobalUnlock(hmem);
 
-        // 设置剪贴板数据
         if SetClipboardData(CF_HDROP.0 as u32, HANDLE(hmem.0 as isize)).is_err() {
             return Err("设置剪贴板数据失败".to_string());
         }
@@ -198,7 +234,7 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
     }
 }
 
-///设置纯文本和HTML格式到剪贴板（Windows）
+///设置纯文本和HTML格式到剪贴板
 #[cfg(windows)]
 fn set_windows_clipboard_both_formats(plain_text: &str, html: &str) -> Result<(), String> {
     use windows::core::w;
@@ -256,9 +292,6 @@ fn set_windows_clipboard_both_formats(plain_text: &str, html: &str) -> Result<()
 
         let _ = CloseClipboard();
     }
-    
-    // 验证剪贴板内容是否正确设置
-    verify_clipboard_formats();
     
     Ok(())
 }
@@ -366,32 +399,6 @@ fn fix_image_urls(html: &str) -> String {
     fixed
 }
 
-/// 验证剪贴板格式设置
-#[cfg(windows)]
-fn verify_clipboard_formats() {
-    use windows::core::w;
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::System::DataExchange::{
-        CloseClipboard, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
-    };
-
-    unsafe {
-        if OpenClipboard(HWND(0)).is_ok() {
-            // 检查各种格式是否可用
-            let cf_text_available = IsClipboardFormatAvailable(1).is_ok(); // CF_TEXT
-            let cf_unicode_available = IsClipboardFormatAvailable(13).is_ok(); // CF_UNICODETEXT
-            
-            let fmt_html = RegisterClipboardFormatW(w!("HTML Format"));
-            let html_available = if fmt_html != 0 {
-                IsClipboardFormatAvailable(fmt_html).is_ok()
-            } else {
-                false
-            };
-
-            let _ = CloseClipboard();
-        }
-    }
-}
 /// 自动判断文本/图片并设置剪贴板内容
 pub fn set_clipboard_content(content: String) -> Result<(), String> {
     set_clipboard_content_internal(content, true)
@@ -436,8 +443,6 @@ fn set_clipboard_content_with_html_internal(content: String, html_content: Optio
             }
         }
     }
-
-    // 如果在这里添加，会导致重复记录
     if add_to_history {
         println!("剪贴板内容已设置，将由监听器自动添加到历史记录");
     }

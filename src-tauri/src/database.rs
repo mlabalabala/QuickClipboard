@@ -333,7 +333,18 @@ fn create_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
-
+    // 图片数据表（存储原始BGRA数据）
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS image_data (
+            image_id TEXT PRIMARY KEY,
+            width INTEGER NOT NULL,
+            height INTEGER NOT NULL,
+            bgra_data BLOB NOT NULL,
+            png_data BLOB NOT NULL,
+            created_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
 
     Ok(())
 }
@@ -717,7 +728,11 @@ pub fn delete_clipboard_item(id: i64) -> Result<(), String> {
     with_connection(|conn| {
         conn.execute("DELETE FROM clipboard WHERE id = ?1", params![id])?;
         Ok(())
-    })
+    })?;
+    
+    crate::clipboard_history::cleanup_orphaned_images();
+    
+    Ok(())
 }
 
 // 更新剪贴板项目内容
@@ -738,12 +753,15 @@ pub fn clear_clipboard_history() -> Result<(), String> {
     with_connection(|conn| {
         conn.execute("DELETE FROM clipboard", [])?;
         Ok(())
-    })
+    })?;
+    
+    crate::clipboard_history::cleanup_orphaned_images();
+    
+    Ok(())
 }
 
 // 限制剪贴板历史数量
 pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
-    // 如果无限，不执行删除操作
     if max_count >= 999999 {
         return Ok(());
     }
@@ -757,7 +775,11 @@ pub fn limit_clipboard_history(max_count: usize) -> Result<(), String> {
             params![max_count],
         )?;
         Ok(())
-    })
+    })?;
+    
+    crate::clipboard_history::cleanup_orphaned_images();
+    
+    Ok(())
 }
 
 // 批量更新剪贴板项目的时间戳（用于重新排序）
