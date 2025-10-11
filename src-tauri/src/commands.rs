@@ -147,8 +147,8 @@ pub fn delete_quick_text(id: String) -> Result<(), String> {
 
 // 将剪贴板历史项添加到常用文本
 #[tauri::command]
-pub fn add_clipboard_to_favorites(index: usize) -> Result<FavoriteItem, String> {
-    crate::services::quick_text_service::QuickTextService::add_from_clipboard(index)
+pub fn add_clipboard_to_favorites(id: i64) -> Result<FavoriteItem, String> {
+    crate::services::quick_text_service::QuickTextService::add_from_clipboard(id)
 }
 
 // =================== 鼠标监听控制命令 ===================
@@ -401,14 +401,14 @@ pub async fn cancel_preview() -> Result<(), String> {
 
 // 删除剪贴板项目
 #[tauri::command]
-pub fn delete_clipboard_item(id: usize) -> Result<(), String> {
-    clipboard_history::delete_item_by_index(id)
+pub fn delete_clipboard_item(id: i64) -> Result<(), String> {
+    crate::database::delete_clipboard_item(id)
 }
 
 // 更新剪贴板项目内容
 #[tauri::command]
-pub fn update_clipboard_item(index: usize, content: String) -> Result<(), String> {
-    clipboard_history::update_item_content(index, content)
+pub fn update_clipboard_item(id: i64, content: String) -> Result<(), String> {
+    crate::database::update_clipboard_item(id, content)
 }
 
 // 清空剪贴板历史

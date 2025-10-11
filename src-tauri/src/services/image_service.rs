@@ -17,15 +17,6 @@ impl ImageService {
         }
     }
 
-    /// 获取图片数据URL（仅用于后端内部粘贴操作）
-    pub fn get_image_data_url(image_id: String) -> Result<String, String> {
-        let image_manager = crate::image_manager::get_image_manager()?;
-        let manager = image_manager
-            .lock()
-            .map_err(|e| format!("锁定图片管理器失败: {}", e))?;
-        manager.get_image_data_url(&image_id)
-    }
-
     /// 保存图片到文件（用于"另存为"功能）
     pub fn save_image_to_file(content: String, file_path: String) -> Result<(), String> {
         use std::fs;

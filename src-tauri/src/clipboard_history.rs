@@ -213,11 +213,6 @@ pub fn set_ignore_duplicates(enabled: bool) {
     println!("忽略重复内容设置: {}", enabled);
 }
 
-// 检查是否忽略重复内容
-pub fn is_ignore_duplicates() -> bool {
-    IGNORE_DUPLICATES.load(Ordering::Relaxed)
-}
-
 // 设置保存图片状态
 pub fn set_save_images(enabled: bool) {
     SAVE_IMAGES.store(enabled, Ordering::Relaxed);
@@ -229,26 +224,6 @@ pub fn is_save_images() -> bool {
     SAVE_IMAGES.load(Ordering::Relaxed)
 }
 
-// 根据索引删除剪贴板项目
-pub fn delete_item_by_index(index: usize) -> Result<(), String> {
-    // 获取当前历史记录以找到对应的数据库ID
-    let items = database::get_clipboard_history(None)?;
-
-    if index >= items.len() {
-        return Err("索引超出范围".to_string());
-    }
-
-    let item = &items[index];
-
-    // 从数据库删除
-    database::delete_clipboard_item(item.id)?;
-
-    // 清理未使用的图片
-    cleanup_orphaned_images();
-
-    println!("已删除索引为 {} 的剪贴板项目", index);
-    Ok(())
-}
 
 // 清空所有剪贴板历史
 pub fn clear_all() -> Result<(), String> {
@@ -259,28 +234,6 @@ pub fn clear_all() -> Result<(), String> {
     cleanup_orphaned_images();
 
     println!("已清空所有剪贴板历史记录");
-    Ok(())
-}
-
-// 更新剪贴板项目内容
-pub fn update_item_content(index: usize, new_content: String) -> Result<(), String> {
-    // 获取当前历史记录以找到对应的数据库ID
-    let items = database::get_clipboard_history(None)?;
-
-    if index >= items.len() {
-        return Err(format!(
-            "索引 {} 超出范围，当前历史记录数量: {}",
-            index,
-            items.len()
-        ));
-    }
-
-    let item = &items[index];
-
-    // 更新数据库中的内容
-    database::update_clipboard_item(item.id, new_content)?;
-
-    println!("已更新索引为 {} 的剪贴板项目内容", index);
     Ok(())
 }
 

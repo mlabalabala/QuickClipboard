@@ -2,31 +2,86 @@ use serde::Deserialize;
 use tauri::WebviewWindow;
 #[derive(Deserialize)]
 pub struct PasteContentParams {
-    pub content: String,
-    pub html_content: Option<String>,  // HTML格式内容
-    pub quick_text_id: Option<String>, // 如果是常用文本，提供ID
+    /// 剪贴板历史项ID
+    pub clipboard_id: Option<i64>,
+    /// 常用文本ID
+    pub quick_text_id: Option<String>,
 }
 
-/// 统一粘贴内容 - 自动识别内容类型并执行相应的粘贴操作
+/// 统一粘贴入口
 pub async fn paste_content(
     params: PasteContentParams,
     window: WebviewWindow,
 ) -> Result<(), String> {
-    println!("统一粘贴命令被调用，内容长度: {}", params.content.len());
-
-    // 判断内容类型并执行相应的粘贴操作
-    if params.content.starts_with("files:") {
-        // 文件类型粘贴
-        paste_files(params.content, &window).await
-    } else if params.content.starts_with("data:image/") || params.content.starts_with("image:") {
-        // 图片类型粘贴
-        paste_image(params.content, &window).await
+    // 从数据库获取内容
+    let (content, html_content) = if let Some(id) = params.clipboard_id {
+        get_clipboard_item_by_id(id)?
+    } else if let Some(ref id) = params.quick_text_id {
+        get_quick_text_by_id(id)?
     } else {
-        // 文本类型粘贴
-        paste_text_with_html(params.content, params.html_content, &window).await
+        return Err("必须提供 clipboard_id 或 quick_text_id".to_string());
+    };
+
+    // 根据内容类型执行相应的粘贴操作
+    if content.starts_with("files:") {
+        paste_files(content, &window).await
+    } else if content.starts_with("data:image/") || content.starts_with("image:") {
+        paste_image(content, &window).await
+    } else {
+        // 文本类型：判断是否需要翻译
+        paste_text_with_html(content, html_content, &window).await
     }?;
 
     Ok(())
+}
+
+/// 根据ID从数据库获取剪贴板项目
+fn get_clipboard_item_by_id(id: i64) -> Result<(String, Option<String>), String> {
+    let result = crate::database::with_connection(|conn| {
+        conn.query_row(
+            "SELECT content, html_content FROM clipboard WHERE id = ?",
+            [id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?
+                ))
+            }
+        )
+    });
+    
+    // 转换错误信息
+    result.map_err(|e| {
+        if e.contains("Query returned no rows") {
+            format!("未找到ID为 {} 的剪贴板项，可能已被删除或数据不同步", id)
+        } else {
+            e
+        }
+    })
+}
+
+/// 根据ID从数据库获取常用文本
+fn get_quick_text_by_id(id: &str) -> Result<(String, Option<String>), String> {
+    let result = crate::database::with_connection(|conn| {
+        conn.query_row(
+            "SELECT content, html_content FROM favorites WHERE id = ?",
+            [id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?
+                ))
+            }
+        )
+    });
+    
+    result.map_err(|e| {
+        if e.contains("Query returned no rows") {
+            format!("未找到ID为 {} 的常用文本", id)
+        } else {
+            e
+        }
+    })
 }
 
 /// 粘贴文本内容
@@ -41,8 +96,6 @@ pub async fn paste_text_with_html(
         && settings.ai_translate_on_paste;
 
     if should_translate {
-        println!("文本粘贴需要翻译，使用智能翻译模式");
-
         // 发送翻译相关事件
         send_translation_events(window, &text_content, "文本粘贴").await;
 
@@ -50,13 +103,11 @@ pub async fn paste_text_with_html(
         match crate::services::translation_service::translate_text_smart(text_content.clone()).await
         {
             Ok(_) => {
-                println!("文本粘贴智能翻译成功");
                 send_translation_success_events(window, &text_content, "文本粘贴").await;
                 handle_window_after_paste(window)?;
                 return Ok(());
             }
             Err(e) => {
-                println!("文本粘贴智能翻译失败，降级到普通粘贴: {}", e);
                 send_translation_error_events(window, &e, "文本粘贴").await;
                 // 翻译失败，继续执行普通粘贴
             }

@@ -517,45 +517,26 @@ fn handle_number_shortcut_paste(index: usize) {
             let hwnd = unsafe { GetForegroundWindow() };
             set_last_focus_hwnd(hwnd.0);
 
-            // 获取历史记录内容
-            let (content, html_content) = {
-                match crate::database::get_clipboard_history(None) {
-                    Ok(items) => {
-                        if index < items.len() {
-                            let item = &items[index];
-                            (Some(item.content.clone()), item.html_content.clone())
-                        } else {
-                            (None, None)
-                        }
+            // 获取剪贴板历史项ID
+            let clipboard_id = match crate::database::get_clipboard_history(None) {
+                Ok(items) => {
+                    if index < items.len() {
+                        Some(items[index].id)
+                    } else {
+                        None
                     }
-                    Err(_) => (None, None),
                 }
+                Err(_) => None,
             };
-
-            if let Some(content) = content {
+            
+            if let Some(id) = clipboard_id {
                 let window_clone = window.clone();
                 tauri::async_runtime::spawn(async move {
-                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
-                    if !content.starts_with("files:")
-                        && !content.starts_with("data:image/")
-                        && !content.starts_with("image:")
-                    {
-                        // 文本内容，使用带HTML和翻译支持的粘贴
-                        let _ = crate::services::paste_service::paste_text_with_html(
-                            content,
-                            html_content.clone(),
-                            &window_clone,
-                        )
-                        .await;
-                    } else {
-                        // 非文本内容，使用普通粘贴
-                        let params = crate::services::paste_service::PasteContentParams {
-                            content,
-                            html_content,
-                            quick_text_id: None,
-                        };
-                        let _ = crate::commands::paste_content(params, window_clone).await;
-                    }
+                    let params = crate::services::paste_service::PasteContentParams {
+                        clipboard_id: Some(id),
+                        quick_text_id: None,
+                    };
+                    let _ = crate::commands::paste_content(params, window_clone).await;
                 });
             }
         });

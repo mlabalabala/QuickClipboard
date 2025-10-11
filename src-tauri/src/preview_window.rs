@@ -431,43 +431,16 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
         if state.tab == "clipboard" {
             // 粘贴剪贴板历史项
             if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                // 获取历史记录内容
-                let (content, html_content) = {
-                    match crate::database::get_clipboard_history(None) {
-                        Ok(items) => {
-                            if index < items.len() {
-                                let item = &items[index];
-                                (Some(item.content.clone()), item.html_content.clone())
-                            } else {
-                                (None, None)
-                            }
-                        }
-                        Err(_) => (None, None),
-                    }
-                };
-
-                if let Some(content) = content {
-                    // 检查是否为文本内容，如果是则使用带翻译支持的粘贴
-                    if !content.starts_with("files:")
-                        && !content.starts_with("data:image/")
-                        && !content.starts_with("image:")
-                    {
-                        // 文本内容，使用带HTML和翻译支持的粘贴
-                        crate::services::paste_service::paste_text_with_html(
-                            content,
-                            html_content.clone(),
-                            &main_window,
-                        )
-                        .await?;
-                    } else {
-                        // 非文本内容，使用普通粘贴
-                        let params = crate::services::paste_service::PasteContentParams {
-                            content,
-                            html_content,
-                            quick_text_id: None,
-                        };
-                        crate::commands::paste_content(params, main_window.clone()).await?;
-                    }
+                // 获取剪贴板历史项ID
+                let items = crate::database::get_clipboard_history(None)?;
+                if index < items.len() {
+                    let params = crate::services::paste_service::PasteContentParams {
+                        clipboard_id: Some(items[index].id),
+                        quick_text_id: None,
+                    };
+                    crate::commands::paste_content(params, main_window.clone()).await?;
+                } else {
+                    return Err(format!("索引 {} 超出范围", index));
                 }
             }
         } else if state.tab == "quick-texts" {
@@ -481,10 +454,9 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
                 if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
-                    // 使用统一的粘贴命令，支持HTML格式
+                    // 使用统一的粘贴命令
                     let params = crate::services::paste_service::PasteContentParams {
-                        content: quick_text.content.clone(),
-                        html_content: quick_text.html_content.clone(),
+                        clipboard_id: None,
                         quick_text_id: Some(quick_text.id.clone()),
                     };
                     crate::commands::paste_content(params, main_window.clone()).await?;

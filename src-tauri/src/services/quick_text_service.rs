@@ -32,17 +32,20 @@ impl QuickTextService {
     }
 
     /// 将剪贴板历史项添加到常用文本
-    pub fn add_from_clipboard(index: usize) -> Result<FavoriteItem, String> {
-        // 从数据库获取剪贴板历史
-        let items = crate::database::get_clipboard_history(None)
-            .map_err(|e| format!("获取剪贴板历史失败: {}", e))?;
-
-        if index >= items.len() {
-            return Err(format!("索引 {} 超出历史范围", index));
-        }
-
-        let content = items[index].content.clone();
-        let html_content = items[index].html_content.clone();
+    pub fn add_from_clipboard(id: i64) -> Result<FavoriteItem, String> {
+        // 从数据库查询指定ID的剪贴板项
+        let (content, html_content) = crate::database::with_connection(|conn| {
+            conn.query_row(
+                "SELECT content, html_content FROM clipboard WHERE id = ?",
+                [id],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?
+                    ))
+                }
+            )
+        }).map_err(|e| format!("未找到ID为 {} 的剪贴板项: {}", id, e))?;
 
         // 处理内容，如果是图片则创建副本
         let final_content = Self::process_image_content(content)?;
@@ -54,7 +57,7 @@ impl QuickTextService {
         quick_texts::add_quick_text_with_group_and_html(title, final_content, html_content, "全部".to_string())
     }
 
-    /// 处理图片内容，直接使用图片ID
+    /// 处理图片内容，使用图片ID
     fn process_image_content(content: String) -> Result<String, String> {
         if content.starts_with("image:") {
             // 提取图片ID
@@ -67,7 +70,7 @@ impl QuickTextService {
                             Ok(manager) => {
                                 match manager.get_image_file_path(image_id) {
                                     Ok(_) => {
-                                        // 图片存在，直接使用原始ID
+                                        // 图片存在，使用原始ID
                                         Ok(content)
                                     }
                                     Err(e) => {

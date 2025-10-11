@@ -8,11 +8,6 @@ impl PreviewService {
         Ok(())
     }
 
-    /// 获取预览索引
-    pub fn get_preview_index() -> usize {
-        crate::preview_window::get_preview_index()
-    }
-
     /// 通知预览选项卡变更
     pub fn notify_preview_tab_change(tab: String, group_name: String) -> Result<(), String> {
         crate::preview_window::update_preview_source(tab, group_name)

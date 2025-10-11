@@ -17,19 +17,6 @@ impl ClipboardService {
         }
     }
 
-    /// 从剪贴板获取图片（base64格式）
-    pub fn get_image() -> Result<String, String> {
-        match Clipboard::new() {
-            Ok(mut clipboard) => {
-                match clipboard.get_image() {
-                    Ok(image_data) => Ok(image_to_data_url(&image_data)),
-                    Err(_) => Err("剪贴板中没有图片".into()),
-                }
-            }
-            Err(e) => Err(format!("获取剪贴板失败: {}", e)),
-        }
-    }
-
     /// 设置剪贴板文本
     pub fn set_text(text: String) -> Result<(), String> {
         set_clipboard_content(text)
@@ -47,57 +34,18 @@ impl ClipboardService {
 
         // 从数据库获取，使用当前的数量限制
         match crate::database::get_clipboard_history(Some(limit)) {
-            Ok(items) => {
-                // 转换数据库ID为前端期望的索引
-                items
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, mut item)| {
-                        // 将数据库ID转换为索引，保持前端兼容性
-                        item.id = index as i64;
-                        item
-                    })
-                    .collect()
-            }
+            Ok(items) => items,
             Err(e) => {
                 println!("从数据库获取历史记录失败: {}", e);
-                // 数据库模式下没有后备方案，返回空列表
                 Vec::new()
             }
         }
-    }
-
-    /// 添加项目到剪贴板历史
-    pub fn add_to_history(text: String) -> Result<(), String> {
-        crate::database::add_clipboard_item(text);
-        Ok(())
     }
 
     /// 移动剪贴板项目到第一位
     pub fn move_to_front(text: String) -> Result<(), String> {
         clipboard_history::move_to_front_if_exists(text);
         Ok(())
-    }
-
-    /// 清空剪贴板历史
-    pub fn clear_history() -> Result<(), String> {
-        match crate::database::clear_clipboard_history() {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("清空剪贴板历史失败: {}", e)),
-        }
-    }
-
-    /// 根据索引删除剪贴板项目
-    pub fn delete_item_by_index(index: usize) -> Result<(), String> {
-        clipboard_history::delete_item_by_index(index)
-    }
-
-    /// 移动剪贴板项目
-    pub fn move_item(from_index: usize, to_index: usize) -> Result<(), String> {
-        match crate::move_clipboard_item(from_index, to_index) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("移动剪贴板项目失败: {}", e)),
-        }
     }
 
     /// 设置剪贴板内容（带HTML）

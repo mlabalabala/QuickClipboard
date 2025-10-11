@@ -25,7 +25,6 @@ import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition,
 import { processHTMLImages } from './utils/htmlProcessor.js';
 import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { VirtualList } from './virtualList.js';
-import { shouldTranslateText, safeTranslateAndInputText, showTranslationIndicator, hideTranslationIndicator } from './aiTranslation.js';
 import { showContextMenu } from './contextMenu.js';
 import { detectColor, generateColorPreviewHTML } from './utils/colorUtils.js';
 
@@ -811,118 +810,26 @@ function handleQuickTextItemContextMenu(index, event) {
 // 处理常用文本项目粘贴
 async function handleQuickTextItemPaste(text, element = null) {
   try {
-    // 检查是否需要AI翻译
-    const contentType = text.content_type || 'text';
-    const isTextContent = contentType === 'text';
-    const translationCheck = isTextContent ? shouldTranslateText(text.content, 'paste') : { should: false, reason: '非文本内容' };
-    const needsTranslation = translationCheck.should;
+    showPasteLoading(element, '正在粘贴...');
 
-    // 根据内容类型确定加载消息
-    let loadingMessage = '正在粘贴...';
-    if (contentType === 'file') {
-      loadingMessage = '正在粘贴文件...';
-    } else if (contentType === 'image') {
-      loadingMessage = '正在粘贴图片...';
-    } else if (needsTranslation) {
-      loadingMessage = '正在翻译...';
+    // 调用后端统一粘贴接口
+    await invoke('paste_content', {
+      params: { quick_text_id: text.id }
+    });
+
+    // 一次性粘贴：删除该项
+    if (isOneTimePaste) {
+      setTimeout(async () => {
+        await invoke('delete_quick_text', { id: text.id });
+        await refreshQuickTexts();
+      }, 100);
     }
 
-    // 显示加载状态
-    showPasteLoading(element, loadingMessage);
-
-    if (needsTranslation) {
-      // 使用AI翻译并流式输入
-      showTranslationIndicator('正在翻译...');
-
-      // 定义降级回调函数
-      const fallbackPaste = async () => {
-        await invoke('paste_content', {
-          params: {
-            content: text.content,
-            html_content: pasteWithFormat ? (text.html_content || null) : null,
-            one_time: false,
-            quick_text_id: text.id
-          }
-        });
-      };
-
-      try {
-        const result = await safeTranslateAndInputText(text.content, fallbackPaste);
-
-        if (result.success) {
-
-          // 一次性粘贴：翻译成功后删除该常用文本项
-          if (isOneTimePaste) {
-            try {
-              setTimeout(async () => {
-                try {
-                  await invoke('delete_quick_text', { id: text.id });
-                  await refreshQuickTexts();
-                  showNotification('已删除常用文本', 'success');
-                } catch (error) {
-                  console.error('删除常用文本失败:', error);
-                  showNotification('删除失败，请重试', 'error');
-                }
-              }, 100);
-            } catch (_) {}
-          }
-
-          hideTranslationIndicator();
-          hidePasteLoading(element, true, '翻译粘贴成功');
-        } else {
-          console.error('AI翻译失败:', result.error);
-          hideTranslationIndicator();
-          hidePasteLoading(element, false, '翻译失败');
-          showNotification('翻译失败，请重试', 'error');
-        }
-      } catch (error) {
-        console.error('AI翻译过程中发生错误:', error);
-        hideTranslationIndicator();
-        hidePasteLoading(element, false, '翻译过程中发生错误');
-        showNotification('翻译过程中发生错误', 'error');
-      }
-    } else {
-      // 使用统一的粘贴命令
-      await invoke('paste_content', {
-        params: {
-          content: text.content,
-          html_content: pasteWithFormat ? (text.html_content || null) : null,
-          one_time: false,
-          quick_text_id: text.id
-        }
-      });
-
-      // 根据内容类型显示成功消息
-      let successMessage = '粘贴成功';
-      if (contentType === 'file') {
-        successMessage = '文件粘贴成功';
-      } else if (contentType === 'image') {
-        successMessage = '图片粘贴成功';
-      }
-
-      // 一次性粘贴：粘贴成功后删除该常用文本项
-      if (isOneTimePaste) {
-        try {
-          setTimeout(async () => {
-            try {
-              await invoke('delete_quick_text', { id: text.id });
-              await refreshQuickTexts();
-              showNotification('已删除常用文本', 'success');
-            } catch (error) {
-              console.error('删除常用文本失败:', error);
-              showNotification('删除失败，请重试', 'error');
-            }
-          }, 100);
-        } catch (_) {}
-      }
-
-      hidePasteLoading(element, true, successMessage);
-    }
+    hidePasteLoading(element, true, '粘贴成功');
   } catch (error) {
     console.error('粘贴常用文本失败:', error);
     hidePasteLoading(element, false, '粘贴失败');
     showNotification('粘贴失败', 'error');
-    hideTranslationIndicator();
   }
 }
 

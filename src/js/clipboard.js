@@ -14,12 +14,6 @@ import {
 } from './config.js';
 import { showNotification, showPasteLoading, hidePasteLoading } from './notificationManager.js';
 import { showContextMenu } from './contextMenu.js';
-import {
-  shouldTranslateText,
-  safeTranslateAndInputText,
-  showTranslationIndicator,
-  hideTranslationIndicator
-} from './aiTranslation.js';
 import { escapeHtml, formatTimestamp } from './utils/formatters.js';
 import { highlightMultipleSearchTerms, highlightMultipleSearchTermsWithPosition, highlightMultipleSearchTermsInHTML, getCurrentSearchTerms } from './utils/highlight.js';
 import { processHTMLImages } from './utils/htmlProcessor.js';
@@ -559,98 +553,21 @@ function handleClipboardItemContextMenu(index, event) {
 // 处理剪贴板项目粘贴
 async function handleClipboardItemPaste(item, index, element = null) {
   try {
-    // 检查是否需要AI翻译
-    const contentType = item.content_type || 'text';
-    const isTextContent = contentType === 'text';
-    const translationCheck = isTextContent ? shouldTranslateText(item.content, 'paste') : { should: false, reason: '非文本内容' };
-    const needsTranslation = translationCheck.should;
+    showPasteLoading(element, '正在粘贴...');
 
-    // 根据内容类型确定加载消息
-    let loadingMessage = '正在粘贴...';
-    if (contentType === 'file') {
-      loadingMessage = '正在粘贴文件...';
-    } else if (contentType === 'image') {
-      loadingMessage = '正在粘贴图片...';
-    } else if (needsTranslation) {
-      loadingMessage = '正在翻译...';
+    // 调用后端统一粘贴接口
+    await invoke('paste_content', { 
+      params: { clipboard_id: item.id } 
+    });
+    
+    setActiveItem(index);
+    
+    // 一次性粘贴：删除该项
+    if (isOneTimePaste) {
+      setTimeout(() => deleteClipboardItem(item.id), 100);
     }
 
-    // 显示加载状态
-    showPasteLoading(element, loadingMessage);
-
-    if (needsTranslation) {
-      // 使用AI翻译并流式输入
-      showTranslationIndicator('正在翻译...');
-
-      // 定义降级回调函数
-      const fallbackPaste = async () => {
-        const params = {
-          content: item.content,
-          html_content: pasteWithFormat ? (item.html_content || null) : null,
-          one_time: false
-        };
-        await invoke('paste_content', { params });
-      };
-
-      try {
-        const result = await safeTranslateAndInputText(item.content, fallbackPaste);
-
-        setActiveItem(index);
-
-        if (result.success) {
-
-          // 一次性粘贴：翻译成功后删除该剪贴板历史项
-          if (isOneTimePaste) {
-            try {
-              setTimeout(async () => {
-                await deleteClipboardItem(index);
-              }, 100);
-            } catch (_) { }
-          }
-
-          hideTranslationIndicator();
-          hidePasteLoading(element, true, '翻译粘贴成功');
-        } else {
-          console.error('AI翻译失败:', result.error);
-          hideTranslationIndicator();
-          hidePasteLoading(element, false, '翻译失败');
-          showNotification('翻译失败，请重试', 'error');
-        }
-      } catch (error) {
-        console.error('AI翻译过程中发生错误:', error);
-        hideTranslationIndicator();
-        hidePasteLoading(element, false, '翻译过程中发生错误');
-        showNotification('翻译过程中发生错误', 'error');
-      }
-    } else {
-      // 不需要翻译，直接粘贴
-      const params = {
-        content: item.content,
-        html_content: pasteWithFormat ? (item.html_content || null) : null,
-        one_time: false
-      };
-      await invoke('paste_content', { params });
-      setActiveItem(index);
-
-      // 根据内容类型显示成功消息
-      let successMessage = '粘贴成功';
-      if (contentType === 'file') {
-        successMessage = '文件粘贴成功';
-      } else if (contentType === 'image') {
-        successMessage = '图片粘贴成功';
-      }
-
-      // 一次性粘贴：粘贴成功后删除该剪贴板历史项
-      if (isOneTimePaste) {
-        try {
-          setTimeout(async () => {
-            await deleteClipboardItem(index);
-          }, 100);
-        } catch (_) { }
-      }
-
-      hidePasteLoading(element, true, successMessage);
-    }
+    hidePasteLoading(element, true, '粘贴成功');
   } catch (error) {
     console.error('粘贴失败:', error);
     hidePasteLoading(element, false, '粘贴失败');
@@ -661,12 +578,9 @@ async function handleClipboardItemPaste(item, index, element = null) {
 
 
 // 删除剪贴板项目
-async function deleteClipboardItem(index) {
+async function deleteClipboardItem(id) {
   try {
-    await invoke('delete_clipboard_item', {
-      id: index
-    });
-    // 刷新剪贴板历史
+    await invoke('delete_clipboard_item', { id });
     await refreshClipboardHistory();
     showNotification('项目已删除', 'success');
   } catch (error) {
@@ -765,10 +679,8 @@ function showClipboardContextMenu(event, item, index) {
       text: '添加到常用文本',
       onClick: async () => {
         try {
-          await invoke('add_clipboard_to_favorites', { index });
+          await invoke('add_clipboard_to_favorites', { id: item.id });
           showNotification('已添加到常用文本', 'success');
-
-          // 触发常用文本列表刷新
           await invoke('emit_quick_texts_updated');
         } catch (error) {
           console.error('添加到常用文本失败:', error);
@@ -780,7 +692,7 @@ function showClipboardContextMenu(event, item, index) {
       icon: 'ti-trash',
       text: '删除当前项',
       onClick: async () => {
-        await deleteClipboardItem(index);
+        await deleteClipboardItem(item.id);
       }
     },
     { type: 'separator' },
@@ -805,24 +717,19 @@ function showClipboardContextMenu(event, item, index) {
 // 打开文本编辑器
 async function openTextEditor(item, index) {
   try {
-    // 打开文本编辑窗口
     await invoke('open_text_editor_window');
 
-    // 准备编辑数据
     const editorData = {
-      index: index,
+      id: item.id,
       content: item.content,
       title: `剪贴板项目 #${index + 1}`,
       timestamp: item.created_at
     };
 
-    // 延迟发送数据，确保窗口已完全加载
     setTimeout(async () => {
       try {
-        // 获取编辑器窗口并发送数据
         const { emit } = await import('@tauri-apps/api/event');
         await emit('editor-data', editorData);
-        // 编辑数据已发送
       } catch (error) {
         console.error('发送编辑数据失败:', error);
         showNotification('打开编辑器失败', 'error');

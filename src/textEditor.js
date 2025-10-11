@@ -483,7 +483,7 @@ async function handleSave() {
     } else {
       // 保存剪贴板内容
       await invoke('update_clipboard_item', {
-        index: originalData.index,
+        id: originalData.id,
         content: newContent
       });
 
