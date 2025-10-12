@@ -5,12 +5,12 @@ export function processHTMLImages(htmlContent) {
   // 创建一个临时DOM来处理HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
-  
-  // 1. 移除所有危险的元素和属性
+
   sanitizeHTML(tempDiv);
-  
-  // 2. 处理图片元素
+
   const images = tempDiv.querySelectorAll('img');
+  const placeholderSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjwvc3ZnPg==';
+  
   images.forEach((img, index) => {
     // 为每个图片添加唯一ID以便调试
     img.setAttribute('data-img-id', `html-img-${Date.now()}-${index}`);
@@ -22,20 +22,20 @@ export function processHTMLImages(htmlContent) {
       
       // 检查是否是 image-id: 格式的引用
       if (originalSrc.startsWith('image-id:')) {
-        const imageId = originalSrc.substring(9); // 去掉 'image-id:' 前缀
+        const imageId = originalSrc.substring(9);
         img.setAttribute('data-image-id', imageId);
         
-        // 先设置占位符
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Yqg6L295LitLi4uPC90ZXh0Pjwvc3ZnPg==';
-        
-        // 添加类名以便稍后识别
-        img.classList.add('image-id-pending');
+        img.src = placeholderSrc;
+        img.classList.add('lazy', 'image-id-pending');
+      } else if (!originalSrc.startsWith('data:')) {
+        img.setAttribute('data-src', originalSrc);
+        img.src = placeholderSrc;
+        img.classList.add('lazy');
       }
     }
     
     // 使用 inline onerror 以确保字符串注入后仍能生效
     img.setAttribute('onerror', 'this.onerror=null; window.handleHtmlImageError && window.handleHtmlImageError(this);');
-    img.setAttribute('loading', 'lazy');
     
     // 设置基本样式
     img.style.maxWidth = '100%';
@@ -46,21 +46,8 @@ export function processHTMLImages(htmlContent) {
   return tempDiv.innerHTML;
 }
 
-// 加载所有待处理的图片ID引用（在HTML插入DOM后调用）
-export async function loadPendingImages(container) {
-  const pendingImages = container.querySelectorAll('img.image-id-pending[data-image-id]');
-  
-  for (const img of pendingImages) {
-    const imageId = img.getAttribute('data-image-id');
-    if (imageId) {
-      await loadImageByIdForHTML(img, imageId);
-    }
-    img.classList.remove('image-id-pending');
-  }
-}
-
 // 异步加载图片ID对应的图片
-async function loadImageByIdForHTML(imgElement, imageId) {
+export async function loadImageByIdForHTML(imgElement, imageId) {
   try {
     const { invoke, convertFileSrc } = window.__TAURI__.core;
     
@@ -69,9 +56,12 @@ async function loadImageByIdForHTML(imgElement, imageId) {
     const assetUrl = convertFileSrc(filePath, 'asset');
     
     imgElement.src = assetUrl;
+    imgElement.setAttribute('data-src', assetUrl);
   } catch (error) {
     console.error('加载HTML内图片失败:', error, 'imageId:', imageId);
-    imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';
+    const errorSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';
+    imgElement.src = errorSrc;
+    imgElement.setAttribute('data-src', errorSrc);
     imgElement.alt = '图片加载失败';
   }
 }

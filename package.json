@@ -24,6 +24,7 @@
     "clusterize.js": "^1.0.0",
     "fabric": "^6.7.1",
     "sortablejs": "^1.15.6",
-    "tesseract.js": "^6.0.1"
+    "tesseract.js": "^6.0.1",
+    "vanilla-lazyload": "^19.1.3"
   }
 }

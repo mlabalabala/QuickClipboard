@@ -124,16 +124,18 @@ function generateImageHTML(item) {
   // 为图片元素生成唯一ID，用于后续异步加载
   const imgId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+  const placeholderSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjwvc3ZnPg==';
+
   if (item.image_id) {
     // 使用image_id字段
-    return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${item.image_id}" data-needs-load="true" loading="lazy">`;
+    return `<img id="${imgId}" class="clipboard-image lazy image-loading" src="${placeholderSrc}" alt="剪贴板图片" data-image-id="${item.image_id}" decoding="async">`;
   } else if (item.content.startsWith('image:')) {
     // 从text中提取image_id
     const imageId = item.content.substring(6);
-    return `<img id="${imgId}" class="clipboard-image" src="" alt="剪贴板图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">`;
+    return `<img id="${imgId}" class="clipboard-image lazy image-loading" src="${placeholderSrc}" alt="剪贴板图片" data-image-id="${imageId}" decoding="async">`;
   } else if (item.content.startsWith('data:image/')) {
     // 旧格式的完整图片数据
-    return `<img class="clipboard-image" src="${item.content}" alt="剪贴板图片" loading="lazy">`;
+    return `<img class="clipboard-image" src="${item.content}" alt="剪贴板图片" decoding="async">`;
   } else {
     // 未知格式，显示占位符
     return `<div class="clipboard-image" style="background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #666;">图片加载失败</div>`;
@@ -151,24 +153,27 @@ function generateFileIconHTML(file, size = 'medium') {
   const iconSize = sizeMap[size] || sizeMap.medium;
   const alt = file.file_type || '文件';
 
-  // 获取图标数据
-  let iconSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-  let iconStyle = 'object-fit: contain; border-radius: 0;';
+  // 默认占位图标
+  const placeholderSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
 
   // 检查是否是图片文件且启用了预览
   const settings = getCurrentSettings();
   const isImageFile = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'].includes(file.file_type?.toUpperCase());
   
   if (isImageFile && settings.showImagePreview && file.path) {
-    // 使用文件路径直接加载图片预览
-    iconSrc = convertFileSrc(file.path, 'asset');
-    iconStyle = 'object-fit: cover; border-radius: 2px;';
+    // 使用文件路径，启用懒加载
+    const iconSrc = convertFileSrc(file.path, 'asset');
+    const iconStyle = 'object-fit: cover; border-radius: 2px;';
+    return `<img class="file-icon lazy image-loading" src="${placeholderSrc}" data-src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}" decoding="async">`;
   } else if (file.icon_data) {
     // 使用图标数据（base64）
-    iconSrc = file.icon_data;
+    const iconStyle = 'object-fit: contain; border-radius: 0;';
+    return `<img class="file-icon" src="${file.icon_data}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
+  } else {
+    // 使用默认图标
+    const iconStyle = 'object-fit: contain; border-radius: 0;';
+    return `<img class="file-icon" src="${placeholderSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
   }
-
-  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
 }
 
 // 生成文件HTML
@@ -451,50 +456,6 @@ async function checkFilesExistence() {
   }
 }
 
-// 异步加载文件图标和图片
-async function loadFileIcons() {
-  // 加载文件图标
-  const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
-
-  for (const icon of fileIcons) {
-    const filePath = icon.getAttribute('data-file-path');
-    if (filePath) {
-      try {
-        // 直接使用文件路径
-        const assetUrl = convertFileSrc(filePath, 'asset');
-        icon.src = assetUrl;
-        icon.style.objectFit = 'cover';
-        icon.style.borderRadius = '2px';
-        icon.removeAttribute('data-needs-load');
-        icon.removeAttribute('data-file-path');
-      } catch (error) {
-        console.warn('加载文件图标失败:', error);
-        // 保持默认图标
-      }
-    }
-  }
-
-  // 加载剪贴板图片
-  const clipboardImages = document.querySelectorAll('.clipboard-image[data-needs-load="true"]');
-
-  for (const img of clipboardImages) {
-    const imageId = img.getAttribute('data-image-id');
-    if (imageId) {
-      try {
-        // 使用文件路径
-        const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
-        const assetUrl = convertFileSrc(filePath, 'asset');
-        img.src = assetUrl;
-        img.removeAttribute('data-needs-load');
-        img.removeAttribute('data-image-id');
-      } catch (error) {
-        console.warn('加载剪贴板图片失败:', error);
-        img.alt = '图片加载失败';
-        img.style.backgroundColor = '#e0e0e0';
-      }
-    }
-  }
-}
 
 export function renderClipboardItems() {
   if (!clipboardVirtualList) {
@@ -504,9 +465,8 @@ export function renderClipboardItems() {
     clipboardVirtualList.updateData(filteredData);
   }
 
-  // 异步加载文件图标和检查文件是否存在
+  // 异步检查文件是否存在
   setTimeout(() => {
-    loadFileIcons();
     checkFilesExistence();
   }, 0);
 

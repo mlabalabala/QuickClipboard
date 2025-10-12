@@ -1,10 +1,10 @@
 import Clusterize from 'clusterize.js';
 import Sortable from 'sortablejs';
+import LazyLoad from 'vanilla-lazyload';
 import * as navigation from './navigation.js';
 
 /**
  * 虚拟滚动列表类
- * 结合 Clusterize.js 和 SortableJS 实现高性能的可拖拽虚拟滚动列表
  */
 export class VirtualList {
   constructor(options) {
@@ -20,6 +20,7 @@ export class VirtualList {
     this.clusterize = null;
     this.sortable = null;
     this.isDragging = false;
+    this.lazyLoad = null;
 
     // 维护当前行高状态
     this.currentRowHeightSetting = localStorage.getItem('app-row-height') || 'medium';
@@ -53,8 +54,8 @@ export class VirtualList {
     // 监听行高变化
     this.bindRowHeightListener();
 
-    // 初始化时触发图片加载
-    this.triggerImageLoad();
+    // 初始化懒加载
+    this.initLazyLoad();
   }
 
   initSortable() {
@@ -377,7 +378,7 @@ export class VirtualList {
     const rows = this.generateRows();
     this.clusterize.update(rows);
 
-    // 更新数据后触发图片加载
+    // 更新数据后刷新懒加载
     this.triggerImageLoad();
   }
 
@@ -418,6 +419,9 @@ export class VirtualList {
     }
     if (this.clusterize) {
       this.clusterize.destroy();
+    }
+    if (this.lazyLoad) {
+      this.lazyLoad.destroy();
     }
 
     // 清理行高变化监听器
@@ -634,126 +638,87 @@ export class VirtualList {
     window.addEventListener('tab-switched', this.tabSwitchHandler);
   }
 
-  // 触发图片加载
+  // 初始化懒加载
+  initLazyLoad() {
+    if (this.lazyLoad) {
+      this.lazyLoad.destroy();
+    }
+
+    const scrollElement = document.getElementById(this.scrollId);
+    if (!scrollElement) return;
+
+    // 创建懒加载实例
+    this.lazyLoad = new LazyLoad({
+      elements_selector: '.lazy',
+      container: scrollElement,
+      threshold: 500,
+      thresholds: '0px 500px 1000px',
+      callback_enter: (el) => {
+        const imageId = el.getAttribute('data-image-id');
+        if (imageId) {
+          if (!el.hasAttribute('data-loading')) {
+            el.setAttribute('data-loading', 'true');
+            this.loadImageById(el, imageId);
+          }
+        }
+      },
+      callback_loaded: (el) => {
+        el.classList.remove('image-loading');
+        el.classList.add('image-loaded');
+      },
+      callback_error: (el) => {
+        el.classList.remove('image-loading');
+        el.classList.add('image-error');
+      }
+    });
+  }
+
+  // 异步加载图片
+  async loadImageById(imgElement, imageId) {
+    try {
+      const { invoke, convertFileSrc } = await import('@tauri-apps/api/core');
+      const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
+      const assetUrl = convertFileSrc(filePath, 'asset');
+
+      imgElement.setAttribute('data-src', assetUrl);
+      imgElement.classList.remove('lazy'); 
+      const tempImg = new Image();
+      
+      // 监听加载完成
+      tempImg.onload = () => {
+        imgElement.src = assetUrl;
+        imgElement.removeAttribute('data-loading');
+        imgElement.classList.remove('image-loading');
+        imgElement.classList.add('image-loaded');
+      };
+      
+      // 监听加载失败
+      tempImg.onerror = () => {
+        const errorSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';
+        imgElement.src = errorSrc;
+        imgElement.removeAttribute('data-loading');
+        imgElement.classList.remove('image-loading');
+        imgElement.classList.add('image-error');
+      };
+      
+      tempImg.src = assetUrl;
+      
+    } catch (error) {
+      console.warn('获取图片路径失败:', error);
+      const errorSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWJlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==';
+      imgElement.src = errorSrc;
+      imgElement.removeAttribute('data-loading');
+      imgElement.classList.remove('image-loading');
+      imgElement.classList.add('image-error');
+    }
+  }
+
   triggerImageLoad() {
-    // 延迟执行，确保DOM已更新
     setTimeout(() => {
-      // 根据列表类型触发相应的图片加载
-      if (this.scrollId === 'clipboard-list') {
-        // 触发剪贴板图片加载
-        this.loadClipboardImages();
-      } else if (this.scrollId === 'quick-texts-list') {
-        // 触发常用文本图片加载
-        this.loadQuickTextImages();
+      if (this.lazyLoad) {
+        this.lazyLoad.update();
       }
     }, 50);
   }
 
-  // 加载剪贴板图片
-  async loadClipboardImages() {
-    try {
-      // 动态导入clipboard模块以避免循环依赖
-      const clipboardModule = await import('./clipboard.js');
-
-      // 加载HTML中的image-id引用图片
-      const { loadPendingImages } = await import('./utils/htmlProcessor.js');
-      const htmlContainers = document.querySelectorAll('.clipboard-html');
-      for (const container of htmlContainers) {
-        await loadPendingImages(container);
-      }
-
-      // 加载文件图标
-      const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
-      for (const icon of fileIcons) {
-        const filePath = icon.getAttribute('data-file-path');
-        if (filePath) {
-          try {
-            const { convertFileSrc } = await import('@tauri-apps/api/core');
-            // 直接使用文件路径
-            const assetUrl = convertFileSrc(filePath, 'asset');
-            icon.src = assetUrl;
-            icon.style.objectFit = 'cover';
-            icon.style.borderRadius = '2px';
-            icon.removeAttribute('data-needs-load');
-            icon.removeAttribute('data-file-path');
-          } catch (error) {
-            console.warn('加载文件图标失败:', error);
-          }
-        }
-      }
-
-      // 加载剪贴板图片
-      const clipboardImages = document.querySelectorAll('.clipboard-image[data-needs-load="true"]');
-      for (const img of clipboardImages) {
-        const imageId = img.getAttribute('data-image-id');
-        if (imageId) {
-          try {
-            await clipboardModule.loadImageById(img, imageId, true);
-            img.removeAttribute('data-needs-load');
-            img.removeAttribute('data-image-id');
-          } catch (error) {
-            console.warn('加载剪贴板图片失败:', error);
-            img.alt = '图片加载失败';
-            img.style.backgroundColor = '#e0e0e0';
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('加载剪贴板图片模块失败:', error);
-    }
-  }
-
-  // 加载常用文本图片
-  async loadQuickTextImages() {
-    try {
-      // 动态导入quickTexts模块以避免循环依赖
-      const quickTextsModule = await import('./quickTexts.js');
-
-      // 加载HTML中的image-id引用图片
-      const { loadPendingImages } = await import('./utils/htmlProcessor.js');
-      const htmlContainers = document.querySelectorAll('.quick-text-content.quick-text-html');
-      for (const container of htmlContainers) {
-        await loadPendingImages(container);
-      }
-
-      // 加载常用文本中的图片
-      const quickTextImages = document.querySelectorAll('.quick-text-image[data-needs-load="true"]');
-      for (const img of quickTextImages) {
-        const imageId = img.getAttribute('data-image-id');
-        if (imageId) {
-          try {
-            await quickTextsModule.loadImageById(img, imageId, true);
-            img.removeAttribute('data-needs-load');
-            img.removeAttribute('data-image-id');
-          } catch (error) {
-            console.warn('加载常用文本图片失败:', error);
-            img.alt = '图片加载失败';
-            img.style.backgroundColor = '#e0e0e0';
-          }
-        }
-      }
-
-      // 加载常用文本中的文件图标
-      const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
-      for (const icon of fileIcons) {
-        const filePath = icon.getAttribute('data-file-path');
-        if (filePath) {
-          try {
-            const { convertFileSrc } = await import('@tauri-apps/api/core');
-            // 直接使用文件路径
-            const assetUrl = convertFileSrc(filePath, 'asset');
-            icon.src = assetUrl;
-            icon.style.objectFit = 'cover';
-            icon.style.borderRadius = '2px';
-            icon.removeAttribute('data-needs-load');
-            icon.removeAttribute('data-file-path');
-          } catch (error) {
-            console.warn('加载文件图标失败:', error);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('加载常用文本图片模块失败:', error);
-    }
-  }
 }

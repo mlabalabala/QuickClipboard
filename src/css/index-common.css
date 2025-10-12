@@ -1068,6 +1068,76 @@ body {
   image-rendering: crisp-edges;
 }
 
+/* =================== 图片懒加载优化 =================== */
+.clipboard-image,
+.quick-text-image,
+.file-icon {
+  transform: translateZ(0);
+  will-change: opacity;
+  content-visibility: auto;
+}
+
+/* 加载中状态 */
+.image-loading {
+  background: linear-gradient(
+    90deg,
+    rgba(240, 240, 240, 0.8) 25%,
+    rgba(250, 250, 250, 0.9) 50%,
+    rgba(240, 240, 240, 0.8) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 已加载状态 */
+.image-loaded {
+  animation: fadeIn 0.4s ease-out;
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 加载失败状态 */
+.image-error {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+/* 针对大图片的特殊优化 */
+.clipboard-image.lazy,
+.quick-text-image.lazy {
+  contain: layout style paint;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* 减少重绘 */
+.clipboard-item,
+.quick-text-item {
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
 /* 默认文件容器样式（详细信息模式） */
 .clipboard-files {
   display: flex;

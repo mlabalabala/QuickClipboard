@@ -155,18 +155,19 @@ function generateGroupBadgeHTML(text) {
 function generateQuickTextImageHTML(text) {
   // 为图片元素生成唯一ID，用于后续异步加载
   const imgId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const placeholderSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjwvc3ZnPg==';
 
   if (text.content.startsWith('image:')) {
     // 从content中提取image_id
     const imageId = text.content.substring(6);
     return `
-      <img id="${imgId}" class="quick-text-image" src="" alt="常用图片" data-image-id="${imageId}" data-needs-load="true" loading="lazy">
+      <img id="${imgId}" class="quick-text-image lazy image-loading" src="${placeholderSrc}" alt="常用图片" data-image-id="${imageId}" decoding="async">
     `;
   } else if (text.content.startsWith('data:image/')) {
     // 旧格式的完整图片数据
     return `
       <div class="quick-text-title">${escapeHtml(text.title)}</div>
-      <img class="quick-text-image" src="${text.content}" alt="常用图片" loading="lazy">
+      <img class="quick-text-image" src="${text.content}" alt="常用图片" decoding="async">
     `;
   } else {
     // 未知格式，显示占位符
@@ -188,24 +189,26 @@ function generateFileIconHTML(file, size = 'medium') {
   const iconSize = sizeMap[size] || sizeMap.medium;
   const alt = file.file_type || '文件';
 
-  // 获取图标数据
-  let iconSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
-  let iconStyle = 'object-fit: contain; border-radius: 0;';
+  // 默认占位图标
+  const placeholderSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiBmaWxsPSIjQ0NDQ0NDIi8+Cjwvc3ZnPgo=';
 
   // 检查是否是图片文件且启用了预览
   const settings = getCurrentSettings();
   const isImageFile = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'].includes(file.file_type?.toUpperCase());
   
   if (isImageFile && settings.showImagePreview && file.path) {
-    // 使用文件路径直接加载图片预览
-    iconSrc = convertFileSrc(file.path, 'asset');
-    iconStyle = 'object-fit: cover; border-radius: 2px;';
+    const iconSrc = convertFileSrc(file.path, 'asset');
+    const iconStyle = 'object-fit: cover; border-radius: 2px;';
+    return `<img class="file-icon lazy image-loading" src="${placeholderSrc}" data-src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}" decoding="async">`;
   } else if (file.icon_data) {
     // 使用图标数据（base64）
-    iconSrc = file.icon_data;
+    const iconStyle = 'object-fit: contain; border-radius: 0;';
+    return `<img class="file-icon" src="${file.icon_data}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
+  } else {
+    // 使用默认图标
+    const iconStyle = 'object-fit: contain; border-radius: 0;';
+    return `<img class="file-icon" src="${placeholderSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
   }
-
-  return `<img class="file-icon" src="${iconSrc}" alt="${escapeHtml(alt)}" style="width: ${iconSize}; height: ${iconSize}; ${iconStyle}">`;
 }
 
 // 生成常用文本文件HTML
@@ -694,50 +697,6 @@ function sortTextsByGroupOrder(texts) {
   }
 }
 
-// 异步加载文件图标和图片
-async function loadFileIcons() {
-  // 加载文件图标
-  const fileIcons = document.querySelectorAll('.file-icon[data-needs-load="true"]');
-
-  for (const icon of fileIcons) {
-    const filePath = icon.getAttribute('data-file-path');
-    if (filePath) {
-      try {
-        // 直接使用文件路径
-        const assetUrl = convertFileSrc(filePath, 'asset');
-        icon.src = assetUrl;
-        icon.style.objectFit = 'cover';
-        icon.style.borderRadius = '2px';
-        icon.removeAttribute('data-needs-load');
-        icon.removeAttribute('data-file-path');
-      } catch (error) {
-        console.warn('加载文件图标失败:', error);
-        // 保持默认图标
-      }
-    }
-  }
-
-  // 加载常用文本图片
-  const quickTextImages = document.querySelectorAll('.quick-text-image[data-needs-load="true"]');
-
-  for (const img of quickTextImages) {
-    const imageId = img.getAttribute('data-image-id');
-    if (imageId) {
-      try {
-        // 使用文件路径
-        const filePath = await invoke('get_image_file_path', { content: `image:${imageId}` });
-        const assetUrl = convertFileSrc(filePath, 'asset');
-        img.src = assetUrl;
-        img.removeAttribute('data-needs-load');
-        img.removeAttribute('data-image-id');
-      } catch (error) {
-        console.warn('加载常用文本图片失败:', error);
-        img.alt = '图片加载失败';
-        img.style.backgroundColor = '#e0e0e0';
-      }
-    }
-  }
-}
 
 // 检查文件是否存在并更新UI
 async function checkFilesExistence() {
@@ -767,9 +726,8 @@ export function renderQuickTexts() {
     quickTextsVirtualList.updateData(filteredData);
   }
 
-  // 异步加载文件图标和检查文件是否存在
+  // 异步检查文件是否存在
   setTimeout(() => {
-    loadFileIcons();
     checkFilesExistence();
   }, 0);
 
