@@ -828,6 +828,13 @@ function bindAboutPageEvents() {
       await openGitHub();
     });
   });
+
+  const bilibiliButtons = document.querySelectorAll('.open-bilibili');
+  bilibiliButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await openBilibili();
+    });
+  });
 }
 
 // =================== 管理员运行功能 ===================
@@ -981,5 +988,13 @@ async function openGitHub() {
     await openUrl('https://github.com/mosheng1/QuickClipboard');
   } catch (error) {
     console.error('打开GitHub失败:', error);
+  }
+}
+
+async function openBilibili() {
+  try {
+    await openUrl('https://space.bilibili.com/438982697');
+  } catch (error) {
+    console.error('打开哔哩哔哩失败:', error);
   }
 }
