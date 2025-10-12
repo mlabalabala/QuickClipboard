@@ -1532,12 +1532,18 @@ qq.exe"
                   <label class="radio-item">
                     <input type="radio" name="import-mode" value="replace" checked>
                     <span class="radio-mark"></span>
-                    替换现有数据
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <span>替换现有数据</span>
+                      <small style="color: var(--text-secondary); font-size: 12px;">完全替换所有内容（数据 + 设置）</small>
+                    </div>
                   </label>
                   <label class="radio-item">
                     <input type="radio" name="import-mode" value="merge">
                     <span class="radio-mark"></span>
-                    合并数据
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <span>合并数据</span>
+                      <small style="color: var(--text-secondary); font-size: 12px;">只合并数据内容，保持当前设置</small>
+                    </div>
                   </label>
                 </div>
               </div>

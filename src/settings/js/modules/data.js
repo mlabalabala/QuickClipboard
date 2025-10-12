@@ -127,8 +127,8 @@ export class DataManager {
 
             const confirmed = await confirm(
                 importMode === 'replace' 
-                    ? '导入将替换所有现有数据，此操作不可撤销。是否继续？'
-                    : '导入将与现有数据合并。是否继续？',
+                    ? '导入将完全替换所有内容（数据 + 设置），此操作不可撤销。是否继续？'
+                    : '导入将合并数据内容，当前设置将保持不变。是否继续？',
                 { title: '确认导入', kind: 'warning' }
             );
 

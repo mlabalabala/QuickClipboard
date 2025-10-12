@@ -108,12 +108,14 @@ pub async fn import_data(import_path: &str, options: ImportOptions) -> Result<()
 
     match options.mode {
         ImportMode::Replace => {
-            // 替换模式：先备份，然后直接覆盖所有文件
+            // 替换模式：先备份，然后完全替换所有内容（数据 + 设置）
             backup_current_data(&app_data_dir).await?;
             extract_all_files(&mut archive, &app_data_dir)?;
+            // 单独处理设置文件
+            extract_settings_file(&mut archive)?;
         }
         ImportMode::Merge => {
-            // 合并模式：备份，然后合并数据库，覆盖设置
+            // 合并模式：备份，然后合并数据内容，保持当前设置不变
             backup_current_data(&app_data_dir).await?;
             merge_import_data(&mut archive, &app_data_dir).await?;
         }
@@ -222,7 +224,37 @@ fn extract_all_files(archive: &mut ZipArchive<fs::File>, app_data_dir: &Path) ->
     Ok(())
 }
 
+fn extract_settings_file(archive: &mut ZipArchive<fs::File>) -> Result<(), String> {
+    let mut settings_file = match archive.by_name("settings.json") {
+        Ok(file) => file,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+
+    // 获取默认数据目录（设置文件始终保存在默认目录）
+    let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
+        .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
+    
+    let target_settings_path = default_data_dir.join("settings.json");
+
+    // 确保目录存在
+    if let Some(parent) = target_settings_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建设置目录失败: {}", e))?;
+    }
+
+    // 写入设置文件
+    let mut output_file = fs::File::create(&target_settings_path)
+        .map_err(|e| format!("创建设置文件失败: {}", e))?;
+
+    std::io::copy(&mut settings_file, &mut output_file)
+        .map_err(|e| format!("复制设置文件失败: {}", e))?;
+
+    Ok(())
+}
+
 // 合并导入数据（合并模式）
+// 合并数据内容（数据库记录、图片），不覆盖用户设置
 async fn merge_import_data(archive: &mut ZipArchive<fs::File>, app_data_dir: &Path) -> Result<(), String> {
     // 先提取到临时目录
     let temp_dir = app_data_dir.join("temp_import");
@@ -239,15 +271,6 @@ async fn merge_import_data(archive: &mut ZipArchive<fs::File>, app_data_dir: &Pa
         merge_database(&temp_db_path).await?;
     }
 
-    // 直接覆盖设置文件（始终保存到默认目录）
-    let temp_settings_path = temp_dir.join("settings.json");
-    if temp_settings_path.exists() {
-        let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
-            .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
-        let target_settings_path = default_data_dir.join("settings.json");
-        fs::copy(&temp_settings_path, &target_settings_path)
-            .map_err(|e| format!("复制设置文件失败: {}", e))?;
-    }
 
     // 合并图片文件夹（复制不存在的文件）
     let temp_images_dir = temp_dir.join("clipboard_images");
