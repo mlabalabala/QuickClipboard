@@ -85,6 +85,7 @@ pub struct AppSettings {
     // === 贴边隐藏设置 ===
     pub edge_hide_enabled: bool,
     pub edge_snap_position: Option<(i32, i32)>,
+    pub edge_hide_offset: i32,
 
     // === 窗口行为设置 ===
     pub auto_focus_search: bool,
@@ -196,6 +197,7 @@ impl Default for AppSettings {
             // 贴边隐藏设置
             edge_hide_enabled: true,
             edge_snap_position: None,
+            edge_hide_offset: 3,
 
             // 窗口行为设置
             auto_focus_search: false,

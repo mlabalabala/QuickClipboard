@@ -92,6 +92,7 @@ const defaultSettings = {
   titleBarPosition: 'top',
   autoScrollToTopOnShow: false,
   edgeHideEnabled: true,
+  edgeHideOffset: 3,
   appFilterEnabled: false,
   appFilterMode: 'blacklist',
   appFilterList: [],
@@ -266,6 +267,7 @@ async function initializeUI() {
   setInputValue('remember-window-size', settings.rememberWindowSize);
   setInputValue('title-bar-position', settings.titleBarPosition || 'top');
   setInputValue('edge-hide-enabled', settings.edgeHideEnabled !== undefined ? settings.edgeHideEnabled : true);
+  setInputValue('edge-hide-offset', settings.edgeHideOffset !== undefined ? settings.edgeHideOffset : 3);
   setInputValue('auto-focus-search', settings.autoFocusSearch !== undefined ? settings.autoFocusSearch : false);
   setInputValue('sidebar-hover-delay', settings.sidebarHoverDelay !== undefined ? settings.sidebarHoverDelay : 0.5);
 
@@ -478,7 +480,7 @@ function bindBasicSettingEvents() {
     'ai-translation-prompt', 'ai-input-speed', 'ai-newline-mode', 'ai-output-mode',
     'mouse-middle-button-enabled', 'mouse-middle-button-modifier', 'clipboard-animation-enabled',
     'window-position-mode', 'remember-window-size', 'auto-scroll-to-top-on-show',
-    'title-bar-position', 'edge-hide-enabled', 'auto-focus-search', 'sidebar-hover-delay',
+    'title-bar-position', 'edge-hide-enabled', 'edge-hide-offset', 'auto-focus-search', 'sidebar-hover-delay',
     'image-data-priority-apps'
   ];
 

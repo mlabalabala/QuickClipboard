@@ -9,15 +9,29 @@ use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 #[derive(Debug, Clone)]
 pub struct EdgeSnapConfig {
     pub snap_distance: i32,
-    pub hide_offset: i32,
 }
 
 impl Default for EdgeSnapConfig {
     fn default() -> Self {
         Self {
-            snap_distance: 20,
-            hide_offset: 3, // 窗口隐藏时突出多少像素
+            snap_distance: 20, // 窗口吸附到边缘的距离
         }
+    }
+}
+
+// 获取隐藏偏移量
+fn get_hide_offset() -> i32 {
+    let settings = crate::settings::get_global_settings();
+    settings.edge_hide_offset
+}
+
+// 获取触发距离
+fn get_trigger_distance() -> i32 {
+    let hide_offset = get_hide_offset();
+    if hide_offset >= 10 {
+        hide_offset 
+    } else {
+        10 
     }
 }
 
@@ -202,7 +216,7 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
             .clone()
     };
 
-    let hide_offset = EDGE_SNAP_CONFIG.hide_offset;
+    let hide_offset = get_hide_offset();
     let window_rect = get_window_rect(window)?;
     let (vx, vy, vw, vh) = get_virtual_screen_size()?;
         let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
@@ -487,7 +501,7 @@ fn check_mouse_near_edge(
         let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
             .map(|(_, my, _, mh)| my + mh)
             .unwrap_or(vy + vh);
-        let trigger_distance = 10;
+        let trigger_distance = get_trigger_distance();
         let (win_x, win_y, win_width, win_height) = window_rect;
 
         // 检查鼠标是否在窗口内或接近对应边缘
@@ -598,13 +612,13 @@ fn get_window_rect(window: &WebviewWindow) -> Result<RECT, String> {
     Ok(rect)
 }
 
-// 获取屏幕尺寸（兼容性函数）
+// 获取屏幕尺寸
 pub fn get_screen_size() -> Result<(i32, i32), String> {
     let (_, _, w, h) = get_virtual_screen_size()?;
     Ok((w, h))
 }
 
-// 兼容性函数：恢复窗口位置（别名）
+// 恢复窗口位置
 pub fn restore_from_snap(window: &WebviewWindow) -> Result<(), String> {
     restore_window_from_snap(window)
 }

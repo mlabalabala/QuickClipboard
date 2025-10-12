@@ -66,6 +66,7 @@ impl SettingsConverter {
             "appFilterList": settings.app_filter_list,
             "titleBarPosition": settings.title_bar_position,
             "edgeHideEnabled": settings.edge_hide_enabled,
+            "edgeHideOffset": settings.edge_hide_offset,
             "autoFocusSearch": settings.auto_focus_search,
             "sidebarHoverDelay": settings.sidebar_hover_delay,
             "pasteWithFormat": settings.paste_with_format,
@@ -235,6 +236,10 @@ impl SettingsConverter {
 
         // 贴边隐藏设置
         update_bool!(edge_hide_enabled, "edgeHideEnabled");
+        
+        if let Some(v) = json.get("edgeHideOffset").and_then(|v| v.as_i64()) {
+            settings.edge_hide_offset = (v as i32).max(0).min(50);
+        }
 
         // 窗口行为设置
         update_bool!(auto_focus_search, "autoFocusSearch");

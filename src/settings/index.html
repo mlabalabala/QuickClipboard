@@ -725,14 +725,14 @@ qq.exe"
 
             <div class="setting-item">
               <div class="setting-info">
-                <label class="setting-label">自动聚焦搜索框</label>
-                <p class="setting-description">窗口显示时自动将光标定位到搜索框，隐藏时移除焦点</p>
+                <label class="setting-label">贴边隐藏突出像素</label>
+                <p class="setting-description">窗口贴边隐藏时突出的像素数量（1-50像素），突出像素越大边缘触发越灵敏</p>
               </div>
               <div class="setting-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="auto-focus-search">
-                  <span class="toggle-slider"></span>
-                </label>
+                <div class="input-with-unit">
+                  <input type="number" id="edge-hide-offset" min="1" max="50" step="1" value="3" class="setting-input number-input">
+                  <span class="input-unit">像素</span>
+                </div>
               </div>
             </div>
 
@@ -748,6 +748,20 @@ qq.exe"
                 </div>
               </div>
             </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">自动聚焦搜索框</label>
+                <p class="setting-description">窗口显示时自动将光标定位到搜索框，隐藏时移除焦点</p>
+              </div>
+              <div class="setting-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-focus-search">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
           </div>
         </div>
 
