@@ -926,7 +926,7 @@ body {
 .clipboard-item:hover,
 .quick-text-item:hover {
   cursor: grab;
-  transform: translateY(-3px);
+  /* transform: translateY(-3px); */
 }
 
 .clipboard-item:active,
@@ -946,9 +946,9 @@ body {
   color: white;
   border-color: #108FEB;
   box-shadow: 0 0 0 2px rgba(16, 143, 235, 0.3);
-  transform: scale(0.98);
-  transition: all 0.1s ease;
-  font-weight: bold;
+  /* transform: scale(0.98); */
+  /* transition: all 0.1s ease; */
+  /* font-weight: bold; */
 }
 
 .clipboard-item.keyboard-selected:hover,

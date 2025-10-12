@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+// 对于文本内容，超过此限制会被截断
+const MAX_CONTENT_LENGTH_FOR_DISPLAY: usize = 10000;
+
 // 数据库连接池
 pub static DB_CONNECTION: Lazy<Arc<Mutex<Option<Connection>>>> =
     Lazy::new(|| Arc::new(Mutex::new(None)));
@@ -647,6 +650,35 @@ pub fn add_clipboard_link(url: String) -> Result<i64, String> {
     })
 }
 
+fn truncate_string_for_display(s: String, max_len: usize) -> String {
+    let original_len = s.len();
+    
+    if original_len <= max_len {
+        return s;
+    }
+    
+    // 截断到最大字节数，并添加省略号提示
+    let truncated = if max_len > 3 {
+        let target_len = max_len - 3; 
+
+        let mut byte_index = target_len;
+        while byte_index > 0 && !s.is_char_boundary(byte_index) {
+            byte_index -= 1;
+        }
+        
+        if byte_index > 0 {
+            format!("{}...", &s[..byte_index])
+        } else {
+            "...".to_string()
+        }
+    } else {
+        "...".to_string()
+    };
+    
+    println!("截断内容：原长度 {} 字节 -> 截断后长度 {} 字节", original_len, truncated.len());
+    truncated
+}
+
 // 获取剪贴板历史（按更新时间倒序，支持拖拽排序）
 pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>, String> {
     with_connection(|conn| {
@@ -663,11 +695,43 @@ pub fn get_clipboard_history(limit: Option<usize>) -> Result<Vec<ClipboardItem>,
 
         let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map([], |row| {
+            let content: String = row.get(1)?;
+            let html_content: Option<String> = row.get(2).ok();
+            let content_type = ContentType::from_string(&row.get::<_, String>(3).unwrap_or_default());
+
+            let (truncated_content, truncated_html) = match content_type {
+                ContentType::Text | ContentType::RichText | ContentType::Link => {
+                    // 截断content
+                    let truncated_content = if content.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                        truncate_string_for_display(content, MAX_CONTENT_LENGTH_FOR_DISPLAY)
+                    } else {
+                        content
+                    };
+                    
+                    // 截断html_content
+                    let truncated_html = if let Some(html) = html_content {
+                        if html.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                            Some(truncate_string_for_display(html, MAX_CONTENT_LENGTH_FOR_DISPLAY))
+                        } else {
+                            Some(html)
+                        }
+                    } else {
+                        None
+                    };
+                    
+                    (truncated_content, truncated_html)
+                },
+                // 图片和文件类型不截断
+                ContentType::Image | ContentType::File => {
+                    (content, html_content)
+                }
+            };
+            
             Ok(ClipboardItem {
                 id: row.get(0)?,
-                content: row.get(1)?,
-                html_content: row.get(2).ok(),
-                content_type: ContentType::from_string(&row.get::<_, String>(3).unwrap_or_default()),
+                content: truncated_content,
+                html_content: truncated_html,
+                content_type,
                 image_id: row.get(4)?,
                 item_order: row.get(5)?,
                 created_at: row.get(6)?,
@@ -826,12 +890,44 @@ pub fn get_all_favorite_items() -> Result<Vec<FavoriteItem>, String> {
         )?;
 
         let rows = stmt.query_map([], |row| {
+            let content: String = row.get(2)?;
+            let html_content: Option<String> = row.get(3)?;
+            let content_type = ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default());
+
+            let (truncated_content, truncated_html) = match content_type {
+                ContentType::Text | ContentType::RichText | ContentType::Link => {
+                    // 截断content
+                    let truncated_content = if content.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                        truncate_string_for_display(content, MAX_CONTENT_LENGTH_FOR_DISPLAY)
+                    } else {
+                        content
+                    };
+                    
+                    // 截断html_content
+                    let truncated_html = if let Some(html) = html_content {
+                        if html.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                            Some(truncate_string_for_display(html, MAX_CONTENT_LENGTH_FOR_DISPLAY))
+                        } else {
+                            Some(html)
+                        }
+                    } else {
+                        None
+                    };
+                    
+                    (truncated_content, truncated_html)
+                },
+                // 图片和文件类型不截断
+                ContentType::Image | ContentType::File => {
+                    (content, html_content)
+                }
+            };
+            
             Ok(FavoriteItem {
                 id: row.get(0)?,
                 title: row.get(1)?,
-                content: row.get(2)?,
-                html_content: row.get(3)?,
-                content_type: ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default()),
+                content: truncated_content,
+                html_content: truncated_html,
+                content_type,
                 image_id: row.get(5)?,
                 group_name: row.get(6)?,
                 item_order: row.get(7)?,
@@ -857,12 +953,41 @@ pub fn get_favorite_items_by_group(group_name: &str) -> Result<Vec<FavoriteItem>
         )?;
 
         let rows = stmt.query_map([group_name], |row| {
+            let content: String = row.get(2)?;
+            let html_content: Option<String> = row.get(3)?;
+            let content_type = ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default());
+
+            let (truncated_content, truncated_html) = match content_type {
+                ContentType::Text | ContentType::RichText | ContentType::Link => {
+                    let truncated_content = if content.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                        truncate_string_for_display(content, MAX_CONTENT_LENGTH_FOR_DISPLAY)
+                    } else {
+                        content
+                    };
+                    
+                    let truncated_html = if let Some(html) = html_content {
+                        if html.len() > MAX_CONTENT_LENGTH_FOR_DISPLAY {
+                            Some(truncate_string_for_display(html, MAX_CONTENT_LENGTH_FOR_DISPLAY))
+                        } else {
+                            Some(html)
+                        }
+                    } else {
+                        None
+                    };
+                    
+                    (truncated_content, truncated_html)
+                },
+                ContentType::Image | ContentType::File => {
+                    (content, html_content)
+                }
+            };
+            
             Ok(FavoriteItem {
                 id: row.get(0)?,
                 title: row.get(1)?,
-                content: row.get(2)?,
-                html_content: row.get(3)?,
-                content_type: ContentType::from_string(&row.get::<_, String>(4).unwrap_or_default()),
+                content: truncated_content,
+                html_content: truncated_html,
+                content_type,
                 image_id: row.get(5)?,
                 group_name: row.get(6)?,
                 item_order: row.get(7)?,
