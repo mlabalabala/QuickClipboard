@@ -731,6 +731,12 @@ pub async fn reset_all_data() -> Result<(), String> {
     crate::data_manager::reset_all_data().await
 }
 
+// 恢复默认配置
+#[tauri::command]
+pub async fn reset_settings_to_default() -> Result<(), String> {
+    crate::data_manager::reset_settings_to_default().await
+}
+
 // 获取应用数据目录
 #[tauri::command]
 pub fn get_app_data_dir() -> Result<String, String> {

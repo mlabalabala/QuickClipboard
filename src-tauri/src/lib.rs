@@ -506,6 +506,7 @@ pub fn run() {
             commands::restart_app,
             commands::clear_clipboard_history_dm,
             commands::reset_all_data,
+            commands::reset_settings_to_default,
             commands::get_app_data_dir,
             commands::get_storage_info,
             commands::set_custom_storage_location,

@@ -156,6 +156,19 @@ pub async fn reset_all_data() -> Result<(), String> {
     Ok(())
 }
 
+// 恢复默认配置（仅恢复设置，不影响数据）
+pub async fn reset_settings_to_default() -> Result<(), String> {
+    let default_data_dir = crate::settings::AppSettings::get_default_data_directory()
+        .map_err(|e| format!("获取默认数据目录失败: {}", e))?;
+    let settings_path = default_data_dir.join("settings.json");
+    
+    if settings_path.exists() {
+        fs::remove_file(&settings_path).map_err(|e| format!("删除设置文件失败: {}", e))?;
+    }
+
+    Ok(())
+}
+
 // =================== 辅助函数 ===================
 
 // 备份当前数据

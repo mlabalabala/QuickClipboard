@@ -15,6 +15,7 @@ export class DataManager {
         this.bindImport();
         this.bindClearHistory();
         this.bindResetAll();
+        this.bindResetSettings();
         this.bindStorageManagement();
         this.loadStorageInfo();
     }
@@ -56,6 +57,16 @@ export class DataManager {
         const button = document.getElementById('reset-all-data');
         if (button) {
             button.addEventListener('click', () => this.handleResetAll());
+        }
+    }
+
+    /**
+     * 绑定恢复默认配置
+     */
+    bindResetSettings() {
+        const button = document.getElementById('reset-settings');
+        if (button) {
+            button.addEventListener('click', () => this.handleResetSettings());
         }
     }
 
@@ -205,6 +216,33 @@ export class DataManager {
             hideLoading();
             console.error('重置所有数据失败:', error);
             showNotification(`重置所有数据失败: ${error}`, 'error');
+        }
+    }
+
+    /**
+     * 处理恢复默认配置
+     */
+    async handleResetSettings() {
+        const confirmed = await confirm(
+            '确定要恢复默认配置吗？这将重置所有设置项为默认值，但不会影响您的数据（剪贴板历史、常用文本等）。',
+            { title: '确认恢复默认配置', kind: 'warning' }
+        );
+
+        if (!confirmed) return;
+
+        try {
+            showLoading('正在恢复默认配置...');
+            await invoke('reset_settings_to_default');
+
+            localStorage.clear();
+
+            await invoke('refresh_all_windows');
+            hideLoading();
+            showNotification('配置已恢复为默认值！', 'success');
+        } catch (error) {
+            hideLoading();
+            console.error('恢复默认配置失败:', error);
+            showNotification(`恢复默认配置失败: ${error}`, 'error');
         }
     }
 
