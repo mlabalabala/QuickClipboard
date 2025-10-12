@@ -29,6 +29,8 @@ pub struct ExportMetadata {
     pub database_file: bool,
     pub settings_file: bool,
     pub images_folder: bool,
+    #[serde(default)]
+    pub exclude_image_cache: bool,
 }
 
 // 获取应用数据目录
@@ -54,13 +56,20 @@ pub async fn export_data(export_path: &str, _options: ExportOptions) -> Result<(
         database_file: false,
         settings_file: false,
         images_folder: false,
+        exclude_image_cache: true, 
     };
 
-    // 导出数据库文件
+    // 导出数据库文件（排除 image_data 表）
     let db_path = crate::database::get_database_path().map_err(|e| format!("获取数据库路径失败: {}", e))?;
     if db_path.exists() {
-        add_file_to_zip(&mut zip, &db_path, "quickclipboard.db", zip_options)?;
+        // 创建临时数据库
+        let temp_db_path = app_data_dir.join("temp_export.db");
+        export_database_without_image_data(&db_path, &temp_db_path)?;
+
+        add_file_to_zip(&mut zip, &temp_db_path, "quickclipboard.db", zip_options)?;
         metadata.database_file = true;
+
+        let _ = fs::remove_file(&temp_db_path);
     }
 
     // 导出设置文件（始终从默认目录读取）
@@ -121,6 +130,10 @@ pub async fn import_data(import_path: &str, options: ImportOptions) -> Result<()
         }
     }
 
+    // 重新初始化数据库以确保所有表都存在
+    crate::database::reinitialize_database()
+        .map_err(|e| format!("重新初始化数据库失败: {}", e))?;
+
     Ok(())
 }
 
@@ -170,6 +183,78 @@ pub async fn reset_settings_to_default() -> Result<(), String> {
 }
 
 // =================== 辅助函数 ===================
+
+// 导出数据库但排除 image_data 表
+fn export_database_without_image_data(source_db: &Path, target_db: &Path) -> Result<(), String> {
+    use rusqlite::Connection;
+
+    if target_db.exists() {
+        fs::remove_file(target_db).map_err(|e| format!("删除临时数据库失败: {}", e))?;
+    }
+
+    let source_conn = Connection::open(source_db)
+        .map_err(|e| format!("打开源数据库失败: {}", e))?;
+
+    let target_conn = Connection::open(target_db)
+        .map_err(|e| format!("创建目标数据库失败: {}", e))?;
+
+    let mut stmt = source_conn
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'image_data'")
+        .map_err(|e| format!("查询表名失败: {}", e))?;
+    
+    let table_names: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| format!("读取表名失败: {}", e))?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| format!("处理表名失败: {}", e))?;
+    
+    drop(stmt);
+
+    for table_name in table_names {
+        let create_sql: String = source_conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+                [&table_name],
+                |row| row.get(0),
+            )
+            .map_err(|e| format!("获取表 {} 的创建语句失败: {}", table_name, e))?;
+
+        target_conn
+            .execute(&create_sql, [])
+            .map_err(|e| format!("创建表 {} 失败: {}", table_name, e))?;
+
+        target_conn
+            .execute(&format!("ATTACH DATABASE '{}' AS source_db", source_db.display()), [])
+            .map_err(|e| format!("附加源数据库失败: {}", e))?;
+        
+        target_conn
+            .execute(&format!("INSERT INTO {} SELECT * FROM source_db.{}", table_name, table_name), [])
+            .map_err(|e| format!("复制表 {} 数据失败: {}", table_name, e))?;
+        
+        target_conn
+            .execute("DETACH DATABASE source_db", [])
+            .map_err(|e| format!("分离源数据库失败: {}", e))?;
+    }
+    
+    // 复制索引
+    let mut idx_stmt = source_conn
+        .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL AND tbl_name != 'image_data'")
+        .map_err(|e| format!("查询索引失败: {}", e))?;
+    
+    let index_sqls: Vec<String> = idx_stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| format!("读取索引失败: {}", e))?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| format!("处理索引失败: {}", e))?;
+    
+    drop(idx_stmt);
+    
+    for index_sql in index_sqls {
+        let _ = target_conn.execute(&index_sql, []);
+    }
+    
+    Ok(())
+}
 
 // 备份当前数据
 async fn backup_current_data(app_data_dir: &Path) -> Result<(), String> {
