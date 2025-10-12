@@ -66,7 +66,6 @@ export function initMusicPlayer() {
   // 如果启用了播放器，激活标题图标
   if (playerState.enabled) {
     enableMusicIcon();
-    refreshAudioList();
   }
   
   setTimeout(() => {
@@ -79,7 +78,11 @@ export function initMusicPlayer() {
 /**
  * 刷新音频文件列表
  */
-export async function refreshAudioList() {
+export async function refreshAudioList(force = false) {
+  if (!force && (!playerState.enabled || !playerState.isPanelExpanded)) {
+    return;
+  }
+  
   const clipboardAudioFiles = extractAudioFiles(clipboardHistory);
   const quickTextsAudioFiles = extractAudioFiles(quickTexts);
   
@@ -183,7 +186,7 @@ function renderFolderList() {
       
       if (removeFolder(folderPath)) {
         showNotification('文件夹已删除', 'success');
-        refreshAudioList();
+        refreshAudioList(true);
       }
     });
   });
@@ -203,7 +206,6 @@ export function toggleMusicPlayer() {
   
   if (playerState.enabled) {
     enableMusicIcon();
-    refreshAudioList();
     showNotification('音频播放器已开启，点击左上角图标打开', 'success');
   } else {
     disableMusicIcon();
@@ -246,7 +248,6 @@ export function setMusicPlayerState(enabled) {
   
   if (enabled) {
     enableMusicIcon();
-    refreshAudioList();
   } else {
     disableMusicIcon();
     if (playerState.isPlaying && audioElement) {

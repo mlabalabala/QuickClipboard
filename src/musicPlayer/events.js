@@ -22,7 +22,6 @@ export function setupEventListeners() {
   setupPanelEvents();
   setupControlEvents();
   setupProgressBarEvents();
-  setupGlobalEvents();
 }
 
 /**
@@ -47,7 +46,7 @@ function setupPanelEvents() {
   // 刷新按钮
   const refreshBtn = musicPanel.querySelector('.music-panel-refresh');
   refreshBtn?.addEventListener('click', () => {
-    refreshAudioList();
+    refreshAudioList(true);
     import('./index.js').then(({ showNotification }) => {
       showNotification('已刷新音频列表', 'success');
     });
@@ -71,7 +70,7 @@ function setupPanelEvents() {
     if (result.success) {
       import('./index.js').then(({ showNotification, refreshAudioList }) => {
         showNotification('文件夹已添加', 'success');
-        refreshAudioList();
+        refreshAudioList(true);
       });
     } else if (result.message) {
       import('./index.js').then(({ showNotification }) => {
@@ -149,17 +148,6 @@ function setupProgressBarEvents() {
   });
 }
 
-/**
- * 设置全局事件
- */
-function setupGlobalEvents() {
-  // 监听标签切换，刷新音频列表
-  window.addEventListener('tab-switched', refreshAudioList);
-  
-  // 监听剪贴板和常用列表变化
-  window.addEventListener('clipboard-updated', refreshAudioList);
-  window.addEventListener('quick-texts-updated', refreshAudioList);
-}
 
 /**
  * 切换面板显示
@@ -169,7 +157,7 @@ function togglePanel() {
     hidePanel();
   } else {
     showPanel();
-    refreshAudioList();
+    refreshAudioList(true);
   }
 }
 
@@ -179,7 +167,7 @@ function togglePanel() {
 function switchMusicTab(tab) {
   setState('selectedList', tab);
   highlightSelectedList(tab);
-  refreshAudioList();
+  refreshAudioList(true);
 }
 
 async function prepareListForPlayback(listType) {
