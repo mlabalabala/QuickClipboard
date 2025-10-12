@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { showNotification } from '../../../js/notificationManager.js';
+import { showLoading, hideLoading } from './loadingManager.js';
 
 export class DataManager {
     /**
@@ -91,10 +92,12 @@ export class DataManager {
 
             if (!filePath) return;
 
-            showNotification('正在导出全部数据，请稍候...', 'info');
+            showLoading('正在导出全部数据，请稍候...');
             await invoke('export_data', { exportPath: filePath, options: {} });
+            hideLoading();
             showNotification('全部数据导出成功！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('导出数据失败:', error);
             showNotification(`导出数据失败: ${error}`, 'error');
         }
@@ -131,15 +134,17 @@ export class DataManager {
 
             if (!confirmed) return;
 
-            showNotification('正在导入数据，请稍候...', 'info');
+            showLoading('正在导入数据，请稍候...');
             await invoke('import_data', {
                 importPath: filePath,
                 options: { mode: importMode === 'replace' ? 'Replace' : 'Merge' }
             });
 
-            showNotification('数据导入成功！', 'success');
             await invoke('refresh_all_windows');
+            hideLoading();
+            showNotification('数据导入成功！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('导入数据失败:', error);
             showNotification(`导入数据失败: ${error}`, 'error');
         }
@@ -157,11 +162,13 @@ export class DataManager {
         if (!confirmed) return;
 
         try {
-            showNotification('正在清空剪贴板历史...', 'info');
+            showLoading('正在清空剪贴板历史...');
             await invoke('clear_clipboard_history_dm');
-            showNotification('剪贴板历史已清空！', 'success');
             await invoke('refresh_all_windows');
+            hideLoading();
+            showNotification('剪贴板历史已清空！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('清空剪贴板历史失败:', error);
             showNotification(`清空剪贴板历史失败: ${error}`, 'error');
         }
@@ -186,11 +193,16 @@ export class DataManager {
         if (!finalConfirmed) return;
 
         try {
-            showNotification('正在重置所有数据...', 'info');
+            showLoading('正在重置所有数据...');
             await invoke('reset_all_data');
-            showNotification('所有数据已重置！', 'success');
+
+            localStorage.clear();
+
             await invoke('refresh_all_windows');
+            hideLoading();
+            showNotification('所有数据已重置！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('重置所有数据失败:', error);
             showNotification(`重置所有数据失败: ${error}`, 'error');
         }
@@ -229,11 +241,13 @@ export class DataManager {
 
             if (!confirmed) return;
 
-            showNotification('正在迁移数据到新位置，请稍候...', 'info');
+            showLoading('正在迁移数据到新位置，请稍候...');
             await invoke('set_custom_storage_location', { newPath: selectedPath });
             await this.loadStorageInfo();
+            hideLoading();
             showNotification('存储位置更改成功！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('更改存储位置失败:', error);
             showNotification(`更改存储位置失败: ${error}`, 'error');
         }
@@ -251,11 +265,13 @@ export class DataManager {
 
             if (!confirmed) return;
 
-            showNotification('正在重置存储位置，请稍候...', 'info');
+            showLoading('正在重置存储位置，请稍候...');
             await invoke('reset_to_default_storage_location');
             await this.loadStorageInfo();
+            hideLoading();
             showNotification('存储位置已重置为默认位置！', 'success');
         } catch (error) {
+            hideLoading();
             console.error('重置存储位置失败:', error);
             showNotification(`重置存储位置失败: ${error}`, 'error');
         }

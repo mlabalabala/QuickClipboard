@@ -1149,7 +1149,7 @@ pub fn clear_all_data() -> Result<(), String> {
                 .map_err(|e| format!("创建事务失败: {}", e))?;
 
             // 安全地清空所有表（如果表存在的话）
-            let tables = vec!["clipboard", "favorites", "groups"];
+            let tables = vec!["clipboard", "favorites", "groups", "image_data"];
 
             for table in tables {
                 // 检查表是否存在
