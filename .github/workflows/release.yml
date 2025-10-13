@@ -43,5 +43,5 @@ jobs:
           releaseName: 'QuickClipboard ${{ github.ref_name }}'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
-          prerelease: tauri
+          prerelease: false
 
