@@ -2,6 +2,8 @@
  * 贴图窗口
  */
 
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { showContextMenuFromEvent, createMenuItem, createSeparator } from '../plugins/context_menu/index.js';

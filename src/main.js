@@ -1,5 +1,7 @@
 // 主入口文件 - 协调各个模块
 
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 // =================== 启动横幅 ===================
 function printStartupBanner() {
   console.log('');

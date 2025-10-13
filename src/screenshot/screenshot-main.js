@@ -3,6 +3,8 @@
  * 整合所有子模块，协调截屏功能的各个部分
  */
 
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 // 引入Fabric.js
 import * as fabric from 'fabric';
 

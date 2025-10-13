@@ -1,3 +1,6 @@
+
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Window } from '@tauri-apps/api/window';

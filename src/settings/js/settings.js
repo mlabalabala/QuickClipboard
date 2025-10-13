@@ -1,6 +1,9 @@
 /**
  * 设置页面主文件
  */
+
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getDominantColor, generateTitleBarColors, applyTitleBarColors, removeTitleBarColors } from '../../js/colorAnalyzer.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';

@@ -105,8 +105,7 @@
     "active": true,
     "targets": [
       "msi",
-      "nsis",
-      "app"
+      "nsis"
     ],
     "publisher": "MoSheng",
     "homepage": "https://github.com/mosheng1/QuickClipboard",

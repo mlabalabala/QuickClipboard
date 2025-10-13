@@ -2,6 +2,8 @@
  * 通用右键菜单前端逻辑
  */
 
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
+
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 document.addEventListener('contextmenu', event => event.preventDefault());
