@@ -93,6 +93,7 @@ import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
 import { initToolManager } from './js/toolManager.js';
 import { initMusicPlayer } from './musicPlayer/index.js';
+import { autoUpdater } from './js/autoUpdater.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
 import { initSidebarHover } from './js/sidebarHover.js';
@@ -365,6 +366,8 @@ async function initApp() {
   // 设置窗口大小和位置监听器
   setupWindowSizeAndPositionListeners();
 
+  // 启动时自动检查更新
+  autoUpdater.autoCheckOnStartup();
 
 }
 

@@ -977,8 +977,8 @@ async function loadAppVersion() {
 
 async function checkForUpdates() {
   try {
-    const { handleCheckUpdatesClick } = await import('../../js/updateChecker.js');
-    await handleCheckUpdatesClick();
+    const { autoUpdater } = await import('../../js/autoUpdater.js');
+    await autoUpdater.checkForUpdates(false);
   } catch (error) {
     console.error('检查更新失败:', error);
     showNotification('检查更新失败', 'error');
