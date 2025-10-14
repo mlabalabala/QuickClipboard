@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// 应用设置数据模型
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppSettings {
     // === 基础设置 ===
     pub auto_start: bool,
