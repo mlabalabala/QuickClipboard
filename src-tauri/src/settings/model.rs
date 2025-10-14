@@ -236,6 +236,8 @@ pub struct StorageInfo {
     pub default_path: String,
     pub is_default: bool,
     pub custom_path: Option<String>,
+    pub is_portable: bool,
+    pub portable_path: Option<String>,
 }
 
 impl AppSettings {

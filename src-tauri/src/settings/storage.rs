@@ -2,13 +2,47 @@ use super::model::AppSettings;
 use dirs;
 use std::fs;
 use std::path::PathBuf;
+use std::env;
 
 /// 设置文件存储管理
 pub struct SettingsStorage;
 
 impl SettingsStorage {
+    /// 检测是否是便携版模式
+    pub fn is_portable_mode() -> bool {
+        if let Ok(exe_path) = env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let portable_marker = exe_dir.join("portable.txt");
+                return portable_marker.exists();
+            }
+        }
+        false
+    }
+
+    /// 获取便携版数据目录
+    fn get_portable_data_directory() -> Result<PathBuf, String> {
+        let exe_path = env::current_exe()
+            .map_err(|e| format!("无法获取可执行文件路径: {}", e))?;
+        
+        let exe_dir = exe_path.parent()
+            .ok_or_else(|| "无法获取可执行文件所在目录".to_string())?;
+        
+        let portable_data_dir = exe_dir.join("data");
+        
+        fs::create_dir_all(&portable_data_dir)
+            .map_err(|e| format!("创建便携版数据目录失败: {}", e))?;
+        
+        Ok(portable_data_dir)
+    }
+
     /// 获取默认的应用数据目录
     pub fn get_default_data_directory() -> Result<PathBuf, String> {
+        // 检测便携版模式
+        if Self::is_portable_mode() {
+            return Self::get_portable_data_directory();
+        }
+
+        // 正常模式：使用系统数据目录
         let app_data_dir = dirs::data_local_dir()
             .ok_or_else(|| "无法获取本地数据目录".to_string())?
             .join("quickclipboard");

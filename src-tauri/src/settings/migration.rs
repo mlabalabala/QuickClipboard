@@ -100,12 +100,30 @@ impl SettingsMigration {
     pub fn get_storage_info(settings: &AppSettings) -> Result<StorageInfo, String> {
         let current_dir = SettingsStorage::get_data_directory(settings)?;
         let default_dir = SettingsStorage::get_default_data_directory()?;
+        let is_portable = SettingsStorage::is_portable_mode();
+        
+        // 获取便携版路径
+        let portable_path = if is_portable {
+            if let Ok(exe_path) = std::env::current_exe() {
+                if let Some(exe_dir) = exe_path.parent() {
+                    Some(exe_dir.join("data").to_string_lossy().to_string())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         Ok(StorageInfo {
             current_path: current_dir.to_string_lossy().to_string(),
             default_path: default_dir.to_string_lossy().to_string(),
             is_default: !settings.use_custom_storage,
             custom_path: settings.custom_storage_path.clone(),
+            is_portable,
+            portable_path,
         })
     }
 }

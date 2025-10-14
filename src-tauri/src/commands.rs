@@ -745,6 +745,12 @@ pub fn get_app_data_dir() -> Result<String, String> {
 
 // =================== 存储管理 ===================
 
+/// 检查是否为便携版模式
+#[tauri::command]
+pub fn is_portable_mode() -> bool {
+    crate::settings::SettingsStorage::is_portable_mode()
+}
+
 /// 获取存储信息
 #[tauri::command]
 pub fn get_storage_info() -> Result<crate::settings::StorageInfo, String> {
@@ -755,6 +761,11 @@ pub fn get_storage_info() -> Result<crate::settings::StorageInfo, String> {
 /// 设置自定义存储位置
 #[tauri::command]
 pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle) -> Result<(), String> {
+    // 便携版模式下禁止更改存储位置
+    if crate::settings::SettingsStorage::is_portable_mode() {
+        return Err("便携版模式下无法更改数据存储位置".to_string());
+    }
+    
     let mut settings = crate::settings::get_global_settings();
     settings.set_custom_storage_path(new_path, Some(app)).await?;
     crate::settings::update_global_settings(settings)
@@ -763,6 +774,11 @@ pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle
 /// 重置为默认存储位置
 #[tauri::command]
 pub async fn reset_to_default_storage_location(app: tauri::AppHandle) -> Result<(), String> {
+    // 便携版模式下禁止更改存储位置
+    if crate::settings::SettingsStorage::is_portable_mode() {
+        return Err("便携版模式下无法更改数据存储位置".to_string());
+    }
+    
     let mut settings = crate::settings::get_global_settings();
     settings.reset_to_default_storage(Some(app)).await?;
     crate::settings::update_global_settings(settings)

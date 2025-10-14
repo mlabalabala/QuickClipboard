@@ -13,12 +13,40 @@ class AutoUpdater {
     this.isDownloading = false;
     this.updateAvailable = false;
     this.currentUpdate = null;
+    this.isPortableMode = false;
+    this.portableModeChecked = false;
+  }
+
+  /**
+   * 检查是否为便携版模式
+   */
+  async checkPortableMode() {
+    if (!this.portableModeChecked) {
+      try {
+        this.isPortableMode = await invoke('is_portable_mode');
+        this.portableModeChecked = true;
+      } catch (error) {
+        console.error('[AutoUpdater] 检查便携版模式失败:', error);
+        this.isPortableMode = false;
+        this.portableModeChecked = true;
+      }
+    }
+    return this.isPortableMode;
   }
 
   /**
    * 检查更新
    */
   async checkForUpdates(silent = false) {
+    // 便携版模式下禁用自动更新
+    const isPortable = await this.checkPortableMode();
+    if (isPortable) {
+      if (!silent) {
+        showNotification('便携版模式下已禁用自动更新功能', 'info');
+      }
+      return null;
+    }
+
     if (this.isChecking) {
     //   console.log('[AutoUpdater] 正在检查更新中...');
       return null;
@@ -439,6 +467,12 @@ class AutoUpdater {
    * 自动检查更新
    */
   async autoCheckOnStartup() {
+    // 便携版模式下不自动检查更新
+    const isPortable = await this.checkPortableMode();
+    if (isPortable) {
+      return;
+    }
+
     setTimeout(async () => {
     //   console.log('[AutoUpdater] 启动时自动检查更新...');
       await this.checkForUpdates(true);

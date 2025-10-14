@@ -326,11 +326,57 @@ export class DataManager {
                 currentPathElement.textContent = storageInfo.current_path;
                 currentPathElement.title = storageInfo.current_path;
             }
+
+            // 检查是否为便携版模式
+            if (storageInfo.is_portable) {
+                this.disableStorageButtons();
+                this.showPortableModeTip();
+            }
         } catch (error) {
             console.error('获取存储信息失败:', error);
             const currentPathElement = document.getElementById('current-storage-path');
             if (currentPathElement) {
                 currentPathElement.textContent = '获取存储位置失败';
+            }
+        }
+    }
+
+    /**
+     * 禁用存储位置管理按钮
+     */
+    disableStorageButtons() {
+        const changeBtn = document.getElementById('change-storage-location');
+        const resetBtn = document.getElementById('reset-storage-location');
+        
+        if (changeBtn) {
+            changeBtn.disabled = true;
+            changeBtn.title = '便携版模式下无法更改存储位置';
+            changeBtn.style.opacity = '0.5';
+            changeBtn.style.cursor = 'not-allowed';
+        }
+        
+        if (resetBtn) {
+            resetBtn.disabled = true;
+            resetBtn.title = '便携版模式下无法更改存储位置';
+            resetBtn.style.opacity = '0.5';
+            resetBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    /**
+     * 显示便携版模式提示
+     */
+    showPortableModeTip() {
+        const currentPathElement = document.getElementById('current-storage-path');
+        if (currentPathElement && currentPathElement.parentElement) {
+            // 检查是否已经存在提示
+            const existingTip = currentPathElement.parentElement.querySelector('.portable-mode-tip');
+            if (!existingTip) {
+                const tip = document.createElement('div');
+                tip.className = 'portable-mode-tip';
+                tip.style.cssText = 'margin-top: 8px; padding: 8px 12px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px; font-size: 13px; color: #856404;';
+                tip.innerHTML = '<strong>便携版模式</strong><br>当前运行在便携版模式下，所有数据存储在程序目录下的 data 文件夹中，无法更改存储位置。';
+                currentPathElement.parentElement.appendChild(tip);
             }
         }
     }

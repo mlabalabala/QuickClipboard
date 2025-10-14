@@ -510,6 +510,7 @@ pub fn run() {
             commands::reset_all_data,
             commands::reset_settings_to_default,
             commands::get_app_data_dir,
+            commands::is_portable_mode,
             commands::get_storage_info,
             commands::set_custom_storage_location,
             commands::reset_to_default_storage_location,

@@ -819,12 +819,29 @@ function addAppToFilterList(processName) {
 }
 
 // =================== 关于页面事件 ===================
-function bindAboutPageEvents() {
+async function bindAboutPageEvents() {
   const checkUpdatesBtn = document.getElementById('check-updates');
   if (checkUpdatesBtn) {
-    checkUpdatesBtn.addEventListener('click', async () => {
-      await checkForUpdates();
-    });
+    // 检查是否为便携版模式
+    try {
+      const isPortable = await invoke('is_portable_mode');
+      if (isPortable) {
+        checkUpdatesBtn.disabled = true;
+        checkUpdatesBtn.title = '便携版模式下已禁用自动更新功能';
+        checkUpdatesBtn.style.opacity = '0.5';
+        checkUpdatesBtn.style.cursor = 'not-allowed';
+        checkUpdatesBtn.textContent = '检查更新（已禁用便携版更新）';
+      } else {
+        checkUpdatesBtn.addEventListener('click', async () => {
+          await checkForUpdates();
+        });
+      }
+    } catch (error) {
+      console.error('检查便携版模式失败:', error);
+      checkUpdatesBtn.addEventListener('click', async () => {
+        await checkForUpdates();
+      });
+    }
   }
 
   const githubButtons = document.querySelectorAll('.open-github');
