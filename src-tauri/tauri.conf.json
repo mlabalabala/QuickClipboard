@@ -133,9 +133,9 @@
       "wix": {
         "language": "zh-CN"
       }
-    }
+    },
+    "createUpdaterArtifacts": true
   },
-  "createUpdaterArtifacts": true,
   "plugins": {
     "updater": {
       "active": true,
