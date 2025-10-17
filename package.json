@@ -21,11 +21,13 @@
     "@tabler/icons-webfont": "^3.35.0",
     "@tauri-apps/api": "^2.6.0",
     "@tauri-apps/plugin-dialog": "^2.3.2",
+    "@tauri-apps/plugin-http": "^2.5.2",
     "@tauri-apps/plugin-opener": "^2.4.0",
     "@tauri-apps/plugin-process": "^2.0.0",
     "@tauri-apps/plugin-updater": "^2.1.0",
     "clusterize.js": "^1.0.0",
     "fabric": "^6.7.1",
+    "snarkdown": "^2.0.0",
     "sortablejs": "^1.15.6",
     "tesseract.js": "^6.0.1",
     "vanilla-lazyload": "^19.1.3"

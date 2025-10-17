@@ -42,7 +42,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'QuickClipboard ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: 'https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true

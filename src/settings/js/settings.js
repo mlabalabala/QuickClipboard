@@ -327,20 +327,16 @@ async function initializeUI() {
     bgSetting.style.display = (settings.theme === 'background') ? '' : 'none';
   }
 
-  // 延迟初始化更新检测
+  // 初始化更新检测
   setTimeout(async () => {
     try {
-      const { setupUpdateChecker } = await import('../../js/updateChecker.js');
-      setupUpdateChecker();
-      
-      let notified = false;
-      window.addEventListener('qc-update-available', (e) => {
-        if (notified) return;
-        notified = true;
-        const rel = e?.detail?.latestRelease;
-        const ver = (rel?.tagName || rel?.name || '').toString();
-        showNotification(`发现新版本 ${ver}，点击"关于 → 检查更新"查看详情`, 'success');
-      }, { once: true });
+      const { updater } = await import('../../updater/index.js');
+
+      const update = await updater.checkForUpdates(true);
+
+      if (update?.available) {
+        showNotification(`发现新版本 ${update.version}，点击"关于 → 检查更新"查看详情`, 'success');
+      }
     } catch (e) {
       console.warn('初始化更新检测失败:', e);
     }
@@ -832,14 +828,14 @@ async function bindAboutPageEvents() {
         checkUpdatesBtn.style.cursor = 'not-allowed';
         checkUpdatesBtn.textContent = '检查更新（已禁用便携版更新）';
       } else {
-        checkUpdatesBtn.addEventListener('click', async () => {
-          await checkForUpdates();
+        checkUpdatesBtn.addEventListener('click', async (event) => {
+          await checkForUpdates(event);
         });
       }
     } catch (error) {
       console.error('检查便携版模式失败:', error);
-      checkUpdatesBtn.addEventListener('click', async () => {
-        await checkForUpdates();
+      checkUpdatesBtn.addEventListener('click', async (event) => {
+        await checkForUpdates(event);
       });
     }
   }
@@ -995,10 +991,22 @@ async function loadAppVersion() {
   }
 }
 
-async function checkForUpdates() {
+async function checkForUpdates(eventOrButton) {
   try {
-    const { autoUpdater } = await import('../../js/autoUpdater.js');
-    await autoUpdater.checkForUpdates(false);
+    const { updater } = await import('../../updater/index.js');
+
+    let triggerButton = null;
+    if (eventOrButton) {
+      if (eventOrButton.target) {
+
+        triggerButton = eventOrButton.target;
+      } else if (eventOrButton.tagName) {
+
+        triggerButton = eventOrButton;
+      }
+    }
+    
+    await updater.checkForUpdates(false, triggerButton);
   } catch (error) {
     console.error('检查更新失败:', error);
     showNotification('检查更新失败', 'error');
