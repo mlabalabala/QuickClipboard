@@ -43,6 +43,7 @@ mod window_management;
 mod edge_snap;
 mod state_manager;
 mod window_drag;
+mod window_animation;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -542,6 +543,9 @@ pub fn run() {
             commands::show_updater_window,
             commands::close_updater_window,
             commands::updater_get_update_info,
+            
+            // 窗口动画
+            window_animation::animate_window_resize,
             
             // 截屏窗口相关命令
             crate::screenshot::show_screenshot_window,

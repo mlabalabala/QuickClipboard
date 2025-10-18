@@ -44,12 +44,13 @@ function loadSettings() {
         shadow: false,
         lockPosition: false,
         pixelRender: false,
-        opacity: 100
+        opacity: 100,
+        thumbnailMode: false
     };
 }
 
 // 创建右键菜单
-async function createContextMenu(window, shadowState, lockPositionState, pixelRenderState) {
+async function createContextMenu(window, shadowState, lockPositionState, pixelRenderState, thumbnailState, onThumbnailToggle) {
     document.addEventListener('contextmenu', async (e) => {
         e.preventDefault();
         
@@ -89,6 +90,9 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
             }),
             createMenuItem('toggle-pixel-render', '像素级显示', {
                 icon: pixelRenderState.enabled ? 'ti ti-check' : 'ti ti-border-all'
+            }),
+            createMenuItem('toggle-thumbnail', '缩略图模式', {
+                icon: thumbnailState.enabled ? 'ti ti-check' : 'ti ti-photo-down'
             }),
             createMenuItem('opacity-submenu', '透明度', {
                 icon: 'ti ti-droplet-half',
@@ -155,6 +159,16 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
                     const pixelSettings = loadSettings();
                     pixelSettings.pixelRender = pixelRenderState.enabled;
                     saveSettings(pixelSettings);
+                    break;
+                    
+                case 'toggle-thumbnail':
+                    thumbnailState.enabled = !thumbnailState.enabled;
+                    if (onThumbnailToggle) {
+                        await onThumbnailToggle(thumbnailState.enabled);
+                    }
+                    const thumbnailSettings = loadSettings();
+                    thumbnailSettings.thumbnailMode = thumbnailState.enabled;
+                    saveSettings(thumbnailSettings);
                     break;
                     
                 case 'opacity-custom':
@@ -224,6 +238,9 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
     let sizeIndicatorTimer = null;
     let initialSize = null;
     let scaleLevel = 10;
+    let mouseDownX = 0;
+    let mouseDownY = 0;
+    const DRAG_THRESHOLD = 5;
     
     // 图片缩放和位置
     let imageScale = 1; // 图片缩放比例，1 = 100%
@@ -241,11 +258,106 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
     const shadowState = { enabled: savedSettings.shadow };
     const lockPositionState = { locked: savedSettings.lockPosition };
     const pixelRenderState = { enabled: savedSettings.pixelRender };
+    const thumbnailState = { enabled: savedSettings.thumbnailMode || false };
+
+    let isInThumbnailMode = savedSettings.thumbnailMode || false;
+    let savedWindowSize = null;
+    let savedWindowCenter = null;
     
     // 应用图片变换
     function applyImageTransform() {
         img.style.transform = `translate(${imageX}px, ${imageY}px) scale(${imageScale})`;
         img.style.transformOrigin = 'center center';
+    }
+    
+    // 进入缩略图模式
+    async function enterThumbnailMode() {
+        try {
+            const currentSize = await currentWindow.innerSize();
+            const currentPosition = await currentWindow.outerPosition();
+            const scaleFactor = await currentWindow.scaleFactor();
+            
+            savedWindowSize = {
+                width: currentSize.width / scaleFactor,
+                height: currentSize.height / scaleFactor,
+                x: currentPosition.x,
+                y: currentPosition.y
+            };
+
+            const centerX = currentPosition.x + currentSize.width / 2;
+            const centerY = currentPosition.y + currentSize.height / 2;
+            savedWindowCenter = { x: centerX, y: centerY };
+
+            const thumbnailSize = 50;
+            const thumbnailPhysicalSize = thumbnailSize * scaleFactor;
+            const newX = Math.round(centerX - thumbnailPhysicalSize / 2);
+            const newY = Math.round(centerY - thumbnailPhysicalSize / 2);
+
+            await invoke('animate_window_resize', {
+                startWidth: currentSize.width,
+                startHeight: currentSize.height,
+                startX: currentPosition.x,
+                startY: currentPosition.y,
+                endWidth: thumbnailPhysicalSize,
+                endHeight: thumbnailPhysicalSize,
+                endX: newX,
+                endY: newY,
+                durationMs: 300
+            });
+            
+            isInThumbnailMode = true;
+        } catch (error) {
+            console.error('进入缩略图模式失败:', error);
+        }
+    }
+    
+    // 退出缩略图模式
+    async function exitThumbnailMode() {
+        try {
+            if (savedWindowSize && savedWindowCenter) {
+                const currentSize = await currentWindow.innerSize();
+                const currentPosition = await currentWindow.outerPosition();
+                const scaleFactor = await currentWindow.scaleFactor();
+
+                const currentCenterX = currentPosition.x + currentSize.width / 2;
+                const currentCenterY = currentPosition.y + currentSize.height / 2;
+
+                const endWidth = savedWindowSize.width * scaleFactor;
+                const endHeight = savedWindowSize.height * scaleFactor;
+                const endX = Math.round(currentCenterX - endWidth / 2);
+                const endY = Math.round(currentCenterY - endHeight / 2);
+
+                await invoke('animate_window_resize', {
+                    startWidth: currentSize.width,
+                    startHeight: currentSize.height,
+                    startX: currentPosition.x,
+                    startY: currentPosition.y,
+                    endWidth: endWidth,
+                    endHeight: endHeight,
+                    endX: endX,
+                    endY: endY,
+                    durationMs: 300
+                });
+
+                if (initialSize) {
+                    scaleLevel = Math.round((savedWindowSize.width / initialSize.width) * 10);
+                }
+            }
+            
+            isInThumbnailMode = false;
+            savedWindowSize = null;
+            savedWindowCenter = null;
+        } catch (error) {
+            console.error('退出缩略图模式失败:', error);
+        }
+    }
+
+    async function handleThumbnailToggle(enabled) {
+        if (enabled) {
+            await enterThumbnailMode();
+        } else {
+            await exitThumbnailMode();
+        }
     }
     
     // 限制图片位置在窗口边界内
@@ -419,23 +531,23 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
     });
     
     // 创建右键菜单
-    await createContextMenu(currentWindow, shadowState, lockPositionState, pixelRenderState);
+    await createContextMenu(currentWindow, shadowState, lockPositionState, pixelRenderState, thumbnailState, handleThumbnailToggle);
     
     // 按下鼠标
     img.addEventListener('mousedown', (e) => {
         e.preventDefault(); 
         if (e.button === 0) {
-            if (e.altKey && imageScale > 1) {
-                // Alt + 左键：拖动图片
+            if (e.altKey && imageScale > 1 && !isInThumbnailMode) {
                 isDraggingImage = true;
                 dragStartX = e.clientX;
                 dragStartY = e.clientY;
                 dragStartImageX = imageX;
                 dragStartImageY = imageY;
-            } else if (!lockPositionState.locked) {
-                // 普通左键：拖动窗口
+            } else if (!lockPositionState.locked || isInThumbnailMode) {
                 mouseDown = true;
                 hasMoved = false;
+                mouseDownX = e.clientX;
+                mouseDownY = e.clientY;
             }
         }
     });
@@ -450,15 +562,34 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
             imageY = dragStartImageY + deltaY;
             constrainImagePosition();
             applyImageTransform();
-        } else if (mouseDown && !hasMoved && !lockPositionState.locked) {
-            // 拖动窗口
-            hasMoved = true;
-            currentWindow.startDragging();
+        } else if (mouseDown && !hasMoved) {
+            const deltaX = Math.abs(e.clientX - mouseDownX);
+            const deltaY = Math.abs(e.clientY - mouseDownY);
+            
+            if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+                if (isInThumbnailMode || !lockPositionState.locked) {
+                    hasMoved = true;
+                    currentWindow.startDragging();
+                }
+            }
         }
     });
     
     // 鼠标释放
-    img.addEventListener('mouseup', () => {
+    img.addEventListener('mouseup', async (e) => {
+        if (e.button === 0 && isInThumbnailMode && !hasMoved && mouseDown) {
+            thumbnailState.enabled = false;
+            await exitThumbnailMode();
+            const settings = loadSettings();
+            settings.thumbnailMode = false;
+            saveSettings(settings);
+        }
+        mouseDown = false;
+        isDraggingImage = false;
+        hasMoved = false;
+    });
+
+    document.addEventListener('mouseup', () => {
         mouseDown = false;
         isDraggingImage = false;
     });
@@ -502,6 +633,14 @@ async function createContextMenu(window, shadowState, lockPositionState, pixelRe
         // 应用像素渲染模式
         if (savedSettings.pixelRender) {
             img.style.imageRendering = 'pixelated';
+        }
+        
+        if (savedSettings.thumbnailMode) {
+            isInThumbnailMode = false;
+            thumbnailState.enabled = false;
+            const resetSettings = loadSettings();
+            resetSettings.thumbnailMode = false;
+            saveSettings(resetSettings);
         }
     } catch (error) {
         console.error('加载图片失败:', error);
