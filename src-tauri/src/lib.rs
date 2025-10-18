@@ -569,6 +569,7 @@ pub fn run() {
             crate::screenshot::start_auto_selection,
             crate::screenshot::stop_auto_selection,
             crate::screenshot::is_auto_selection_active,
+            crate::screenshot::clear_auto_selection_cache,
             
             // 贴图窗口相关命令
             crate::pin_image_window::get_pin_image_data,

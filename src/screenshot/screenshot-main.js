@@ -26,7 +26,8 @@ import { ScrollingScreenshotManager } from './managers/scrolling-screenshot-mana
 import { autoSelectionManager } from './managers/auto-selection-manager.js';
 import { TooltipManager } from './managers/tooltip-manager.js';
 import { registerArrowClass } from './tools/fabric-simple-arrow-tool.js';
-
+const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 export class ScreenshotController {
     constructor() {
         this.monitors = [];
@@ -1015,6 +1016,11 @@ export class ScreenshotController {
             
             // 恢复默认光标
             this.editLayerManager.restoreCursor();
+            
+            // 清除自动选区缓存（新的截屏流程将重新建立缓存）
+            invoke('clear_auto_selection_cache').catch(err => {
+                console.error('清除自动选区缓存失败:', err);
+            });
             
         } catch (error) {
             console.error('清空内容时出错:', error);

@@ -6,18 +6,12 @@ use std::collections::HashMap;
 use parking_lot::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use windows::Win32::Foundation::{POINT, HWND, RECT, BOOL, LPARAM};
-use windows::Win32::UI::Accessibility::{
-    IUIAutomation,
-    CUIAutomation, TreeScope_Subtree,
-};
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, IsWindowVisible, IsIconic,
     GetWindowRect,
 };
-use windows::Win32::System::Com::{
-    CoCreateInstance, CLSCTX_INPROC_SERVER,
-};
 use serde::Serialize;
+use uiautomation::UIAutomation;
 
 // 元素检测模式
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,6 +37,7 @@ pub struct AutoSelectionManager {
     is_active: Arc<AtomicBool>,
     app_handle: Arc<Mutex<Option<AppHandle>>>,
     screenshot_hwnd: Arc<Mutex<Option<isize>>>,
+    cache: Arc<Mutex<HashMap<isize, Vec<CachedElement>>>>,
 }
 
 // 元素边界信息
@@ -68,12 +63,47 @@ struct CachedElement {
     area: i32,
 }
 
+// 窗口枚举数据
+struct EnumData {
+    point: POINT,
+    exclude_hwnd: Option<isize>,
+    found_hwnd: Option<HWND>,
+}
+
 impl AutoSelectionManager {
     pub fn new() -> Self {
         Self {
             is_active: Arc::new(AtomicBool::new(false)),
             app_handle: Arc::new(Mutex::new(None)),
             screenshot_hwnd: Arc::new(Mutex::new(None)),
+            cache: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    // 将物理像素坐标转换为CSS像素坐标
+    #[inline]
+    fn to_css_bounds(bounds: &ElementBounds, scale_factor: f64) -> ElementBounds {
+        ElementBounds {
+            x: (bounds.x as f64 / scale_factor) as i32,
+            y: (bounds.y as f64 / scale_factor) as i32,
+            width: (bounds.width as f64 / scale_factor) as i32,
+            height: (bounds.height as f64 / scale_factor) as i32,
+        }
+    }
+
+    // 发送元素层级到前端
+    #[inline]
+    fn emit_hierarchy(app_handle: &Arc<Mutex<Option<AppHandle>>>, bounds: &ElementBounds) {
+        if let Some(app) = app_handle.lock().as_ref() {
+            if let Some(window) = app.get_webview_window("screenshot") {
+                let scale_factor = window.scale_factor().unwrap_or(1.0);
+                let css_bounds = Self::to_css_bounds(bounds, scale_factor);
+                let hierarchy = ElementHierarchy {
+                    hierarchy: vec![css_bounds],
+                    current_index: 0,
+                };
+                let _ = window.emit("auto-selection-hierarchy", &hierarchy);
+            }
         }
     }
 
@@ -97,10 +127,11 @@ impl AutoSelectionManager {
         let is_active = Arc::clone(&self.is_active);
         let app_handle = Arc::clone(&self.app_handle);
         let screenshot_hwnd = Arc::clone(&self.screenshot_hwnd);
+        let cache = Arc::clone(&self.cache);
 
         // 启动检测线程
         thread::spawn(move || {
-            let _ = Self::detection_loop(is_active, app_handle, screenshot_hwnd);
+            let _ = Self::detection_loop(is_active, app_handle, screenshot_hwnd, cache);
         });
 
         Ok(())
@@ -113,29 +144,23 @@ impl AutoSelectionManager {
         *self.screenshot_hwnd.lock() = None;
     }
 
+    // 清除缓存
+    pub fn clear_cache(&self) {
+        self.cache.lock().clear();
+    }
+
     // 检测循环
     fn detection_loop(
         is_active: Arc<AtomicBool>,
         app_handle: Arc<Mutex<Option<AppHandle>>>,
         screenshot_hwnd: Arc<Mutex<Option<isize>>>,
+        cache: Arc<Mutex<HashMap<isize, Vec<CachedElement>>>>,
     ) -> Result<(), String> {
-        // 初始化COM
-        unsafe {
-            windows::Win32::System::Com::CoInitializeEx(
-                None,
-                windows::Win32::System::Com::COINIT_APARTMENTTHREADED,
-            )
-            .ok();
-        }
-
         // 创建UI Automation实例
-        let automation: IUIAutomation = unsafe {
-            CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER)
-                .map_err(|e| format!("创建UI Automation失败: {}", e))?
-        };
+        let automation = UIAutomation::new()
+            .map_err(|e| format!("创建UI Automation失败: {}", e))?;
 
         let mut last_bounds: Option<ElementBounds> = None;
-        let mut cache: HashMap<isize, Vec<CachedElement>> = HashMap::new();
         let mut last_hwnd: Option<isize> = None;
 
         while is_active.load(Ordering::Relaxed) {
@@ -192,11 +217,13 @@ impl AutoSelectionManager {
             let window_changed = last_hwnd != Some(hwnd_value);
             
             // 检查窗口是否已缓存
-            if !cache.contains_key(&hwnd_value) {
+            let is_cached = cache.lock().contains_key(&hwnd_value);
+            
+            if !is_cached {
                 // 首次访问此窗口，使用流式缓存 + 即时查找
                 match Self::stream_cache_and_find(&automation, hwnd, cursor_pos, &app_handle, &mut last_bounds, current_mode) {
                     Ok(elements) => {
-                        cache.insert(hwnd_value, elements);
+                        cache.lock().insert(hwnd_value, elements);
                     }
                     Err(_) => {
                         thread::sleep(Duration::from_millis(1));
@@ -217,8 +244,9 @@ impl AutoSelectionManager {
             last_hwnd = Some(hwnd_value);
 
             // 从缓存中查找匹配的元素层级
-            if let Some(elements) = cache.get(&hwnd_value) {
-                match Self::find_element_hierarchy_from_cache(elements, cursor_pos, current_mode) {
+            let cached_elements = cache.lock().get(&hwnd_value).cloned();
+            if let Some(elements) = cached_elements {
+                match Self::find_element_hierarchy_from_cache(&elements, cursor_pos) {
                     Ok(Some(hierarchy_bounds)) => {
                         // 检查最小元素的边界是否变化
                         let smallest_bounds = &hierarchy_bounds[0];
@@ -238,14 +266,9 @@ impl AutoSelectionManager {
                                 if let Some(window) = app.get_webview_window("screenshot") {
                                     // 获取缩放因子并转换为CSS像素
                                     let scale_factor = window.scale_factor().unwrap_or(1.0);
-                                    let css_hierarchy: Vec<ElementBounds> = hierarchy_bounds.iter().map(|bounds| {
-                                        ElementBounds {
-                                            x: (bounds.x as f64 / scale_factor) as i32,
-                                            y: (bounds.y as f64 / scale_factor) as i32,
-                                            width: (bounds.width as f64 / scale_factor) as i32,
-                                            height: (bounds.height as f64 / scale_factor) as i32,
-                                        }
-                                    }).collect();
+                                    let css_hierarchy: Vec<ElementBounds> = hierarchy_bounds.iter()
+                                        .map(|bounds| Self::to_css_bounds(bounds, scale_factor))
+                                        .collect();
                                     
                                     let hierarchy = ElementHierarchy {
                                         hierarchy: css_hierarchy,
@@ -279,22 +302,11 @@ impl AutoSelectionManager {
             thread::sleep(Duration::from_millis(1));
         }
 
-        // 清理COM
-        unsafe {
-            windows::Win32::System::Com::CoUninitialize();
-        }
-
         Ok(())
     }
 
     // 获取鼠标位置下的窗口（排除指定窗口）
     fn get_window_under_point(point: POINT, exclude_hwnd: Option<isize>) -> Option<HWND> {
-        struct EnumData {
-            point: POINT,
-            exclude_hwnd: Option<isize>,
-            found_hwnd: Option<HWND>,
-        }
-
         let mut data = EnumData {
             point,
             exclude_hwnd,
@@ -348,204 +360,155 @@ impl AutoSelectionManager {
 
     // 流式缓存 + 即时查找
     fn stream_cache_and_find(
-        automation: &IUIAutomation,
+        automation: &UIAutomation,
         target_hwnd: HWND,
         point: POINT,
         app_handle: &Arc<Mutex<Option<AppHandle>>>,
         last_bounds: &mut Option<ElementBounds>,
         detection_mode: DetectionMode,
     ) -> Result<Vec<CachedElement>, String> {
-        unsafe {
-            let window_element = automation.ElementFromHandle(target_hwnd)
-                .map_err(|e| format!("ElementFromHandle 失败: {:?}", e))?;
+        // 从HWND获取窗口元素
+        let window_element = automation.element_from_handle((target_hwnd.0 as isize).into())
+            .map_err(|e| format!("ElementFromHandle 失败: {:?}", e))?;
 
-            // 立即获取并发送窗口本身的边界
-            let window_rect = window_element.CurrentBoundingRectangle()
-                .map_err(|e| format!("获取窗口边界失败: {:?}", e))?;
+        // 获取窗口边界
+        let window_rect = window_element.get_bounding_rectangle()
+            .map_err(|e| format!("获取窗口边界失败: {:?}", e))?;
+        
+        let window_left = window_rect.get_left();
+        let window_top = window_rect.get_top();
+        let window_right = window_rect.get_right();
+        let window_bottom = window_rect.get_bottom();
+        let window_width = window_right - window_left;
+        let window_height = window_bottom - window_top;
+        
+        // 检查窗口是否包含鼠标点
+        if point.x >= window_left && point.x <= window_right
+            && point.y >= window_top && point.y <= window_bottom
+        {
+            let window_bounds = ElementBounds {
+                x: window_left,
+                y: window_top,
+                width: window_width,
+                height: window_height,
+            };
             
-            let window_width = window_rect.right - window_rect.left;
-            let window_height = window_rect.bottom - window_rect.top;
-            
-            // 检查窗口是否包含鼠标点
-            if point.x >= window_rect.left && point.x <= window_rect.right
-                && point.y >= window_rect.top && point.y <= window_rect.bottom
-            {
-                let window_bounds = ElementBounds {
-                    x: window_rect.left,
-                    y: window_rect.top,
-                    width: window_width,
-                    height: window_height,
-                };
+            // 立即发送窗口边界层级
+            Self::emit_hierarchy(app_handle, &window_bounds);
+            *last_bounds = Some(window_bounds.clone());
+        }
+
+        // 如果只检测窗口，将窗口本身作为缓存元素返回
+        if detection_mode == DetectionMode::Window {
+            let window_area = window_width * window_height;
+            return Ok(vec![CachedElement {
+                rect: RECT {
+                    left: window_left,
+                    top: window_top,
+                    right: window_right,
+                    bottom: window_bottom,
+                },
+                area: window_area,
+            }]);
+        }
+
+        // 查找所有子元素
+        let elements = window_element.find_all(uiautomation::types::TreeScope::Subtree, 
+            &automation.create_true_condition()
+                .map_err(|e| format!("CreateTrueCondition 失败: {:?}", e))?)
+            .map_err(|e| format!("FindAll 失败: {:?}", e))?;
+
+        let mut cached = Vec::new();
+        let mut best_match: Option<(ElementBounds, i32)> = None;
+        let mut largest_element: Option<(ElementBounds, i32)> = None;
+        let mut sent_first = false;
+        let mut sent_fallback = true;
+        const FALLBACK_THRESHOLD: usize = 50;
+
+        for (i, element) in elements.iter().enumerate() {
+            if let Ok(rect) = element.get_bounding_rectangle() {
+                let left = rect.get_left();
+                let top = rect.get_top();
+                let right = rect.get_right();
+                let bottom = rect.get_bottom();
+                let width = right - left;
+                let height = bottom - top;
                 
-                // 立即发送窗口边界层级
-                if let Some(app) = app_handle.lock().as_ref() {
-                    if let Some(window) = app.get_webview_window("screenshot") {
-                        let scale_factor = window.scale_factor().unwrap_or(1.0);
-                        let css_bounds = ElementBounds {
-                            x: (window_bounds.x as f64 / scale_factor) as i32,
-                            y: (window_bounds.y as f64 / scale_factor) as i32,
-                            width: (window_bounds.width as f64 / scale_factor) as i32,
-                            height: (window_bounds.height as f64 / scale_factor) as i32,
-                        };
-                        
-                        // 发送只包含窗口的层级数据
-                        let hierarchy = ElementHierarchy {
-                            hierarchy: vec![css_bounds.clone()],
-                            current_index: 0,
-                        };
-                        
-                        let _ = window.emit("auto-selection-hierarchy", &hierarchy);
-                        *last_bounds = Some(window_bounds.clone());
+                if width >= 5 && height >= 5 && width <= 5000 && height <= 5000 {
+                    let area = width * height;
+                    cached.push(CachedElement { 
+                        rect: RECT { left, top, right, bottom },
+                        area 
+                    });
+                    
+                    // 追踪最大元素
+                    let should_update_largest = match &largest_element {
+                        None => true,
+                        Some((_, largest_area)) => area > *largest_area,
+                    };
+                    
+                    if should_update_largest {
+                        largest_element = Some((
+                            ElementBounds {
+                                x: left,
+                                y: top,
+                                width,
+                                height,
+                            },
+                            area
+                        ));
                     }
-                }
-            }
+                    
+                    // 检查是否包含鼠标点
+                    if point.x >= left && point.x <= right
+                        && point.y >= top && point.y <= bottom
+                    {
+                        let should_send = match &best_match {
+                            None => true,
+                            Some((_, best_area)) => area < *best_area,
+                        };
 
-            // 如果只检测窗口，将窗口本身作为缓存元素返回
-            if detection_mode == DetectionMode::Window {
-                let window_area = window_width * window_height;
-                return Ok(vec![CachedElement {
-                    rect: window_rect,
-                    area: window_area,
-                }]);
-            }
-
-            let condition = automation.CreateTrueCondition()
-                .map_err(|e| format!("CreateTrueCondition 失败: {:?}", e))?;
-
-            let elements = window_element.FindAll(TreeScope_Subtree, &condition)
-                .map_err(|e| format!("FindAll 失败: {:?}", e))?;
-
-            let count = elements.Length()
-                .map_err(|e| format!("获取元素数量失败: {:?}", e))?;
-
-            let mut cached = Vec::new();
-            let mut best_match: Option<(ElementBounds, i32)> = None;
-            let mut largest_element: Option<(ElementBounds, i32)> = None; // 记录最大元素
-            let mut sent_first = false;
-            let mut sent_fallback = true; // 窗口边界已发送，标记为true
-            const FALLBACK_THRESHOLD: i32 = 50; // 处理50个元素后如果没匹配，发送最大元素
-
-            for i in 0..count {
-                if let Ok(element) = elements.GetElement(i) {
-                    if let Ok(rect) = element.CurrentBoundingRectangle() {
-                        let width = rect.right - rect.left;
-                        let height = rect.bottom - rect.top;
-                        
-                        if width >= 5 && height >= 5 && width <= 5000 && height <= 5000 {
-                            let area = width * height;
-                            cached.push(CachedElement { rect, area });
-                            
-                            // 追踪最大元素
-                            let should_update_largest = match &largest_element {
-                                None => true,
-                                Some((_, largest_area)) => area > *largest_area,
+                        if should_send {
+                            let bounds = ElementBounds {
+                                x: left,
+                                y: top,
+                                width,
+                                height,
                             };
                             
-                            if should_update_largest {
-                                largest_element = Some((
-                                    ElementBounds {
-                                        x: rect.left,
-                                        y: rect.top,
-                                        width,
-                                        height,
-                                    },
-                                    area
-                                ));
-                            }
+                            best_match = Some((bounds.clone(), area));
                             
-                            // 检查是否包含鼠标点
-                            if point.x >= rect.left && point.x <= rect.right
-                                && point.y >= rect.top && point.y <= rect.bottom
-                            {
-                                let should_send = match &best_match {
-                                    None => true,
-                                    Some((_, best_area)) => area < *best_area,
-                                };
+                            // 立即发送到前端
+                            Self::emit_hierarchy(app_handle, &bounds);
+                            *last_bounds = Some(bounds);
+                            sent_first = true;
+                        }
+                    }
 
-                                if should_send {
-                                    let bounds = ElementBounds {
-                                        x: rect.left,
-                                        y: rect.top,
-                                        width,
-                                        height,
-                                    };
-                                    
-                                    best_match = Some((bounds.clone(), area));
-                                    
-                                    // 立即发送到前端
-                                    if let Some(app) = app_handle.lock().as_ref() {
-                                        if let Some(window) = app.get_webview_window("screenshot") {
-                                            let scale_factor = window.scale_factor().unwrap_or(1.0);
-                                            let css_bounds = ElementBounds {
-                                                x: (bounds.x as f64 / scale_factor) as i32,
-                                                y: (bounds.y as f64 / scale_factor) as i32,
-                                                width: (bounds.width as f64 / scale_factor) as i32,
-                                                height: (bounds.height as f64 / scale_factor) as i32,
-                                            };
-                                            
-                                            // 发送临时层级
-                                            let hierarchy = ElementHierarchy {
-                                                hierarchy: vec![css_bounds],
-                                                current_index: 0,
-                                            };
-                                            
-                                            let _ = window.emit("auto-selection-hierarchy", &hierarchy);
-                                            
-                                            if !sent_first {
-                                                sent_first = true;
-                                            }
-                                        }
-                                    }
-                                    
-                                    *last_bounds = Some(bounds);
-                                }
-                            }
-                            
-                            // 如果处理了一定数量还没找到匹配，先发送最大元素作为fallback
-                            if !sent_first && !sent_fallback && i >= FALLBACK_THRESHOLD {
-                                if let Some((largest_bounds, _)) = &largest_element {
-                                    // 只有最大元素包含鼠标点才发送
-                                    if point.x >= largest_bounds.x && point.x <= largest_bounds.x + largest_bounds.width
-                                        && point.y >= largest_bounds.y && point.y <= largest_bounds.y + largest_bounds.height
-                                    {
-                                        if let Some(app) = app_handle.lock().as_ref() {
-                                            if let Some(window) = app.get_webview_window("screenshot") {
-                                                let scale_factor = window.scale_factor().unwrap_or(1.0);
-                                                let css_bounds = ElementBounds {
-                                                    x: (largest_bounds.x as f64 / scale_factor) as i32,
-                                                    y: (largest_bounds.y as f64 / scale_factor) as i32,
-                                                    width: (largest_bounds.width as f64 / scale_factor) as i32,
-                                                    height: (largest_bounds.height as f64 / scale_factor) as i32,
-                                                };
-                                                
-                                                // 发送fallback层级（只包含最大元素）
-                                                let hierarchy = ElementHierarchy {
-                                                    hierarchy: vec![css_bounds],
-                                                    current_index: 0,
-                                                };
-                                                
-                                                let _ = window.emit("auto-selection-hierarchy", &hierarchy);
-                                                *last_bounds = Some(largest_bounds.clone());
-                                                sent_fallback = true;
-                                            }
-                                        }
-                                    }
-                                }
+                    // 如果处理了一定数量还没找到匹配，先发送最大元素作为fallback
+                    if !sent_first && !sent_fallback && i >= FALLBACK_THRESHOLD {
+                        if let Some((largest_bounds, _)) = &largest_element {
+                            // 只有最大元素包含鼠标点才发送
+                            if point.x >= largest_bounds.x && point.x <= largest_bounds.x + largest_bounds.width
+                                && point.y >= largest_bounds.y && point.y <= largest_bounds.y + largest_bounds.height
+                            {
+                                Self::emit_hierarchy(app_handle, largest_bounds);
+                                *last_bounds = Some(largest_bounds.clone());
+                                sent_fallback = true;
                             }
                         }
                     }
                 }
             }
-
-            Ok(cached)
         }
+
+        Ok(cached)
     }
 
     // 获取包含指定点的所有元素层级（从小到大排序）
     fn find_element_hierarchy_from_cache(
         elements: &[CachedElement],
         point: POINT,
-        _detection_mode: DetectionMode,
     ) -> Result<Option<Vec<ElementBounds>>, String> {
         // 找出所有包含该点的元素
         let mut matching_elements: Vec<_> = elements
@@ -589,12 +552,6 @@ impl AutoSelectionManager {
     }
 }
 
-struct EnumData {
-    point: POINT,
-    exclude_hwnd: Option<isize>,
-    found_hwnd: Option<HWND>,
-}
-
 // 全局单例
 use once_cell::sync::Lazy;
 pub static AUTO_SELECTION_MANAGER: Lazy<AutoSelectionManager> = Lazy::new(|| AutoSelectionManager::new());
@@ -616,4 +573,10 @@ pub fn stop_auto_selection() -> Result<(), String> {
 #[tauri::command]
 pub fn is_auto_selection_active() -> bool {
     AUTO_SELECTION_MANAGER.is_active()
+}
+
+// 清除自动选区缓存（用于新的截屏流程开始时）
+#[tauri::command]
+pub fn clear_auto_selection_cache() {
+    AUTO_SELECTION_MANAGER.clear_cache();
 }
