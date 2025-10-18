@@ -35,6 +35,7 @@ mod shortcut_interceptor;
 mod sound_manager;
 mod text_input_simulator;
 mod tray;
+mod updater;
 mod utils;
 mod window_effects;
 mod window_management;
@@ -535,6 +536,11 @@ pub fn run() {
             commands::file_exists,
             commands::create_pin_image_window,
             commands::pin_image_from_file,
+            
+            // 更新器相关命令
+            commands::show_updater_window,
+            commands::close_updater_window,
+            commands::updater_get_update_info,
             
             // 截屏窗口相关命令
             crate::screenshot::show_screenshot_window,

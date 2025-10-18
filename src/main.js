@@ -91,11 +91,11 @@ import {
 
 import { initInputFocusManagement } from './js/focus.js';
 import { initGroups } from './js/groups.js';
-import { initToolsPanel, updateFormatButtonStatus } from './js/toolsPanel.js';
+import { initToolsPanel } from './js/toolsPanel.js';
 import { initTitlebarDrag } from './js/titlebarDrag.js';
 import { initToolManager } from './js/toolManager.js';
 import { initMusicPlayer } from './musicPlayer/index.js';
-import { updater } from './updater/index.js';
+import { updateService } from './updater/updater-service.js';
 
 import { initExternalScrollbars } from './js/scrollbar.js';
 import { initSidebarHover } from './js/sidebarHover.js';
@@ -369,7 +369,9 @@ async function initApp() {
   setupWindowSizeAndPositionListeners();
 
   // 启动时自动检查更新
-  updater.initAutoUpdate();
+  updateService.checkOnStartup().catch(err => {
+    console.error('Startup update check failed:', err);
+  });
 
 }
 

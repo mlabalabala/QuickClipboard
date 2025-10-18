@@ -952,3 +952,26 @@ pub async fn pin_image_from_file(
 ) -> Result<(), String> {
     crate::pin_image_window::show_pin_image_from_file(app, file_path).await
 }
+
+// =================== 更新器相关命令 ===================
+
+/// 显示更新窗口
+#[tauri::command]
+pub async fn show_updater_window(
+    app: tauri::AppHandle,
+    update_info: crate::updater::UpdateInfo,
+) -> Result<(), String> {
+    crate::updater::window::show_updater_window(app, update_info).await
+}
+
+/// 关闭更新窗口
+#[tauri::command]
+pub fn close_updater_window(app: tauri::AppHandle) -> Result<(), String> {
+    crate::updater::window::close_updater_window(&app)
+}
+
+/// 获取更新信息
+#[tauri::command]
+pub fn updater_get_update_info() -> Option<crate::updater::UpdateInfo> {
+    crate::updater::get_update_info()
+}

@@ -5,11 +5,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 
+export const REPO_URL = 'https://github.com/mosheng1/QuickClipboard';
 /**
  * 从 latest.json 获取最新版本信息
  */
 export async function fetchLatestRelease() {
-  const jsonUrl = 'https://github.com/mosheng1/QuickClipboard/releases/latest/download/latest.json';
+  const jsonUrl = `${REPO_URL}/releases/latest/download/latest.json`;
   const jsonRes = await tauriFetch(jsonUrl, {
     method: 'GET',
     headers: {
@@ -51,8 +52,10 @@ export async function fetchLatestRelease() {
     body: releaseBody,
     date: data.pub_date || new Date().toISOString(),
     platforms: data.platforms || {},
+    forceUpdate: data.forceUpdate === true,
     isPrerelease: false,
-    htmlUrl: `https://github.com/mosheng1/QuickClipboard/releases/tag/v${data.version}`
+    htmlUrl: `${REPO_URL}/releases/tag/v${data.version}`,
+    repoUrl: REPO_URL
   };
 }
 

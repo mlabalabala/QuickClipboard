@@ -330,13 +330,13 @@ async function initializeUI() {
   // 初始化更新检测
   setTimeout(async () => {
     try {
-      const { updater } = await import('../../updater/index.js');
+      const { updateService } = await import('../../updater/updater-service.js');
+      const { showUpdateBadge } = await import('../../updater/updater-ui.js');
 
-      const update = await updater.checkForUpdates(true);
-
-      if (update?.available) {
-        showNotification(`发现新版本 ${update.version}，点击"关于 → 检查更新"查看详情`, 'success');
-      }
+      await updateService.checkOnSettingsOpen((updateInfo) => {
+        showUpdateBadge(updateInfo);
+        showNotification(`发现新版本 v${updateInfo.version}，请前往"关于"页面查看`, 'success');
+      });
     } catch (e) {
       console.warn('初始化更新检测失败:', e);
     }
@@ -993,20 +993,18 @@ async function loadAppVersion() {
 
 async function checkForUpdates(eventOrButton) {
   try {
-    const { updater } = await import('../../updater/index.js');
+    const { updateService } = await import('../../updater/updater-service.js');
 
     let triggerButton = null;
     if (eventOrButton) {
       if (eventOrButton.target) {
-
         triggerButton = eventOrButton.target;
       } else if (eventOrButton.tagName) {
-
         triggerButton = eventOrButton;
       }
     }
     
-    await updater.checkForUpdates(false, triggerButton);
+    await updateService.checkForUpdates(false, triggerButton);
   } catch (error) {
     console.error('检查更新失败:', error);
     showNotification('检查更新失败', 'error');

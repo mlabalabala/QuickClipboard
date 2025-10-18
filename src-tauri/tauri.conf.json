@@ -89,7 +89,8 @@
         "screenshot",
         "pin-image",
         "input-dialog",
-        "context-menu"
+        "context-menu",
+        "updater"
       ],
       "assetProtocol": {
         "enable": true,
