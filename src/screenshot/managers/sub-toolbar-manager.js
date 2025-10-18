@@ -1489,7 +1489,6 @@ export class SubToolbarManager {
                             properties.shapeType = 'ellipse';
                             break;
                         case 'polygon':
-                            // 多边形默认为三角形，如果需要更精确识别需要额外信息
                             properties.shapeType = 'triangle';
                             break;
                     }

@@ -5,10 +5,8 @@
 
 import '@tabler/icons-webfont/dist/tabler-icons.min.css';
 
-// 引入Fabric.js
 import * as fabric from 'fabric';
 
-// 设置全局fabric
 window.fabric = fabric;
 
 import { ScreenshotAPI } from './api/screenshot-api.js';
@@ -50,7 +48,6 @@ export class ScreenshotController {
     }
     
     async initializeController() {
-        // 加载设置
         await this.loadSettings();
         
         // 初始化各个管理器
@@ -153,6 +150,7 @@ export class ScreenshotController {
         this.toolbarManager.setOnToolSelect((toolName) => this.handleToolSelect(toolName));
         this.toolbarManager.setOnUndo(() => this.handleUndo());
         this.toolbarManager.setOnRedo(() => this.handleRedo());
+        this.toolbarManager.setOnClear(() => this.handleClear());
         
         // 编辑层历史状态回调
         this.editLayerManager.setOnHistoryChange((historyState) => {
@@ -836,6 +834,26 @@ export class ScreenshotController {
             await this.editLayerManager.redo();
         } catch (error) {
             console.error('重做操作失败:', error);
+        }
+    }
+
+    /**
+     * 处理清空画布操作
+     */
+    handleClear() {
+        try {
+            if (this.editLayerManager) {
+                const wasLoadingFromHistory = this.editLayerManager.isLoadingFromHistory;
+                this.editLayerManager.isLoadingFromHistory = true;
+
+                this.editLayerManager.clear();
+
+                this.editLayerManager.isLoadingFromHistory = wasLoadingFromHistory;
+
+                this.editLayerManager.saveState('清空画布');
+            }
+        } catch (error) {
+            console.error('清空画布失败:', error);
         }
     }
 

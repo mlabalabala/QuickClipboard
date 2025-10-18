@@ -18,6 +18,7 @@ export class ToolbarManager {
         this.arrowBtn = document.getElementById('arrowBtn');
         this.undoBtn = document.getElementById('undoBtn');
         this.redoBtn = document.getElementById('redoBtn');
+        this.clearBtn = document.getElementById('clearBtn');
         
         this.currentTool = null;
         
@@ -44,6 +45,7 @@ export class ToolbarManager {
         this.cancelBtn.addEventListener('click', () => this.onCancel?.());
         this.undoBtn.addEventListener('click', () => this.onUndo?.());
         this.redoBtn.addEventListener('click', () => this.onRedo?.());
+        this.clearBtn.addEventListener('click', () => this.onClear?.());
         
         // 通用工具按钮事件处理
         const toolButtons = this.toolbar.querySelectorAll('.tool-btn');
@@ -202,6 +204,13 @@ export class ToolbarManager {
      */
     setOnRedo(callback) {
         this.onRedo = callback;
+    }
+
+    /**
+     * 设置清空回调
+     */
+    setOnClear(callback) {
+        this.onClear = callback;
     }
 
     /**

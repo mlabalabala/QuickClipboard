@@ -447,7 +447,7 @@ export class SelectionManager {
         // 更新信息显示
         let infoHTML = `
             <span class="info-content">
-                <i class="ti ti-dimensions"></i> ${Math.round(width)} × ${Math.round(height)}
+                <i class="ti ti-ruler"></i> ${Math.round(width)} × ${Math.round(height)}
                 ${this.borderRadius > 0 ? `
                     <span class="info-separator"></span> 
                     <i class="ti ti-border-radius"></i> 
