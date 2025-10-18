@@ -268,20 +268,19 @@ pub fn hide_main_window_if_auto_shown(window: &WebviewWindow) -> Result<(), Stri
 // 智能窗口定位算法：计算最佳窗口位置
 #[cfg(windows)]
 fn calculate_optimal_window_position(window: &WebviewWindow) -> Result<(i32, i32), String> {
-    use windows::Win32::Foundation::{POINT, RECT};
+    use windows::Win32::Foundation::RECT;
     use windows::Win32::Graphics::Gdi::{
         GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
+        GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
     };
 
     unsafe {
-        // 直接获取鼠标位置作为定位基准
-        let mut cursor_pos = POINT { x: 0, y: 0 };
-        if GetCursorPos(&mut cursor_pos).is_err() {
-            return Err("获取鼠标位置失败".to_string());
-        }
+        let cursor_pos = match crate::mouse_utils::get_cursor_point() {
+            Ok(pos) => pos,
+            Err(e) => return Err(e),
+        };
 
         // 获取鼠标所在的显示器信息
         let monitor = MonitorFromPoint(cursor_pos, MONITOR_DEFAULTTONEAREST);

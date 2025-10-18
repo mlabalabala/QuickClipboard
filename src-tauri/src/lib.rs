@@ -19,6 +19,7 @@ mod groups;
 mod image_manager;
 mod key_state_monitor;
 mod mouse_hook;
+mod mouse_utils;
 mod paste_utils;
 mod preview_window;
 mod pin_image_window;

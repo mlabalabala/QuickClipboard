@@ -11,7 +11,7 @@ use windows::Win32::UI::Accessibility::{
     CUIAutomation, TreeScope_Subtree,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, EnumWindows, IsWindowVisible, IsIconic,
+    EnumWindows, IsWindowVisible, IsIconic,
     GetWindowRect,
 };
 use windows::Win32::System::Com::{
@@ -157,12 +157,13 @@ impl AutoSelectionManager {
                 continue;
             }
             
-            // 获取鼠标位置
-            let mut cursor_pos = POINT { x: 0, y: 0 };
-            if unsafe { GetCursorPos(&mut cursor_pos) }.is_err() {
-                thread::sleep(Duration::from_millis(1));
-                continue;
-            }
+            let cursor_pos = match crate::mouse_utils::get_cursor_point() {
+                Ok(pos) => pos,
+                Err(_) => {
+                    thread::sleep(Duration::from_millis(1));
+                    continue;
+                }
+            };
 
             // 获取排除截屏窗口的HWND
             let exclude_hwnd = screenshot_hwnd.lock().clone();

@@ -2,8 +2,7 @@ use parking_lot::Mutex;
 use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::WebviewWindow;
-use windows::Win32::Foundation::{POINT, RECT};
-use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+use windows::Win32::Foundation::RECT;
 
 // 边缘吸附配置
 #[derive(Debug, Clone)]
@@ -492,10 +491,7 @@ fn check_mouse_near_edge(
 ) -> Result<bool, String> {
     #[cfg(windows)]
     {
-        let mut cursor_pos = POINT::default();
-        unsafe {
-            GetCursorPos(&mut cursor_pos).map_err(|e| format!("获取鼠标位置失败: {}", e))?;
-        }
+        let (cursor_x, cursor_y) = crate::mouse_utils::get_cursor_position()?;
 
         let (vx, vy, vw, vh) = get_virtual_screen_size()?;
         let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
@@ -505,31 +501,31 @@ fn check_mouse_near_edge(
         let (win_x, win_y, win_width, win_height) = window_rect;
 
         // 检查鼠标是否在窗口内或接近对应边缘
-        let mouse_in_window = cursor_pos.x >= win_x
-            && cursor_pos.x <= win_x + win_width
-            && cursor_pos.y >= win_y
-            && cursor_pos.y <= win_y + win_height;
+        let mouse_in_window = cursor_x >= win_x
+            && cursor_x <= win_x + win_width
+            && cursor_y >= win_y
+            && cursor_y <= win_y + win_height;
 
         let is_near = match edge {
             SnapEdge::Left => {
-                cursor_pos.x <= vx + trigger_distance
-                    && cursor_pos.y >= win_y
-                    && cursor_pos.y <= win_y + win_height
+                cursor_x <= vx + trigger_distance
+                    && cursor_y >= win_y
+                    && cursor_y <= win_y + win_height
             }
             SnapEdge::Right => {
-                cursor_pos.x >= vx + vw - trigger_distance
-                    && cursor_pos.y >= win_y
-                    && cursor_pos.y <= win_y + win_height
+                cursor_x >= vx + vw - trigger_distance
+                    && cursor_y >= win_y
+                    && cursor_y <= win_y + win_height
             }
             SnapEdge::Top => {
-                cursor_pos.y <= vy + trigger_distance
-                    && cursor_pos.x >= win_x
-                    && cursor_pos.x <= win_x + win_width
+                cursor_y <= vy + trigger_distance
+                    && cursor_x >= win_x
+                    && cursor_x <= win_x + win_width
             }
             SnapEdge::Bottom => {
-                cursor_pos.y >= monitor_bottom - trigger_distance
-                    && cursor_pos.x >= win_x
-                    && cursor_pos.x <= win_x + win_width
+                cursor_y >= monitor_bottom - trigger_distance
+                    && cursor_x >= win_x
+                    && cursor_x <= win_x + win_width
             }
         };
 

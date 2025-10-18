@@ -1,9 +1,9 @@
 use parking_lot::Mutex;
 use std::time::Duration;
 use tauri::WebviewWindow;
-use windows::Win32::Foundation::{POINT, HWND};
+use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, SetWindowPos, HWND_TOP, SWP_NOSIZE, SWP_NOZORDER
+    SetWindowPos, HWND_TOP, SWP_NOSIZE, SWP_NOZORDER
 };
 
 // 自定义拖拽状态
@@ -108,16 +108,14 @@ fn start_drag_monitoring_thread() {
             };
             
             // 获取当前鼠标位置
-            let mut cursor_pos = POINT::default();
-            unsafe {
-                if GetCursorPos(&mut cursor_pos).is_err() {
-                    continue;
-                }
-            }
+            let (cursor_x, cursor_y) = match crate::mouse_utils::get_cursor_position() {
+                Ok(pos) => pos,
+                Err(_) => continue,
+            };
             
             // 计算新的窗口位置
-            let new_physical_x = cursor_pos.x - mouse_offset_x;
-            let new_physical_y = cursor_pos.y - mouse_offset_y;
+            let new_physical_x = cursor_x - mouse_offset_x;
+            let new_physical_y = cursor_y - mouse_offset_y;
             
             // 获取虚拟桌面边界并应用磁性吸附
             if let Ok(virtual_desktop) = get_virtual_screen_size() {

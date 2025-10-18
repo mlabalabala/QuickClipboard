@@ -3,12 +3,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
-use windows::Win32::Foundation::{HWND, POINT as WIN_POINT};
+use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Gdi::{
     CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
     ReleaseDC, SelectObject, BitBlt, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
 };
-use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 use serde::{Deserialize, Serialize};
 use image::RgbaImage;
 
@@ -216,17 +215,19 @@ impl ScrollingScreenshotManager {
             let mut last_in_panel = false;
             
             while is_active.load(Ordering::Relaxed) {
-                let mut cursor_pos = WIN_POINT { x: 0, y: 0 };
-                if unsafe { GetCursorPos(&mut cursor_pos) }.is_err() {
-                    thread::sleep(Duration::from_millis(50));
-                    continue;
-                }
+                let (cursor_x, cursor_y) = match crate::mouse_utils::get_cursor_position() {
+                    Ok(pos) => pos,
+                    Err(_) => {
+                        thread::sleep(Duration::from_millis(50));
+                        continue;
+                    }
+                };
 
                 if let Some(panel) = panel_rect.lock().unwrap().clone() {
-                    let in_panel = cursor_pos.x >= panel.left 
-                        && cursor_pos.x <= panel.left + panel.width
-                        && cursor_pos.y >= panel.top 
-                        && cursor_pos.y <= panel.top + panel.height;
+                    let in_panel = cursor_x >= panel.left 
+                        && cursor_x <= panel.left + panel.width
+                        && cursor_y >= panel.top 
+                        && cursor_y <= panel.top + panel.height;
 
                     if in_panel != last_in_panel {
                         last_in_panel = in_panel;

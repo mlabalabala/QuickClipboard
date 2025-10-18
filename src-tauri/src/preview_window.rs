@@ -199,30 +199,30 @@ fn position_preview_window(window: &WebviewWindow) -> Result<(), String> {
 
     #[cfg(windows)]
     {
-        use windows::Win32::Foundation::POINT;
-        use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+        use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
 
         unsafe {
-            let mut cursor = POINT { x: 0, y: 0 };
-            if GetCursorPos(&mut cursor).is_err() {
-                // 获取失败，使用屏幕中心
-                let x = (GetSystemMetrics(SM_CXSCREEN) - win_width) / 2;
-                let y = (GetSystemMetrics(SM_CYSCREEN) - win_height) / 2;
-                return window.set_position(tauri::Position::Physical(PhysicalPosition { x, y }))
-                    .map_err(|e| format!("设置窗口位置失败: {}", e));
-            }
+            let (cursor_x, cursor_y) = match crate::mouse_utils::get_cursor_position() {
+                Ok(pos) => pos,
+                Err(_) => {
+                    let x = (GetSystemMetrics(SM_CXSCREEN) - win_width) / 2;
+                    let y = (GetSystemMetrics(SM_CYSCREEN) - win_height) / 2;
+                    return window.set_position(tauri::Position::Physical(PhysicalPosition { x, y }))
+                        .map_err(|e| format!("设置窗口位置失败: {}", e));
+                }
+            };
 
             let screen_w = GetSystemMetrics(SM_CXSCREEN);
             let screen_h = GetSystemMetrics(SM_CYSCREEN);
             let margin = 10;
 
             // 优先在鼠标右侧，垂直居中
-            let mut x = cursor.x + margin;
-            let mut y = cursor.y - win_height / 2;
+            let mut x = cursor_x + margin;
+            let mut y = cursor_y - win_height / 2;
 
             // 水平边界检查：如果右侧放不下，放到左侧
             if x + win_width > screen_w {
-                x = cursor.x - win_width - margin;
+                x = cursor_x - win_width - margin;
             }
             
             // 垂直边界检查
