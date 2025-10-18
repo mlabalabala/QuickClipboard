@@ -3,11 +3,11 @@ use crate::state_manager;
 use crate::settings;
 use crate::edge_snap;
 
-/// 贴边隐藏服务 - 处理贴边隐藏相关的业务逻辑
+// 贴边隐藏服务 - 处理贴边隐藏相关的业务逻辑
 pub struct EdgeSnapService;
 
 impl EdgeSnapService {
-    /// 设置贴边隐藏功能开关
+    // 设置贴边隐藏功能开关
     pub fn set_enabled(app: &AppHandle, enabled: bool) -> Result<(), String> {
         use tauri::Manager;
 
@@ -29,12 +29,12 @@ impl EdgeSnapService {
         Ok(())
     }
 
-    /// 获取贴边隐藏功能开关状态
+    // 获取贴边隐藏功能开关状态
     pub fn is_enabled() -> bool {
         state_manager::is_edge_snap_enabled()
     }
 
-    /// 启动时恢复贴边状态
+    // 启动时恢复贴边状态
     pub fn restore_on_startup(app: &AppHandle) -> Result<(), String> {
         use tauri::Manager;
         
@@ -45,7 +45,7 @@ impl EdgeSnapService {
         }
     }
 
-    /// 保存设置到配置文件
+    // 保存设置到配置文件
     fn save_settings(enabled: bool) -> Result<(), String> {
         let mut settings = settings::get_global_settings();
         settings.edge_hide_enabled = enabled;

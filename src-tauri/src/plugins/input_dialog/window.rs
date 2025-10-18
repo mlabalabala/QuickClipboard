@@ -1,8 +1,8 @@
-/// 输入对话框窗口管理
+// 输入对话框窗口管理
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, WebviewWindowBuilder};
 
-/// 输入框类型
+// 输入框类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InputType {
@@ -16,31 +16,31 @@ impl Default for InputType {
     }
 }
 
-/// 输入对话框的配置
+// 输入对话框的配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputDialogOptions {
-    /// 对话框标题
+    // 对话框标题
     pub title: String,
-    /// 提示文本
+    // 提示文本
     pub message: String,
-    /// 输入框占位符
+    // 输入框占位符
     #[serde(skip_serializing_if = "Option::is_none")]
     pub placeholder: Option<String>,
-    /// 默认值
+    // 默认值
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_value: Option<String>,
-    /// 输入框类型
+    // 输入框类型
     #[serde(default)]
     pub input_type: InputType,
-    /// 最小值（仅用于 number 类型）
+    // 最小值（仅用于 number 类型）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_value: Option<i32>,
-    /// 最大值（仅用于 number 类型）
+    // 最大值（仅用于 number 类型）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_value: Option<i32>,
 }
 
-/// 创建并显示输入对话框窗口
+// 创建并显示输入对话框窗口
 pub async fn show_dialog(
     app: AppHandle,
     options: InputDialogOptions,

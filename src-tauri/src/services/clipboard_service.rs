@@ -2,11 +2,11 @@ use arboard::Clipboard;
 use crate::clipboard_content::{image_to_data_url, set_clipboard_content, set_clipboard_content_with_html};
 use crate::clipboard_history::{self, ClipboardItem};
 
-/// 剪贴板服务 - 处理剪贴板相关的业务逻辑
+// 剪贴板服务 - 处理剪贴板相关的业务逻辑
 pub struct ClipboardService;
 
 impl ClipboardService {
-    /// 从剪贴板获取文本
+    // 从剪贴板获取文本
     pub fn get_text() -> Result<String, String> {
         match Clipboard::new() {
             Ok(mut clipboard) => match clipboard.get_text() {
@@ -17,17 +17,17 @@ impl ClipboardService {
         }
     }
 
-    /// 设置剪贴板文本
+    // 设置剪贴板文本
     pub fn set_text(text: String) -> Result<(), String> {
         set_clipboard_content(text)
     }
 
-    /// 设置剪贴板图片
+    // 设置剪贴板图片
     pub fn set_image(data_url: String) -> Result<(), String> {
         set_clipboard_content(data_url)
     }
 
-    /// 获取剪贴板历史记录
+    // 获取剪贴板历史记录
     pub fn get_history() -> Vec<ClipboardItem> {
         // 获取当前的历史记录数量限制
         let limit = clipboard_history::get_history_limit();
@@ -42,18 +42,18 @@ impl ClipboardService {
         }
     }
 
-    /// 移动剪贴板项目到第一位
+    // 移动剪贴板项目到第一位
     pub fn move_to_front(text: String) -> Result<(), String> {
         clipboard_history::move_to_front_if_exists(text);
         Ok(())
     }
 
-    /// 设置剪贴板内容（带HTML）
+    // 设置剪贴板内容（带HTML）
     pub fn set_content_with_html(text: String, html: String) -> Result<(), String> {
         set_clipboard_content_with_html(text, Some(html))
     }
 
-    /// 刷新剪贴板内容（从系统剪贴板读取并添加到历史）
+    // 刷新剪贴板内容（从系统剪贴板读取并添加到历史）
     pub fn refresh_clipboard() -> Result<(), String> {
         use arboard::Clipboard;
         use crate::clipboard_content::image_to_data_url;

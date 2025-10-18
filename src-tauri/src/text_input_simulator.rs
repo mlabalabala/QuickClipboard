@@ -1,31 +1,31 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-/// 文本输入模拟器配置
+// 文本输入模拟器配置
 #[derive(Debug, Clone)]
 pub struct InputSimulatorConfig {
-    /// 输入速度（字符/秒）
+    // 输入速度（字符/秒）
     pub chars_per_second: u32,
-    /// 是否逐字符输入（false为逐词输入）
+    // 是否逐字符输入（false为逐词输入）
     pub char_by_char: bool,
-    /// 输入间隔的随机变化范围（毫秒）
+    // 输入间隔的随机变化范围（毫秒）
     pub jitter_ms: u32,
-    /// 是否保持原始格式（换行符、制表符等）
+    // 是否保持原始格式（换行符、制表符等）
     pub preserve_formatting: bool,
-    /// 换行符处理模式
+    // 换行符处理模式
     pub newline_mode: NewlineMode,
 }
 
-/// 换行符处理模式
+// 换行符处理模式
 #[derive(Debug, Clone)]
 pub enum NewlineMode {
-    /// 直接发送Unicode换行字符
+    // 直接发送Unicode换行字符
     Unicode,
-    /// 发送Enter键
+    // 发送Enter键
     Enter,
-    /// 发送Shift+Enter组合键
+    // 发送Shift+Enter组合键
     ShiftEnter,
-    /// 根据上下文自动选择
+    // 根据上下文自动选择
     Auto,
 }
 
@@ -41,24 +41,24 @@ impl Default for InputSimulatorConfig {
     }
 }
 
-/// 文本输入模拟器
+// 文本输入模拟器
 pub struct TextInputSimulator {
     config: InputSimulatorConfig,
 }
 
 impl TextInputSimulator {
-    /// 创建新的文本输入模拟器
+    // 创建新的文本输入模拟器
     pub fn new(config: InputSimulatorConfig) -> Self {
         Self { config }
     }
 
-    /// 发送Unicode字符
+    // 发送Unicode字符
     #[cfg(windows)]
     fn send_unicode_char(&self, ch: char) -> Result<(), String> {
         self.send_unicode_char_with_retry(ch, 3)
     }
 
-    /// 发送Unicode字符（带重试机制）
+    // 发送Unicode字符（带重试机制）
     #[cfg(windows)]
     fn send_unicode_char_with_retry(&self, ch: char, max_retries: u32) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -121,7 +121,7 @@ impl TextInputSimulator {
         result
     }
 
-    /// 处理换行符
+    // 处理换行符
     #[cfg(windows)]
     fn handle_newline_char(&self, max_retries: u32) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{VK_RETURN, VK_SHIFT};
@@ -175,7 +175,7 @@ impl TextInputSimulator {
         result
     }
 
-    /// 确保目标窗口保持焦点
+    // 确保目标窗口保持焦点
     #[cfg(windows)]
     fn ensure_target_window_focus(&self) {
         use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SetForegroundWindow};
@@ -190,7 +190,7 @@ impl TextInputSimulator {
         }
     }
 
-    /// 处理制表符
+    // 处理制表符
     #[cfg(windows)]
     fn handle_tab_char(&self, max_retries: u32) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::VK_TAB;
@@ -205,7 +205,7 @@ impl TextInputSimulator {
         }
     }
 
-    /// 使用虚拟键码发送ASCII字符（降级方法）
+    // 使用虚拟键码发送ASCII字符（降级方法）
     #[cfg(windows)]
     fn send_ascii_char_as_virtual_key(&self, ch: char) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -241,7 +241,7 @@ impl TextInputSimulator {
         self.send_virtual_key(virtual_key.0 as u16)
     }
 
-    /// 发送原始Unicode字符
+    // 发送原始Unicode字符
     #[cfg(windows)]
     fn send_unicode_char_raw(&self, ch: char, max_retries: u32) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -319,7 +319,7 @@ impl TextInputSimulator {
         Err(format!("发送Unicode字符'{}'失败，超过最大重试次数", ch))
     }
 
-    /// 发送虚拟键码
+    // 发送虚拟键码
     #[cfg(windows)]
     fn send_virtual_key(&self, vk_code: u16) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -365,7 +365,7 @@ impl TextInputSimulator {
         Ok(())
     }
 
-    /// 发送组合键
+    // 发送组合键
     #[cfg(windows)]
     fn send_key_combination(&self, keys: &[u16]) -> Result<(), String> {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -420,24 +420,24 @@ impl TextInputSimulator {
         Ok(())
     }
 
-    /// 发送Unicode字符（非Windows平台的占位实现）
+    // 发送Unicode字符（非Windows平台的占位实现）
     #[cfg(not(windows))]
     fn send_unicode_char(&self, _ch: char) -> Result<(), String> {
         Err("文本输入模拟仅支持Windows平台".to_string())
     }
 
-    /// 更新配置
+    // 更新配置
     pub fn update_config(&mut self, config: InputSimulatorConfig) {
         self.config = config;
     }
 
-    /// 获取当前配置
+    // 获取当前配置
     pub fn get_config(&self) -> &InputSimulatorConfig {
         &self.config
     }
 }
 
-/// 从应用设置创建输入模拟器配置
+// 从应用设置创建输入模拟器配置
 pub fn config_from_settings(settings: &crate::settings::AppSettings) -> InputSimulatorConfig {
     // 根据设置字符串转换为换行符模式
     let newline_mode = match settings.ai_newline_mode.as_str() {
@@ -457,7 +457,7 @@ pub fn config_from_settings(settings: &crate::settings::AppSettings) -> InputSim
     }
 }
 
-/// 全局文本输入模拟器实例
+// 全局文本输入模拟器实例
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
@@ -466,19 +466,19 @@ static GLOBAL_INPUT_SIMULATOR: Lazy<Arc<Mutex<TextInputSimulator>>> = Lazy::new(
     Arc::new(Mutex::new(TextInputSimulator::new(config)))
 });
 
-/// 获取全局输入模拟器
+// 获取全局输入模拟器
 pub fn get_global_input_simulator() -> Arc<Mutex<TextInputSimulator>> {
     GLOBAL_INPUT_SIMULATOR.clone()
 }
 
-/// 更新全局输入模拟器配置
+// 更新全局输入模拟器配置
 pub fn update_global_input_simulator_config(config: InputSimulatorConfig) {
     if let Ok(mut simulator) = GLOBAL_INPUT_SIMULATOR.lock() {
         simulator.update_config(config);
     }
 }
 
-/// 批量流式输入文本片段
+// 批量流式输入文本片段
 pub async fn simulate_text_chunk_input_batched(chunk: &str) -> Result<(), String> {
     if chunk.is_empty() {
         return Ok(());
@@ -544,7 +544,7 @@ pub async fn simulate_text_chunk_input_batched(chunk: &str) -> Result<(), String
     Ok(())
 }
 
-/// 智能流式输入（根据内容类型优化）
+// 智能流式输入（根据内容类型优化）
 pub async fn simulate_text_chunk_input_smart(chunk: &str) -> Result<(), String> {
     if chunk.is_empty() {
         return Ok(());
@@ -585,7 +585,7 @@ pub async fn simulate_text_chunk_input_smart(chunk: &str) -> Result<(), String> 
     }
 }
 
-/// 精确流式输入（逐字符，用于特殊内容）
+// 精确流式输入（逐字符，用于特殊内容）
 pub async fn simulate_text_chunk_input_precise(chunk: &str) -> Result<(), String> {
     if chunk.is_empty() {
         return Ok(());

@@ -512,7 +512,7 @@ impl ScrollingScreenshotManager {
         })
     }
 
-    /// 合并待发送帧
+    // 合并待发送帧
     fn merge_pending_frames(frames: &[CapturedFrame]) -> CapturedFrame {
         if frames.is_empty() {
             return CapturedFrame { data: vec![], width: 0, height: 0 };
@@ -533,7 +533,7 @@ impl ScrollingScreenshotManager {
         CapturedFrame { data: merged_data, width, height: total_height }
     }
 
-    /// 保存压缩帧到本地临时文件
+    // 保存压缩帧到本地临时文件
     fn save_compressed_frame(
         frame: &CapturedFrame,
         temp_dir: &std::path::Path,

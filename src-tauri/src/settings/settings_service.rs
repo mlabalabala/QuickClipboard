@@ -8,11 +8,11 @@ use super::model::AppSettings;
 use super::state;
 use super::storage::SettingsStorage;
 
-/// 设置服务 - 专注于复杂的业务逻辑
+// 设置服务 - 专注于复杂的业务逻辑
 pub struct SettingsService;
 
 impl SettingsService {
-    /// 保存设置
+    // 保存设置
     pub fn save_settings(app_handle: AppHandle, settings: serde_json::Value) -> Result<(), String> {
         let mut settings_filtered = settings.clone();
         if let Some(obj) = settings_filtered.as_object_mut() {
@@ -35,7 +35,7 @@ impl SettingsService {
         Ok(())
     }
 
-    /// 设置开机自启动
+    // 设置开机自启动
     pub fn set_startup_launch(enabled: bool) -> Result<(), String> {
         #[cfg(debug_assertions)]
         {
@@ -64,7 +64,7 @@ impl SettingsService {
         }
     }
 
-    /// 应用所有设置
+    // 应用所有设置
     fn apply_settings(app_settings: &AppSettings) -> Result<(), String> {
         crate::clipboard_history::set_history_limit(app_settings.history_limit as usize);
 
@@ -106,7 +106,7 @@ impl SettingsService {
         Ok(())
     }
 
-    /// 处理特殊设置逻辑
+    // 处理特殊设置逻辑
     fn handle_special_settings(
         app_handle: &AppHandle,
         _settings_filtered: &serde_json::Value,

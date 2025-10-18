@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 // 全局翻译状态管理
 static TRANSLATION_CANCELLED: AtomicBool = AtomicBool::new(false);
 
-/// 翻译守护结构，确保在函数结束时清理资源
+// 翻译守护结构，确保在函数结束时清理资源
 pub struct TranslationGuard;
 
 impl Drop for TranslationGuard {
@@ -23,7 +23,7 @@ impl Drop for TranslationGuard {
     }
 }
 
-/// 智能翻译文本（根据设置选择流式输入或直接粘贴）
+// 智能翻译文本（根据设置选择流式输入或直接粘贴）
 pub async fn translate_text_smart(text: String) -> Result<(), String> {
     let settings = settings::get_global_settings();
 
@@ -40,7 +40,7 @@ pub async fn translate_text_smart(text: String) -> Result<(), String> {
     }
 }
 
-/// 翻译文本并直接粘贴（非流式）
+// 翻译文本并直接粘贴（非流式）
 pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
     // 重置取消状态
     TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
@@ -115,7 +115,7 @@ pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
     }
 }
 
-/// 翻译文本并流式输入
+// 翻译文本并流式输入
 pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     // 重置取消状态
     TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
@@ -226,14 +226,14 @@ pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     }
 }
 
-/// 取消正在进行的翻译
+// 取消正在进行的翻译
 pub fn cancel_translation() -> Result<(), String> {
     TRANSLATION_CANCELLED.store(true, Ordering::SeqCst);
     println!("翻译已被用户取消");
     Ok(())
 }
 
-/// 复制时翻译并直接输入到目标位置
+// 复制时翻译并直接输入到目标位置
 pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
     // 重置取消状态
     TRANSLATION_CANCELLED.store(false, Ordering::SeqCst);
@@ -388,7 +388,7 @@ pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
     }
 }
 
-/// 预处理翻译文本
+// 预处理翻译文本
 fn preprocess_translation_text(text: &str) -> Result<String, String> {
     // 检查文本长度
     if text.is_empty() {
@@ -413,7 +413,7 @@ fn preprocess_translation_text(text: &str) -> Result<String, String> {
     Ok(cleaned)
 }
 
-/// 测试AI翻译配置
+// 测试AI翻译配置
 pub async fn test_ai_translation() -> Result<String, String> {
     let settings = crate::settings::get_global_settings();
 
@@ -463,21 +463,21 @@ pub async fn test_ai_translation() -> Result<String, String> {
     }
 }
 
-/// 启用AI翻译取消快捷键
+// 启用AI翻译取消快捷键
 pub fn enable_ai_translation_cancel_shortcut() -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::enable_ai_translation_cancel();
     Ok(())
 }
 
-/// 禁用AI翻译取消快捷键
+// 禁用AI翻译取消快捷键
 pub fn disable_ai_translation_cancel_shortcut() -> Result<(), String> {
     #[cfg(windows)]
     crate::global_state::disable_ai_translation_cancel();
     Ok(())
 }
 
-/// 检查AI翻译配置是否有效
+// 检查AI翻译配置是否有效
 pub fn check_ai_translation_config() -> Result<bool, String> {
     let settings = crate::settings::get_global_settings();
     Ok(crate::ai_translator::is_translation_config_valid(&settings))

@@ -234,7 +234,7 @@ fn set_clipboard_hdrop_internal(file_paths: &[String]) -> Result<(), String> {
     }
 }
 
-///设置纯文本和HTML格式到剪贴板
+//设置纯文本和HTML格式到剪贴板
 #[cfg(windows)]
 fn set_windows_clipboard_both_formats(plain_text: &str, html: &str) -> Result<(), String> {
     use windows::core::w;
@@ -296,7 +296,7 @@ fn set_windows_clipboard_both_formats(plain_text: &str, html: &str) -> Result<()
     Ok(())
 }
 
-/// 创建Windows标准HTML格式
+// 创建Windows标准HTML格式
 #[cfg(windows)]
 fn create_windows_html_format(html: &str) -> String {
     let fixed_html = fix_image_urls(html);
@@ -399,27 +399,27 @@ fn fix_image_urls(html: &str) -> String {
     fixed
 }
 
-/// 自动判断文本/图片并设置剪贴板内容
+// 自动判断文本/图片并设置剪贴板内容
 pub fn set_clipboard_content(content: String) -> Result<(), String> {
     set_clipboard_content_internal(content, true)
 }
 
-/// 设置剪贴板内容（包含HTML格式）
+// 设置剪贴板内容（包含HTML格式）
 pub fn set_clipboard_content_with_html(content: String, html_content: Option<String>) -> Result<(), String> {
     set_clipboard_content_with_html_internal(content, html_content, true)
 }
 
-/// 设置剪贴板内容但不添加到历史记录（用于避免重复添加）
+// 设置剪贴板内容但不添加到历史记录（用于避免重复添加）
 pub fn set_clipboard_content_no_history(content: String) -> Result<(), String> {
     set_clipboard_content_internal(content, false)
 }
 
-/// 设置剪贴板内容但不添加到历史记录（包含HTML格式）
+// 设置剪贴板内容但不添加到历史记录（包含HTML格式）
 pub fn set_clipboard_content_no_history_with_html(content: String, html_content: Option<String>) -> Result<(), String> {
     set_clipboard_content_with_html_internal(content, html_content, false)
 }
 
-/// 内部函数：设置剪贴板内容（包含HTML格式）
+// 内部函数：设置剪贴板内容（包含HTML格式）
 fn set_clipboard_content_with_html_internal(content: String, html_content: Option<String>, add_to_history: bool) -> Result<(), String> {
     if content.starts_with("data:image/") {
         return set_clipboard_content_internal(content, add_to_history);
@@ -450,7 +450,7 @@ fn set_clipboard_content_with_html_internal(content: String, html_content: Optio
     Ok(())
 }
 
-/// 内部函数：设置剪贴板内容
+// 内部函数：设置剪贴板内容
 fn set_clipboard_content_internal(content: String, add_to_history: bool) -> Result<(), String> {
     if content.starts_with("data:image/") {
         let (bgra, png_bytes, width, height) = data_url_to_bgra_and_png(&content)?;

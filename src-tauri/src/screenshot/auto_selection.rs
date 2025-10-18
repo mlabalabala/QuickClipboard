@@ -19,7 +19,7 @@ use windows::Win32::System::Com::{
 };
 use serde::Serialize;
 
-/// 元素检测模式
+// 元素检测模式
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DetectionMode {
     None,     // 不检测
@@ -38,14 +38,14 @@ impl DetectionMode {
     }
 }
 
-/// 自动选区管理器
+// 自动选区管理器
 pub struct AutoSelectionManager {
     is_active: Arc<AtomicBool>,
     app_handle: Arc<Mutex<Option<AppHandle>>>,
     screenshot_hwnd: Arc<Mutex<Option<isize>>>,
 }
 
-/// 元素边界信息
+// 元素边界信息
 #[derive(Debug, Clone, Serialize)]
 pub struct ElementBounds {
     pub x: i32,
@@ -54,14 +54,14 @@ pub struct ElementBounds {
     pub height: i32,
 }
 
-/// 元素层级信息（包含完整的祖先链）
+// 元素层级信息（包含完整的祖先链）
 #[derive(Debug, Clone, Serialize)]
 pub struct ElementHierarchy {
     pub hierarchy: Vec<ElementBounds>, // 从最小元素到最大元素（窗口）
     pub current_index: usize, // 当前选中的索引（默认为0，即最小元素）
 }
 
-/// 缓存的元素信息
+// 缓存的元素信息
 #[derive(Debug, Clone)]
 struct CachedElement {
     rect: RECT,
@@ -77,7 +77,7 @@ impl AutoSelectionManager {
         }
     }
 
-    /// 启动自动选区检测
+    // 启动自动选区检测
     pub fn start(&self, app: AppHandle) -> Result<(), String> {
         if self.is_active.load(Ordering::Relaxed) {
             return Ok(());
@@ -106,14 +106,14 @@ impl AutoSelectionManager {
         Ok(())
     }
 
-    /// 停止自动选区检测
+    // 停止自动选区检测
     pub fn stop(&self) {
         self.is_active.store(false, Ordering::Relaxed);
         *self.app_handle.lock() = None;
         *self.screenshot_hwnd.lock() = None;
     }
 
-    /// 检测循环
+    // 检测循环
     fn detection_loop(
         is_active: Arc<AtomicBool>,
         app_handle: Arc<Mutex<Option<AppHandle>>>,
@@ -287,7 +287,7 @@ impl AutoSelectionManager {
         Ok(())
     }
 
-    /// 获取鼠标位置下的窗口（排除指定窗口）
+    // 获取鼠标位置下的窗口（排除指定窗口）
     fn get_window_under_point(point: POINT, exclude_hwnd: Option<isize>) -> Option<HWND> {
         struct EnumData {
             point: POINT,
@@ -311,7 +311,7 @@ impl AutoSelectionManager {
         data.found_hwnd
     }
 
-    /// 枚举窗口回调
+    // 枚举窗口回调
     unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let data = &mut *(lparam.0 as *mut EnumData);
 
@@ -346,7 +346,7 @@ impl AutoSelectionManager {
         BOOL(1) // 继续枚举
     }
 
-    /// 流式缓存 + 即时查找
+    // 流式缓存 + 即时查找
     fn stream_cache_and_find(
         automation: &IUIAutomation,
         target_hwnd: HWND,
@@ -541,7 +541,7 @@ impl AutoSelectionManager {
         }
     }
 
-    /// 获取包含指定点的所有元素层级（从小到大排序）
+    // 获取包含指定点的所有元素层级（从小到大排序）
     fn find_element_hierarchy_from_cache(
         elements: &[CachedElement],
         point: POINT,
@@ -582,7 +582,7 @@ impl AutoSelectionManager {
         Ok(Some(hierarchy))
     }
 
-    /// 检查是否正在运行
+    // 检查是否正在运行
     #[inline]
     pub fn is_active(&self) -> bool {
         self.is_active.load(Ordering::Relaxed)
@@ -599,20 +599,20 @@ struct EnumData {
 use once_cell::sync::Lazy;
 pub static AUTO_SELECTION_MANAGER: Lazy<AutoSelectionManager> = Lazy::new(|| AutoSelectionManager::new());
 
-/// 启动自动选区检测
+// 启动自动选区检测
 #[tauri::command]
 pub fn start_auto_selection(app: AppHandle) -> Result<(), String> {
     AUTO_SELECTION_MANAGER.start(app)
 }
 
-/// 停止自动选区检测
+// 停止自动选区检测
 #[tauri::command]
 pub fn stop_auto_selection() -> Result<(), String> {
     AUTO_SELECTION_MANAGER.stop();
     Ok(())
 }
 
-/// 检查自动选区是否激活
+// 检查自动选区是否激活
 #[tauri::command]
 pub fn is_auto_selection_active() -> bool {
     AUTO_SELECTION_MANAGER.is_active()

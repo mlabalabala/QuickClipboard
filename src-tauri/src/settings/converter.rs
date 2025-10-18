@@ -1,11 +1,11 @@
 use super::model::AppSettings;
 use serde_json::Value;
 
-/// JSON 转换器
+// JSON 转换器
 pub struct SettingsConverter;
 
 impl SettingsConverter {
-    /// 将设置转换为JSON（供前端使用）
+    // 将设置转换为JSON（供前端使用）
     pub fn to_json(settings: &AppSettings) -> Value {
         serde_json::json!({
             "autoStart": settings.auto_start,
@@ -84,7 +84,7 @@ impl SettingsConverter {
         })
     }
 
-    /// 从JSON更新设置（来自前端）
+    // 从JSON更新设置（来自前端）
     pub fn update_from_json(settings: &mut AppSettings, json: &Value) {
         // 使用宏简化字段更新
         macro_rules! update_bool {

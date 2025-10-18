@@ -1,6 +1,6 @@
 // 内容处理工具函数
 
-/// 生成文件类型的标题
+// 生成文件类型的标题
 pub fn generate_files_title(files_content: &str) -> String {
     // 解析文件数据
     if let Some(files_json) = files_content.strip_prefix("files:") {

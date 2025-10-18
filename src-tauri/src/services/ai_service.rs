@@ -1,8 +1,8 @@
-/// AI服务 - 处理AI相关的业务逻辑
+// AI服务 - 处理AI相关的业务逻辑
 pub struct AIService;
 
 impl AIService {
-    /// 获取可用的AI模型列表
+    // 获取可用的AI模型列表
     pub async fn get_available_ai_models() -> Result<Vec<String>, String> {
         let settings = crate::settings::get_global_settings();
         let ai_config = crate::ai_config::create_ai_config_from_settings(&settings);

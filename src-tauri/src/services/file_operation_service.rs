@@ -1,10 +1,10 @@
 use std::path::Path;
 
-/// 文件操作服务 - 处理文件复制、移动等操作
+// 文件操作服务 - 处理文件复制、移动等操作
 pub struct FileOperationService;
 
 impl FileOperationService {
-    /// 复制文件到指定目录
+    // 复制文件到指定目录
     pub async fn copy_files_to_directory(
         files: Vec<String>,
         target_dir: String,
@@ -63,7 +63,7 @@ impl FileOperationService {
         Ok(results)
     }
 
-    /// 生成唯一的文件名（避免覆盖）
+    // 生成唯一的文件名（避免覆盖）
     fn generate_unique_filename(target_path: &Path) -> std::path::PathBuf {
         let parent = target_path.parent().unwrap_or(Path::new(""));
         let file_stem = target_path.file_stem()
@@ -96,22 +96,22 @@ impl FileOperationService {
         }
     }
 
-    /// 获取文件信息
+    // 获取文件信息
     pub async fn get_file_info(path: String) -> Result<crate::file_handler::FileInfo, String> {
         crate::file_handler::get_file_info(&path)
     }
 
-    /// 获取剪贴板中的文件
+    // 获取剪贴板中的文件
     pub async fn get_clipboard_files() -> Result<Vec<String>, String> {
         crate::file_handler::get_clipboard_files()
     }
 
-    /// 设置剪贴板中的文件
+    // 设置剪贴板中的文件
     pub async fn set_clipboard_files(files: Vec<String>) -> Result<(), String> {
         crate::file_handler::set_clipboard_files(&files)
     }
 
-    /// 在文件管理器中打开文件位置
+    // 在文件管理器中打开文件位置
     pub async fn open_file_location(file_path: String) -> Result<(), String> {
         use std::process::Command;
 
@@ -185,7 +185,7 @@ impl FileOperationService {
         Ok(())
     }
 
-    /// 使用默认程序打开文件
+    // 使用默认程序打开文件
     pub async fn open_file_with_default_program(file_path: String) -> Result<(), String> {
         use std::process::Command;
 
@@ -229,7 +229,7 @@ impl FileOperationService {
         }
     }
 
-    /// 读取图片文件并转换为数据URL
+    // 读取图片文件并转换为数据URL
     pub fn read_image_file(file_path: String) -> Result<String, String> {
         use std::fs;
         use std::path::Path;

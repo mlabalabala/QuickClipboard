@@ -1,10 +1,10 @@
 use tauri::{AppHandle, Manager};
 
-/// 设置窗口管理
+// 设置窗口管理
 pub struct SettingsWindow;
 
 impl SettingsWindow {
-    /// 打开设置窗口
+    // 打开设置窗口
     pub async fn open(app: AppHandle) -> Result<(), String> {
         // 检查设置窗口是否已经存在
         if let Some(settings_window) = app.get_webview_window("settings") {
@@ -34,7 +34,7 @@ impl SettingsWindow {
         Ok(())
     }
 
-    /// 创建设置窗口
+    // 创建设置窗口
     fn create_window(app: &AppHandle) -> Result<(), String> {
         let settings_window = tauri::WebviewWindowBuilder::new(
             app,
@@ -70,7 +70,7 @@ impl SettingsWindow {
         Ok(())
     }
 
-    /// 设置窗口关闭事件处理
+    // 设置窗口关闭事件处理
     fn setup_close_handler(settings_window: &tauri::WebviewWindow, app: &AppHandle) {
         let app_handle = app.clone();
         settings_window.on_window_event(move |event| {

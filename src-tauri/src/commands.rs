@@ -166,13 +166,13 @@ pub fn disable_mouse_monitoring_command() -> Result<(), String> {
 
 // =================== 设置相关命令 ===================
 
-/// 设置开机自启动
+// 设置开机自启动
 #[tauri::command]
 pub fn set_startup_launch(enabled: bool) -> Result<(), String> {
     crate::settings::SettingsService::set_startup_launch(enabled)
 }
 
-/// 设置历史记录数量限制
+// 设置历史记录数量限制
 #[tauri::command]
 pub fn set_history_limit(limit: usize) -> Result<(), String> {
     crate::clipboard_history::set_history_limit(limit);
@@ -231,7 +231,7 @@ pub fn move_quick_text_to_group(id: String, groupName: String) -> Result<(), Str
     crate::services::group_service::GroupService::move_quick_text_to_group(id, groupName)
 }
 
-/// 打开设置窗口
+// 打开设置窗口
 #[tauri::command]
 pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     crate::settings::SettingsWindow::open(app).await
@@ -245,14 +245,14 @@ pub async fn open_text_editor_window(app: tauri::AppHandle) -> Result<(), String
     crate::services::window_service::WindowService::open_text_editor_window(app).await
 }
 
-/// 获取设置
+// 获取设置
 #[tauri::command]
 pub fn get_settings() -> Result<serde_json::Value, String> {
     let settings = crate::settings::get_global_settings();
     Ok(crate::settings::SettingsConverter::to_json(&settings))
 }
 
-/// 重新加载设置
+// 重新加载设置
 #[tauri::command]
 pub fn reload_settings() -> Result<serde_json::Value, String> {
     let fresh_settings = crate::settings::SettingsStorage::load_or_default();
@@ -264,7 +264,7 @@ pub fn reload_settings() -> Result<serde_json::Value, String> {
     Ok(crate::settings::SettingsConverter::to_json(&fresh_settings))
 }
 
-/// 保存设置
+// 保存设置
 #[tauri::command]
 pub fn save_settings(
     app_handle: tauri::AppHandle,
@@ -554,61 +554,61 @@ pub fn send_startup_notification(app: tauri::AppHandle) -> Result<(), String> {
 
 // =================== AI翻译相关命令 ===================
 
-/// 测试AI翻译配置
+// 测试AI翻译配置
 #[tauri::command]
 pub async fn test_ai_translation() -> Result<String, String> {
     crate::services::translation_service::test_ai_translation().await
 }
 
-/// 取消正在进行的翻译
+// 取消正在进行的翻译
 #[tauri::command]
 pub fn cancel_translation() -> Result<(), String> {
     crate::services::translation_service::cancel_translation()
 }
 
-/// 启用AI翻译取消快捷键
+// 启用AI翻译取消快捷键
 #[tauri::command]
 pub fn enable_ai_translation_cancel_shortcut() -> Result<(), String> {
     crate::services::translation_service::enable_ai_translation_cancel_shortcut()
 }
 
-/// 禁用AI翻译取消快捷键
+// 禁用AI翻译取消快捷键
 #[tauri::command]
 pub fn disable_ai_translation_cancel_shortcut() -> Result<(), String> {
     crate::services::translation_service::disable_ai_translation_cancel_shortcut()
 }
 
-/// 翻译文本并直接粘贴（非流式）
+// 翻译文本并直接粘贴（非流式）
 #[tauri::command]
 pub async fn translate_and_paste_text(text: String) -> Result<(), String> {
     crate::services::translation_service::translate_and_paste_text(text).await
 }
 
-/// 翻译文本并流式输入
+// 翻译文本并流式输入
 #[tauri::command]
 pub async fn translate_and_input_text(text: String) -> Result<(), String> {
     crate::services::translation_service::translate_and_input_text(text).await
 }
 
-/// 智能翻译文本（根据设置选择流式输入或直接粘贴）
+// 智能翻译文本（根据设置选择流式输入或直接粘贴）
 #[tauri::command]
 pub async fn translate_text_smart(text: String) -> Result<(), String> {
     crate::services::translation_service::translate_text_smart(text).await
 }
 
-/// 复制时翻译并直接输入到目标位置
+// 复制时翻译并直接输入到目标位置
 #[tauri::command]
 pub async fn translate_and_input_on_copy(text: String) -> Result<(), String> {
     crate::services::translation_service::translate_and_input_on_copy(text).await
 }
 
-/// 检查当前是否处于粘贴状态
+// 检查当前是否处于粘贴状态
 #[tauri::command]
 pub fn is_currently_pasting() -> bool {
     crate::clipboard_monitor::is_currently_pasting()
 }
 
-/// 检查AI翻译配置是否有效
+// 检查AI翻译配置是否有效
 #[tauri::command]
 pub fn check_ai_translation_config() -> Result<bool, String> {
     crate::services::translation_service::check_ai_translation_config()
@@ -639,13 +639,13 @@ pub async fn set_clipboard_files(files: Vec<String>) -> Result<(), String> {
     crate::services::file_operation_service::FileOperationService::set_clipboard_files(files).await
 }
 
-/// 获取可用的AI模型列表
+// 获取可用的AI模型列表
 #[tauri::command]
 pub async fn get_available_ai_models() -> Result<Vec<String>, String> {
     crate::services::ai_service::AIService::get_available_ai_models().await
 }
 
-/// 测试AI配置
+// 测试AI配置
 #[tauri::command]
 pub async fn test_ai_config() -> Result<bool, String> {
     let settings = crate::settings::get_global_settings();
@@ -745,20 +745,20 @@ pub fn get_app_data_dir() -> Result<String, String> {
 
 // =================== 存储管理 ===================
 
-/// 检查是否为便携版模式
+// 检查是否为便携版模式
 #[tauri::command]
 pub fn is_portable_mode() -> bool {
     crate::settings::SettingsStorage::is_portable_mode()
 }
 
-/// 获取存储信息
+// 获取存储信息
 #[tauri::command]
 pub fn get_storage_info() -> Result<crate::settings::StorageInfo, String> {
     let settings = crate::settings::get_global_settings();
     settings.get_storage_info()
 }
 
-/// 设置自定义存储位置
+// 设置自定义存储位置
 #[tauri::command]
 pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle) -> Result<(), String> {
     // 便携版模式下禁止更改存储位置
@@ -771,7 +771,7 @@ pub async fn set_custom_storage_location(new_path: String, app: tauri::AppHandle
     crate::settings::update_global_settings(settings)
 }
 
-/// 重置为默认存储位置
+// 重置为默认存储位置
 #[tauri::command]
 pub async fn reset_to_default_storage_location(app: tauri::AppHandle) -> Result<(), String> {
     // 便携版模式下禁止更改存储位置
@@ -784,20 +784,20 @@ pub async fn reset_to_default_storage_location(app: tauri::AppHandle) -> Result<
     crate::settings::update_global_settings(settings)
 }
 
-/// 打开存储文件夹
+// 打开存储文件夹
 #[tauri::command]
 pub async fn open_storage_folder() -> Result<(), String> {
     let settings = crate::settings::get_global_settings();
     crate::settings::SettingsStorage::open_folder(&settings)
 }
 
-/// 保存窗口位置
+// 保存窗口位置
 #[tauri::command]
 pub fn save_window_position(x: i32, y: i32) -> Result<(), String> {
     crate::settings::save_window_position(x, y)
 }
 
-/// 保存窗口大小
+// 保存窗口大小
 #[tauri::command]
 pub fn save_window_size(width: u32, height: u32) -> Result<(), String> {
     crate::settings::save_window_size(width, height)
@@ -955,7 +955,7 @@ pub async fn pin_image_from_file(
 
 // =================== 更新器相关命令 ===================
 
-/// 显示更新窗口
+// 显示更新窗口
 #[tauri::command]
 pub async fn show_updater_window(
     app: tauri::AppHandle,
@@ -964,13 +964,13 @@ pub async fn show_updater_window(
     crate::updater::window::show_updater_window(app, update_info).await
 }
 
-/// 关闭更新窗口
+// 关闭更新窗口
 #[tauri::command]
 pub fn close_updater_window(app: tauri::AppHandle) -> Result<(), String> {
     crate::updater::window::close_updater_window(&app)
 }
 
-/// 获取更新信息
+// 获取更新信息
 #[tauri::command]
 pub fn updater_get_update_info() -> Option<crate::updater::UpdateInfo> {
     crate::updater::get_update_info()

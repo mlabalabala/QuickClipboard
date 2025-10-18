@@ -1,5 +1,5 @@
-/// 统一处理HTML中的图片URL，将所有图片保存到本地并返回图片ID引用
-/// 包括：网络图片、本地file://路径、Windows本地路径等
+// 统一处理HTML中的图片URL，将所有图片保存到本地并返回图片ID引用
+// 包括：网络图片、本地file://路径、Windows本地路径等
 pub fn normalize_html_images(input: &str) -> String {
     use regex::Regex;
 
@@ -42,8 +42,8 @@ pub fn normalize_html_images(input: &str) -> String {
     html
 }
 
-/// 尝试将图片保存到本地并返回图片ID
-/// 支持：网络图片、本地file://路径、Windows本地路径、data URL
+// 尝试将图片保存到本地并返回图片ID
+// 支持：网络图片、本地file://路径、Windows本地路径、data URL
 fn save_image_and_get_id(src: &str) -> Option<String> {
     let s = src.trim();
     
@@ -96,7 +96,7 @@ fn save_image_and_get_id(src: &str) -> Option<String> {
     None
 }
 
-/// 同步下载网络图片并转换为dataURL
+// 同步下载网络图片并转换为dataURL
 fn download_image_sync(url: &str) -> Result<String, String> {
     use std::time::Duration;
     
@@ -136,7 +136,7 @@ fn download_image_sync(url: &str) -> Result<String, String> {
     Ok(data_url)
 }
 
-/// 将 img 的 src 值转换为本地文件路径
+// 将 img 的 src 值转换为本地文件路径
 #[cfg(windows)]
 fn convert_src_to_local_path_db(src: &str) -> Option<String> {
     let s = src.trim();
@@ -158,7 +158,7 @@ fn convert_src_to_local_path_db(src: &str) -> Option<String> {
     // file:// 开头
     let lower = s.to_ascii_lowercase();
     if lower.starts_with("file://") {
-        // 去掉前缀 file:// 或 file:///
+        // 去掉前缀 file:// 或 file://
         let mut rest = s[7..].to_string();
         // 去掉多余的斜杠
         while rest.starts_with('/') || rest.starts_with('\\') {

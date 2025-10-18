@@ -10,7 +10,7 @@ use windows::Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEM
 #[cfg(windows)]
 use windows::Win32::System::Threading::GetCurrentProcess;
 
-/// Windows: 触发当前进程工作集收缩
+// Windows: 触发当前进程工作集收缩
 #[cfg(windows)]
 pub fn trim_working_set() -> Result<(), String> {
     unsafe {
@@ -28,7 +28,7 @@ pub fn trim_working_set() -> Result<(), String> {
     }
 }
 
-/// Windows: 获取当前进程工作集大小（字节）
+// Windows: 获取当前进程工作集大小（字节）
 #[cfg(windows)]
 pub fn get_working_set_bytes() -> Option<u64> {
     unsafe {
@@ -48,9 +48,9 @@ pub fn get_working_set_bytes() -> Option<u64> {
     }
 }
 
-/// Windows: 启动内存收缩调度器
-/// - 启动后延迟一次收缩
-/// - 后台每隔一段时间检查一次，超过阈值则收缩
+// Windows: 启动内存收缩调度器
+// - 启动后延迟一次收缩
+// - 后台每隔一段时间检查一次，超过阈值则收缩
 #[cfg(windows)]
 pub fn start_memory_trim_scheduler() {
     const STARTUP_DELAY_MS: u64 = 5000; // 启动后 5s 收缩一次

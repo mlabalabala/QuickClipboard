@@ -1,8 +1,8 @@
-/// 图片处理服务
+// 图片处理服务
 pub struct ImageService;
 
 impl ImageService {
-    /// 获取图片文件路径
+    // 获取图片文件路径
     pub fn get_image_file_path(content: String) -> Result<String, String> {
         if content.starts_with("image:") {
             // 格式：image:{image_id}
@@ -17,7 +17,7 @@ impl ImageService {
         }
     }
 
-    /// 保存图片到文件（用于"另存为"功能）
+    // 保存图片到文件（用于"另存为"功能）
     pub fn save_image_to_file(content: String, file_path: String) -> Result<(), String> {
         use std::fs;
 

@@ -1,14 +1,14 @@
-/// 右键菜单命令
+// 右键菜单命令
 use tauri::{AppHandle, Manager};
 use super::window::{ContextMenuOptions, MenuItem, show_menu};
 
-/// 前端获取菜单配置
+// 前端获取菜单配置
 #[tauri::command]
 pub fn get_context_menu_options() -> Result<ContextMenuOptions, String> {
     super::get_options().ok_or_else(|| "配置未初始化".to_string())
 }
 
-/// 前端提交菜单选择结果
+// 前端提交菜单选择结果
 #[tauri::command]
 pub fn submit_context_menu(item_id: Option<String>) -> Result<(), String> {
     let session_id = super::get_active_menu_session();
@@ -24,7 +24,7 @@ pub fn submit_context_menu(item_id: Option<String>) -> Result<(), String> {
     Ok(())
 }
 
-/// 前端调用显示右键菜单的命令
+// 前端调用显示右键菜单的命令
 #[tauri::command]
 pub async fn show_context_menu(
     app: AppHandle,
@@ -46,7 +46,7 @@ pub async fn show_context_menu(
     show_menu(app, options).await
 }
 
-/// 隐藏所有右键菜单窗口
+// 隐藏所有右键菜单窗口
 #[tauri::command]
 pub fn close_all_context_menus(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("context-menu") {

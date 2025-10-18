@@ -6,11 +6,11 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Clone)]
 pub struct TranslationConfig {
-    /// 通用AI配置
+    // 通用AI配置
     pub ai_config: AIConfig,
-    /// 目标语言代码
+    // 目标语言代码
     pub target_language: String,
-    /// 翻译提示词模板
+    // 翻译提示词模板
     pub prompt_template: String,
 }
 
@@ -26,7 +26,7 @@ impl Default for TranslationConfig {
     }
 }
 
-/// 翻译请求
+// 翻译请求
 #[derive(Debug, Serialize)]
 struct TranslationRequest {
     model: String,
@@ -36,14 +36,14 @@ struct TranslationRequest {
     max_tokens: u32,
 }
 
-/// 消息结构
+// 消息结构
 #[derive(Debug, Serialize)]
 struct Message {
     role: String,
     content: String,
 }
 
-/// 流式响应数据
+// 流式响应数据
 #[derive(Debug, Deserialize)]
 struct StreamResponse {
     id: Option<String>,
@@ -53,7 +53,7 @@ struct StreamResponse {
     choices: Option<Vec<Choice>>,
 }
 
-/// 选择项
+// 选择项
 #[derive(Debug, Deserialize)]
 struct Choice {
     index: Option<u32>,
@@ -61,14 +61,14 @@ struct Choice {
     finish_reason: Option<String>,
 }
 
-/// 增量内容
+// 增量内容
 #[derive(Debug, Deserialize)]
 struct Delta {
     role: Option<String>,
     content: Option<String>,
 }
 
-/// 翻译错误类型
+// 翻译错误类型
 #[derive(Debug)]
 pub enum TranslationError {
     NetworkError(reqwest::Error),
@@ -102,18 +102,18 @@ impl From<reqwest::Error> for TranslationError {
     }
 }
 
-/// 翻译结果
+// 翻译结果
 #[derive(Debug)]
 pub enum TranslationResult {
-    /// 流式内容片段
+    // 流式内容片段
     Chunk(String),
-    /// 翻译完成
+    // 翻译完成
     Complete,
-    /// 翻译错误
+    // 翻译错误
     Error(TranslationError),
 }
 
-/// 线程安全的AI翻译器，支持并发使用
+// 线程安全的AI翻译器，支持并发使用
 pub struct AITranslator {
     client: Client,
     config: TranslationConfig,
@@ -124,7 +124,7 @@ unsafe impl Send for AITranslator {}
 unsafe impl Sync for AITranslator {}
 
 impl AITranslator {
-    /// 创建新的AI翻译器
+    // 创建新的AI翻译器
     pub fn new(config: TranslationConfig) -> Result<Self, TranslationError> {
         if !config.ai_config.is_valid() {
             return Err(TranslationError::ConfigError("AI配置无效".to_string()));
@@ -138,7 +138,7 @@ impl AITranslator {
         Ok(Self { client, config })
     }
 
-    /// 翻译文本（非流式，返回完整结果）
+    // 翻译文本（非流式，返回完整结果）
     pub async fn translate(&self, text: &str) -> Result<String, TranslationError> {
         let mut receiver = self.translate_stream(text).await?;
         let mut result = String::new();
@@ -165,7 +165,7 @@ impl AITranslator {
         }
     }
 
-    /// 翻译文本（流式）
+    // 翻译文本（流式）
     pub async fn translate_stream(
         &self,
         text: &str,
@@ -212,7 +212,7 @@ impl AITranslator {
         Ok(rx)
     }
 
-    /// 发送流式请求
+    // 发送流式请求
     async fn send_stream_request(
         client: Client,
         url: String,
@@ -307,7 +307,7 @@ impl AITranslator {
     }
 }
 
-/// 从应用设置创建翻译配置
+// 从应用设置创建翻译配置
 pub fn config_from_settings(settings: &crate::settings::AppSettings) -> TranslationConfig {
     let ai_config = crate::ai_config::create_ai_config_from_settings(settings);
 
@@ -318,7 +318,7 @@ pub fn config_from_settings(settings: &crate::settings::AppSettings) -> Translat
     }
 }
 
-/// 检查翻译配置是否有效
+// 检查翻译配置是否有效
 pub fn is_translation_config_valid(settings: &crate::settings::AppSettings) -> bool {
     crate::ai_config::is_ai_config_valid(settings) && !settings.ai_target_language.is_empty()
 }

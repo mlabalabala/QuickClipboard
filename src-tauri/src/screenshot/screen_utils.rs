@@ -8,7 +8,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::Win32::Foundation::{BOOL, LPARAM, RECT};
 use std::mem;
 
-/// 显示器信息结构
+// 显示器信息结构
 #[derive(Clone, serde::Serialize, Debug)]
 pub struct MonitorInfo {
     pub x: i32,
@@ -18,7 +18,7 @@ pub struct MonitorInfo {
     pub is_primary: bool,
 }
 
-/// CSS像素坐标的显示器信息（用于前端显示）
+// CSS像素坐标的显示器信息（用于前端显示）
 #[derive(Clone, serde::Serialize, Debug)]
 pub struct CssMonitorInfo {
     pub x: f64,
@@ -28,21 +28,21 @@ pub struct CssMonitorInfo {
     pub is_primary: bool,
 }
 
-/// 屏幕管理工具
+// 屏幕管理工具
 pub struct ScreenUtils;
 
 impl ScreenUtils {
-    /// 将物理像素转换为CSS像素
+    // 将物理像素转换为CSS像素
     pub fn physical_to_css(physical: f64, scale_factor: f64) -> f64 {
         physical / scale_factor
     }
 
-    /// 将CSS像素转换为物理像素
+    // 将CSS像素转换为物理像素
     pub fn css_to_physical(css: f64, scale_factor: f64) -> f64 {
         css * scale_factor
     }
 
-    /// 获取CSS像素格式的显示器信息（用于前端显示）
+    // 获取CSS像素格式的显示器信息（用于前端显示）
     pub fn get_css_monitors(scale_factor: f64) -> Result<Vec<CssMonitorInfo>, String> {
         let physical_monitors = Self::get_all_monitors()?;
         let css_monitors = physical_monitors.into_iter().map(|monitor| {
@@ -57,7 +57,7 @@ impl ScreenUtils {
         Ok(css_monitors)
     }
 
-    /// 计算虚拟屏幕的CSS像素尺寸
+    // 计算虚拟屏幕的CSS像素尺寸
     pub fn get_css_virtual_screen_size(scale_factor: f64) -> Result<(f64, f64, f64, f64), String> {
         let (x, y, width, height) = Self::get_virtual_screen_size()?;
         Ok((
@@ -68,7 +68,7 @@ impl ScreenUtils {
         ))
     }
 
-    /// 通用边界约束函数（智能多显示器边界约束）
+    // 通用边界约束函数（智能多显示器边界约束）
     pub fn constrain_to_physical_bounds(
         x: i32, y: i32, width: i32, height: i32,
         _window: &tauri::WebviewWindow
@@ -129,7 +129,7 @@ impl ScreenUtils {
         }
     }
 
-    /// 获取所有显示器信息
+    // 获取所有显示器信息
     #[cfg(windows)]
     pub fn get_all_monitors() -> Result<Vec<MonitorInfo>, String> {
         use std::sync::OnceLock;
@@ -191,7 +191,7 @@ impl ScreenUtils {
     }
 
 
-    /// 兼容性函数：返回 (x, y, width, height) 格式
+    // 兼容性函数：返回 (x, y, width, height) 格式
     pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
         #[cfg(windows)]
         {
@@ -209,7 +209,7 @@ impl ScreenUtils {
         }
     }
 
-    /// 兼容性函数：返回 (x, y, width, height) 格式
+    // 兼容性函数：返回 (x, y, width, height) 格式
     pub fn get_monitor_bounds(window: &WebviewWindow) -> Result<(i32, i32, i32, i32), String> {
         #[cfg(windows)]
         {

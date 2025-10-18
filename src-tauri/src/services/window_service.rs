@@ -1,22 +1,22 @@
 use tauri::{AppHandle, Manager, WebviewWindow};
 use crate::state_manager;
 
-/// 窗口服务 - 处理窗口相关的业务逻辑
+// 窗口服务 - 处理窗口相关的业务逻辑
 pub struct WindowService;
 
 impl WindowService {
-    /// 设置窗口固定状态
+    // 设置窗口固定状态
     pub fn set_pinned(pinned: bool) -> Result<(), String> {
         state_manager::set_window_pinned(pinned);
         Ok(())
     }
 
-    /// 获取窗口固定状态
+    // 获取窗口固定状态
     pub fn is_pinned() -> bool {
         state_manager::is_window_pinned()
     }
 
-    /// 切换窗口可见性
+    // 切换窗口可见性
     pub fn toggle_visibility(app: &AppHandle) -> Result<(), String> {
         if let Some(window) = app.get_webview_window("main") {
             // 如果窗口固定且可见，则不隐藏
@@ -31,7 +31,7 @@ impl WindowService {
         Ok(())
     }
 
-    /// 隐藏主窗口（如果是自动显示的）
+    // 隐藏主窗口（如果是自动显示的）
     pub fn hide_if_auto_shown(app: &AppHandle) -> Result<(), String> {
         if let Some(window) = app.get_webview_window("main") {
             crate::window_management::hide_main_window_if_auto_shown(&window)
@@ -40,17 +40,17 @@ impl WindowService {
         }
     }
 
-    /// 恢复最后的焦点
+    // 恢复最后的焦点
     pub fn restore_last_focus() -> Result<(), String> {
         crate::window_management::restore_last_focus()
     }
 
-    /// 聚焦剪贴板窗口
+    // 聚焦剪贴板窗口
     pub fn focus_clipboard_window(window: WebviewWindow) -> Result<(), String> {
         crate::window_management::focus_clipboard_window(window)
     }
 
-    /// 打开文本编辑窗口
+    // 打开文本编辑窗口
     pub async fn open_text_editor_window(app: AppHandle) -> Result<(), String> {
         // 检查文本编辑窗口是否已经存在
         if let Some(editor_window) = app.get_webview_window("text-editor") {

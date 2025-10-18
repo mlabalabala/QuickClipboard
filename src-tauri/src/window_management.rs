@@ -5,7 +5,7 @@ use tauri::WebviewWindow;
 
 static MAIN_WINDOW_AUTO_SHOWN: AtomicBool = AtomicBool::new(false);
 
-/// 显示窗口
+// 显示窗口
 pub fn show_webview_window(window: tauri::WebviewWindow) {
     // 检查是否处于边缘吸附隐藏状态
     if crate::edge_snap::is_window_edge_hidden() {
@@ -77,7 +77,7 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     }
 }
 
-/// 隐藏窗口
+// 隐藏窗口
 pub fn hide_webview_window(window: tauri::WebviewWindow) {
     // 如果右键菜单正在显示，不隐藏主窗口
     if crate::state_manager::is_context_menu_visible() {
@@ -129,7 +129,7 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     crate::shortcut_interceptor::disable_navigation_keys();
 }
 
-/// 切换窗口显示/隐藏状态
+// 切换窗口显示/隐藏状态
 pub fn toggle_webview_window_visibility(window: tauri::WebviewWindow) {
     // 检查是否处于边缘吸附隐藏状态
     if crate::edge_snap::is_window_edge_hidden() {

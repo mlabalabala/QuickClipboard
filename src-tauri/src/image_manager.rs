@@ -35,7 +35,7 @@ impl ImageManager {
         })
     }
 
-    /// 从Windows剪贴板原始数据保存图片
+    // 从Windows剪贴板原始数据保存图片
     pub fn save_image_from_raw_data(&self, width: u32, height: u32, dib_data: Vec<u8>, png_data: Vec<u8>) -> Result<String, String> {
         let image_id = self.calculate_image_id(&png_data);
         let png_path = self.images_dir.join(format!("{}.png", image_id));
@@ -52,7 +52,7 @@ impl ImageManager {
         Ok(image_id)
     }
 
-    /// 从RGBA数据保存图片
+    // 从RGBA数据保存图片
     pub fn save_image_from_rgba_sync(&self, width: usize, height: usize, rgba_data: &[u8]) -> Result<String, String> {
         let image_id = self.calculate_image_id(rgba_data);
         let png_path = self.images_dir.join(format!("{}.png", image_id));
@@ -94,7 +94,7 @@ impl ImageManager {
         Ok(image_id)
     }
 
-    /// 从data URL保存图片
+    // 从data URL保存图片
     pub fn save_image(&self, data_url: &str) -> Result<String, String> {
         let image_data = self.parse_data_url(data_url)?;
         let image_id = self.calculate_image_id(&image_data);
@@ -131,7 +131,7 @@ impl ImageManager {
         hash[..16].to_string()
     }
 
-    /// 获取图片文件路径
+    // 获取图片文件路径
     pub fn get_image_file_path(&self, image_id: &str) -> Result<String, String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
         if !file_path.exists() {
@@ -140,7 +140,7 @@ impl ImageManager {
         Ok(file_path.to_string_lossy().to_string())
     }
 
-    /// 获取图片data URL（用于粘贴）
+    // 获取图片data URL（用于粘贴）
     pub fn get_image_data_url(&self, image_id: &str) -> Result<String, String> {
         let file_path = self.images_dir.join(format!("{}.png", image_id));
         if !file_path.exists() {
@@ -153,7 +153,7 @@ impl ImageManager {
         Ok(format!("data:image/png;base64,{}", base64_string))
     }
 
-    /// 获取BGRA数据和PNG字节（优先从数据库读取）
+    // 获取BGRA数据和PNG字节（优先从数据库读取）
     pub fn get_image_bgra_and_png(&self, image_id: &str) -> Result<(Vec<u8>, Vec<u8>, u32, u32), String> {
         let db_result = crate::database::with_connection(|conn| {
             conn.query_row(

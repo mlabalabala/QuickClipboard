@@ -20,7 +20,7 @@ pub struct AppInfo {
     pub icon: Option<String>,
 }
 
-/// 获取所有可见窗口的信息
+// 获取所有可见窗口的信息
 #[cfg(windows)]
 pub fn get_all_windows_info() -> Vec<AppInfo> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
@@ -95,7 +95,7 @@ pub fn get_all_windows_info() -> Vec<AppInfo> {
     windows
 }
 
-/// 检查当前应用是否在允许列表中
+// 检查当前应用是否在允许列表中
 #[cfg(windows)]
 pub fn is_current_app_allowed() -> bool {
     use windows::Win32::Foundation::HWND;
@@ -183,7 +183,7 @@ pub fn is_current_app_allowed() -> bool {
     }
 }
 
-/// 非Windows平台的占位实现
+// 非Windows平台的占位实现
 #[cfg(not(windows))]
 pub fn is_current_app_allowed() -> bool {
     true
@@ -205,7 +205,7 @@ pub fn get_all_windows_info_cmd() -> Result<Vec<AppInfo>, String> {
 }
 
 
-/// 非Windows平台的占位实现
+// 非Windows平台的占位实现
 #[cfg(not(windows))]
 pub fn get_active_window_process_name() -> Option<String> {
     None

@@ -3,11 +3,11 @@ use super::storage::SettingsStorage;
 use std::path::PathBuf;
 use std::fs;
 
-/// 数据迁移管理
+// 数据迁移管理
 pub struct SettingsMigration;
 
 impl SettingsMigration {
-    /// 设置自定义存储路径并迁移数据
+    // 设置自定义存储路径并迁移数据
     pub async fn set_custom_storage_path(
         settings: &mut AppSettings,
         new_path: String,
@@ -58,7 +58,7 @@ impl SettingsMigration {
         Ok(())
     }
 
-    /// 重置为默认存储位置
+    // 重置为默认存储位置
     pub async fn reset_to_default_storage(
         settings: &mut AppSettings,
         app: Option<tauri::AppHandle>,
@@ -96,7 +96,7 @@ impl SettingsMigration {
         Ok(())
     }
 
-    /// 获取存储信息
+    // 获取存储信息
     pub fn get_storage_info(settings: &AppSettings) -> Result<StorageInfo, String> {
         let current_dir = SettingsStorage::get_data_directory(settings)?;
         let default_dir = SettingsStorage::get_default_data_directory()?;

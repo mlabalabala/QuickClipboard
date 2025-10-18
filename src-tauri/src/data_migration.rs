@@ -2,11 +2,11 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
 
-/// 数据迁移服务
+// 数据迁移服务
 pub struct DataMigrationService;
 
 impl DataMigrationService {
-    /// 执行数据迁移
+    // 执行数据迁移
     pub async fn migrate_data(from_dir: &PathBuf, to_dir: &PathBuf, app: Option<AppHandle>) -> Result<(), String> {
         // 确保目标目录存在
         fs::create_dir_all(to_dir).map_err(|e| format!("创建目标目录失败: {}", e))?;
@@ -72,7 +72,7 @@ impl DataMigrationService {
         Ok(())
     }
     
-    /// 复制数据库文件
+    // 复制数据库文件
     fn copy_database_file(source: &PathBuf, target: &PathBuf) -> Result<(), String> {
         fs::copy(source, target)
             .map_err(|e| {
@@ -86,7 +86,7 @@ impl DataMigrationService {
         Ok(())
     }
 
-    /// 递归复制目录
+    // 递归复制目录
     fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
         fs::create_dir_all(dst).map_err(|e| format!("创建目录失败: {}", e))?;
         

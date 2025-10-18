@@ -9,7 +9,7 @@ use windows::{
     },
 };
 
-/// 检查当前进程是否以管理员权限运行
+// 检查当前进程是否以管理员权限运行
 #[cfg(windows)]
 pub fn is_running_as_admin() -> bool {
     unsafe {
@@ -41,13 +41,13 @@ pub fn is_running_as_admin() -> bool {
     }
 }
 
-/// 非Windows平台总是返回false
+// 非Windows平台总是返回false
 #[cfg(not(windows))]
 pub fn is_running_as_admin() -> bool {
     false
 }
 
-/// 以管理员权限重启应用程序
+// 以管理员权限重启应用程序
 #[cfg(windows)]
 pub fn restart_as_admin() -> Result<(), String> {
     let current_exe =
@@ -82,25 +82,25 @@ pub fn restart_as_admin() -> Result<(), String> {
     }
 }
 
-/// 非Windows平台的占位实现
+// 非Windows平台的占位实现
 #[cfg(not(windows))]
 pub fn restart_as_admin() -> Result<(), String> {
     Err("管理员权限功能仅在Windows平台可用".to_string())
 }
 
-/// 用来检测是否有管理员权限的应用程序在运行
+// 用来检测是否有管理员权限的应用程序在运行
 #[cfg(windows)]
 pub fn check_admin_required_for_hooks() -> bool {
     true
 }
 
-/// 非Windows平台总是返回false
+// 非Windows平台总是返回false
 #[cfg(not(windows))]
 pub fn check_admin_required_for_hooks() -> bool {
     false
 }
 
-/// 获取管理员权限状态信息
+// 获取管理员权限状态信息
 pub fn get_admin_status() -> AdminStatus {
     AdminStatus {
         is_admin: is_running_as_admin(),
@@ -109,13 +109,13 @@ pub fn get_admin_status() -> AdminStatus {
     }
 }
 
-/// 管理员权限状态结构
+// 管理员权限状态结构
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct AdminStatus {
-    /// 当前是否以管理员权限运行
+    // 当前是否以管理员权限运行
     pub is_admin: bool,
-    /// 是否可以提升权限（仅Windows支持）
+    // 是否可以提升权限（仅Windows支持）
     pub can_elevate: bool,
-    /// 是否需要管理员权限来使用全局快捷键
+    // 是否需要管理员权限来使用全局快捷键
     pub admin_required_for_hooks: bool,
 }

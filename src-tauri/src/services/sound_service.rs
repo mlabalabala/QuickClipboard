@@ -1,7 +1,7 @@
-/// 音效服务 - 处理音效播放和管理相关的业务逻辑
+// 音效服务 - 处理音效播放和管理相关的业务逻辑
 pub struct SoundService;
 
-/// 内置音效文件列表
+// 内置音效文件列表
 const BUILTIN_SOUNDS: &[(&str, &[u8])] = &[
     ("sounds/copy.mp3", include_bytes!("../../../sounds/copy.mp3")),
     ("sounds/paste.mp3", include_bytes!("../../../sounds/paste.mp3")),
@@ -9,7 +9,7 @@ const BUILTIN_SOUNDS: &[(&str, &[u8])] = &[
 ];
 
 impl SoundService {
-    /// 初始化内置音效文件到应用数据目录
+    // 初始化内置音效文件到应用数据目录
     pub fn initialize_builtin_sounds() -> Result<(), String> {
         let app_data_dir = crate::data_manager::get_app_data_dir()
             .map_err(|e| format!("获取应用数据目录失败: {}", e))?;
@@ -31,7 +31,7 @@ impl SoundService {
         
         Ok(())
     }
-    /// 测试音效播放
+    // 测试音效播放
     pub async fn test_sound(sound_path: String, volume: f32, sound_type: Option<String>) -> Result<(), String> {
         let volume_normalized = volume / 100.0; // 将0-100转换为0.0-1.0
 
@@ -92,29 +92,29 @@ impl SoundService {
         Ok(())
     }
 
-    /// 播放粘贴音效
+    // 播放粘贴音效
     pub fn play_paste_sound() -> Result<(), String> {
         crate::sound_manager::play_paste_sound();
         Ok(())
     }
 
-    /// 播放滚动音效
+    // 播放滚动音效
     pub fn play_scroll_sound() -> Result<(), String> {
         crate::sound_manager::play_scroll_sound();
         Ok(())
     }
 
-    /// 清理音效缓存
+    // 清理音效缓存
     pub fn clear_sound_cache() -> Result<(), String> {
         crate::sound_manager::clear_sound_cache()
     }
 
-    /// 获取当前活跃音效播放数量
+    // 获取当前活跃音效播放数量
     pub fn get_active_sound_count() -> usize {
         0
     }
 
-    /// 获取音效状态信息
+    // 获取音效状态信息
     pub fn get_sound_status() -> Result<serde_json::Value, String> {
         Ok(serde_json::json!({
             "active_sounds": 0,

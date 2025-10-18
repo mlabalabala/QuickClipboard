@@ -1,51 +1,51 @@
-/// 右键菜单窗口管理
+// 右键菜单窗口管理
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindowBuilder};
 
-/// 菜单项
+// 菜单项
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MenuItem {
-    /// 菜单项 ID
+    // 菜单项 ID
     pub id: String,
-    /// 菜单项显示文本
+    // 菜单项显示文本
     pub label: String,
-    /// 图标
+    // 图标
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
-    /// Favicon URL
+    // Favicon URL
     #[serde(skip_serializing_if = "Option::is_none")]
     pub favicon: Option<String>,
-    /// 是否禁用
+    // 是否禁用
     #[serde(default)]
     pub disabled: bool,
-    /// 是否为分割线
+    // 是否为分割线
     #[serde(default)]
     pub separator: bool,
-    /// 子菜单（可选）
+    // 子菜单（可选）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<MenuItem>>,
 }
 
-/// 右键菜单配置
+// 右键菜单配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextMenuOptions {
-    /// 菜单项列表
+    // 菜单项列表
     pub items: Vec<MenuItem>,
-    /// 菜单显示位置 x 坐标
+    // 菜单显示位置 x 坐标
     pub x: i32,
-    /// 菜单显示位置 y 坐标
+    // 菜单显示位置 y 坐标
     pub y: i32,
-    /// 菜单宽度
+    // 菜单宽度
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<i32>,
-    /// 主题
+    // 主题
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
-    /// 菜单会话 ID
+    // 菜单会话 ID
     pub session_id: u64,
 }
 
-/// 创建并显示右键菜单窗口
+// 创建并显示右键菜单窗口
 pub async fn show_menu(
     app: AppHandle,
     mut options: ContextMenuOptions,

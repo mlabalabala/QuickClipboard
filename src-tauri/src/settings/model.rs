@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// 应用设置数据模型
+// 应用设置数据模型
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppSettings {
@@ -229,7 +229,7 @@ impl Default for AppSettings {
     }
 }
 
-/// 存储信息
+// 存储信息
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct StorageInfo {
     pub current_path: String,
@@ -241,27 +241,27 @@ pub struct StorageInfo {
 }
 
 impl AppSettings {
-    /// 获取数据存储目录
+    // 获取数据存储目录
     pub fn get_data_directory(&self) -> Result<std::path::PathBuf, String> {
         super::storage::SettingsStorage::get_data_directory(self)
     }
 
-    /// 获取默认数据目录
+    // 获取默认数据目录
     pub fn get_default_data_directory() -> Result<std::path::PathBuf, String> {
         super::storage::SettingsStorage::get_default_data_directory()
     }
 
-    /// 转换为JSON
+    // 转换为JSON
     pub fn to_json(&self) -> serde_json::Value {
         super::converter::SettingsConverter::to_json(self)
     }
 
-    /// 获取存储信息
+    // 获取存储信息
     pub fn get_storage_info(&self) -> Result<StorageInfo, String> {
         super::migration::SettingsMigration::get_storage_info(self)
     }
 
-    /// 设置自定义存储路径
+    // 设置自定义存储路径
     pub async fn set_custom_storage_path(
         &mut self,
         new_path: String,
@@ -270,7 +270,7 @@ impl AppSettings {
         super::migration::SettingsMigration::set_custom_storage_path(self, new_path, app).await
     }
 
-    /// 重置为默认存储位置
+    // 重置为默认存储位置
     pub async fn reset_to_default_storage(
         &mut self,
         app: Option<tauri::AppHandle>,

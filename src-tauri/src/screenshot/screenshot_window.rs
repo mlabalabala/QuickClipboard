@@ -8,14 +8,14 @@ use std::thread;
 use std::sync::Arc;
 use serde_json;
 
-/// 截屏窗口状态管理
+// 截屏窗口状态管理
 static SCREENSHOT_WINDOW_VISIBLE: AtomicBool = AtomicBool::new(false);
 
-/// 截屏窗口管理器
+// 截屏窗口管理器
 pub struct ScreenshotWindowManager;
 
 impl ScreenshotWindowManager {
-    /// 显示截屏窗口
+    // 显示截屏窗口
     pub fn show_screenshot_window(app: &tauri::AppHandle) -> Result<(), String> {
         // 获取截屏窗口
         let screenshot_window = app
@@ -67,7 +67,7 @@ impl ScreenshotWindowManager {
         Ok(())
     }
 
-    /// 隐藏截屏窗口
+    // 隐藏截屏窗口
     pub fn hide_screenshot_window(app: &tauri::AppHandle) -> Result<(), String> {
         // 获取截屏窗口
         let screenshot_window = app
@@ -85,7 +85,7 @@ impl ScreenshotWindowManager {
         Ok(())
     }
 
-    /// 切换截屏窗口显示状态
+    // 切换截屏窗口显示状态
     pub fn toggle_screenshot_window(app: &tauri::AppHandle) -> Result<(), String> {
         if SCREENSHOT_WINDOW_VISIBLE.load(Ordering::Relaxed) {
             Self::hide_screenshot_window(app)
@@ -94,12 +94,12 @@ impl ScreenshotWindowManager {
         }
     }
 
-    /// 检查截屏窗口是否可见
+    // 检查截屏窗口是否可见
     pub fn is_screenshot_window_visible() -> bool {
         SCREENSHOT_WINDOW_VISIBLE.load(Ordering::Relaxed)
     }
 
-    /// 设置窗口为跨所有显示器的全屏尺寸
+    // 设置窗口为跨所有显示器的全屏尺寸
     fn set_fullscreen_size(
         _app: &tauri::AppHandle,
         window: &tauri::WebviewWindow,
@@ -128,12 +128,12 @@ impl ScreenshotWindowManager {
     }
 
 
-    /// 获取所有显示器信息
+    // 获取所有显示器信息
     pub fn get_all_monitors() -> Result<Vec<super::screen_utils::MonitorInfo>, String> {
         super::screen_utils::ScreenUtils::get_all_monitors()
     }
 
-    /// 初始化截屏窗口
+    // 初始化截屏窗口
     pub fn init_screenshot_window(app: &tauri::AppHandle) -> Result<(), String> {
         let screenshot_window = app
             .get_webview_window("screenshot")
@@ -158,7 +158,7 @@ impl ScreenshotWindowManager {
     }
 }
 
-/// 获取所有显示器信息
+// 获取所有显示器信息
 #[tauri::command]
 pub fn get_css_monitors(
     window: tauri::WebviewWindow,
@@ -167,7 +167,7 @@ pub fn get_css_monitors(
     super::screen_utils::ScreenUtils::get_css_monitors(scale_factor)
 }
 
-/// 约束选区位置到合适的显示器边界内
+// 约束选区位置到合适的显示器边界内
 #[tauri::command]
 pub fn constrain_selection_bounds(
     window: tauri::WebviewWindow,
@@ -201,7 +201,7 @@ pub fn constrain_selection_bounds(
     Ok((constrained_x, constrained_y))
 }
 
-/// 命令函数：显示截屏窗口
+// 命令函数：显示截屏窗口
 #[tauri::command]
 pub fn show_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     // 检查窗口是否已显示，防止重复请求
@@ -211,25 +211,25 @@ pub fn show_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     ScreenshotWindowManager::show_screenshot_window(&app)
 }
 
-/// 隐藏截屏窗口
+// 隐藏截屏窗口
 #[tauri::command]
 pub fn hide_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     ScreenshotWindowManager::hide_screenshot_window(&app)
 }
 
-/// 切换截屏窗口显示状态
+// 切换截屏窗口显示状态
 #[tauri::command]
 pub fn toggle_screenshot_window(app: tauri::AppHandle) -> Result<(), String> {
     ScreenshotWindowManager::toggle_screenshot_window(&app)
 }
 
-/// 检查截屏窗口是否可见
+// 检查截屏窗口是否可见
 #[tauri::command]
 pub fn is_screenshot_window_visible() -> bool {
     ScreenshotWindowManager::is_screenshot_window_visible()
 }
 
-/// 获取所有显示器信息的命令
+// 获取所有显示器信息的命令
 #[tauri::command]
 pub fn get_all_monitors() -> Result<Vec<super::screen_utils::MonitorInfo>, String> {
     ScreenshotWindowManager::get_all_monitors()
@@ -242,13 +242,13 @@ pub struct ScreenshotCapture {
 }
 
 impl ScreenshotWindowManager {
-    /// GDI截屏
+    // GDI截屏
     fn capture_screenshot_sync() -> Result<ScreenshotCapture, String> {
         let (x, y, w, h) = super::screen_utils::ScreenUtils::get_virtual_screen_size()?;
         unsafe { Self::capture_with_gdi(x, y, w, h) }
     }
 
-    /// GDI截屏
+    // GDI截屏
     unsafe fn capture_with_gdi(x: i32, y: i32, width: i32, height: i32) -> Result<ScreenshotCapture, String> {
         let desktop_wnd = GetDesktopWindow();
         let desktop_dc = GetDC(desktop_wnd);
@@ -329,7 +329,7 @@ impl ScreenshotWindowManager {
         })
     }
 
-    /// 创建BMP文件
+    // 创建BMP文件
     fn create_bmp_from_bgra(pixel_data: &[u8], width: u32, height: u32) -> Vec<u8> {
         let pixel_data_size = pixel_data.len() as u32;
         let file_size = 54 + pixel_data_size;
@@ -362,7 +362,7 @@ impl ScreenshotWindowManager {
         bmp_data
     }
 
-    /// 通过本地HTTP服务器提供截图服务
+    // 通过本地HTTP服务器提供截图服务
     fn serve_screenshot_via_http(bmp_data: &[u8], _width: u32, _height: u32) -> Result<String, String> {
         let listener = TcpListener::bind("127.0.0.1:0")
             .map_err(|e| format!("绑定端口失败: {}", e))?;
@@ -379,7 +379,7 @@ impl ScreenshotWindowManager {
         Ok(format!("http://127.0.0.1:{}/screenshot.bmp", port))
     }
     
-    /// 处理HTTP请求
+    // 处理HTTP请求
     fn handle_http_request(mut stream: TcpStream, image_data: &[u8]) {
         use std::io::Read;
         

@@ -18,7 +18,7 @@ pub struct StitchResult {
 pub struct ImageStitcher;
 
 impl ImageStitcher {
-    /// BGRA转RGBA（并行转换）
+    // BGRA转RGBA（并行转换）
     pub fn bgra_to_rgba_image(bgra: &[u8], width: u32, height: u32) -> RgbaImage {
         let mut rgba = vec![0u8; bgra.len()];
         rgba.par_chunks_exact_mut(4)
@@ -32,7 +32,7 @@ impl ImageStitcher {
         ImageBuffer::from_raw(width, height, rgba).unwrap()
     }
 
-    /// 列采样 - 在图像的几个固定列位置提取并平均像素值
+    // 列采样 - 在图像的几个固定列位置提取并平均像素值
     fn col_sampling(img: &RgbaImage, crop_top: u32, crop_bottom: u32) -> Vec<Vec<f64>> {
         let width = img.width() as f64;
         let height = (img.height() - crop_top - crop_bottom) as usize;
@@ -74,7 +74,7 @@ impl ImageStitcher {
             .collect()
     }
 
-    /// 根据预测值生成最佳偏移序列
+    // 根据预测值生成最佳偏移序列
     fn predict_offset(max: i32, p: i32) -> Vec<i32> {
         let p = p.clamp(-max, max);
         
@@ -112,7 +112,7 @@ impl ImageStitcher {
         result
     }
 
-    /// 计算两个采样向量的重叠差异
+    // 计算两个采样向量的重叠差异
     fn diff_overlap(
         cols1: &[Vec<f64>],
         cols2: &[Vec<f64>],
@@ -255,7 +255,7 @@ impl ImageStitcher {
         })
     }
     
-    /// 高精度帧重复检测
+    // 高精度帧重复检测
     pub fn is_duplicate_frame(img1: &RgbaImage, img2: &RgbaImage) -> bool {
         if img1.width() != img2.width() || img1.height() != img2.height() {
             return false;
@@ -290,7 +290,7 @@ impl ImageStitcher {
         similarity > 0.99
     }
 
-    /// 提取指定区域（BGRA格式）
+    // 提取指定区域（BGRA格式）
     pub fn extract_region(data: &[u8], width: u32, start_y: u32, extract_height: u32) -> Vec<u8> {
         let bytes_per_pixel = 4;
         let start_idx = (start_y * width * bytes_per_pixel) as usize;
@@ -298,7 +298,7 @@ impl ImageStitcher {
         data[start_idx..end_idx].to_vec()
     }
 
-    /// 创建预览图
+    // 创建预览图
     pub fn create_preview(frames: &[CapturedFrame]) -> CapturedFrame {
         if frames.is_empty() {
             return CapturedFrame { data: vec![], width: 0, height: 0 };
@@ -320,7 +320,7 @@ impl ImageStitcher {
         }
     }
 
-    /// BGRA转PNG
+    // BGRA转PNG
     pub fn bgra_to_png(bgra: &[u8], width: u32, height: u32) -> Vec<u8> {
         let mut rgba = vec![0u8; bgra.len()];
         rgba.par_chunks_exact_mut(4)

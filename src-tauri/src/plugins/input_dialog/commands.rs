@@ -1,21 +1,21 @@
-/// 输入对话框命令
+// 输入对话框命令
 use tauri::AppHandle;
 use super::window::{InputDialogOptions, InputType, show_dialog};
 
-/// 前端获取对话框配置
+// 前端获取对话框配置
 #[tauri::command]
 pub fn get_input_dialog_options() -> Result<InputDialogOptions, String> {
     super::get_options().ok_or_else(|| "配置未初始化".to_string())
 }
 
-/// 前端提交输入结果
+// 前端提交输入结果
 #[tauri::command]
 pub fn submit_input_dialog(value: Option<String>) -> Result<(), String> {
     super::set_result(value);
     Ok(())
 }
 
-/// 前端调用显示输入对话框的命令
+// 前端调用显示输入对话框的命令
 #[tauri::command]
 pub async fn show_input(
     app: AppHandle,

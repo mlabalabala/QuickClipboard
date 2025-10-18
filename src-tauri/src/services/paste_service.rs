@@ -2,13 +2,13 @@ use serde::Deserialize;
 use tauri::WebviewWindow;
 #[derive(Deserialize)]
 pub struct PasteContentParams {
-    /// 剪贴板历史项ID
+    // 剪贴板历史项ID
     pub clipboard_id: Option<i64>,
-    /// 常用文本ID
+    // 常用文本ID
     pub quick_text_id: Option<String>,
 }
 
-/// 统一粘贴入口
+// 统一粘贴入口
 pub async fn paste_content(
     params: PasteContentParams,
     window: WebviewWindow,
@@ -35,7 +35,7 @@ pub async fn paste_content(
     Ok(())
 }
 
-/// 根据ID从数据库获取剪贴板项目
+// 根据ID从数据库获取剪贴板项目
 fn get_clipboard_item_by_id(id: i64) -> Result<(String, Option<String>), String> {
     let result = crate::database::with_connection(|conn| {
         conn.query_row(
@@ -60,7 +60,7 @@ fn get_clipboard_item_by_id(id: i64) -> Result<(String, Option<String>), String>
     })
 }
 
-/// 根据ID从数据库获取常用文本
+// 根据ID从数据库获取常用文本
 fn get_quick_text_by_id(id: &str) -> Result<(String, Option<String>), String> {
     let result = crate::database::with_connection(|conn| {
         conn.query_row(
@@ -84,7 +84,7 @@ fn get_quick_text_by_id(id: &str) -> Result<(String, Option<String>), String> {
     })
 }
 
-/// 粘贴文本内容
+// 粘贴文本内容
 pub async fn paste_text_with_html(
     text_content: String,
     html_content: Option<String>,
@@ -118,7 +118,7 @@ pub async fn paste_text_with_html(
     paste_text_without_translation_internal_with_html(text_content, html_content, window).await
 }
 
-/// 粘贴文本内容
+// 粘贴文本内容
 async fn paste_text_without_translation_internal_with_html(
     text_content: String,
     html_content: Option<String>,
@@ -170,7 +170,7 @@ async fn paste_text_without_translation_internal_with_html(
     Ok(())
 }
 
-/// 粘贴图片内容
+// 粘贴图片内容
 pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Result<(), String> {
     // 开始粘贴操作，增加粘贴计数器
     crate::clipboard_monitor::start_pasting_operation();
@@ -276,7 +276,7 @@ pub async fn paste_image(image_content: String, window: &WebviewWindow) -> Resul
     Ok(())
 }
 
-/// 粘贴文件内容
+// 粘贴文件内容
 pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(), String> {
     // 解析文件数据
     if !files_data.starts_with("files:") {
@@ -334,7 +334,7 @@ pub async fn paste_files(files_data: String, window: &WebviewWindow) -> Result<(
     Ok(())
 }
 
-/// 处理粘贴后的窗口状态
+// 处理粘贴后的窗口状态
 fn handle_window_after_paste(window: &WebviewWindow) -> Result<(), String> {
     let is_pinned = crate::state_manager::is_window_pinned();
     if !is_pinned {
@@ -344,7 +344,7 @@ fn handle_window_after_paste(window: &WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 
-/// 发送翻译相关事件
+// 发送翻译相关事件
 async fn send_translation_events(window: &WebviewWindow, text: &str, source: &str) {
     use tauri::Emitter;
 
@@ -385,7 +385,7 @@ async fn send_translation_events(window: &WebviewWindow, text: &str, source: &st
     }
 }
 
-/// 发送翻译成功事件
+// 发送翻译成功事件
 async fn send_translation_success_events(window: &WebviewWindow, text: &str, source: &str) {
     use tauri::Emitter;
 
@@ -413,7 +413,7 @@ async fn send_translation_success_events(window: &WebviewWindow, text: &str, sou
     }
 }
 
-/// 发送翻译错误事件
+// 发送翻译错误事件
 async fn send_translation_error_events(window: &WebviewWindow, error: &str, source: &str) {
     use tauri::Emitter;
 

@@ -1,20 +1,20 @@
 use tauri::Manager;
 
-/// 系统服务 - 处理系统信息、调试日志等工具功能
+// 系统服务 - 处理系统信息、调试日志等工具功能
 pub struct SystemService;
 
 impl SystemService {
-    /// 调试日志
+    // 调试日志
     pub fn log_debug(message: String) {
         println!("前端调试: {}", message);
     }
 
-    /// 获取应用数据目录
+    // 获取应用数据目录
     pub fn get_app_data_dir() -> Result<String, String> {
         crate::data_manager::get_app_data_dir().map(|path| path.to_string_lossy().to_string())
     }
 
-    /// 刷新所有文件类型项目的图标
+    // 刷新所有文件类型项目的图标
     pub fn refresh_file_icons(app_handle: tauri::AppHandle) -> Result<(), String> {
         println!("开始刷新文件图标...");
 

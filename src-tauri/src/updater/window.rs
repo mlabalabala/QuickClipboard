@@ -1,9 +1,9 @@
-/// 更新窗口管理
+// 更新窗口管理
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use super::UpdateInfo;
 
-/// 显示更新窗口
+// 显示更新窗口
 pub async fn show_updater_window(
     app: AppHandle,
     update_info: UpdateInfo,
@@ -46,7 +46,7 @@ pub async fn show_updater_window(
     Ok(())
 }
 
-/// 关闭更新窗口
+// 关闭更新窗口
 pub fn close_updater_window(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("updater") {
         window

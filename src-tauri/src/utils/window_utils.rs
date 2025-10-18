@@ -1,6 +1,6 @@
 // 窗口相关工具函数
 
-/// 检测当前活动窗口是否为文件管理器
+// 检测当前活动窗口是否为文件管理器
 #[cfg(windows)]
 pub fn is_target_file_manager() -> bool {
     use windows::Win32::Foundation::HWND;
@@ -36,7 +36,7 @@ pub fn is_target_file_manager() -> bool {
     false
 }
 
-/// 获取当前活动窗口的进程可执行名（小写）
+// 获取当前活动窗口的进程可执行名（小写）
 #[cfg(windows)]
 pub fn get_active_window_process_name() -> Option<String> {
     use windows::Win32::Foundation::HWND;

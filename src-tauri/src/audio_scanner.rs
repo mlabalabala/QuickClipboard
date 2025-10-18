@@ -11,7 +11,7 @@ const AUDIO_EXTENSIONS: &[&str] = &[
     "mp3", "wav", "ogg", "m4a", "flac", "aac", "wma", "opus"
 ];
 
-/// 音频文件信息
+// 音频文件信息
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AudioFileInfo {
     pub path: String,
@@ -22,7 +22,7 @@ pub struct AudioFileInfo {
     pub cover_data: Option<String>, 
 }
 
-/// 扫描文件夹中的所有音频文件
+// 扫描文件夹中的所有音频文件
 #[tauri::command]
 pub async fn scan_folder_for_audio(folder_path: String) -> Result<Vec<String>, String> {
     
@@ -45,7 +45,7 @@ pub async fn scan_folder_for_audio(folder_path: String) -> Result<Vec<String>, S
     Ok(audio_files)
 }
 
-/// 获取音频文件的元数据
+// 获取音频文件的元数据
 #[tauri::command]
 pub async fn get_audio_metadata(file_path: String) -> Result<AudioFileInfo, String> {
     let path = Path::new(&file_path);
@@ -91,7 +91,7 @@ pub async fn get_audio_metadata(file_path: String) -> Result<AudioFileInfo, Stri
     Ok(info)
 }
 
-/// 递归扫描目录
+// 递归扫描目录
 fn scan_directory(dir: &Path, audio_files: &mut Vec<String>, depth: usize) -> std::io::Result<()> {
     if depth > 10 {
         return Ok(());
@@ -119,7 +119,7 @@ fn scan_directory(dir: &Path, audio_files: &mut Vec<String>, depth: usize) -> st
     Ok(())
 }
 
-/// 判断是否为音频文件
+// 判断是否为音频文件
 fn is_audio_file(path: &Path) -> bool {
     if let Some(extension) = path.extension() {
         if let Some(ext_str) = extension.to_str() {

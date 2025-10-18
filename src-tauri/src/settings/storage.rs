@@ -4,11 +4,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::env;
 
-/// 设置文件存储管理
+// 设置文件存储管理
 pub struct SettingsStorage;
 
 impl SettingsStorage {
-    /// 检测是否是便携版模式
+    // 检测是否是便携版模式
     pub fn is_portable_mode() -> bool {
         if let Ok(exe_path) = env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
@@ -19,7 +19,7 @@ impl SettingsStorage {
         false
     }
 
-    /// 获取便携版数据目录
+    // 获取便携版数据目录
     fn get_portable_data_directory() -> Result<PathBuf, String> {
         let exe_path = env::current_exe()
             .map_err(|e| format!("无法获取可执行文件路径: {}", e))?;
@@ -35,7 +35,7 @@ impl SettingsStorage {
         Ok(portable_data_dir)
     }
 
-    /// 获取默认的应用数据目录
+    // 获取默认的应用数据目录
     pub fn get_default_data_directory() -> Result<PathBuf, String> {
         // 检测便携版模式
         if Self::is_portable_mode() {
@@ -53,13 +53,13 @@ impl SettingsStorage {
         Ok(app_data_dir)
     }
 
-    /// 获取设置文件路径（总是在默认位置）
+    // 获取设置文件路径（总是在默认位置）
     fn get_settings_file_path() -> Result<PathBuf, String> {
         let config_dir = Self::get_default_data_directory()?;
         Ok(config_dir.join("settings.json"))
     }
 
-    /// 根据设置获取数据存储目录
+    // 根据设置获取数据存储目录
     pub fn get_data_directory(settings: &AppSettings) -> Result<PathBuf, String> {
         if settings.use_custom_storage {
             if let Some(custom_path) = &settings.custom_storage_path {
@@ -72,7 +72,7 @@ impl SettingsStorage {
         Self::get_default_data_directory()
     }
 
-    /// 从文件加载设置
+    // 从文件加载设置
     pub fn load() -> Result<AppSettings, String> {
         let settings_path = Self::get_settings_file_path()?;
 
@@ -89,7 +89,7 @@ impl SettingsStorage {
         Ok(settings)
     }
 
-    /// 保存设置到文件
+    // 保存设置到文件
     pub fn save(settings: &AppSettings) -> Result<(), String> {
         let settings_path = Self::get_settings_file_path()?;
 
@@ -102,7 +102,7 @@ impl SettingsStorage {
         Ok(())
     }
 
-    /// 加载设置，如果失败则返回默认设置并保存
+    // 加载设置，如果失败则返回默认设置并保存
     pub fn load_or_default() -> AppSettings {
         match Self::load() {
             Ok(settings) => settings,
@@ -114,7 +114,7 @@ impl SettingsStorage {
         }
     }
 
-    /// 打开存储文件夹
+    // 打开存储文件夹
     pub fn open_folder(settings: &AppSettings) -> Result<(), String> {
         let storage_path = Self::get_data_directory(settings)?;
         
