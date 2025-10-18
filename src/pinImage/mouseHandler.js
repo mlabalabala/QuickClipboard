@@ -84,9 +84,7 @@ export function setupWheel(img, sizeIndicator, window, state) {
                 const { width, height } = await handleWindowResize(e.deltaY, e.shiftKey, window, state);
                 showSizeIndicator(sizeIndicator, width, height, state.scaleLevel, false, e.clientX, e.clientY);
 
-                if (state.imageScale > 1) {
-                    applyImageTransform(img, state);
-                }
+                applyImageTransform(img, state);
             }
         } catch (error) {
             console.error('缩放失败:', error);

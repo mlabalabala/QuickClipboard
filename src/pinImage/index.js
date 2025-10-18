@@ -69,6 +69,7 @@ import {
         } else {
             await exitThumbnailMode(currentWindow, states);
         }
+        applyImageTransform(img, states);
     }
     
     // 退出缩略图模式的包装函数
@@ -77,6 +78,7 @@ import {
         const settings = loadSettings();
         settings.thumbnailMode = false;
         saveSettings(settings);
+        applyImageTransform(img, states);
     }
     
     // 设置右键菜单

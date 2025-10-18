@@ -43,6 +43,10 @@ export async function enterThumbnailMode(window, state) {
             durationMs: 300
         });
         
+        state.imageScale = 1;
+        state.imageX = 0;
+        state.imageY = 0;
+        
         state.isInThumbnailMode = true;
     } catch (error) {
         console.error('进入缩略图模式失败:', error);
@@ -82,6 +86,10 @@ export async function exitThumbnailMode(window, state) {
             if (state.initialSize) {
                 state.scaleLevel = Math.round((state.savedWindowSize.width / state.initialSize.width) * 10);
             }
+
+            state.imageScale = 1;
+            state.imageX = 0;
+            state.imageY = 0;
         }
         
         state.isInThumbnailMode = false;
