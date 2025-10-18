@@ -6,7 +6,6 @@
 export class EventManager {
     constructor() {
         this.overlay = document.getElementById('overlay');
-        this.selectionArea = document.getElementById('selectionArea');
         
         this.onSelectionStart = null;
         this.onSelectionUpdate = null;
@@ -15,6 +14,7 @@ export class EventManager {
         this.onKeyDown = null;
         this.onWindowFocus = null;
         this.onWindowBlur = null;
+        this.onCursorUpdate = null;
         
         // 拖拽检测
         this.mouseDownPos = null;
@@ -30,7 +30,6 @@ export class EventManager {
     initEvents() {
         // 鼠标事件
         this.overlay.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.selectionArea.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         
@@ -50,25 +49,6 @@ export class EventManager {
         
         const mouseX = e.clientX;
         const mouseY = e.clientY;
-        
-        // 检查是否点击了选区信息框或其子元素（包括比例按钮）
-        const selectionInfo = document.getElementById('selectionInfo');
-        if (selectionInfo && (e.target === selectionInfo || selectionInfo.contains(e.target))) {
-            // 点击选区信息框内的元素，不触发选区事件
-            return;
-        }
-        
-        // 如果点击的是操作节点或选区内部，立即触发选区事件（移动/调整）
-        if (e.target.classList.contains('resize-handle') || 
-            e.target.classList.contains('radius-handle') ||
-            e.target === this.selectionArea) {
-            e.preventDefault();
-            this.isSelectionOperation = true;
-            this.isDragging = false;
-            this.mouseDownPos = null;
-            this.onSelectionStart?.(mouseX, mouseY, e.target);
-            return;
-        }
         
         // 在空白处按下：记录位置，等待判断是点击还是拖拽
         e.preventDefault();
@@ -108,6 +88,8 @@ export class EventManager {
         }
 
         this.onSelectionUpdate?.(mouseX, mouseY, e.shiftKey);
+        
+        this.onCursorUpdate?.(mouseX, mouseY);
     }
 
     handleMouseUp(e) {
@@ -207,6 +189,13 @@ export class EventManager {
      */
     setOnWindowBlur(callback) {
         this.onWindowBlur = callback;
+    }
+    
+    /**
+     * 设置光标更新回调
+     */
+    setOnCursorUpdate(callback) {
+        this.onCursorUpdate = callback;
     }
 
 }

@@ -12,9 +12,6 @@ export class AutoSelectionManager {
         this.currentBounds = null;
         this.listeners = [];
         
-        // 预览框元素
-        this.previewElement = document.getElementById('autoSelectionPreview');
-        
         // 标记是否首次显示
         this.isFirstShow = true;
         
@@ -39,8 +36,8 @@ export class AutoSelectionManager {
             this.isActive = true;
             
             // 启用遮罩层过渡动画
-            if (window.screenshotApp?.maskManager) {
-                window.screenshotApp.maskManager.enableTransition();
+            if (window.screenshotApp?.selectionManager) {
+                window.screenshotApp.selectionManager.enableTransition();
             }
             
             // 添加滚轮事件监听
@@ -74,8 +71,8 @@ export class AutoSelectionManager {
         this.currentHierarchyIndex = 0;
         
         // 禁用遮罩层过渡动画
-        if (window.screenshotApp?.maskManager) {
-            window.screenshotApp.maskManager.disableTransition();
+        if (window.screenshotApp?.selectionManager) {
+            window.screenshotApp.selectionManager.disableTransition();
         }
         
         // 隐藏预览框
@@ -118,11 +115,20 @@ export class AutoSelectionManager {
      * 处理元素层级
      */
     handleElementHierarchy(hierarchyData) {
-        if (!this.isActive || (window.screenshotApp && window.screenshotApp.selectionManager.isSelectingState)) {
-            if (this.isActive) {
-                this.stop();
-            }
+        if (!this.isActive) {
             return;
+        }
+        
+        const selectionManager = window.screenshotApp?.selectionManager;
+        if (selectionManager) {
+            if (selectionManager.isSelectingState || 
+                selectionManager.isMovingState || 
+                selectionManager.isResizingState ||
+                selectionManager.isAdjustingRadius ||
+                selectionManager.selectionRect) {
+                this.stop();
+                return;
+            }
         }
 
         // 保存元素层级
@@ -154,44 +160,21 @@ export class AutoSelectionManager {
     }
 
     /**
-     * 更新独立预览框的显示
+     * 更新预览显示
      */
     updatePreview(bounds) {
-        if (!this.previewElement) {
-            return;
-        }
-
-        // 首次显示时禁用过渡动画
-        if (this.isFirstShow) {
-            this.previewElement.style.transition = 'none';
-            this.isFirstShow = false;
-        }
-
-        // 更新预览框位置和尺寸
-        this.previewElement.style.left = bounds.x + 'px';
-        this.previewElement.style.top = bounds.y + 'px';
-        this.previewElement.style.width = bounds.width + 'px';
-        this.previewElement.style.height = bounds.height + 'px';
-        this.previewElement.style.display = 'block';
-        
-        // 在下一帧恢复过渡动画
-        if (this.previewElement.style.transition === 'none') {
-            requestAnimationFrame(() => {
-                if (this.previewElement) {
-                    this.previewElement.style.transition = '';
-                }
-            });
-        }
-        
-        // 更新遮罩层
-        if (window.screenshotApp?.maskManager) {
-            window.screenshotApp.maskManager.updateMask(
-                bounds.x,
-                bounds.y,
-                bounds.width,
-                bounds.height,
-                0 
-            );
+        const selectionManager = window.screenshotApp?.selectionManager;
+        if (selectionManager) {
+            if (selectionManager.isSelectingState || 
+                selectionManager.isMovingState || 
+                selectionManager.isResizingState ||
+                selectionManager.isAdjustingRadius ||
+                selectionManager.selectionRect) {
+                this.stop();
+                return;
+            }
+            
+            selectionManager.showAutoSelection(bounds);
         }
     }
     
@@ -199,16 +182,10 @@ export class AutoSelectionManager {
      * 隐藏预览框
      */
     hidePreview() {
-        if (!this.previewElement) {
-            return;
-        }
+        this.isFirstShow = true;
         
-        this.previewElement.style.display = 'none';
-        this.isFirstShow = true; // 重置首次显示标志
-        
-        // 恢复全屏遮罩
-        if (window.screenshotApp?.maskManager) {
-            window.screenshotApp.maskManager.resetToFullscreen();
+        if (window.screenshotApp?.selectionManager) {
+            window.screenshotApp.selectionManager.hideAutoSelection();
         }
     }
     

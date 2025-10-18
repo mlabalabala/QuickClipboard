@@ -597,24 +597,14 @@ export class ScrollingScreenshotManager {
      * 隐藏选区UI
      */
     hideSelectionElements() {
-        const resizeHandles = document.querySelectorAll('.resize-handle');
-        resizeHandles.forEach(handle => {
-            handle.style.display = 'none';
-        });
-        
-        const radiusHandles = document.querySelectorAll('.radius-handle');
-        radiusHandles.forEach(handle => {
-            handle.style.display = 'none';
-        });
-
-        const selectionInfo = document.getElementById('selectionInfo');
-        if (selectionInfo) {
-            selectionInfo.style.display = 'none';
+        // （隐藏遮罩、边框和控制点）
+        if (window.screenshotApp?.selectionManager) {
+            window.screenshotApp.selectionManager.enableLongScreenshotMode();
         }
-
-        const maskLayer = document.getElementById('maskLayer');
-        if (maskLayer) {
-            maskLayer.style.display = 'none';
+        
+        // 隐藏选区信息面板
+        if (window.screenshotApp?.selectionInfoPanel) {
+            window.screenshotApp.selectionInfoPanel.hide();
         }
 
         const helpPanel = document.getElementById('helpPanel');
@@ -629,24 +619,18 @@ export class ScrollingScreenshotManager {
      * 显示选区UI
      */
     showSelectionElements() {
-        const resizeHandles = document.querySelectorAll('.resize-handle');
-        resizeHandles.forEach(handle => {
-            handle.style.display = 'block';
-        });
-
-        const radiusHandles = document.querySelectorAll('.radius-handle');
-        radiusHandles.forEach(handle => {
-            handle.style.display = 'block';
-        });
-
-        const selectionInfo = document.getElementById('selectionInfo');
-        if (selectionInfo) {
-            selectionInfo.style.display = 'inline-flex';
+        // （恢复遮罩、边框和控制点）
+        if (window.screenshotApp?.selectionManager) {
+            window.screenshotApp.selectionManager.disableLongScreenshotMode();
         }
-
-        const maskLayer = document.getElementById('maskLayer');
-        if (maskLayer) {
-            maskLayer.style.display = 'block';
+        
+        // 显示选区信息面板
+        if (window.screenshotApp?.selectionInfoPanel && window.screenshotApp?.selectionManager?.selectionRect) {
+            const borderRadius = window.screenshotApp.selectionManager.getBorderRadius();
+            window.screenshotApp.selectionInfoPanel.show(
+                window.screenshotApp.selectionManager.selectionRect,
+                borderRadius
+            );
         }
 
         const helpPanel = document.getElementById('helpPanel');

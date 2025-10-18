@@ -10,10 +10,10 @@ import * as fabric from 'fabric';
 window.fabric = fabric;
 
 import { ScreenshotAPI } from './api/screenshot-api.js';
-import { SelectionManager } from './managers/selection-manager.js';
+import { CanvasSelectionManager } from './managers/canvas-selection-manager.js';
+import { SelectionInfoPanel } from './managers/selection-info-panel.js';
 import { ToolbarManager } from './managers/toolbar-manager.js';
 import { SubToolbarManager } from './managers/sub-toolbar-manager.js';
-import { MaskManager } from './managers/mask-manager.js';
 import { EventManager } from './managers/event-manager.js';
 import { BackgroundManager } from './managers/background-manager.js';
 import { ExportManager } from './managers/export-manager.js';
@@ -52,10 +52,10 @@ export class ScreenshotController {
         await this.loadSettings();
         
         // 初始化各个管理器
-        this.selectionManager = new SelectionManager();
+        this.selectionManager = new CanvasSelectionManager();
+        this.selectionInfoPanel = new SelectionInfoPanel();
         this.toolbarManager = new ToolbarManager();
         this.subToolbarManager = new SubToolbarManager();
-        this.maskManager = new MaskManager();
         this.eventManager = new EventManager();
         this.backgroundManager = new BackgroundManager();
         this.exportManager = new ExportManager();
@@ -87,6 +87,17 @@ export class ScreenshotController {
             this.handleParameterChange(toolName, paramName, value);
         });
         
+        // 设置选区信息面板回调
+        this.selectionInfoPanel.setOnRadiusChange((radius) => {
+            this.selectionManager.borderRadius = radius;
+            this.selectionManager.saveBorderRadius(radius);
+            this.selectionManager.scheduleDraw();
+        });
+        
+        this.selectionInfoPanel.setOnAspectRatioSelect((ratio) => {
+            this.applyAspectRatio(ratio);
+        });
+        
         this.initializeManagers();
         this.loadMonitorInfo();
 
@@ -110,6 +121,7 @@ export class ScreenshotController {
         this.eventManager.setOnKeyDown((key) => this.handleKeyDown(key));
         this.eventManager.setOnWindowFocus(() => this.handleWindowFocus());
         this.eventManager.setOnWindowBlur(() => this.handleWindowBlur());
+        this.eventManager.setOnCursorUpdate((x, y) => this.handleCursorUpdate(x, y));
         
         // 监听后端截屏完成事件
         window.__TAURI__.event.listen('screenshot-ready', async (event) => {
@@ -174,7 +186,7 @@ export class ScreenshotController {
             
             if (bounds) {
                 // 禁用遮罩层过渡
-                this.maskManager.disableTransition();
+                this.selectionManager.disableTransition();
                 
                 // 创建正常选区
                 this.selectionManager.setSelection(
@@ -184,14 +196,9 @@ export class ScreenshotController {
                     bounds.height
                 );
                 
-                // 更新遮罩
-                this.maskManager.updateMask(
-                    bounds.x,
-                    bounds.y,
-                    bounds.width,
-                    bounds.height,
-                    this.selectionManager.borderRadius
-                );
+                // 显示选区信息面板
+                const borderRadius = this.selectionManager.getBorderRadius();
+                this.selectionInfoPanel.show(this.selectionManager.selectionRect, borderRadius);
                 
                 // 隐藏放大镜
                 if (this.magnifierManager) {
@@ -216,7 +223,9 @@ export class ScreenshotController {
             autoSelectionManager.stop();
         }
         
-        const action = this.selectionManager.startSelection(x, y, target);
+        // 检测点击的控制点
+        const hitResult = this.selectionManager.hitTest(x, y);
+        const action = this.selectionManager.startSelection(x, y, hitResult);
         
         if (action === 'select') {
             this.hideAllToolbars();
@@ -242,21 +251,30 @@ export class ScreenshotController {
         
         if (this.selectionManager.isSelectingState) {
             this.selectionManager.updateSelection(x, y);
-            const selection = this.selectionManager.getSelection();
-            if (selection) {
-                const borderRadius = this.selectionManager.getBorderRadius();
-                this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
-            }
             this.hideAllToolbars();
         } else if (this.selectionManager.isMovingState) {
-            this.selectionManager.moveSelection(x, y, this.maskManager);
+            this.selectionManager.moveSelection(x, y);
             this.hideAllToolbars();
+            const selection = this.selectionManager.getSelection();
+            if (selection) {
+                this.selectionInfoPanel.updateSelectionRect(selection);
+            }
         } else if (this.selectionManager.isResizingState) {
-            this.selectionManager.resizeSelection(x, y, this.maskManager, shiftKey);
+            this.selectionManager.resizeSelection(x, y, shiftKey);
             this.hideAllToolbars();
+            const selection = this.selectionManager.getSelection();
+            const borderRadius = this.selectionManager.getBorderRadius();
+            if (selection) {
+                this.selectionInfoPanel.show(selection, borderRadius);
+            }
         } else if (this.selectionManager.isAdjustingRadius) {
-            this.selectionManager.adjustRadius(x, y, this.maskManager);
+            this.selectionManager.adjustRadius(x, y);
             this.hideAllToolbars();
+            const selection = this.selectionManager.getSelection();
+            const borderRadius = this.selectionManager.getBorderRadius();
+            if (selection) {
+                this.selectionInfoPanel.show(selection, borderRadius);
+            }
         }
     }
 
@@ -269,11 +287,10 @@ export class ScreenshotController {
         if (action === 'move-end' || action === 'select-end' || action === 'resize-end' || action === 'radius-end') {
             const selection = this.selectionManager.getSelection();
             if (selection) {
-                // 更新遮罩层
-                const borderRadius = this.selectionManager.getBorderRadius();
-                this.maskManager.updateMask(selection.left, selection.top, selection.width, selection.height, borderRadius);
-
                 const mainToolbarPosition = this.toolbarManager.show(selection);
+                
+                const borderRadius = this.selectionManager.getBorderRadius();
+                this.selectionInfoPanel.show(selection, borderRadius);
                 
                 // 有选区时隐藏放大镜
                 if (this.magnifierManager) {
@@ -304,6 +321,7 @@ export class ScreenshotController {
     hideAllToolbars() {
         this.toolbarManager.hide();
         this.subToolbarManager.hide();
+        this.selectionInfoPanel.hide();
     }
 
     /**
@@ -460,6 +478,26 @@ export class ScreenshotController {
             return;
         }
         this.reset();
+    }
+    
+    /**
+     * 处理光标样式更新
+     */
+    handleCursorUpdate(x, y) {
+        if (this.selectionManager.isSelectingState || 
+            this.selectionManager.isMovingState || 
+            this.selectionManager.isResizingState ||
+            this.selectionManager.isAdjustingRadius) {
+            return;
+        }
+        
+        const hitResult = this.selectionManager.hitTest(x, y);
+        const cursorStyle = this.selectionManager.getCursorStyle(hitResult);
+        
+        const overlay = document.getElementById('overlay');
+        if (overlay) {
+            overlay.style.cursor = cursorStyle;
+        }
     }
 
     /**
@@ -932,8 +970,8 @@ export class ScreenshotController {
      */
     async clearSelection() {
         this.selectionManager.clearSelection();
-        this.disableAllTools(); // 清除选区时禁用所有工具
-        this.maskManager.resetToFullscreen();
+        this.selectionInfoPanel.hide();
+        this.disableAllTools();
         
         // 清除选区后根据配置显示放大镜
         if (this.magnifierManager && this.magnifierEnabled && this.backgroundManager?.isScreenshotLoaded) {
@@ -949,31 +987,75 @@ export class ScreenshotController {
             }
         }
     }
+    
+    /**
+     * 应用长宽比
+     */
+    applyAspectRatio(ratio) {
+        const selection = this.selectionManager.getSelection();
+        if (!selection) return;
+        
+        const { left, top } = selection;
+        let newWidth, newHeight;
+        
+        if (ratio === null) {
+            newWidth = window.innerWidth;
+            newHeight = window.innerHeight;
+            this.selectionManager.setSelection(0, 0, newWidth, newHeight);
+        } else {
+            const baseSize = 300;
+            
+            if (ratio >= 1) {
+                newWidth = baseSize;
+                newHeight = baseSize / ratio;
+            } else {
+                newHeight = baseSize;
+                newWidth = baseSize * ratio;
+            }
+            
+            if (left + newWidth > window.innerWidth) {
+                const scale = (window.innerWidth - left) / newWidth;
+                newWidth *= scale;
+                newHeight *= scale;
+            }
+            if (top + newHeight > window.innerHeight) {
+                const scale = (window.innerHeight - top) / newHeight;
+                newWidth *= scale;
+                newHeight *= scale;
+            }
+            
+            this.selectionManager.setSelection(left, top, newWidth, newHeight);
+        }
+        
+        const newSelection = this.selectionManager.getSelection();
+        const borderRadius = this.selectionManager.getBorderRadius();
+        this.selectionInfoPanel.show(newSelection, borderRadius);
+        
+        const mainToolbarPosition = this.toolbarManager.show(newSelection);
+        
+        const currentTool = this.toolbarManager.getCurrentTool();
+        if (currentTool && mainToolbarPosition) {
+            this.showSubToolbarForTool(currentTool, newSelection, mainToolbarPosition);
+        }
+    }
 
     /**
-     * 彻底清空所有内容（用于窗口隐藏时，防止下次显示旧内容）
+     * 彻底清空所有内容
      */
     clearAllContent() {
         try {
-            // 清空编辑层（包括画布内容和历史记录）
+     
             if (this.editLayerManager) {
                 this.editLayerManager.clear();
                 this.editLayerManager.clearHistory();
             }
             
-            // 清空背景管理器
             if (this.backgroundManager?.clearBackground) {
                 this.backgroundManager.clearBackground();
             }
             
-            // 重置选区管理器
             if (this.selectionManager?.reset) {
                 this.selectionManager.reset();
-            }
-            
-            // 清空遮罩管理器
-            if (this.maskManager?.clear) {
-                this.maskManager.clear();
             }
             
             // 隐藏放大镜
@@ -1017,7 +1099,7 @@ export class ScreenshotController {
             // 恢复默认光标
             this.editLayerManager.restoreCursor();
             
-            // 清除自动选区缓存（新的截屏流程将重新建立缓存）
+            // 清除自动选区缓存
             invoke('clear_auto_selection_cache').catch(err => {
                 console.error('清除自动选区缓存失败:', err);
             });
@@ -1032,9 +1114,8 @@ export class ScreenshotController {
      */
     reset() {
         this.selectionManager.reset();
-        this.disableAllTools(); // 重置状态时禁用所有工具
-        this.maskManager.clear();
-        this.editLayerManager.restoreCursor(); // 恢复默认光标
+        this.disableAllTools(); 
+        this.editLayerManager.restoreCursor();
     }
 
 }

@@ -7,35 +7,8 @@
     <link rel="stylesheet" href="screenshot.css">
 </head>
 <body>
-    <!-- 遮罩层容器 -->
-    <div class="mask-layer" id="maskLayer"></div>
-    
     <!-- 截屏覆盖层 -->
     <div class="screenshot-overlay" id="overlay"></div>
-    
-    <!-- 自动选区预览框 -->
-    <div class="auto-selection-preview" id="autoSelectionPreview"></div>
-    
-    <!-- 选择区域 -->
-    <div class="selection-area" id="selectionArea">
-        <div class="selection-info" id="selectionInfo">0 × 0</div>
-        
-        <!-- 8个拖拽节点 -->
-        <div class="resize-handle resize-handle-nw" data-direction="nw"></div>
-        <div class="resize-handle resize-handle-n" data-direction="n"></div>
-        <div class="resize-handle resize-handle-ne" data-direction="ne"></div>
-        <div class="resize-handle resize-handle-e" data-direction="e"></div>
-        <div class="resize-handle resize-handle-se" data-direction="se"></div>
-        <div class="resize-handle resize-handle-s" data-direction="s"></div>
-        <div class="resize-handle resize-handle-sw" data-direction="sw"></div>
-        <div class="resize-handle resize-handle-w" data-direction="w"></div>
-        
-        <!-- 4个圆角控制节点 -->
-        <div class="radius-handle radius-handle-nw" data-corner="nw" data-tooltip="拖拽调整圆角"></div>
-        <div class="radius-handle radius-handle-ne" data-corner="ne" data-tooltip="拖拽调整圆角"></div>
-        <div class="radius-handle radius-handle-se" data-corner="se" data-tooltip="拖拽调整圆角"></div>
-        <div class="radius-handle radius-handle-sw" data-corner="sw" data-tooltip="拖拽调整圆角"></div>
-    </div>
 
     <!-- 提示面板 -->
     <div class="help-panel hidden" id="helpPanel">
