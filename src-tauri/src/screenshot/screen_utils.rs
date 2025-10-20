@@ -1,14 +1,11 @@
 use tauri::WebviewWindow;
-use windows::Win32::Foundation::HWND;
-use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, HMONITOR, HDC, MONITORINFO, MONITOR_DEFAULTTONEAREST, EnumDisplayMonitors};
+
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
     GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, 
     SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN
 };
-use windows::Win32::Foundation::{BOOL, LPARAM, RECT};
-use std::mem;
 
-// 显示器信息结构
 #[derive(Clone, serde::Serialize, Debug)]
 pub struct MonitorInfo {
     pub x: i32,
@@ -18,7 +15,6 @@ pub struct MonitorInfo {
     pub is_primary: bool,
 }
 
-// CSS像素坐标的显示器信息（用于前端显示）
 #[derive(Clone, serde::Serialize, Debug)]
 pub struct CssMonitorInfo {
     pub x: f64,
@@ -28,23 +24,20 @@ pub struct CssMonitorInfo {
     pub is_primary: bool,
 }
 
-// 屏幕管理工具
 pub struct ScreenUtils;
 
 impl ScreenUtils {
-    // 将物理像素转换为CSS像素
     pub fn physical_to_css(physical: f64, scale_factor: f64) -> f64 {
         physical / scale_factor
     }
 
-    // 将CSS像素转换为物理像素
     pub fn css_to_physical(css: f64, scale_factor: f64) -> f64 {
         css * scale_factor
     }
 
-    // 获取CSS像素格式的显示器信息（用于前端显示）
-    pub fn get_css_monitors(scale_factor: f64) -> Result<Vec<CssMonitorInfo>, String> {
-        let physical_monitors = Self::get_all_monitors()?;
+    pub fn get_css_monitors(window: &WebviewWindow) -> Result<Vec<CssMonitorInfo>, String> {
+        let scale_factor = window.scale_factor().unwrap_or(1.0);
+        let physical_monitors = Self::get_all_monitors_from_window(window)?;
         let css_monitors = physical_monitors.into_iter().map(|monitor| {
             CssMonitorInfo {
                 x: Self::physical_to_css(monitor.x as f64, scale_factor),
@@ -57,23 +50,12 @@ impl ScreenUtils {
         Ok(css_monitors)
     }
 
-    // 计算虚拟屏幕的CSS像素尺寸
-    pub fn get_css_virtual_screen_size(scale_factor: f64) -> Result<(f64, f64, f64, f64), String> {
-        let (x, y, width, height) = Self::get_virtual_screen_size()?;
-        Ok((
-            Self::physical_to_css(x as f64, scale_factor),
-            Self::physical_to_css(y as f64, scale_factor),
-            Self::physical_to_css(width as f64, scale_factor),
-            Self::physical_to_css(height as f64, scale_factor),
-        ))
-    }
-
-    // 通用边界约束函数（智能多显示器边界约束）
+    // 多显示器边界约束
     pub fn constrain_to_physical_bounds(
         x: i32, y: i32, width: i32, height: i32,
-        _window: &tauri::WebviewWindow
+        window: &tauri::WebviewWindow
     ) -> Result<(i32, i32), String> {
-        let monitors = Self::get_all_monitors()?;
+        let monitors = Self::get_all_monitors_from_window(window)?;
         if monitors.is_empty() {
             return Ok((x.max(0), y.max(0)));
         }
@@ -91,15 +73,11 @@ impl ScreenUtils {
         }).collect();
 
         if overlapping_monitors.len() > 1 {
-            // 跨越多个显示器：只限制在虚拟桌面边界内
-            let virtual_screen = Self::get_virtual_screen_size()?;
-            let (vx, vy, vw, vh) = virtual_screen;
-            
+            let (vx, vy, vw, vh) = Self::get_virtual_screen_size_from_window(window)?;
             let constrained_x = x.max(vx).min(vx + vw - width);
             let constrained_y = y.max(vy).min(vy + vh - height);
             Ok((constrained_x, constrained_y))
         } else if overlapping_monitors.len() == 1 {
-            // 单个显示器内：应用该显示器的边界
             let monitor = overlapping_monitors[0];
             let monitor_right = monitor.x + (monitor.width as i32);
             let monitor_bottom = monitor.y + (monitor.height as i32);
@@ -107,7 +85,6 @@ impl ScreenUtils {
             let constrained_y = y.max(monitor.y).min(monitor_bottom - height);
             Ok((constrained_x, constrained_y))
         } else {
-            // 在空白区域：移动到最近的显示器
             let mut best_x = x;
             let mut best_y = y;
             let mut min_distance = i32::MAX as f64;
@@ -129,69 +106,61 @@ impl ScreenUtils {
         }
     }
 
-    // 获取所有显示器信息
-    #[cfg(windows)]
-    pub fn get_all_monitors() -> Result<Vec<MonitorInfo>, String> {
-        use std::sync::OnceLock;
-        static MONITORS: OnceLock<Vec<MonitorInfo>> = OnceLock::new();
+    pub fn get_all_monitors_from_window(window: &WebviewWindow) -> Result<Vec<MonitorInfo>, String> {
+        let monitors = window
+            .available_monitors()
+            .map_err(|e| format!("获取显示器列表失败: {}", e))?;
         
-        let monitors = MONITORS.get_or_init(|| {
-            let mut monitors = Vec::new();
-            
-            unsafe extern "system" fn enum_monitor_proc(
-                hmonitor: HMONITOR,
-                _hdc: HDC,
-                _rect: *mut RECT,
-                lparam: LPARAM,
-            ) -> BOOL {
-                let monitors = lparam.0 as *mut Vec<MonitorInfo>;
+        let primary_monitor = window.primary_monitor()
+            .map_err(|e| format!("获取主显示器失败: {}", e))?;
+        
+        let primary_name = primary_monitor.as_ref().and_then(|m| m.name());
+        
+        let result: Vec<MonitorInfo> = monitors
+            .iter()
+            .map(|monitor| {
+                let position = monitor.position();
+                let size = monitor.size();
+                let is_primary = monitor.name() == primary_name;
                 
-                let mut monitor_info: MONITORINFO = mem::zeroed();
-                monitor_info.cbSize = mem::size_of::<MONITORINFO>() as u32;
-                
-                if GetMonitorInfoW(hmonitor, &mut monitor_info).as_bool() {
-                    let monitor = MonitorInfo {
-                        x: monitor_info.rcMonitor.left,
-                        y: monitor_info.rcMonitor.top,
-                        width: (monitor_info.rcMonitor.right - monitor_info.rcMonitor.left) as u32,
-                        height: (monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top) as u32,
-                        is_primary: (monitor_info.dwFlags & 1) == 1, // MONITORINFOF_PRIMARY
-                    };
-                    
-                    unsafe { (*monitors).push(monitor); }
+                MonitorInfo {
+                    x: position.x,
+                    y: position.y,
+                    width: size.width,
+                    height: size.height,
+                    is_primary,
                 }
-                
-                BOOL::from(true)
-            }
-            
-            unsafe {
-                let _ = EnumDisplayMonitors(
-                    HDC::default(), 
-                    None, 
-                    Some(enum_monitor_proc), 
-                    LPARAM(&mut monitors as *mut _ as isize)
-                );
-            }
-            
-            monitors
-        });
+            })
+            .collect();
         
-        Ok(monitors.clone())
+        Ok(result)
+    }
+    
+    pub fn get_virtual_screen_size_from_window(window: &WebviewWindow) -> Result<(i32, i32, i32, i32), String> {
+        let monitors = Self::get_all_monitors_from_window(window)?;
+        
+        if monitors.is_empty() {
+            return Err("没有找到显示器".to_string());
+        }
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+        
+        for monitor in &monitors {
+            min_x = min_x.min(monitor.x);
+            min_y = min_y.min(monitor.y);
+            max_x = max_x.max(monitor.x + monitor.width as i32);
+            max_y = max_y.max(monitor.y + monitor.height as i32);
+        }
+        
+        let width = max_x - min_x;
+        let height = max_y - min_y;
+        
+        Ok((min_x, min_y, width, height))
     }
 
-    #[cfg(not(windows))]
-    pub fn get_all_monitors() -> Result<Vec<MonitorInfo>, String> {
-        Ok(vec![MonitorInfo {
-            x: 0,
-            y: 0,
-            width: 1920,
-            height: 1080,
-            is_primary: true,
-        }])
-    }
-
-
-    // 兼容性函数：返回 (x, y, width, height) 格式
+    // 用于无窗口上下文的场景（edge_snap、window_drag）
     pub fn get_virtual_screen_size() -> Result<(i32, i32, i32, i32), String> {
         #[cfg(windows)]
         {
@@ -209,42 +178,15 @@ impl ScreenUtils {
         }
     }
 
-    // 兼容性函数：返回 (x, y, width, height) 格式
     pub fn get_monitor_bounds(window: &WebviewWindow) -> Result<(i32, i32, i32, i32), String> {
-        #[cfg(windows)]
-        {
-            let hwnd = HWND(
-                window
-                    .hwnd()
-                    .map_err(|e| format!("获取窗口句柄失败: {}", e))?
-                    .0 as isize,
-            );
-
-            unsafe {
-                let hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-                let mut monitor_info = MONITORINFO {
-                    cbSize: mem::size_of::<MONITORINFO>() as u32,
-                    rcMonitor: RECT::default(),
-                    rcWork: RECT::default(),
-                    dwFlags: 0,
-                };
-
-                if GetMonitorInfoW(hmonitor, &mut monitor_info).as_bool() {
-                    let monitor_rect = monitor_info.rcMonitor;
-                    Ok((
-                        monitor_rect.left,
-                        monitor_rect.top,
-                        monitor_rect.right - monitor_rect.left,
-                        monitor_rect.bottom - monitor_rect.top,
-                    ))
-                } else {
-                    Err("获取显示器信息失败".to_string())
-                }
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            Ok((0, 0, 1920, 1080))
-        }
+        let monitor = window
+            .current_monitor()
+            .map_err(|e| format!("获取当前显示器失败: {}", e))?
+            .ok_or_else(|| "当前显示器不存在".to_string())?;
+        
+        let position = monitor.position();
+        let size = monitor.size();
+        
+        Ok((position.x, position.y, size.width as i32, size.height as i32))
     }
 }
