@@ -179,7 +179,7 @@ export class ScreenshotController {
     /**
      * 处理选择开始
      */
-    handleSelectionStart(x, y, target) {
+    async handleSelectionStart(x, y, target) {
         // target 为 null 表示点击（确认自动选区）
         if (target === null && autoSelectionManager.isActive) {
             const bounds = autoSelectionManager.confirmSelection();
@@ -220,7 +220,7 @@ export class ScreenshotController {
         // target 不为 null 表示拖拽或点击操作节点
         // 如果自动选区激活，先停止它
         if (autoSelectionManager.isActive) {
-            autoSelectionManager.stop();
+            await autoSelectionManager.stop();
         }
         
         // 检测点击的控制点
@@ -524,12 +524,15 @@ export class ScreenshotController {
         try {
             // 重新加载设置
             await this.loadSettings();
+                        
+            // 立即启动自动选区（优先显示高亮）
+            await autoSelectionManager.start();
             
             // 应用设置到放大镜管理器
             if (this.magnifierManager) {
                 this.magnifierManager.setColorIncludeFormat(this.colorIncludeFormat);
             }
-            
+
             // 初始化背景
             if (!this.backgroundManager.canvas) {
                 this.backgroundManager.init();
@@ -555,9 +558,6 @@ export class ScreenshotController {
             if (this.hintsEnabled) {
                 this.helpPanelManager.show();
             }
-            
-            // 启动自动选区
-            await autoSelectionManager.start();
             
         } catch (error) {
             console.error('重新初始化失败:', error);
