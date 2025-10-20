@@ -11,6 +11,8 @@ export class MagnifierManager {
         this.isVisible = false;
         this.currentX = 0;
         this.currentY = 0;
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
         this.gridRows = 7;
         this.gridCols = 11;
         this.pixelSize = 12; // 每个像素格子的大小（减小以减少整体尺寸）
@@ -28,8 +30,21 @@ export class MagnifierManager {
         
         this.onColorCopiedCallback = null;
         
+        // 性能优化：使用 requestAnimationFrame 进行节流
+        this.updatePending = false;
+        this.rafId = null;
+        
+        // 全局鼠标位置监听器（仅用于跟踪位置）
+        this.mouseTracker = (e) => {
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+        };
+        
         this.initMagnifier();
         this.initKeyboardEvents();
+        
+        // 立即开始全局跟踪鼠标位置，这样 show() 时就能获取到当前位置
+        document.addEventListener('mousemove', this.mouseTracker);
     }
     
     /**
@@ -111,11 +126,21 @@ export class MagnifierManager {
     }
     
     /**
-     * 显示放大镜
+     * 显示放大镜（每次截屏时统一调用此方法初始化）
      */
     show() {
+        // 使用全局跟踪到的鼠标位置初始化
+        this.currentX = this.lastMouseX;
+        this.currentY = this.lastMouseY;
+        
+        // 立即显示
         this.isVisible = true;
         this.magnifierElement.style.display = 'block';
+        
+        // 强制立即渲染一次（不使用 RAF），确保放大镜立即出现在正确位置
+        this.updatePosition(this.currentX, this.currentY);
+        this.updateGrid();
+        this.updateInfo();
     }
     
     /**
@@ -124,10 +149,17 @@ export class MagnifierManager {
     hide() {
         this.isVisible = false;
         this.magnifierElement.style.display = 'none';
+        
+        // 取消待处理的动画帧
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        this.updatePending = false;
     }
     
     /**
-     * 更新放大镜位置和内容
+     * 更新放大镜位置和内容（使用 requestAnimationFrame 节流）
      */
     update(mouseX, mouseY) {
         this.currentX = mouseX;
@@ -136,14 +168,16 @@ export class MagnifierManager {
         // 只有在可见时才更新显示（性能优化）
         if (!this.isVisible) return;
         
-        // 更新位置（鼠标右下方）
-        this.updatePosition(mouseX, mouseY);
-        
-        // 更新网格
-        this.updateGrid();
-        
-        // 更新信息
-        this.updateInfo();
+        // 使用 requestAnimationFrame 进行节流，避免快速移动时卡顿
+        if (!this.updatePending) {
+            this.updatePending = true;
+            this.rafId = requestAnimationFrame(() => {
+                this.updatePosition(this.currentX, this.currentY);
+                this.updateGrid();
+                this.updateInfo();
+                this.updatePending = false;
+            });
+        }
     }
     
     /**
@@ -492,5 +526,7 @@ export class MagnifierManager {
     clear() {
         this.hide();
         this.backgroundCanvas = null;
+        this.currentX = 0;
+        this.currentY = 0;
     }
 }
