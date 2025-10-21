@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      FORCE_UPDATE: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,3 +49,28 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           updaterJsonKeepUniversal: true
+
+      - name: Add forceUpdate field to updater JSON
+        shell: pwsh
+        run: |
+          $forceUpdate = "${{ env.FORCE_UPDATE }}"
+          $jsonPath = "src-tauri/target/release/latest.json"
+          
+          if (Test-Path $jsonPath) {
+            Write-Host "找到 latest.json 文件，添加 forceUpdate 字段"
+            
+            # 读取 JSON 文件
+            $json = Get-Content $jsonPath -Raw | ConvertFrom-Json
+            
+            # 添加 forceUpdate 字段
+            $json | Add-Member -MemberType NoteProperty -Name "forceUpdate" -Value ($forceUpdate -eq "true") -Force
+            
+            # 写回文件
+            $json | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+            
+            Write-Host "已添加 forceUpdate = $forceUpdate"
+            Write-Host "更新后的 JSON 内容:"
+            Get-Content $jsonPath
+          } else {
+            Write-Host "警告: 未找到 latest.json 文件，路径: $jsonPath"
+          }
