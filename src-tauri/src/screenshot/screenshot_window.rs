@@ -73,6 +73,12 @@ impl ScreenshotWindowManager {
 
         SCREENSHOT_WINDOW_VISIBLE.store(false, Ordering::Relaxed);
 
+        // 清除自动选区缓存
+        super::auto_selection::AUTO_SELECTION_MANAGER.clear_cache();
+
+        // 重载
+        let _ = screenshot_window.eval("window.location.reload()");
+
         Ok(())
     }
 
