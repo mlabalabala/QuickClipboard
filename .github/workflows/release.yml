@@ -47,10 +47,9 @@ jobs:
           releaseBody: 'https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
-          includeUpdaterJson: true
-          updaterJsonKeepUniversal: true
+          includeUpdaterJson: false
 
-      - name: Add forceUpdate field to updater JSON
+      - name: Add forceUpdate field and upload updater JSON
         shell: pwsh
         run: |
           $forceUpdate = "${{ env.FORCE_UPDATE }}"
@@ -100,6 +99,47 @@ jobs:
             Write-Host "已添加 forceUpdate = $forceUpdate"
             Write-Host "更新后的 JSON 内容:"
             Get-Content $jsonPath
+            
+            # 手动上传 latest.json 到 GitHub Release
+            Write-Host "上传 latest.json 到 GitHub Release..."
+            
+            $releaseTag = "${{ github.ref_name }}"
+            $repoOwner = "${{ github.repository_owner }}"
+            $repoName = "${{ github.event.repository.name }}"
+            
+            # 获取 Release ID
+            $headers = @{
+              "Authorization" = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+              "Accept" = "application/vnd.github.v3+json"
+            }
+            
+            $releaseUrl = "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/$releaseTag"
+            $release = Invoke-RestMethod -Uri $releaseUrl -Headers $headers -Method Get
+            $releaseId = $release.id
+            
+            Write-Host "Release ID: $releaseId"
+            
+            # 检查是否已存在 latest.json 资产
+            $existingAsset = $release.assets | Where-Object { $_.name -eq "latest.json" }
+            if ($existingAsset) {
+              Write-Host "删除现有的 latest.json 资产..."
+              $deleteUrl = "https://api.github.com/repos/$repoOwner/$repoName/releases/assets/$($existingAsset.id)"
+              Invoke-RestMethod -Uri $deleteUrl -Headers $headers -Method Delete
+            }
+            
+            # 上传新的 latest.json
+            $uploadUrl = "https://uploads.github.com/repos/$repoOwner/$repoName/releases/$releaseId/assets?name=latest.json"
+            $jsonContent = Get-Content $jsonPath -Raw
+            $jsonBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonContent)
+            
+            $uploadHeaders = @{
+              "Authorization" = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+              "Content-Type" = "application/json"
+            }
+            
+            Invoke-RestMethod -Uri $uploadUrl -Headers $uploadHeaders -Method Post -Body $jsonBytes
+            Write-Host "latest.json 上传完成"
+            
           } else {
             Write-Host "错误: 未找到 latest.json 文件"
             Write-Host "当前工作目录内容:"
