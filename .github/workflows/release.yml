@@ -54,9 +54,38 @@ jobs:
         shell: pwsh
         run: |
           $forceUpdate = "${{ env.FORCE_UPDATE }}"
-          $jsonPath = "src-tauri/target/release/latest.json"
           
-          if (Test-Path $jsonPath) {
+          # 查找可能的 JSON 文件路径
+          $possiblePaths = @(
+            "src-tauri/target/release/bundle/latest.json",
+            "src-tauri/target/release/latest.json",
+            "latest.json",
+            "target/release/latest.json",
+            "src-tauri/latest.json"
+          )
+          
+          Write-Host "查找 latest.json 文件..."
+          $jsonPath = $null
+          foreach ($path in $possiblePaths) {
+            Write-Host "检查路径: $path"
+            if (Test-Path $path) {
+              $jsonPath = $path
+              Write-Host "找到文件: $path"
+              break
+            }
+          }
+          
+          # 还是找不到，搜索整个目录
+          if (-not $jsonPath) {
+            Write-Host "在常见路径中未找到，搜索整个工作目录..."
+            $foundFiles = Get-ChildItem -Path . -Name "latest.json" -Recurse -ErrorAction SilentlyContinue
+            if ($foundFiles) {
+              $jsonPath = $foundFiles[0]
+              Write-Host "搜索到文件: $jsonPath"
+            }
+          }
+          
+          if ($jsonPath -and (Test-Path $jsonPath)) {
             Write-Host "找到 latest.json 文件，添加 forceUpdate 字段"
             
             # 读取 JSON 文件
@@ -72,5 +101,7 @@ jobs:
             Write-Host "更新后的 JSON 内容:"
             Get-Content $jsonPath
           } else {
-            Write-Host "警告: 未找到 latest.json 文件，路径: $jsonPath"
+            Write-Host "错误: 未找到 latest.json 文件"
+            Write-Host "当前工作目录内容:"
+            Get-ChildItem -Recurse -Name "*.json" | Where-Object { $_ -like "*latest*" -or $_ -like "*update*" } | ForEach-Object { Write-Host "  $_" }
           }
