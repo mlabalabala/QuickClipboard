@@ -85,8 +85,9 @@ pub fn update_quick_text(
 pub fn delete_quick_text(id: &str) -> Result<(), String> {
     database::delete_favorite_item(id)?;
     
-    // 清理未使用的图片
-    cleanup_orphaned_images();
+    std::thread::spawn(|| {
+        cleanup_orphaned_images();
+    });
     
     Ok(())
 }

@@ -447,7 +447,13 @@ export async function deleteQuickText(id) {
   showConfirmModal('确认删除', '确定要删除这个常用文本吗？', async () => {
     try {
       await invoke('delete_quick_text', { id });
-      await refreshQuickTexts();
+      
+      const newTexts = quickTexts.filter(item => item.id !== id);
+      setQuickTexts(newTexts);
+      window.quickTexts = newTexts;
+      
+      renderQuickTexts();
+      
       showNotification('已删除常用文本', 'success');
     } catch (error) {
       console.error('删除常用文本失败:', error);
@@ -550,7 +556,27 @@ export async function updateQuickTextsOrder(oldIndex, newIndex) {
       toIndex: targetIndexInGroup
     });
 
-    await refreshQuickTexts();
+
+    const originalOldIndex = quickTexts.findIndex(item => item.id === movedItem.id);
+    if (originalOldIndex !== -1) {
+      const newTexts = [...quickTexts];
+      const [removed] = newTexts.splice(originalOldIndex, 1);
+      
+      const targetOriginalIndex = targetItem ? 
+        quickTexts.findIndex(item => item.id === targetItem.id) : 
+        quickTexts.length;
+      
+      if (targetOriginalIndex !== -1) {
+        newTexts.splice(targetOriginalIndex, 0, removed);
+        setQuickTexts(newTexts);
+        window.quickTexts = newTexts;
+        renderQuickTexts();
+      } else {
+        await refreshQuickTexts();
+      }
+    } else {
+      await refreshQuickTexts();
+    }
 
   } catch (error) {
     console.error('更新常用文本顺序失败:', error);
@@ -780,7 +806,12 @@ async function handleQuickTextItemPaste(text, element = null) {
     if (isOneTimePaste) {
       setTimeout(async () => {
         await invoke('delete_quick_text', { id: text.id });
-        await refreshQuickTexts();
+        
+        const newTexts = quickTexts.filter(item => item.id !== text.id);
+        setQuickTexts(newTexts);
+        window.quickTexts = newTexts;
+        
+        renderQuickTexts();
       }, 100);
     }
 

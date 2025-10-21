@@ -370,7 +370,13 @@ export async function updateClipboardOrder(oldIndex, newIndex) {
       toIndex: originalNewIndex
     });
 
-    await refreshClipboardHistory();
+    const newHistory = [...clipboardHistory];
+    const [removed] = newHistory.splice(originalOldIndex, 1);
+    newHistory.splice(originalNewIndex, 0, removed);
+    setClipboardHistory(newHistory);
+    window.clipboardHistory = newHistory;
+    
+    renderClipboardItems();
 
   } catch (error) {
     console.error('更新剪贴板顺序失败:', error);
@@ -543,7 +549,13 @@ async function handleClipboardItemPaste(item, index, element = null) {
 async function deleteClipboardItem(id) {
   try {
     await invoke('delete_clipboard_item', { id });
-    await refreshClipboardHistory();
+    
+    const newHistory = clipboardHistory.filter(item => item.id !== id);
+    setClipboardHistory(newHistory);
+    window.clipboardHistory = newHistory;
+    
+    renderClipboardItems();
+    
     showNotification('项目已删除', 'success');
   } catch (error) {
     console.error('删除剪贴板项目失败:', error);

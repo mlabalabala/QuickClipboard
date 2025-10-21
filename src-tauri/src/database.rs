@@ -793,8 +793,9 @@ pub fn delete_clipboard_item(id: i64) -> Result<(), String> {
         conn.execute("DELETE FROM clipboard WHERE id = ?1", params![id])?;
         Ok(())
     })?;
-    
-    crate::clipboard_history::cleanup_orphaned_images();
+    std::thread::spawn(|| {
+        crate::clipboard_history::cleanup_orphaned_images();
+    });
     
     Ok(())
 }
