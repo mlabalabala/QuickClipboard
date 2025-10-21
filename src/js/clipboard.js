@@ -26,6 +26,9 @@ import { VirtualList } from './virtualList.js';
 // 虚拟列表实例
 let clipboardVirtualList = null;
 
+// 图片文件扩展名常量
+const IMAGE_FILE_EXTENSIONS = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'];
+
 
 // 生成剪贴板项目HTML字符串
 function generateClipboardItemHTML(item, index) {
@@ -158,7 +161,7 @@ function generateFileIconHTML(file, size = 'medium') {
 
   // 检查是否是图片文件且启用了预览
   const settings = getCurrentSettings();
-  const isImageFile = ['PNG', 'JPG', 'JPEG', 'GIF', 'BMP', 'WEBP', 'ICO'].includes(file.file_type?.toUpperCase());
+  const isImageFile = IMAGE_FILE_EXTENSIONS.includes(file.file_type?.toUpperCase());
   
   if (isImageFile && settings.showImagePreview && file.path) {
     // 使用文件路径，启用懒加载
@@ -612,6 +615,18 @@ function showClipboardContextMenu(event, item, index) {
     );
   } else if (contentType === 'file') {
     // 文件类型菜单
+    const hasImageFile = checkIfHasImageFile(item);
+
+    if (hasImageFile) {
+      menuItems.push({
+        icon: 'ti-pin',
+        text: '钉到屏幕',
+        onClick: async () => {
+          await pinImageFileToScreen(item);
+        }
+      });
+    }
+    
     menuItems.push(
       {
         icon: 'ti-external-link',
@@ -856,6 +871,49 @@ async function copyFilePathsFromClipboard(item) {
   } catch (error) {
     console.error('复制文件路径失败:', error);
     showNotification('复制文件路径失败', 'error');
+  }
+}
+
+// 检查文件列表中是否包含图片文件
+function checkIfHasImageFile(item) {
+  try {
+    const filesJson = item.content.substring(6); 
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      return filesData.files.some(file => 
+        IMAGE_FILE_EXTENSIONS.includes(file.file_type?.toUpperCase())
+      );
+    }
+  } catch (error) {
+    console.error('检查图片文件失败:', error);
+  }
+  return false;
+}
+
+// 钉图片文件到屏幕
+async function pinImageFileToScreen(item) {
+  try {
+    const filesJson = item.content.substring(6);
+    const filesData = JSON.parse(filesJson);
+
+    if (filesData.files && filesData.files.length > 0) {
+      const imageFile = filesData.files.find(file => 
+        IMAGE_FILE_EXTENSIONS.includes(file.file_type?.toUpperCase())
+      );
+
+      if (imageFile) {
+        await invoke('pin_image_from_file', { 
+          filePath: imageFile.path 
+        });
+        showNotification('已钉到屏幕', 'success', 2000);
+      } else {
+        showNotification('未找到图片文件', 'error');
+      }
+    }
+  } catch (error) {
+    console.error('钉图到屏幕失败:', error);
+    showNotification('钉图失败: ' + error, 'error');
   }
 }
 
