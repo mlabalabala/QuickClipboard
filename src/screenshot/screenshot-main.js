@@ -38,6 +38,16 @@ export class ScreenshotController {
         
         // 待加载的截屏数据
         this.pendingScreenshotData = null;
+        
+        // 方向键加速状态
+        this.arrowKeyState = {
+            pressing: false,           // 是否正在按键
+            direction: null,           // 当前方向
+            startTime: 0,              // 开始按键时间
+            intervalId: null,          // 定时器ID
+            currentStep: 1,            // 当前步进（像素）
+            interval: 50               // 固定间隔(ms)
+        };
 
         if (typeof fabric === 'undefined') {
             setTimeout(() => this.initializeManagers(), 100);
@@ -50,6 +60,9 @@ export class ScreenshotController {
     
     async initializeController() {
         await this.loadSettings();
+
+        this.setBodySize();
+        window.addEventListener('resize', () => this.setBodySize());
         
         // 初始化各个管理器
         this.selectionManager = new CanvasSelectionManager();
@@ -119,6 +132,7 @@ export class ScreenshotController {
         this.eventManager.setOnSelectionEnd(() => this.handleSelectionEnd());
         this.eventManager.setOnRightClick((x, y) => this.handleRightClick(x, y));
         this.eventManager.setOnKeyDown((key) => this.handleKeyDown(key));
+        this.eventManager.setOnKeyUp((key) => this.handleKeyUp(key));
         this.eventManager.setOnWindowFocus(() => this.handleWindowFocus());
         this.eventManager.setOnWindowBlur(() => this.handleWindowBlur());
         this.eventManager.setOnCursorUpdate((x, y) => this.handleCursorUpdate(x, y));
@@ -445,6 +459,10 @@ export class ScreenshotController {
             if (selection) {
                 this.confirmScreenshot();
             }
+        } else if (key.startsWith('arrow:')) {
+            const parts = key.split(':');
+            const direction = parts[1];
+            this.handleArrowKeyDown(direction);
         } else if (key === 'ctrl+z') {
             // Ctrl+Z 撤销 - 但要检查是否正在编辑文本
             if (this.canUseKeyboardShortcuts()) {
@@ -455,6 +473,114 @@ export class ScreenshotController {
             if (this.canUseKeyboardShortcuts()) {
                 this.handleRedo();
             }
+        }
+    }
+    
+    /**
+     * 处理按键松开
+     */
+    handleKeyUp(key) {
+        if (key.startsWith('arrow:')) {
+            this.handleArrowKeyUp();
+        }
+    }
+    
+    /**
+     * 处理方向键按下 - 延迟启动连续移动
+     */
+    handleArrowKeyDown(direction) {
+        const state = this.arrowKeyState;
+
+        if (state.pressing && state.direction !== direction) {
+            this.stopArrowKeyMovement();
+        }
+
+        if (state.pressing && state.direction === direction) {
+            return;
+        }
+        
+        // 记录状态
+        state.pressing = true;
+        state.direction = direction;
+        state.startTime = Date.now();
+        state.currentStep = 1;
+
+        this.moveByArrowKey(direction, 1);
+
+        state.intervalId = setTimeout(() => {
+            if (!state.pressing) return;
+
+            state.intervalId = setInterval(() => {
+                const elapsed = Date.now() - state.startTime;
+                
+                // 根据按住时间动态调整步进
+                if (elapsed < 1000) {
+                    state.currentStep = 1;
+                } else if (elapsed < 2000) {
+                    state.currentStep = 5;
+                } else if (elapsed < 3000) {
+                    state.currentStep = 10;
+                } else {
+                    state.currentStep = 20;
+                }
+                
+                this.moveByArrowKey(state.direction, state.currentStep);
+            }, state.interval);
+        }, 150);
+    }
+    
+    /**
+     * 处理方向键松开 - 停止移动
+     */
+    handleArrowKeyUp() {
+        this.stopArrowKeyMovement();
+    }
+    
+    /**
+     * 停止方向键移动
+     */
+    stopArrowKeyMovement() {
+        const state = this.arrowKeyState;
+        
+        if (state.intervalId) {
+            clearTimeout(state.intervalId);
+            clearInterval(state.intervalId);
+            state.intervalId = null;
+        }
+        
+        state.pressing = false;
+        state.direction = null;
+        state.startTime = 0;
+    }
+    
+    /**
+     * 执行单次方向键移动
+     */
+    async moveByArrowKey(direction, step = 1) {
+        try {
+            let cssX = this.magnifierManager?.currentX ?? this.eventManager?.lastMouseX ?? 0;
+            let cssY = this.magnifierManager?.currentY ?? this.eventManager?.lastMouseY ?? 0;
+            
+            // CSS层面移动指定步进
+            switch (direction) {
+                case 'up': cssY -= step; break;
+                case 'down': cssY += step; break;
+                case 'left': cssX -= step; break;
+                case 'right': cssX += step; break;
+            }
+            
+            // 边界检查
+            cssX = Math.max(0, Math.min(cssX, window.innerWidth - 1));
+            cssY = Math.max(0, Math.min(cssY, window.innerHeight - 1));
+            
+            // 转换为物理像素并移动
+            const dpr = window.devicePixelRatio || 1;
+            await invoke('set_cursor_position_physical', {
+                x: Math.round(cssX * dpr),
+                y: Math.round(cssY * dpr)
+            });
+        } catch (error) {
+            console.error('移动鼠标失败:', error);
         }
     }
 
@@ -478,6 +604,11 @@ export class ScreenshotController {
             return;
         }
         this.reset();
+    }
+    
+    setBodySize() {
+        document.body.style.width = `${window.innerWidth}px`;
+        document.body.style.height = `${window.innerHeight}px`;
     }
     
     /**

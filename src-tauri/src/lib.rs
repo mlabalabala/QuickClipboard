@@ -555,6 +555,7 @@ pub fn run() {
             crate::screenshot::get_all_monitors,
             crate::screenshot::get_css_monitors,
             crate::screenshot::constrain_selection_bounds,
+            crate::screenshot::set_cursor_position_physical,
             commands::start_builtin_screenshot,
             
             crate::screenshot::init_scrolling_screenshot,

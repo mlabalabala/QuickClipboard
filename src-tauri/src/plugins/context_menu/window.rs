@@ -122,10 +122,10 @@ pub async fn show_menu(
     
     // 约束菜单位置到屏幕边界内
     let scale_factor = window.scale_factor().unwrap_or(1.0);
-    let physical_x = (options.x as f64 * scale_factor) as i32;
-    let physical_y = (options.y as f64 * scale_factor) as i32;
-    let physical_width = (width as f64 * scale_factor) as i32;
-    let physical_height = (height as f64 * scale_factor) as i32;
+    let physical_x = (options.x as f64 * scale_factor).round() as i32;
+    let physical_y = (options.y as f64 * scale_factor).round() as i32;
+    let physical_width = (width as f64 * scale_factor).round() as i32;
+    let physical_height = (height as f64 * scale_factor).round() as i32;
     
     let (constrained_x, constrained_y) = crate::screenshot::screen_utils::ScreenUtils::constrain_to_physical_bounds(
         physical_x,

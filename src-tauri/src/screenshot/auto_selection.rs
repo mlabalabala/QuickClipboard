@@ -120,10 +120,10 @@ impl AutoSelectionManager {
     #[inline]
     fn to_css_bounds(bounds: &ElementBounds, scale_factor: f64) -> ElementBounds {
         ElementBounds {
-            x: (bounds.x as f64 / scale_factor) as i32,
-            y: (bounds.y as f64 / scale_factor) as i32,
-            width: (bounds.width as f64 / scale_factor) as i32,
-            height: (bounds.height as f64 / scale_factor) as i32,
+            x: (bounds.x as f64 / scale_factor).round() as i32,
+            y: (bounds.y as f64 / scale_factor).round() as i32,
+            width: (bounds.width as f64 / scale_factor).round() as i32,
+            height: (bounds.height as f64 / scale_factor).round() as i32,
         }
     }
 

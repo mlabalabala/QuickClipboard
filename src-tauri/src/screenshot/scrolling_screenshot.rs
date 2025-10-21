@@ -80,10 +80,10 @@ impl ScrollingScreenshotManager {
             .unwrap_or(1.0);
 
         let physical_selection = SelectionRect {
-            left: (selection.left as f64 * scale_factor) as i32,
-            top: (selection.top as f64 * scale_factor) as i32,
-            width: (selection.width as f64 * scale_factor) as i32,
-            height: (selection.height as f64 * scale_factor) as i32,
+            left: (selection.left as f64 * scale_factor).round() as i32,
+            top: (selection.top as f64 * scale_factor).round() as i32,
+            width: (selection.width as f64 * scale_factor).round() as i32,
+            height: (selection.height as f64 * scale_factor).round() as i32,
         };
 
         *self.app_handle.lock().unwrap() = Some(app.clone());
@@ -288,7 +288,7 @@ impl ScrollingScreenshotManager {
                         .and_then(|w| w.scale_factor().ok())
                         .unwrap_or(1.0);
                     
-                    let border_offset = (3.0 * scale_factor) as i32;
+                    let border_offset = (3.0 * scale_factor).round() as i32;
                     let content_left = sel.left + border_offset;
                     let content_top = sel.top + border_offset;
                     let content_width = sel.width - (border_offset * 2);
@@ -606,10 +606,10 @@ impl ScrollingScreenshotManager {
         };
 
         let physical_panel = PanelRect {
-            left: (panel.left as f64 * scale_factor) as i32,
-            top: (panel.top as f64 * scale_factor) as i32,
-            width: (panel.width as f64 * scale_factor) as i32,
-            height: (panel.height as f64 * scale_factor) as i32,
+            left: (panel.left as f64 * scale_factor).round() as i32,
+            top: (panel.top as f64 * scale_factor).round() as i32,
+            width: (panel.width as f64 * scale_factor).round() as i32,
+            height: (panel.height as f64 * scale_factor).round() as i32,
         };
         
         if let Ok(mut panel_lock) = self.panel_rect.try_lock() {

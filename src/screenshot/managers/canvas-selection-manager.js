@@ -133,7 +133,7 @@ export class CanvasSelectionManager {
                 this.autoSelectionBounds.y,
                 this.autoSelectionBounds.width,
                 this.autoSelectionBounds.height,
-                4
+                0
             );
             ctx.stroke();
         } else if (this.selectionRect) {

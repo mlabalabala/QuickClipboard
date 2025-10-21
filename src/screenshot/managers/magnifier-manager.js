@@ -30,7 +30,6 @@ export class MagnifierManager {
         
         this.onColorCopiedCallback = null;
         
-        // 性能优化：使用 requestAnimationFrame 进行节流
         this.updatePending = false;
         this.rafId = null;
         
@@ -159,16 +158,14 @@ export class MagnifierManager {
     }
     
     /**
-     * 更新放大镜位置和内容（使用 requestAnimationFrame 节流）
+     * 更新放大镜位置和内容
      */
     update(mouseX, mouseY) {
         this.currentX = mouseX;
         this.currentY = mouseY;
         
-        // 只有在可见时才更新显示（性能优化）
         if (!this.isVisible) return;
         
-        // 使用 requestAnimationFrame 进行节流，避免快速移动时卡顿
         if (!this.updatePending) {
             this.updatePending = true;
             this.rafId = requestAnimationFrame(() => {
@@ -184,7 +181,7 @@ export class MagnifierManager {
      * 更新放大镜位置（显示在鼠标右下方）
      */
     updatePosition(mouseX, mouseY) {
-        const offset = 20; // 距离鼠标的偏移量
+        const offset = 15; // 距离鼠标的偏移量
         let left = mouseX + offset;
         let top = mouseY + offset;
         
@@ -216,23 +213,21 @@ export class MagnifierManager {
         
         const ctx = this.gridCanvas.getContext('2d');
         const bgCtx = this.backgroundCanvas.getContext('2d', { willReadFrequently: true });
+        const dpr = window.devicePixelRatio || 1;
         
-        // 清空画布
         ctx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
         
-        // 转换屏幕坐标到画布坐标
-        const canvasX = this.screenToCanvasX(this.currentX);
-        const canvasY = this.screenToCanvasY(this.currentY);
-        
-        // 计算起始位置（以鼠标位置为中心）
-        const startX = Math.floor(canvasX - this.centerCol);
-        const startY = Math.floor(canvasY - this.centerRow);
+        const cssStartX = Math.floor(this.currentX - this.centerCol);
+        const cssStartY = Math.floor(this.currentY - this.centerRow);
         
         // 绘制每个像素格子
         for (let row = 0; row < this.gridRows; row++) {
             for (let col = 0; col < this.gridCols; col++) {
-                const pixelX = startX + col;
-                const pixelY = startY + row;
+                const cssPosX = cssStartX + col;
+                const cssPosY = cssStartY + row;
+                
+                const pixelX = Math.round(cssPosX * dpr);
+                const pixelY = Math.round(cssPosY * dpr);
                 
                 // 获取像素颜色
                 let color = 'rgba(0, 0, 0, 0)';
@@ -285,13 +280,10 @@ export class MagnifierManager {
      * 更新信息显示
      */
     updateInfo() {
-        // 更新坐标 - 显示物理像素坐标
+        // 更新坐标 - 显示CSS像素坐标
         const coordElement = document.getElementById('magnifierCoord');
         if (coordElement) {
-            // 转换为物理像素坐标显示
-            const physicalX = this.screenToCanvasX(this.currentX);
-            const physicalY = this.screenToCanvasY(this.currentY);
-            coordElement.textContent = `${physicalX}, ${physicalY}`;
+            coordElement.textContent = `${Math.round(this.currentX)}, ${Math.round(this.currentY)}`;
         }
         
         // 更新颜色
@@ -315,32 +307,15 @@ export class MagnifierManager {
     }
     
     /**
-     * 屏幕坐标转画布坐标 X
-     */
-    screenToCanvasX(screenX) {
-        if (!this.backgroundCanvas) return screenX;
-        const rect = this.backgroundCanvas.getBoundingClientRect();
-        return Math.floor((screenX / rect.width) * this.backgroundCanvas.width);
-    }
-    
-    /**
-     * 屏幕坐标转画布坐标 Y
-     */
-    screenToCanvasY(screenY) {
-        if (!this.backgroundCanvas) return screenY;
-        const rect = this.backgroundCanvas.getBoundingClientRect();
-        return Math.floor((screenY / rect.height) * this.backgroundCanvas.height);
-    }
-    
-    /**
      * 获取当前像素的RGB值（用于计算亮度）
      */
     getCurrentPixelRGB(x, y) {
         if (!this.backgroundCanvas) return null;
         
-        // 转换屏幕坐标到画布坐标
-        const canvasX = this.screenToCanvasX(x);
-        const canvasY = this.screenToCanvasY(y);
+        // CSS坐标转物理像素坐标
+        const dpr = window.devicePixelRatio || 1;
+        const canvasX = Math.round(x * dpr);
+        const canvasY = Math.round(y * dpr);
         
         if (canvasX < 0 || canvasX >= this.backgroundCanvas.width ||
             canvasY < 0 || canvasY >= this.backgroundCanvas.height) {
@@ -371,13 +346,9 @@ export class MagnifierManager {
     
     /**
      * 根据背景颜色亮度计算对比文字颜色
-     * 使用相对亮度公式 (Relative Luminance)
      */
     getContrastTextColor(r, g, b) {
-        // 计算相对亮度 (使用 WCAG 标准)
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        
-        // 如果亮度大于 0.5，使用黑色文字；否则使用白色文字
         return luminance > 0.5 ? '#000000' : '#ffffff';
     }
     

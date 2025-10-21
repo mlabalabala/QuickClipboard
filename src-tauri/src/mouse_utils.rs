@@ -1,7 +1,7 @@
 //鼠标位置工具模块
 
 use windows::Win32::Foundation::POINT;
-use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, SetCursorPos};
 
 #[inline]
 pub fn get_cursor_position() -> Result<(i32, i32), String> {
@@ -20,6 +20,16 @@ pub fn get_cursor_point() -> Result<POINT, String> {
         GetCursorPos(&mut cursor_pos)
             .map_err(|e| format!("获取鼠标位置失败: {}", e))?;
         Ok(cursor_pos)
+    }
+}
+
+/// 设置鼠标位置（物理像素坐标）
+#[inline]
+pub fn set_cursor_position(x: i32, y: i32) -> Result<(), String> {
+    unsafe {
+        SetCursorPos(x, y)
+            .map_err(|e| format!("设置鼠标位置失败: {}", e))?;
+        Ok(())
     }
 }
 

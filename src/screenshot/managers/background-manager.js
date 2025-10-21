@@ -26,8 +26,6 @@ export class BackgroundManager {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
             z-index: -1;
             pointer-events: none;
         `;
@@ -38,12 +36,12 @@ export class BackgroundManager {
     }
 
     /**
-     * 更新Canvas尺寸（考虑DPI）
+     * 更新Canvas尺寸
      */
     updateCanvasSize() {
         if (!this.canvas) return;
-        this.canvas.style.width = '100vw';
-        this.canvas.style.height = '100vh';
+        this.canvas.style.width = `${window.innerWidth}px`;
+        this.canvas.style.height = `${window.innerHeight}px`;
     }
 
     /**
@@ -53,9 +51,28 @@ export class BackgroundManager {
         try {
             const { width, height, image_url } = payload;
 
+            // 设置Canvas的物理分辨率
             this.canvas.width = width;
             this.canvas.height = height;
-            this.updateCanvasSize();
+            const dpr = window.devicePixelRatio || 1;
+            const cssWidth = width / dpr;
+            const cssHeight = height / dpr;
+
+            this.canvas.style.width = `${cssWidth}px`;
+            this.canvas.style.height = `${cssHeight}px`;
+
+            const actualCssWidth = window.innerWidth;
+            const actualCssHeight = window.innerHeight;
+            const widthDiff = Math.abs(cssWidth - actualCssWidth);
+            const heightDiff = Math.abs(cssHeight - actualCssHeight);
+            
+            if (widthDiff > 1 || heightDiff > 1) {
+                console.warn(`Canvas尺寸与窗口尺寸不匹配:`,
+                    `Canvas CSS: ${cssWidth}×${cssHeight}`,
+                    `Window: ${actualCssWidth}×${actualCssHeight}`,
+                    `Diff: ${widthDiff}×${heightDiff}`
+                );
+            }
 
             await this.loadImageFromUrl(image_url);
             this.isLoaded = true;

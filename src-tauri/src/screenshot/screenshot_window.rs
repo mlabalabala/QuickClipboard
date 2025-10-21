@@ -92,25 +92,17 @@ impl ScreenshotWindowManager {
         _app: &tauri::AppHandle,
         window: &tauri::WebviewWindow,
     ) -> Result<(), String> {
-        use tauri::LogicalPosition;
-        use tauri::LogicalSize;
+        use tauri::PhysicalPosition;
+        use tauri::PhysicalSize;
 
         let (x, y, width, height) = super::screen_utils::ScreenUtils::get_virtual_screen_size_from_window(window)?;
-        let scale_factor = window.scale_factor().unwrap_or(1.0);
         
-        let logical_x = x as f64 / scale_factor;
-        let logical_y = y as f64 / scale_factor;
-        let logical_width = width as f64 / scale_factor;
-        let logical_height = height as f64 / scale_factor;
-
-        let size = LogicalSize::new(logical_width, logical_height);
         window
-            .set_size(size)
+            .set_size(PhysicalSize::new(width as u32, height as u32))
             .map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
 
-        let position = LogicalPosition::new(logical_x, logical_y);
         window
-            .set_position(position)
+            .set_position(PhysicalPosition::new(x, y))
             .map_err(|e| format!("设置窗口位置失败: {}", e))?;
 
         Ok(())
@@ -158,10 +150,10 @@ pub fn constrain_selection_bounds(
 ) -> Result<(f64, f64), String> {
     let scale_factor = window.scale_factor().unwrap_or(1.0);
 
-    let physical_x = (x * scale_factor) as i32;
-    let physical_y = (y * scale_factor) as i32;
-    let physical_width = (width * scale_factor) as i32;
-    let physical_height = (height * scale_factor) as i32;
+    let physical_x = (x * scale_factor).round() as i32;
+    let physical_y = (y * scale_factor).round() as i32;
+    let physical_width = (width * scale_factor).round() as i32;
+    let physical_height = (height * scale_factor).round() as i32;
 
     let (constrained_physical_x, constrained_physical_y) =
         super::screen_utils::ScreenUtils::constrain_to_physical_bounds(
@@ -204,6 +196,12 @@ pub fn is_screenshot_window_visible() -> bool {
 #[tauri::command]
 pub fn get_all_monitors(window: tauri::WebviewWindow) -> Result<Vec<super::screen_utils::MonitorInfo>, String> {
     ScreenshotWindowManager::get_all_monitors(&window)
+}
+
+/// 设置鼠标到指定的物理像素位置（用于方向键精确移动）
+#[tauri::command]
+pub fn set_cursor_position_physical(x: i32, y: i32) -> Result<(), String> {
+    crate::mouse_utils::set_cursor_position(x, y)
 }
 
 pub struct ScreenshotCapture {

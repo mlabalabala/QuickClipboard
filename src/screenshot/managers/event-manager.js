@@ -12,6 +12,7 @@ export class EventManager {
         this.onSelectionEnd = null;
         this.onRightClick = null;
         this.onKeyDown = null;
+        this.onKeyUp = null;
         this.onWindowFocus = null;
         this.onWindowBlur = null;
         this.onCursorUpdate = null;
@@ -24,6 +25,10 @@ export class EventManager {
         // 选区操作状态
         this.isSelectionOperation = false;
         
+        // 最后的鼠标位置
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+        
         this.initEvents();
     }
 
@@ -35,6 +40,7 @@ export class EventManager {
         
         // 键盘事件
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        document.addEventListener('keyup', (e) => this.handleKeyUp(e));
         
         // 右键事件
         document.addEventListener('contextmenu', (e) => this.handleRightClick(e));
@@ -61,6 +67,10 @@ export class EventManager {
     handleMouseMove(e) {
         const mouseX = e.clientX;
         const mouseY = e.clientY;
+        
+        // 记录最后的鼠标位置
+        this.lastMouseX = mouseX;
+        this.lastMouseY = mouseY;
         
         // 如果正在进行选区操作（移动/调整），始终更新
         if (this.isSelectionOperation) {
@@ -117,6 +127,10 @@ export class EventManager {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             this.onKeyDown?.('enter');
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const direction = e.key.replace('Arrow', '').toLowerCase();
+            this.onKeyDown?.(`arrow:${direction}`);
         } else if (e.ctrlKey || e.metaKey) {
             // 处理Ctrl/Cmd组合键
             if (e.key.toLowerCase() === 'z') {
@@ -130,6 +144,14 @@ export class EventManager {
                 e.preventDefault();
                 this.onKeyDown?.('ctrl+y'); // 重做
             }
+        }
+    }
+
+    handleKeyUp(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const direction = e.key.replace('Arrow', '').toLowerCase();
+            this.onKeyUp?.(`arrow:${direction}`);
         }
     }
 
@@ -171,10 +193,17 @@ export class EventManager {
     }
 
     /**
-     * 设置键盘回调
+     * 设置键盘按下回调
      */
     setOnKeyDown(callback) {
         this.onKeyDown = callback;
+    }
+
+    /**
+     * 设置键盘松开回调
+     */
+    setOnKeyUp(callback) {
+        this.onKeyUp = callback;
     }
 
     /**

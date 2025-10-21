@@ -675,7 +675,7 @@ fn truncate_string_for_display(s: String, max_len: usize) -> String {
         "...".to_string()
     };
     
-    println!("截断内容：原长度 {} 字节 -> 截断后长度 {} 字节", original_len, truncated.len());
+    // println!("截断内容：原长度 {} 字节 -> 截断后长度 {} 字节", original_len, truncated.len());
     truncated
 }
 

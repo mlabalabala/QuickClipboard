@@ -11,8 +11,10 @@ body {
     /* 自定义十字光标：带黑白描边，在任何背景下都清晰可见 */
     cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21"><line x1="10.5" y1="0" x2="10.5" y2="21" stroke="white" stroke-width="3"/><line x1="0" y1="10.5" x2="21" y2="10.5" stroke="white" stroke-width="3"/><line x1="10.5" y1="0" x2="10.5" y2="21" stroke="black" stroke-width="1"/><line x1="0" y1="10.5" x2="21" y2="10.5" stroke="black" stroke-width="1"/></svg>') 10 10, crosshair;
     overflow: hidden;
-    width: 100vw;
-    height: 100vh;
+    /* 移除 100vw/vh，改用精确的像素值（由JS动态设置） */
+    position: fixed;
+    top: 0;
+    left: 0;
     /* border: 10px solid red; */
 }
 
@@ -966,8 +968,8 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
@@ -1012,8 +1014,8 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     z-index: 10001;
     pointer-events: none;
 }

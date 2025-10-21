@@ -28,8 +28,8 @@ pub fn start_custom_drag(window: WebviewWindow, mouse_screen_x: i32, mouse_scree
     let scale_factor = window.scale_factor().map_err(|e| format!("获取缩放因子失败: {}", e))?;
     
     // 将前端逻辑坐标转换为物理坐标
-    let mouse_physical_x = (mouse_screen_x as f64 * scale_factor) as i32;
-    let mouse_physical_y = (mouse_screen_y as f64 * scale_factor) as i32;
+    let mouse_physical_x = (mouse_screen_x as f64 * scale_factor).round() as i32;
+    let mouse_physical_y = (mouse_screen_y as f64 * scale_factor).round() as i32;
     
     // 计算鼠标相对窗口的偏移（物理像素）
     let mouse_offset_x = mouse_physical_x - physical_position.x;
