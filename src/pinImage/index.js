@@ -25,6 +25,23 @@ import {
     const sizeIndicator = document.getElementById('sizeIndicator');
     const currentWindow = getCurrentWindow();
     
+    async function updateBodySize() {
+        try {
+            const windowSize = await currentWindow.innerSize();
+            const { width, height } = windowSize.toLogical(await currentWindow.scaleFactor());
+            document.body.style.width = `${width}px`;
+            document.body.style.height = `${height}px`;
+        } catch (error) {
+            console.warn('获取窗口尺寸失败，使用默认尺寸:', error);
+            document.body.style.width = `${window.innerWidth}px`;
+            document.body.style.height = `${window.innerHeight}px`;
+        }
+    }
+    
+    await updateBodySize();
+    
+    window.addEventListener('resize', updateBodySize);
+    
     // 加载保存的设置
     const savedSettings = loadSettings();
     

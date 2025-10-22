@@ -93,7 +93,7 @@ export class BackgroundManager {
             img.crossOrigin = 'anonymous';
             
             img.onload = () => {
-                this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.drawImage(img, 0, 0);
                 resolve();
             };
             
