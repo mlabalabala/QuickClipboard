@@ -41,6 +41,7 @@ export default defineConfig({
         pinImage: resolve(__dirname, 'src/pinImage/pinImage.html'),
         contextMenu: resolve(__dirname, 'src/plugins/context_menu/contextMenu.html'),
         inputDialog: resolve(__dirname, 'src/plugins/input_dialog/inputDialog.html'),
+        updater: resolve(__dirname, 'src/updater/updater.html'),
       },
       output: {
         // 手动分割代码块，减小单个文件大小
