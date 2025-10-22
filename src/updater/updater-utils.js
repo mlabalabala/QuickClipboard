@@ -5,28 +5,51 @@
 import snarkdown from 'snarkdown';
 
 /**
- * 比较版本号
+ * 比较版本号（支持 SemVer 预发布版本）
  */
 export function compareVersions(v1, v2) {
-  const normalize = (v) => {
-    if (!v) return [];
-    return String(v).trim().replace(/^v/i, '').split('.').map(n => {
-      const cleanNum = n.replace(/[^0-9]/g, '');
-      const num = parseInt(cleanNum, 10);
+  if (!v1 || !v2) return 0;
+  
+  const parseVersion = (version) => {
+    const cleanVersion = String(version).trim().replace(/^v/i, '');
+    const [mainVersion, prerelease] = cleanVersion.split('-');
+    
+    const mainParts = mainVersion.split('.').map(n => {
+      const num = parseInt(n, 10);
       return Number.isNaN(num) ? 0 : num;
     });
+    
+    return {
+      main: mainParts,
+      prerelease: prerelease || null
+    };
   };
 
-  const p1 = normalize(v1);
-  const p2 = normalize(v2);
-  const len = Math.max(p1.length, p2.length);
-
-  for (let i = 0; i < len; i++) {
-    const a = p1[i] ?? 0;
-    const b = p2[i] ?? 0;
+  const parsed1 = parseVersion(v1);
+  const parsed2 = parseVersion(v2);
+  
+  // 比较主版本号
+  const maxLength = Math.max(parsed1.main.length, parsed2.main.length);
+  for (let i = 0; i < maxLength; i++) {
+    const a = parsed1.main[i] ?? 0;
+    const b = parsed2.main[i] ?? 0;
     if (a > b) return 1;
     if (a < b) return -1;
   }
+  
+  // 主版本号相同时，比较预发布版本
+  if (parsed1.prerelease && parsed2.prerelease) {
+    // 都是预发布版本，按字符串比较
+    return parsed1.prerelease.localeCompare(parsed2.prerelease);
+  } else if (parsed1.prerelease && !parsed2.prerelease) {
+    // v1 是预发布，v2 是正式版 → v1 < v2
+    return -1;
+  } else if (!parsed1.prerelease && parsed2.prerelease) {
+    // v1 是正式版，v2 是预发布 → v1 > v2
+    return 1;
+  }
+  
+  // 都是正式版本且相等
   return 0;
 }
 

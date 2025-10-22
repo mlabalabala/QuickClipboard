@@ -9,13 +9,14 @@ export const REPO_URL = 'https://github.com/mosheng1/QuickClipboard';
 /**
  * 从 latest.json 获取最新版本信息
  */
-export async function fetchLatestRelease() {
+export async function fetchLatestRelease(includeBeta = false) {
   const jsonUrl = `${REPO_URL}/releases/latest/download/latest.json`;
   const jsonRes = await tauriFetch(jsonUrl, {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
-      'User-Agent': 'QuickClipboard'
+      'User-Agent': 'QuickClipboard',
+      'join-beta': String(includeBeta)  
     }
   });
   
