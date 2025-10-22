@@ -35,17 +35,44 @@ body:hover::after {
     outline-color: #328DFC;
 }
 
+body.thumbnail-mode::after {
+    outline: none;
+    border: 2px solid;
+    border-image: conic-gradient(
+        from 0deg at center,
+        #ff6b6b 0deg 90deg,      
+        #4ecdc4 90deg 180deg,    
+        #feca57 180deg 270deg,   
+        #54a0ff 270deg 360deg    
+    ) 3;
+}
+
+body.thumbnail-mode:hover::after {
+    border-image: conic-gradient(
+        from 0deg at center,
+        #00ff1e 0deg 90deg,     
+        #266bff 90deg 180deg,   
+        #ed5031 180deg 270deg,  
+        #ffe15a 270deg 360deg   
+    ) 3;
+    transition: border-image 0.3s ease;
+}
+
 #pinImage {
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: contain; 
+    object-fit: contain;
     cursor: move;
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     -webkit-font-smoothing: subpixel-antialiased;
+}
+
+body.thumbnail-mode #pinImage {
+    object-fit: fill;
 }
 
 .size-indicator {

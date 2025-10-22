@@ -47,6 +47,8 @@ export async function enterThumbnailMode(window, state) {
         state.imageX = 0;
         state.imageY = 0;
         
+        document.body.classList.add('thumbnail-mode');
+        
         state.isInThumbnailMode = true;
     } catch (error) {
         console.error('进入缩略图模式失败:', error);
@@ -91,6 +93,8 @@ export async function exitThumbnailMode(window, state) {
             state.imageX = 0;
             state.imageY = 0;
         }
+        
+        document.body.classList.remove('thumbnail-mode');
         
         state.isInThumbnailMode = false;
         state.savedWindowSize = null;
