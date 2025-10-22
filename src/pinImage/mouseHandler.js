@@ -52,15 +52,34 @@ export function setupMouseMove(img, window, state) {
 /**
  * 设置鼠标释放事件
  */
-export function setupMouseUp(img, states, onExitThumbnail) {
+export function setupMouseUp(img, states, onToggleThumbnail) {
+    let clickTimeout = null;
+    let clickCount = 0;
+    
     img.addEventListener('mouseup', async (e) => {
-        if (e.button === 0 && states.isInThumbnailMode && !states.hasMoved && states.mouseDown) {
-            states.thumbnail.enabled = false;
-            await onExitThumbnail();
+        if (e.button === 0 && !states.hasMoved && states.mouseDown) {
+            clickCount++;
+            
+            if (clickCount === 1) {
+                clickTimeout = setTimeout(async () => {
+                    if (clickCount === 1) {
+                        await onToggleThumbnail();
+                    }
+                    clickCount = 0;
+                }, 150);
+            }
         }
         states.mouseDown = false;
         states.isDraggingImage = false;
         states.hasMoved = false;
+    });
+
+    img.addEventListener('dblclick', () => {
+        if (clickTimeout) {
+            clearTimeout(clickTimeout);
+            clickTimeout = null;
+        }
+        clickCount = 0;
     });
     
     document.addEventListener('mouseup', () => {

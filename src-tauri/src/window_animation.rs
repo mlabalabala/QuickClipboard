@@ -17,7 +17,7 @@ pub fn animate_window_resize(
     spawn(async move {
         let start_time = Instant::now();
         let duration = Duration::from_millis(duration_ms);
-        let frame_time = Duration::from_millis(16);
+        let frame_time = Duration::from_millis(8);
 
         let d_width = end_width - start_width;
         let d_height = end_height - start_height;

@@ -25,22 +25,16 @@ import {
     const sizeIndicator = document.getElementById('sizeIndicator');
     const currentWindow = getCurrentWindow();
     
-    async function updateBodySize() {
-        try {
-            const windowSize = await currentWindow.innerSize();
-            const { width, height } = windowSize.toLogical(await currentWindow.scaleFactor());
-            document.body.style.width = `${width}px`;
-            document.body.style.height = `${height}px`;
-        } catch (error) {
-            console.warn('获取窗口尺寸失败，使用默认尺寸:', error);
+    function updateBodySize() {
             document.body.style.width = `${window.innerWidth}px`;
             document.body.style.height = `${window.innerHeight}px`;
-        }
     }
     
-    await updateBodySize();
+    updateBodySize();
     
-    window.addEventListener('resize', updateBodySize);
+    window.addEventListener('resize', () => {
+        updateBodySize();
+    });
     
     // 加载保存的设置
     const savedSettings = loadSettings();
@@ -89,13 +83,12 @@ import {
         applyImageTransform(img, states);
     }
     
-    // 退出缩略图模式的包装函数
-    async function onExitThumbnail() {
-        await exitThumbnailMode(currentWindow, states);
+    async function onToggleThumbnail() {
+        const isCurrentlyThumbnail = document.body.classList.contains('thumbnail-mode');
+        await handleThumbnailToggle(!isCurrentlyThumbnail);
         const settings = loadSettings();
-        settings.thumbnailMode = false;
+        settings.thumbnailMode = !isCurrentlyThumbnail;
         saveSettings(settings);
-        applyImageTransform(img, states);
     }
     
     // 设置右键菜单
@@ -107,7 +100,8 @@ import {
     // 设置鼠标事件
     setupMouseDown(img, currentWindow, states);
     setupMouseMove(img, currentWindow, states);
-    setupMouseUp(img, states, onExitThumbnail);
+    
+    setupMouseUp(img, states, onToggleThumbnail);
     setupWheel(img, sizeIndicator, currentWindow, states);
     setupDoubleClick(img);
     preventDefaults(img);
