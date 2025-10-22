@@ -59,12 +59,19 @@ export class ExportManager {
         const scaleX = sourceCanvas.width / canvasRect.width;
         const scaleY = sourceCanvas.height / canvasRect.height;
 
-        // 将选区坐标转换为Canvas实际坐标
-        const actualLeft = selection.left * scaleX;
-        const actualTop = selection.top * scaleY;
-        const actualWidth = selection.width * scaleX;
-        const actualHeight = selection.height * scaleY;
-        const actualRadius = borderRadius * scaleX; 
+        const exactLeft = selection.left * scaleX;
+        const exactTop = selection.top * scaleY;
+        const exactRight = (selection.left + selection.width) * scaleX;
+        const exactBottom = (selection.top + selection.height) * scaleY;
+        
+        const actualLeft = Math.round(exactLeft);
+        const actualTop = Math.round(exactTop);
+        const actualRight = Math.round(exactRight);
+        const actualBottom = Math.round(exactBottom);
+        
+        const actualWidth = actualRight - actualLeft;
+        const actualHeight = actualBottom - actualTop;
+        const actualRadius = Math.round(borderRadius * scaleX); 
 
         console.log('选区坐标转换:', {
             original: selection,

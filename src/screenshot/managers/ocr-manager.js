@@ -79,10 +79,15 @@ export class OCRManager {
         const scaleX = backgroundCanvas.width / rect.width;
         const scaleY = backgroundCanvas.height / rect.height;
         
-        const canvasX = Math.floor(selection.left * scaleX);
-        const canvasY = Math.floor(selection.top * scaleY);
-        const canvasWidth = Math.floor(selection.width * scaleX);
-        const canvasHeight = Math.floor(selection.height * scaleY);
+        const exactLeft = selection.left * scaleX;
+        const exactTop = selection.top * scaleY;
+        const exactRight = (selection.left + selection.width) * scaleX;
+        const exactBottom = (selection.top + selection.height) * scaleY;
+        
+        const canvasX = Math.round(exactLeft);
+        const canvasY = Math.round(exactTop);
+        const canvasWidth = Math.round(exactRight) - Math.round(exactLeft);
+        const canvasHeight = Math.round(exactBottom) - Math.round(exactTop);
         
         tempCanvas.width = canvasWidth;
         tempCanvas.height = canvasHeight;

@@ -129,10 +129,10 @@ export class CanvasSelectionManager {
             ctx.lineWidth = 2;
             this.drawRoundedRect(
                 ctx,
-                this.autoSelectionBounds.x,
-                this.autoSelectionBounds.y,
-                this.autoSelectionBounds.width,
-                this.autoSelectionBounds.height,
+                this.autoSelectionBounds.x + 0.5,
+                this.autoSelectionBounds.y + 0.5,
+                this.autoSelectionBounds.width - 1,
+                this.autoSelectionBounds.height - 1,
                 0
             );
             ctx.stroke();
@@ -143,7 +143,7 @@ export class CanvasSelectionManager {
             if (this.longScreenshotMode) {
                 ctx.strokeStyle = '#007bff';
                 ctx.lineWidth = 2;
-                this.drawRoundedRect(ctx, left, top, w, h, this.borderRadius);
+                this.drawRoundedRect(ctx, left + 0.5, top + 0.5, w - 1, h - 1, this.borderRadius);
                 ctx.stroke();
                 return;
             }
@@ -155,13 +155,13 @@ export class CanvasSelectionManager {
                 ctx.lineWidth = 2;
                 ctx.shadowColor = '#00ff00';
                 ctx.shadowBlur = 8;
-                this.drawRoundedRect(ctx, left, top, w, h, this.borderRadius);
+                this.drawRoundedRect(ctx, left + 0.5, top + 0.5, w - 1, h - 1, this.borderRadius);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             } else {
                 ctx.strokeStyle = '#007bff';
                 ctx.lineWidth = 2;
-                this.drawRoundedRect(ctx, left, top, w, h, this.borderRadius);
+                this.drawRoundedRect(ctx, left + 0.5, top + 0.5, w - 1, h - 1, this.borderRadius);
                 ctx.stroke();
             }
 
