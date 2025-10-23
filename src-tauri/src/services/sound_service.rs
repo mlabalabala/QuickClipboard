@@ -35,11 +35,11 @@ impl SoundService {
     pub async fn test_sound(sound_path: String, volume: f32, sound_type: Option<String>) -> Result<(), String> {
         let volume_normalized = volume / 100.0; // 将0-100转换为0.0-1.0
 
-        // 在后台线程中播放音效，避免阻塞前端
+        // 使用普通线程
         let sound_path_clone = sound_path.clone();
         let sound_type_clone = sound_type.clone();
         
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             // 处理空路径的情况，使用默认音效文件
             let actual_sound_path = if sound_path_clone.is_empty() {
                 match sound_type_clone.as_deref() {

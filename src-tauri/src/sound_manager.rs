@@ -1,6 +1,6 @@
 use dirs;
 use once_cell::sync::Lazy;
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
@@ -31,8 +31,100 @@ impl Default for SoundSettings {
     }
 }
 
-pub struct SoundManager {
-    settings: Arc<Mutex<SoundSettings>>,
+// 全局音频流句柄
+static GLOBAL_AUDIO_STREAM_HANDLE: Lazy<Arc<Mutex<Option<OutputStreamHandle>>>> = 
+    Lazy::new(|| Arc::new(Mutex::new(None)));
+
+pub struct SoundManager;
+
+// 初始化全局音频流
+fn init_global_audio_stream() {
+    {
+        let handle_guard = GLOBAL_AUDIO_STREAM_HANDLE.lock().unwrap();
+        if handle_guard.is_some() {
+            return;
+        }
+    }
+
+    thread::spawn(|| {
+        match OutputStream::try_default() {
+            Ok((_stream, handle)) => {
+                {
+                    let mut handle_guard = GLOBAL_AUDIO_STREAM_HANDLE.lock().unwrap();
+                    *handle_guard = Some(handle);
+                }
+                
+                loop {
+                    thread::sleep(std::time::Duration::from_secs(3600));
+                }
+            }
+            Err(e) => {
+                eprintln!("创建全局音频流失败: {}", e);
+            }
+        }
+    });
+
+    for _ in 0..100 {
+        thread::sleep(std::time::Duration::from_millis(10));
+        let guard = GLOBAL_AUDIO_STREAM_HANDLE.lock().unwrap();
+        if guard.is_some() {
+            break;
+        }
+    }
+}
+
+// 获取全局音频流句柄
+fn get_audio_stream_handle() -> Option<OutputStreamHandle> {
+    let handle_guard = GLOBAL_AUDIO_STREAM_HANDLE.lock().unwrap();
+    handle_guard.clone()
+}
+
+// 在持久音频流上播放文件
+fn play_file_on_stream(
+    stream_handle: &OutputStreamHandle,
+    path: &Path,
+    volume: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let sink = Sink::try_new(stream_handle)?;
+    
+    let file = File::open(path)?;
+    let source = Decoder::new(BufReader::new(file))?;
+    
+    sink.set_volume(volume);
+    sink.append(source);
+
+    sink.sleep_until_end();
+    
+    Ok(())
+}
+
+// 在持久音频流上播放蜂鸣音
+fn play_beep_on_stream(
+    stream_handle: &OutputStreamHandle,
+    frequency: f32,
+    duration_ms: u64,
+    volume: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let sink = Sink::try_new(stream_handle)?;
+    
+    let sample_rate = 44100;
+    let duration_samples = (sample_rate as f32 * duration_ms as f32 / 1000.0) as usize;
+    
+    let mut samples = Vec::with_capacity(duration_samples);
+    for i in 0..duration_samples {
+        let t = i as f32 / sample_rate as f32;
+        let sample = (2.0 * std::f32::consts::PI * frequency * t).sin();
+        samples.push(sample);
+    }
+    
+    let source = rodio::buffer::SamplesBuffer::new(1, sample_rate, samples);
+    
+    sink.set_volume(volume);
+    sink.append(source);
+
+    sink.sleep_until_end();
+    
+    Ok(())
 }
 
 impl SoundManager {
@@ -83,12 +175,10 @@ impl SoundManager {
 
         if cache_path.exists() {
             // 使用缓存文件
-            println!("使用缓存音效: {:?}", cache_path);
             return Self::play_local_file(&cache_path, volume);
         }
 
         // 下载并缓存
-        println!("下载网络音效: {}", url);
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let response = reqwest::get(url).await?;
@@ -103,7 +193,6 @@ impl SoundManager {
                 cache.insert(url.to_string(), cache_path.clone());
             }
 
-            println!("音效已缓存到: {:?}", cache_path);
 
             Ok::<(), Box<dyn std::error::Error>>(())
         })?;
@@ -131,35 +220,22 @@ impl SoundManager {
         Ok(cache_path)
     }
 
-    // 播放本地文件 - 优化内存管理和错误处理
+    // 播放本地文件
     fn play_local_file(path: &Path, volume: f32) -> Result<(), Box<dyn std::error::Error>> {
-        // 使用作用域确保资源正确释放
-        let result = {
-            let (_stream, stream_handle) = OutputStream::try_default()?;
-            let sink = Sink::try_new(&stream_handle)?;
+        // 确保全局音频流已初始化
+        init_global_audio_stream();
 
-            let file = File::open(path)?;
-            let source = Decoder::new(BufReader::new(file))?;
+        let handle = get_audio_stream_handle()
+            .ok_or("全局音频流未初始化")?;
 
-            sink.set_volume(volume);
-            sink.append(source);
-
-            // 使用更短的超时时间，避免长时间阻塞
-            let timeout = std::time::Duration::from_secs(3);
-            let start_time = std::time::Instant::now();
-
-            while !sink.empty() && start_time.elapsed() < timeout {
-                std::thread::sleep(std::time::Duration::from_millis(5));
+        let path_buf = path.to_path_buf();
+        thread::spawn(move || {
+            if let Err(e) = play_file_on_stream(&handle, &path_buf, volume) {
+                eprintln!("播放音效文件失败: {}", e);
             }
-
-            // 确保sink停止播放
-            sink.stop();
-            Ok(())
-        };
-
-        // 强制垃圾回收，释放内存
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        result
+        });
+        
+        Ok(())
     }
 
     pub fn play_beep(
@@ -167,43 +243,20 @@ impl SoundManager {
         duration_ms: u64,
         volume: f32,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        // 使用作用域确保资源正确释放
-        let result = {
-            let (_stream, stream_handle) = OutputStream::try_default()?;
-            let sink = Sink::try_new(&stream_handle)?;
 
-            // 生成简单的正弦波音效
-            let sample_rate = 44100;
-            let duration_samples = (sample_rate as f32 * duration_ms as f32 / 1000.0) as usize;
+        init_global_audio_stream();
 
-            let mut samples = Vec::with_capacity(duration_samples);
-            for i in 0..duration_samples {
-                let t = i as f32 / sample_rate as f32;
-                let sample = (2.0 * std::f32::consts::PI * frequency * t).sin();
-                samples.push(sample);
+        let handle = get_audio_stream_handle()
+            .ok_or("全局音频流未初始化")?;
+        
+        // 在独立线程中播放
+        thread::spawn(move || {
+            if let Err(e) = play_beep_on_stream(&handle, frequency, duration_ms, volume) {
+                eprintln!("播放蜂鸣音失败: {}", e);
             }
-
-            let source = rodio::buffer::SamplesBuffer::new(1, sample_rate, samples);
-
-            sink.set_volume(volume);
-            sink.append(source);
-
-            // 使用更短的超时时间
-            let timeout = std::time::Duration::from_millis(duration_ms + 500); // 音效时长 + 0.5秒缓冲
-            let start_time = std::time::Instant::now();
-
-            while !sink.empty() && start_time.elapsed() < timeout {
-                std::thread::sleep(std::time::Duration::from_millis(5));
-            }
-
-            // 确保sink停止播放
-            sink.stop();
-            Ok(())
-        };
-
-        // 强制垃圾回收，释放内存
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        result
+        });
+        
+        Ok(())
     }
 }
 
@@ -261,7 +314,9 @@ pub fn initialize_sound_manager() -> Result<(), Box<dyn std::error::Error>> {
     // 确保缓存目录存在
     let _cache_dir = get_cache_dir()?;
 
-    println!("音效管理器初始化成功");
+    // 初始化全局音频流
+    init_global_audio_stream();
+
     Ok(())
 }
 
@@ -378,7 +433,6 @@ pub fn clear_sound_cache() -> Result<(), String> {
         eprintln!("重新初始化内置音效失败: {}", e);
     }
 
-    println!("音效缓存已清理，内置音效已重新初始化");
     Ok(())
 }
 
