@@ -105,7 +105,6 @@
   "bundle": {
     "active": true,
     "targets": [
-      "msi",
       "nsis"
     ],
     "publisher": "MoSheng",
