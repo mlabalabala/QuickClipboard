@@ -6,6 +6,7 @@
 import { startImageDrag, handleImageDragMove, handleImageScale, applyImageTransform } from './imageTransform.js';
 import { handleWindowResize } from './windowResize.js';
 import { showSizeIndicator } from './sizeIndicator.js';
+import { loadSettings, saveSettings } from './settings.js';
 
 const DRAG_THRESHOLD = 5;
 
@@ -52,7 +53,7 @@ export function setupMouseMove(img, window, state) {
 /**
  * 设置鼠标释放事件
  */
-export function setupMouseUp(img, states, onToggleThumbnail) {
+export function setupMouseUp(img, states, onToggleThumbnail, window) {
     let clickTimeout = null;
     let clickCount = 0;
     
@@ -69,6 +70,11 @@ export function setupMouseUp(img, states, onToggleThumbnail) {
                 }, 150);
             }
         }
+
+        if (states.hasMoved && states.isInThumbnailMode) {
+            await saveThumbnailPosition(states, window);
+        }
+        
         states.mouseDown = false;
         states.isDraggingImage = false;
         states.hasMoved = false;
@@ -82,10 +88,34 @@ export function setupMouseUp(img, states, onToggleThumbnail) {
         clickCount = 0;
     });
     
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', async () => {
+        if (states.hasMoved && states.isInThumbnailMode) {
+            await saveThumbnailPosition(states, window);
+        }
+        
         states.mouseDown = false;
         states.isDraggingImage = false;
     });
+}
+
+/**
+ * 保存缩略图位置到状态和设置中
+ */
+async function saveThumbnailPosition(states, window) {
+    try {
+        const currentPosition = await window.outerPosition();
+
+        states.savedThumbnailPosition = {
+            x: currentPosition.x,
+            y: currentPosition.y
+        };
+
+        const settings = loadSettings();
+        settings.savedThumbnailPosition = states.savedThumbnailPosition;
+        saveSettings(settings);
+    } catch (error) {
+        console.error('保存缩略图位置失败:', error);
+    }
 }
 
 /**

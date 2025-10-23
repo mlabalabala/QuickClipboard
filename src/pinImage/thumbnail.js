@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { loadSettings, saveSettings } from './settings.js';
 
 const THUMBNAIL_SIZE = 50;
 
@@ -28,8 +29,21 @@ export async function enterThumbnailMode(window, state) {
         state.savedWindowCenter = { x: centerX, y: centerY };
         
         const thumbnailPhysicalSize = THUMBNAIL_SIZE * scaleFactor;
-        const newX = Math.round(centerX - thumbnailPhysicalSize / 2);
-        const newY = Math.round(centerY - thumbnailPhysicalSize / 2);
+        
+        let newX, newY;
+        
+        // 根据恢复模式决定缩略图位置
+        const restoreMode = state.thumbnailRestoreMode || 'follow';
+        
+        if (restoreMode === 'keep' && state.savedThumbnailPosition) {
+            // 保持位置模式：有保存的缩略图位置，就恢复到那个位置
+            newX = state.savedThumbnailPosition.x;
+            newY = state.savedThumbnailPosition.y;
+        } else {
+            // 跟随模式或保持模式但没有保存位置：基于当前窗口中心计算缩略图位置
+            newX = Math.round(centerX - thumbnailPhysicalSize / 2);
+            newY = Math.round(centerY - thumbnailPhysicalSize / 2);
+        }
         
         await invoke('animate_window_resize', {
             startWidth: currentSize.width,
@@ -65,13 +79,34 @@ export async function exitThumbnailMode(window, state) {
             const currentPosition = await window.outerPosition();
             const scaleFactor = await window.scaleFactor();
             
-            const currentCenterX = currentPosition.x + currentSize.width / 2;
-            const currentCenterY = currentPosition.y + currentSize.height / 2;
+            // 保存当前缩略图的位置，供下次进入缩略图模式时使用
+            state.savedThumbnailPosition = {
+                x: currentPosition.x,
+                y: currentPosition.y
+            };
+
+            const settings = loadSettings();
+            settings.savedThumbnailPosition = state.savedThumbnailPosition;
+            saveSettings(settings);
+
+            const restoreMode = state.thumbnailRestoreMode || 'follow';
+            
+            let centerX, centerY;
+            
+            if (restoreMode === 'keep') {
+                // 保持位置模式：使用最初保存的中心位置
+                centerX = state.savedWindowCenter.x;
+                centerY = state.savedWindowCenter.y;
+            } else {
+                // 跟随移动模式：使用当前缩略图的中心位置
+                centerX = currentPosition.x + currentSize.width / 2;
+                centerY = currentPosition.y + currentSize.height / 2;
+            }
             
             const endWidth = state.savedWindowSize.width * scaleFactor;
             const endHeight = state.savedWindowSize.height * scaleFactor;
-            const endX = Math.round(currentCenterX - endWidth / 2);
-            const endY = Math.round(currentCenterY - endHeight / 2);
+            const endX = Math.round(centerX - endWidth / 2);
+            const endY = Math.round(centerY - endHeight / 2);
             
             await invoke('animate_window_resize', {
                 startWidth: currentSize.width,

@@ -33,6 +33,18 @@ export async function createContextMenu(window, states, onThumbnailToggle) {
             })
         ];
         
+        // 获取当前缩略图恢复模式设置
+        const currentRestoreMode = states.thumbnailRestoreMode || 'follow';
+        
+        const thumbnailRestoreModeItems = [
+            createMenuItem('thumbnail-restore-follow', '跟随移动', {
+                icon: currentRestoreMode === 'follow' ? 'ti ti-check' : 'ti ti-move'
+            }),
+            createMenuItem('thumbnail-restore-keep', '保持位置', {
+                icon: currentRestoreMode === 'keep' ? 'ti ti-check' : 'ti ti-map-pin'
+            })
+        ];
+        
         const menuItems = [
             createMenuItem('toggle-top', '窗口置顶', {
                 icon: isOnTop ? 'ti ti-check' : 'ti ti-pin'
@@ -48,6 +60,10 @@ export async function createContextMenu(window, states, onThumbnailToggle) {
             }),
             createMenuItem('toggle-thumbnail', '缩略图模式', {
                 icon: states.thumbnail.enabled ? 'ti ti-check' : 'ti ti-photo-down'
+            }),
+            createMenuItem('thumbnail-restore-mode-submenu', '缩略图恢复模式', {
+                icon: 'ti ti-refresh',
+                children: thumbnailRestoreModeItems
             }),
             createMenuItem('opacity-submenu', '透明度', {
                 icon: 'ti ti-droplet-half',
@@ -125,6 +141,20 @@ async function handleMenuAction(action, window, states, onThumbnailToggle, img) 
             const thumbnailSettings = loadSettings();
             thumbnailSettings.thumbnailMode = states.thumbnail.enabled;
             saveSettings(thumbnailSettings);
+            break;
+            
+        case 'thumbnail-restore-follow':
+            states.thumbnailRestoreMode = 'follow';
+            const followSettings = loadSettings();
+            followSettings.thumbnailRestoreMode = 'follow';
+            saveSettings(followSettings);
+            break;
+            
+        case 'thumbnail-restore-keep':
+            states.thumbnailRestoreMode = 'keep';
+            const keepSettings = loadSettings();
+            keepSettings.thumbnailRestoreMode = 'keep';
+            saveSettings(keepSettings);
             break;
             
         case 'opacity-custom':

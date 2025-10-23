@@ -16,7 +16,9 @@ const DEFAULT_SETTINGS = {
     lockPosition: false,
     pixelRender: false,
     opacity: 100,
-    thumbnailMode: false
+    thumbnailMode: false,
+    thumbnailRestoreMode: 'follow',
+    savedThumbnailPosition: null
 };
 
 /**

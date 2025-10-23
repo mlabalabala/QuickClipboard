@@ -46,6 +46,7 @@ import {
         lockPosition: { locked: savedSettings.lockPosition },
         pixelRender: { enabled: savedSettings.pixelRender },
         thumbnail: { enabled: savedSettings.thumbnailMode || false },
+        thumbnailRestoreMode: savedSettings.thumbnailRestoreMode || 'follow',
         
         // 鼠标状态
         mouseDown: false,
@@ -70,7 +71,8 @@ import {
         // 缩略图状态
         isInThumbnailMode: savedSettings.thumbnailMode || false,
         savedWindowSize: null,
-        savedWindowCenter: null
+        savedWindowCenter: null,
+        savedThumbnailPosition: savedSettings.savedThumbnailPosition || null
     };
     
     // 缩略图模式切换处理
@@ -101,7 +103,7 @@ import {
     setupMouseDown(img, currentWindow, states);
     setupMouseMove(img, currentWindow, states);
     
-    setupMouseUp(img, states, onToggleThumbnail);
+    setupMouseUp(img, states, onToggleThumbnail, currentWindow);
     setupWheel(img, sizeIndicator, currentWindow, states);
     setupDoubleClick(img);
     preventDefaults(img);
