@@ -4,6 +4,7 @@
  */
 
 import { boundsConstraint } from '../utils/bounds-constraint.js';
+import { settingsManager } from '../utils/settings-manager.js';
 
 export class HelpPanelManager {
     constructor() {
@@ -140,7 +141,8 @@ export class HelpPanelManager {
      */
     show() {
         // 检查配置是否启用
-        if (window.screenshotController && !window.screenshotController.hintsEnabled) {
+        const settings = settingsManager.getSettings();
+        if (!settings.hintsEnabled) {
             return;
         }
         this.helpPanel.classList.remove('hidden');

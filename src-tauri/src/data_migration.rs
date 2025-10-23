@@ -34,7 +34,6 @@ impl DataMigrationService {
                         fs::create_dir_all(parent).map_err(|e| format!("创建目标目录失败: {}", e))?;
                     }
                     
-                    // 对于数据库文件，使用简单复制
                     if *item == "quickclipboard.db" {
                         Self::copy_database_file(&source_path, &target_path)?;
                         

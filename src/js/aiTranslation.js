@@ -712,7 +712,7 @@ export function shouldTranslateText(text, context = 'paste') {
 }
 
 /**
- * 检测文本语言（简单实现）
+ * 检测文本语言
  */
 export function detectTextLanguage(text) {
   if (!text || typeof text !== 'string') {

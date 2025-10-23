@@ -161,10 +161,8 @@ pub fn init_state_manager() {
                 }
             }
             StateChangeEvent::EdgeSnapEnabled(_) => {
-                // 贴边功能启用/禁用时的处理逻辑可以在这里添加
             }
             StateChangeEvent::EdgeSnapActive(_) => {
-                // 贴边激活状态变化时的处理逻辑可以在这里添加
             }
         }
     });

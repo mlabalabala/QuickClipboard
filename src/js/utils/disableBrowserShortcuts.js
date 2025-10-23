@@ -1,9 +1,9 @@
 // 禁用浏览器默认快捷键模块
 
-// 全局录制状态管理
+
 let isRecordingShortcut = false;
 
-// 设置录制状态的全局函数
+
 window.setShortcutRecording = function(recording) {
   isRecordingShortcut = recording;
   console.log('快捷键录制状态:', recording ? '开始' : '结束');
@@ -11,14 +11,12 @@ window.setShortcutRecording = function(recording) {
 
 // 检查是否正在录制快捷键
 function isCurrentlyRecording() {
-  // 检查全局状态
+
   if (isRecordingShortcut) return true;
-  
-  // 检查是否有任何输入框正在录制（通过CSS类检查）
+
   const recordingInputs = document.querySelectorAll('.shortcut-input.recording');
   if (recordingInputs.length > 0) return true;
-  
-  // 检查焦点是否在快捷键输入框上
+
   const activeElement = document.activeElement;
   if (activeElement && activeElement.classList.contains('shortcut-input')) {
     return true;
@@ -36,15 +34,14 @@ const DISABLED_SHORTCUTS = [
   { ctrl: true, key: 'd' },      // 添加书签
   { ctrl: true, key: 'e' },      // 搜索栏
   { ctrl: true, key: 'h' },      // 历史记录
-  { ctrl: true, key: 'i' },      // 开发者工具（某些浏览器）
   { ctrl: true, key: 'j' },      // 下载
   { ctrl: true, key: 'k' },      // 搜索栏
   { ctrl: true, key: 'l' },      // 地址栏
-  { ctrl: true, key: 'm' },      // 最小化（某些浏览器）
+  { ctrl: true, key: 'm' },      // 最小化
   { ctrl: true, key: 'n' },      // 新窗口
   { ctrl: true, key: 'o' },      // 打开文件
   { ctrl: true, key: 'p' },      // 打印
-  { ctrl: true, key: 'q' },      // 退出（某些浏览器）
+  { ctrl: true, key: 'q' },      // 退出
   { ctrl: true, key: 'r' },      // 刷新
   { ctrl: true, shift: true, key: 'r' }, // 强制刷新
   { ctrl: true, key: 't' },      // 新标签页
@@ -103,7 +100,7 @@ const DISABLED_SHORTCUTS = [
   { alt: true, key: 'f' },        // 文件菜单
   
   // 其他
-  { key: 'Escape', target: 'body' }, // 在某些情况下阻止ESC
+  { key: 'Escape', target: 'body' },
 ];
 
 // 检查按键组合是否匹配
@@ -119,7 +116,6 @@ function matchesShortcut(event, shortcut) {
 
 // 全局键盘事件处理器
 function handleKeyDown(event) {
-  // 如果正在录制快捷键，不拦截任何按键
   if (isCurrentlyRecording()) {
     return;
   }
@@ -127,30 +123,27 @@ function handleKeyDown(event) {
   // 检查是否匹配需要禁用的快捷键
   for (const shortcut of DISABLED_SHORTCUTS) {
     if (matchesShortcut(event, shortcut)) {
-      // 特殊处理：如果是在输入框中，某些快捷键可能需要保留
       const isInputElement = event.target.tagName === 'INPUT' || 
                              event.target.tagName === 'TEXTAREA' || 
                              event.target.contentEditable === 'true';
-      
-      // 在输入框中保留一些基本的编辑快捷键
+
       if (isInputElement) {
         const allowedInInput = [
           'ctrl+a', 'ctrl+c', 'ctrl+v', 'ctrl+x', 'ctrl+z', 'ctrl+y',
-          'ctrl+s' // 保存快捷键在某些编辑器中可能需要
+          'ctrl+s' 
         ];
         const currentShortcut = `${event.ctrlKey ? 'ctrl+' : ''}${event.altKey ? 'alt+' : ''}${event.shiftKey ? 'shift+' : ''}${event.key.toLowerCase()}`;
         
         if (allowedInInput.includes(currentShortcut)) {
-          continue; // 允许这些快捷键在输入框中使用
+          continue;
         }
       }
       
-      // 特殊处理：某些快捷键在特定上下文中可能需要保留
       const isEditorContext = document.body.classList.contains('editor-context') || 
                               document.querySelector('.editor-container') !== null;
       
       if (isEditorContext && (event.ctrlKey && event.key.toLowerCase() === 's')) {
-        continue; // 在编辑器中保留Ctrl+S保存功能
+        continue;
       }
       
       event.preventDefault();
@@ -162,32 +155,25 @@ function handleKeyDown(event) {
 
 // 初始化浏览器快捷键禁用
 export function initDisableBrowserShortcuts() {
-  // 添加全局键盘事件监听器
   document.addEventListener('keydown', handleKeyDown, true);
-  // 禁用右键菜单（可选）
   document.addEventListener('contextmenu', (event) => {
     event.preventDefault();
   });
   
-  // 禁用拖拽（可选）
   document.addEventListener('dragstart', (event) => {
     event.preventDefault();
   });
   
-  // 禁用选择文本时的拖拽（可选）
   document.addEventListener('selectstart', (event) => {
-    // 只在非输入元素上禁用
     if (event.target.tagName !== 'INPUT' && 
         event.target.tagName !== 'TEXTAREA' && 
         event.target.contentEditable !== 'true') {
-      // 允许选择文本，但不允许拖拽
     }
   });
   
   console.log('浏览器默认快捷键已禁用');
 }
 
-// 移除浏览器快捷键禁用（如果需要）
 export function removeDisableBrowserShortcuts() {
   document.removeEventListener('keydown', handleKeyDown, true);
   console.log('浏览器默认快捷键禁用已移除');

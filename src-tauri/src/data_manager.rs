@@ -393,7 +393,6 @@ async fn merge_database(temp_db_path: &Path) -> Result<(), String> {
 
     // 获取主数据库连接并执行合并操作
     let result = crate::database::with_connection(|main_conn| {
-        // 简单粗暴的方法：直接用ATTACH DATABASE合并
         main_conn.execute(&format!("ATTACH DATABASE '{}' AS temp_db", temp_db_path.display()), [])?;
 
         // 合并剪贴板数据

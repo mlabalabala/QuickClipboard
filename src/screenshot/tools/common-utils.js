@@ -1,11 +1,8 @@
 /**
- * 简单的工具共享函数
- * 只包含真正重复的代码
+ * 工具共享函数
  */
 
-/**
- * 获取 Fabric Canvas - 统一重复的获取逻辑
- */
+
 export function getCanvas(tool) {
     return tool.fabricCanvas || window.screenshotController?.editLayerManager?.getFabricCanvas();
 }
@@ -31,7 +28,7 @@ export function applyOpacity(color, opacityPercent) {
 }
 
 /**
- * 从子工具栏获取参数 - 统一重复的参数获取逻辑
+ * 从子工具栏获取参数 
  */
 export function getToolParams(toolName) {
     return window.screenshotController?.subToolbarManager?.getToolParameters(toolName) || {};

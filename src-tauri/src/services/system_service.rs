@@ -27,8 +27,6 @@ impl SystemService {
         for item in items {
             // 只处理文件类型的项目
             if matches!(item.content_type, crate::database::ContentType::File) {
-                // 简单的文件图标刷新逻辑
-                // 这里可以根据需要实现具体的图标更新逻辑
                 updated_count += 1;
             }
         }

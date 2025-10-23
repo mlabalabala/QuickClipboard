@@ -714,7 +714,6 @@ export class FabricEditLayerManager {
         if (!this.fabricCanvas || this.isLoadingFromHistory) return;
 
         try {
-            // 删除未来的历史记录
             if (this.historyStep < this.historyStack.length - 1) {
                 this.historyStack.splice(this.historyStep + 1);
             }
