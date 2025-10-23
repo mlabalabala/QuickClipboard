@@ -135,9 +135,16 @@ async function initApp() {
   setupCustomWindowDrag();
 
   // 设置窗口动画监听器
-  const { setupWindowAnimationListeners, setupAnimationFallback } = await import('./js/windowAnimation.js');
+  const { setupWindowAnimationListeners, setupAnimationFallback, setAnimationEnabled } = await import('./js/windowAnimation.js');
   setupWindowAnimationListeners();
   setupAnimationFallback();
+
+  try {
+    const settings = await invoke('get_settings');
+    setAnimationEnabled(settings.clipboardAnimationEnabled);
+  } catch (error) {
+    console.error('读取动画设置失败:', error);
+  }
 
   // 等待后端初始化完成，然后获取数据
   await waitForBackendInitialization();
@@ -158,9 +165,17 @@ async function initApp() {
     console.error('初始化设置缓存失败:', error);
   }
 
-  // 监听设置变化事件，更新缓存
-  await listen('settings-changed', (event) => {
+  // 监听设置变化事件
+  await listen('settings-changed', async (event) => {
     cachedSettings = event.payload;
+    if (event.payload && typeof event.payload.clipboardAnimationEnabled !== 'undefined') {
+      try {
+        const { setAnimationEnabled } = await import('./js/windowAnimation.js');
+        setAnimationEnabled(event.payload.clipboardAnimationEnabled);
+      } catch (error) {
+        console.error('更新动画设置失败:', error);
+      }
+    }
   });
 
   // 初始化快捷键显示

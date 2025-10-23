@@ -110,14 +110,14 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     }
     
     // 发送隐藏动画事件给前端
-    {
-        use tauri::Emitter;
-        let _ = window.emit("window-hide-animation", ());
-        // println!("发送隐藏动画事件 (webview)");
-    }
+    use tauri::Emitter;
+    let _ = window.emit("window-hide-animation", ());
 
-    // 等待动画完成后再隐藏窗口
-    std::thread::sleep(std::time::Duration::from_millis(300));
+    let settings = crate::settings::get_global_settings();
+    if settings.clipboard_animation_enabled {
+        // 等待动画完成后再隐藏窗口
+        std::thread::sleep(std::time::Duration::from_millis(300));
+    }
 
     // 隐藏窗口前恢复焦点并停止鼠标监听
     let _ = restore_last_focus();
