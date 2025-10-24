@@ -926,7 +926,7 @@ body {
 .clipboard-item:hover,
 .quick-text-item:hover {
   cursor: grab;
-  /* transform: translateY(-3px); */
+  transform: translateY(-3px);
 }
 
 .clipboard-item:active,
