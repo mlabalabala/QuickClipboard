@@ -24,18 +24,6 @@ import {
     const img = document.getElementById('pinImage');
     const sizeIndicator = document.getElementById('sizeIndicator');
     const currentWindow = getCurrentWindow();
-    
-    function updateBodySize() {
-            document.body.style.width = `${window.innerWidth}px`;
-            document.body.style.height = `${window.innerHeight}px`;
-    }
-    
-    updateBodySize();
-    
-    window.addEventListener('resize', () => {
-        updateBodySize();
-    });
-    
     // 加载保存的设置
     const savedSettings = loadSettings();
     
@@ -56,6 +44,7 @@ import {
         
         // 窗口状态
         initialSize: null,
+        originalImageSize: null,
         scaleLevel: 10,
         
         // 图片变换状态
@@ -115,15 +104,20 @@ import {
         if (data && data.file_path) {
             const assetUrl = convertFileSrc(data.file_path, 'asset');
             img.src = assetUrl;
+
+            img.width = data.width;
+            img.height = data.height;
+            states.originalImageSize = { width: data.width, height: data.height };
+            states.initialSize = { width: data.width, height: data.height };
         }
         
         // 应用保存的设置
         if (savedSettings.alwaysOnTop) {
             await currentWindow.setAlwaysOnTop(true);
         }
-        
+
         if (savedSettings.shadow) {
-            await currentWindow.setShadow(true);
+            document.body.classList.add('shadow-enabled');
         }
         
         if (savedSettings.opacity !== 100) {

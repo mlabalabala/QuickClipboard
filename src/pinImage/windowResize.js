@@ -5,15 +5,22 @@
 
 import { LogicalSize } from '@tauri-apps/api/window';
 
+const SHADOW_PADDING = 10;
+
 /**
  * 初始化窗口大小
  */
 export async function initWindowSize(window, state) {
+    if (state.originalImageSize) {
+        state.initialSize = { ...state.originalImageSize };
+        return;
+    }
+
     const currentSize = await window.innerSize();
     const scaleFactor = await window.scaleFactor();
     state.initialSize = {
-        width: currentSize.width / scaleFactor,
-        height: currentSize.height / scaleFactor
+        width: currentSize.width / scaleFactor - SHADOW_PADDING,
+        height: currentSize.height / scaleFactor - SHADOW_PADDING
     };
 }
 
@@ -25,6 +32,10 @@ export async function handleWindowResize(delta, isShiftKey, window, state) {
         await initWindowSize(window, state);
     }
     
+    if (!state.initialSize) {
+        return { width: 0, height: 0 };
+    }
+    
     const step = isShiftKey ? 5 : 1;
     
     if (delta < 0) {
@@ -33,8 +44,10 @@ export async function handleWindowResize(delta, isShiftKey, window, state) {
         state.scaleLevel = Math.max(1, state.scaleLevel - step);
     }
     
-    const newWidth = state.initialSize.width * (state.scaleLevel / 10);
-    const newHeight = state.initialSize.height * (state.scaleLevel / 10);
+    const contentWidth = Math.max(1, state.initialSize.width * (state.scaleLevel / 10));
+    const contentHeight = Math.max(1, state.initialSize.height * (state.scaleLevel / 10));
+    const newWidth = contentWidth + SHADOW_PADDING;
+    const newHeight = contentHeight + SHADOW_PADDING;
     
     await window.setSize(new LogicalSize(newWidth, newHeight));
 
@@ -44,6 +57,6 @@ export async function handleWindowResize(delta, isShiftKey, window, state) {
         state.imageY = 0;
     }
     
-    return { width: newWidth, height: newHeight };
+    return { width: contentWidth, height: contentHeight };
 }
 

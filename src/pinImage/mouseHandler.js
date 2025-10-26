@@ -131,6 +131,11 @@ export function setupWheel(img, sizeIndicator, window, state) {
                 showSizeIndicator(sizeIndicator, 0, 0, level, true, e.clientX, e.clientY);
             } else {
                 const { width, height } = await handleWindowResize(e.deltaY, e.shiftKey, window, state);
+                if (width && height) {
+                    img.width = Math.round(width);
+                    img.height = Math.round(height);
+                    state.originalImageSize = { width: Math.round(width), height: Math.round(height) };
+                }
                 showSizeIndicator(sizeIndicator, width, height, state.scaleLevel, false, e.clientX, e.clientY);
 
                 applyImageTransform(img, state);

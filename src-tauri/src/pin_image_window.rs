@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::collections::HashMap;
 use once_cell::sync::OnceCell;
-use tauri::{AppHandle, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, WebviewWindow, WebviewWindowBuilder, LogicalPosition, LogicalSize, Size};
 
 // 用于生成唯一的窗口标识
 static PIN_IMAGE_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -56,13 +56,6 @@ pub async fn show_pin_image_window(
 
 // 创建窗口
 let window = create_pin_image_window(app, &window_label, width, height, x, y).await?;
-
-// 创建后立即设置尺寸
-use tauri::Size;
-window.set_size(Size::Logical(tauri::LogicalSize {
-    width: width as f64,
-    height: height as f64,
-})).map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
 
 // 显示窗口
 window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
@@ -121,13 +114,6 @@ pub async fn show_pin_image_from_file(
     // 创建窗口
     let window = create_pin_image_window(app, &window_label, width, height, x, y).await?;
     
-    // 创建后立即设置尺寸
-    use tauri::Size;
-    window.set_size(Size::Logical(tauri::LogicalSize {
-        width: width as f64,
-        height: height as f64,
-    })).map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
-    
     // 显示窗口
     window.show().map_err(|e| format!("显示贴图窗口失败: {}", e))?;
     
@@ -164,15 +150,23 @@ async fn create_pin_image_window(
     x: i32,
     y: i32,
 ) -> Result<WebviewWindow, String> {
+    const SHADOW_PADDING: f64 = 10.0;
+
+    let window_width = width as f64 + SHADOW_PADDING;
+    let window_height = height as f64 + SHADOW_PADDING;
+
+    let window_x = (x as f64 - SHADOW_PADDING / 2.0).max(0.0);
+    let window_y = (y as f64 - SHADOW_PADDING / 2.0).max(0.0);
+
     let window = WebviewWindowBuilder::new(
         &app,
         label,
         tauri::WebviewUrl::App("pinImage/pinImage.html".into()),
     )
     .title("贴图")
-    .inner_size(width as f64, height as f64)
-    .min_inner_size(5.0, 5.0)
-    .position(x as f64, y as f64)
+    .inner_size(window_width, window_height)
+    .min_inner_size(1.0, 1.0)
+    .position(window_x, window_y)
     .resizable(false)
     .maximizable(false)
     .decorations(false)
@@ -184,6 +178,11 @@ async fn create_pin_image_window(
     .visible(false)
     .build()
     .map_err(|e| format!("创建贴图窗口失败: {}", e))?;
+    
+    window.set_size(Size::Logical(LogicalSize::new(window_width, window_height)))
+        .map_err(|e| format!("设置窗口尺寸失败: {}", e))?;
+    window.set_position(LogicalPosition::new(window_x, window_y))
+        .map_err(|e| format!("设置窗口位置失败: {}", e))?;
     
     window.set_focusable(false)
         .map_err(|e| format!("设置贴图窗口 focusable 失败: {}", e))?;

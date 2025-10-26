@@ -110,7 +110,11 @@ async function handleMenuAction(action, window, states, onThumbnailToggle, img) 
             
         case 'toggle-shadow':
             states.shadow.enabled = !states.shadow.enabled;
-            await window.setShadow(states.shadow.enabled);
+            if (states.shadow.enabled) {
+                document.body.classList.add('shadow-enabled');
+            } else {
+                document.body.classList.remove('shadow-enabled');
+            }
             const shadowSettings = loadSettings();
             shadowSettings.shadow = states.shadow.enabled;
             saveSettings(shadowSettings);
