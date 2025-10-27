@@ -156,6 +156,19 @@
 
 ---
 
+## 💬 加入社区 · 一起交流
+
+<div align="center">
+
+<img src="readme-assets/qG.png" alt="QQ群二维码" width="240" />  
+
+ **QQ群：** 扫码或搜索群号加入交流  
+
+</div>
+
+
+---
+
 ## 💖 支持与赞助
 
 <div align="center">
