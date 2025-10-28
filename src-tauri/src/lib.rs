@@ -16,9 +16,11 @@ mod database_image_utils;
 mod file_handler;
 mod global_state;
 mod groups;
+mod hotkey_manager;
 mod image_manager;
 mod key_state_monitor;
 mod mouse_hook;
+mod registry_manager;
 mod mouse_utils;
 mod paste_utils;
 mod preview_window;
@@ -81,7 +83,6 @@ fn send_startup_notification_internal(app_handle: &tauri::AppHandle) -> Result<(
     // 检查设置是否启用了启动通知
     let app_settings = settings::get_global_settings();
     if !app_settings.show_startup_notification {
-        println!("启动通知已禁用，跳过发送");
         return Ok(());
     }
 
@@ -95,7 +96,7 @@ fn send_startup_notification_internal(app_handle: &tauri::AppHandle) -> Result<(
     // 获取当前设置的快捷键
     let app_settings = settings::get_global_settings();
     let shortcut_key = if app_settings.toggle_shortcut.is_empty() {
-        "Win+V".to_string()
+        "Alt+V".to_string()
     } else {
         app_settings.toggle_shortcut.clone()
     };
@@ -117,6 +118,83 @@ fn send_startup_notification_internal(app_handle: &tauri::AppHandle) -> Result<(
     }
 }
 
+// 检查Win+V配置的内部函数
+fn check_win_v_configuration(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let app_settings = settings::get_global_settings();
+    let shortcut = if app_settings.toggle_shortcut.is_empty() {
+        "Alt+V".to_string()
+    } else {
+        app_settings.toggle_shortcut.clone()
+    };
+    
+    // 检查是否是Win+V
+    let is_win_v = shortcut.to_uppercase() == "WIN+V";
+    
+    if is_win_v {
+        // 检查系统Win+V是否已被禁用
+        let is_disabled = registry_manager::is_win_v_hotkey_disabled();
+        
+        if !is_disabled {
+            // 配置是Win+V但系统未禁用，弹框询问
+            
+            let app_handle_clone = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                        let confirmed = app_handle_clone
+                            .dialog()
+                            .message("检测到您设置的快捷键为Win+V，但系统的Win+V尚未禁用。\n\n⚠️ 此操作将重启资源管理器(Explorer)，桌面会暂时刷新。\n\n是否现在禁用？")
+                            .title("需要禁用系统Win+V")
+                            .kind(tauri_plugin_dialog::MessageDialogKind::Warning)
+                            .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("确认".to_string(), "取消".to_string()))
+                            .blocking_show();
+                
+                if confirmed {
+                    match registry_manager::disable_win_v_hotkey() {
+                        Ok(_) => {
+                            let _ = app_handle_clone
+                                .dialog()
+                                .message("已禁用系统Win+V快捷键并重启Explorer。")
+                                .title("操作成功")
+                                .kind(tauri_plugin_dialog::MessageDialogKind::Info)
+                                .blocking_show();
+                        }
+                        Err(e) => {
+                            let _ = app_handle_clone
+                                .dialog()
+                                .message(format!("禁用系统Win+V失败: {}", e))
+                                .title("错误")
+                                .kind(tauri_plugin_dialog::MessageDialogKind::Error)
+                                .blocking_show();
+                        }
+                    }
+                } else {
+                    // 用户取消了，将配置改为Alt+V以避免冲突
+                    let mut app_settings = settings::get_global_settings();
+                    app_settings.toggle_shortcut = "Alt+V".to_string();
+                    if let Err(e) = settings::update_global_settings(app_settings) {
+                        eprintln!("更新配置失败: {}", e);
+                    }
+                    
+                    // 重新注册快捷键
+                    if let Err(e) = hotkey_manager::register_toggle_hotkey("Alt+V") {
+                        eprintln!("注册Alt+V快捷键失败: {}", e);
+                    }
+                    
+                    let _ = app_handle_clone
+                        .dialog()
+                        .message("已将您的快捷键改为Alt+V，以避免与系统Win+V冲突。")
+                        .title("已更改快捷键")
+                        .kind(tauri_plugin_dialog::MessageDialogKind::Info)
+                        .blocking_show();
+                }
+            });
+        }
+    }
+    
+    Ok(())
+}
+
 // =================== Tauri 应用入口 ===================
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -131,6 +209,7 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 crate::window_management::show_webview_window(window);
@@ -160,16 +239,34 @@ pub fn run() {
                 {
                     let hook_enabled = crate::shortcut_interceptor::is_interception_enabled();
                     let poll_enabled = crate::key_state_monitor::is_polling_active();
+                    let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
 
-                    if hook_enabled || poll_enabled {
+                    if hook_enabled || poll_enabled || hotkeys_enabled {
                         crate::shortcut_interceptor::disable_shortcut_interception();
                         crate::key_state_monitor::stop_keyboard_polling_system();
+                        crate::hotkey_manager::disable_hotkeys();
                         if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
                             let _ = item.set_text("启用快捷键");
                         }
                     } else {
                         crate::shortcut_interceptor::enable_shortcut_interception();
                         crate::key_state_monitor::start_keyboard_polling_system();
+                        let _ = crate::hotkey_manager::enable_hotkeys();
+                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                            let _ = item.set_text("禁用快捷键");
+                        }
+                    }
+                }
+                #[cfg(not(windows))]
+                {
+                    let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
+                    if hotkeys_enabled {
+                        crate::hotkey_manager::disable_hotkeys();
+                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                            let _ = item.set_text("启用快捷键");
+                        }
+                    } else {
+                        let _ = crate::hotkey_manager::enable_hotkeys();
                         if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
                             let _ = item.set_text("禁用快捷键");
                         }
@@ -239,6 +336,9 @@ pub fn run() {
 
                 // 初始化快捷键拦截器
                 shortcut_interceptor::initialize_shortcut_interceptor(main_window.clone());
+                
+                // 初始化热键管理器
+                hotkey_manager::initialize_hotkey_manager(app.handle().clone(), main_window.clone());
             }
 
             // 开发模式下自动打开开发者工具
@@ -324,22 +424,31 @@ pub fn run() {
             // 配置快捷键拦截器并启用
             #[cfg(windows)]
             {
+                shortcut_interceptor::enable_shortcut_interception();
+            }
+            
+            // 注册全局热键（使用tauri-plugin-global-shortcut）
+            {
                 let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
-                    "Win+V".to_string()
+                    "Alt+V".to_string()
                 } else {
                     app_settings.toggle_shortcut.clone()
                 };
-                shortcut_interceptor::update_shortcut_to_intercept(&toggle_shortcut);
+                
+                if let Err(e) = hotkey_manager::register_toggle_hotkey(&toggle_shortcut) {
+                    eprintln!("注册主窗口热键失败: {}", e);
+                }
 
-                // 配置预览快捷键拦截器
+                // 配置预览快捷键
                 let preview_shortcut = if app_settings.preview_shortcut.is_empty() {
                     "Ctrl+`".to_string()
                 } else {
                     app_settings.preview_shortcut.clone()
                 };
-                shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
-
-                shortcut_interceptor::enable_shortcut_interception();
+                
+                if let Err(e) = hotkey_manager::register_preview_hotkey(&preview_shortcut) {
+                    eprintln!("注册预览窗口热键失败: {}", e);
+                }
             }
 
             // 应用音效设置
@@ -388,14 +497,17 @@ pub fn run() {
                 }
             }
 
-            // 发送启动通知
+            // 发送启动通知和检查Win+V配置
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
                 // 等待一小段时间确保应用完全启动
-                std::thread::sleep(std::time::Duration::from_millis(1000));
+                std::thread::sleep(std::time::Duration::from_millis(1500));
 
                 // 发送启动通知
                 let _ = send_startup_notification_internal(&app_handle);
+                
+                // 检查Win+V配置
+                let _ = check_win_v_configuration(&app_handle);
             });
 
 
@@ -478,6 +590,12 @@ pub fn run() {
             is_backend_initialized,
             send_system_notification,
             send_startup_notification,
+            disable_win_v_hotkey_silent,
+            disable_win_v_hotkey_with_restart,
+            enable_win_v_hotkey_silent,
+            enable_win_v_hotkey_with_restart,
+            is_win_v_hotkey_disabled,
+            is_shortcut_win_v,
 
             commands::test_ai_translation,
             commands::translate_and_input_text,

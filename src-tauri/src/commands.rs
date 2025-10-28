@@ -488,6 +488,43 @@ pub fn get_admin_status() -> Result<admin_privileges::AdminStatus, String> {
     Ok(admin_privileges::get_admin_status())
 }
 
+// 禁用Windows系统Win+V快捷键（不重启Explorer）
+#[tauri::command]
+pub fn disable_win_v_hotkey_silent() -> Result<(), String> {
+    crate::registry_manager::disable_win_v_hotkey_silent()
+}
+
+// 禁用Windows系统Win+V快捷键并重启Explorer
+#[tauri::command]
+pub fn disable_win_v_hotkey_with_restart() -> Result<(), String> {
+    crate::registry_manager::disable_win_v_hotkey()
+}
+
+// 启用Windows系统Win+V快捷键（不重启Explorer）
+#[tauri::command]
+pub fn enable_win_v_hotkey_silent() -> Result<(), String> {
+    crate::registry_manager::enable_win_v_hotkey_silent()
+}
+
+// 启用Windows系统Win+V快捷键并重启Explorer
+#[tauri::command]
+pub fn enable_win_v_hotkey_with_restart() -> Result<(), String> {
+    crate::registry_manager::enable_win_v_hotkey()
+}
+
+// 检查Win+V快捷键是否被禁用
+#[tauri::command]
+pub fn is_win_v_hotkey_disabled() -> bool {
+    crate::registry_manager::is_win_v_hotkey_disabled()
+}
+
+// 检查快捷键是否是Win+V
+#[tauri::command]
+pub fn is_shortcut_win_v(shortcut: String) -> bool {
+    let normalized = shortcut.to_uppercase().replace(" ", "");
+    normalized == "WIN+V" || normalized == "SUPER+V"
+}
+
 // 以管理员权限重启应用
 #[tauri::command]
 pub fn restart_as_admin() -> Result<(), String> {
@@ -524,7 +561,7 @@ pub fn send_startup_notification(app: tauri::AppHandle) -> Result<(), String> {
     // 获取当前设置的快捷键
     let app_settings = crate::settings::get_global_settings();
     let shortcut_key = if app_settings.toggle_shortcut.is_empty() {
-        "Win+V".to_string()
+        "Alt+V".to_string()
     } else {
         app_settings.toggle_shortcut.clone()
     };

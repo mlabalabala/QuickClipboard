@@ -402,6 +402,12 @@ body.theme-dark {
   border-color: #666;
 }
 
+.theme-dark .restore-system-btn:disabled {
+  background-color: #252525;
+  color: #555;
+  border-color: #333;
+}
+
 .theme-dark .shortcut-presets .setting-description {
   color: var(--text-tertiary);
 }

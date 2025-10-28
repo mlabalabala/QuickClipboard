@@ -127,7 +127,7 @@ impl Default for AppSettings {
             theme: "light".to_string(),
             opacity: 0.9,
             background_image_path: String::new(),
-            toggle_shortcut: "Win+V".to_string(),
+            toggle_shortcut: "Alt+V".to_string(),
             number_shortcuts: true,
             number_shortcuts_modifier: "Ctrl".to_string(),
             clipboard_monitor: true,

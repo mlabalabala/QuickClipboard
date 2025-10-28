@@ -38,7 +38,7 @@ const defaultSettings = {
   theme: 'light',
   opacity: 0.9,
   backgroundImagePath: '',
-  toggleShortcut: 'Win+V',
+  toggleShortcut: 'Alt+V',
   numberShortcuts: true,
   numberShortcutsModifier: 'Ctrl',
   clipboardMonitor: true,
@@ -196,7 +196,7 @@ async function initializeUI() {
   setInputValue('run-as-admin', settings.runAsAdmin);
   setInputValue('show-startup-notification', settings.showStartupNotification);
   setInputValue('history-limit', settings.historyLimit);
-  setInputValue('toggle-shortcut', settings.toggleShortcut || 'Win+V');
+  setInputValue('toggle-shortcut', settings.toggleShortcut || 'Alt+V');
   setInputValue('number-shortcuts', settings.numberShortcuts);
   setInputValue('number-shortcuts-modifier', settings.numberShortcutsModifier || 'Ctrl');
   setInputValue('clipboard-monitor', settings.clipboardMonitor);

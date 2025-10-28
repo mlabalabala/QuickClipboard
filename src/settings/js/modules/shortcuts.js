@@ -2,6 +2,7 @@
  * 快捷键设置模块
  */
 import { invoke } from '@tauri-apps/api/core';
+import { ask, message } from '@tauri-apps/plugin-dialog';
 import { showNotification } from '../../../js/notificationManager.js';
 
 export class ShortcutManager {
@@ -28,6 +29,7 @@ export class ShortcutManager {
         const shortcutInput = document.getElementById('toggle-shortcut');
         const clearButton = document.querySelector('.sound-reset-btn');
         const presetButtons = document.querySelectorAll('.preset-btn');
+        const restoreWinVBtn = document.getElementById('restore-win-v-btn');
 
         if (shortcutInput) {
             this._setupShortcutInput(shortcutInput, 'toggleShortcut', async (recording) => {
@@ -36,27 +38,189 @@ export class ShortcutManager {
                 } catch (err) {
                     console.error('设置快捷键录制状态失败:', err);
                 }
+            }, async (newShortcut, oldShortcut) => {
+                // 快捷键更改后的回调
+                const success = await this._handleShortcutChange(newShortcut, oldShortcut);
+                if (!success) {
+                    // 如果用户取消，恢复旧值
+                    shortcutInput.value = oldShortcut;
+                    this.settings.toggleShortcut = oldShortcut;
+                }
             });
         }
 
         if (clearButton) {
-            clearButton.addEventListener('click', () => {
-                const defaultShortcut = 'Win+V';
+            clearButton.addEventListener('click', async () => {
+                const defaultShortcut = 'Alt+V';
+                const oldShortcut = this.settings.toggleShortcut;
                 shortcutInput.value = defaultShortcut;
                 this.settings.toggleShortcut = defaultShortcut;
-                this.saveSettings();
+                const success = await this._handleShortcutChange(defaultShortcut, oldShortcut);
+                if (success) {
+                    this.saveSettings();
+                } else {
+                    shortcutInput.value = oldShortcut;
+                    this.settings.toggleShortcut = oldShortcut;
+                }
             });
         }
 
         presetButtons.forEach(button => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
                 const shortcut = button.getAttribute('data-shortcut');
+                const oldShortcut = this.settings.toggleShortcut;
                 shortcutInput.value = shortcut;
                 this.settings.toggleShortcut = shortcut;
-                this.saveSettings();
-                this._flashButton(button);
+                const success = await this._handleShortcutChange(shortcut, oldShortcut);
+                if (success) {
+                    this.saveSettings();
+                    this._flashButton(button);
+                } else {
+                    shortcutInput.value = oldShortcut;
+                    this.settings.toggleShortcut = oldShortcut;
+                }
             });
         });
+
+        // 恢复系统Win+V按钮
+        if (restoreWinVBtn) {
+            restoreWinVBtn.addEventListener('click', async () => {
+                await this._restoreSystemWinV();
+            });
+            
+            // 初始化按钮状态
+            this._updateRestoreWinVButton();
+        }
+    }
+
+    /**
+     * 处理快捷键更改
+     */
+    async _handleShortcutChange(newShortcut, oldShortcut) {
+        try {
+            // 检查是否是Win+V
+            const isWinV = await invoke('is_shortcut_win_v', { shortcut: newShortcut });
+            
+            if (isWinV) {
+                // 检查是否已经禁用
+                const isDisabled = await invoke('is_win_v_hotkey_disabled');
+                
+                if (!isDisabled) {
+                    const confirmed = await ask(
+                        '要使用Win+V作为快捷键，需要禁用Windows系统的剪贴板历史快捷键。\n\n' +
+                        '⚠️ 此操作将重启资源管理器(Explorer)，桌面会暂时刷新。\n\n' +
+                        '是否继续？',
+                        {
+                            title: '需要禁用系统Win+V',
+                            kind: 'warning',
+                            okLabel: '确认',
+                            cancelLabel: '取消'
+                        }
+                    );
+                    
+                    if (confirmed) {
+                        try {
+                            showNotification('正在禁用系统Win+V，Explorer将重启...', 'info');
+                            
+                            // 禁用并自动重启Explorer
+                            await invoke('disable_win_v_hotkey_with_restart');
+                            
+                            showNotification('已成功禁用系统Win+V快捷键', 'success');
+                            this._updateRestoreWinVButton();
+                            this.saveSettings();
+                            return true;
+                        } catch (err) {
+                            await message('禁用系统Win+V失败: ' + err, {
+                                title: '错误',
+                                kind: 'error'
+                            });
+                            return false;
+                        }
+                    } else {
+                        return false; // 用户取消
+                    }
+                } else {
+                    // 已经禁用过了，直接保存
+                    this.saveSettings();
+                    return true;
+                }
+            } else {
+                // 不是Win+V，直接保存
+                this.saveSettings();
+                return true;
+            }
+        } catch (err) {
+            console.error('处理快捷键更改失败:', err);
+            return false;
+        }
+    }
+
+    /**
+     * 恢复系统Win+V
+     */
+    async _restoreSystemWinV() {
+        try {
+            const confirmed = await ask(
+                '确定要恢复系统Win+V快捷键吗？\n\n' +
+                '此操作将：\n' +
+                '1. 更改您的快捷键为Alt+V\n' +
+                '2. 恢复系统Win+V\n' +
+                '3. 重启资源管理器(Explorer)\n\n' +
+                '⚠️ 桌面会暂时刷新',
+                {
+                    title: '恢复系统Win+V',
+                    kind: 'warning',
+                    okLabel: '确认',
+                    cancelLabel: '取消'
+                }
+            );
+            
+            if (confirmed) {
+                try {
+                    showNotification('正在恢复系统Win+V...', 'info');
+                    
+                    // 先将程序快捷键改为Alt+V
+                    const shortcutInput = document.getElementById('toggle-shortcut');
+                    if (shortcutInput) {
+                        shortcutInput.value = 'Alt+V';
+                        this.settings.toggleShortcut = 'Alt+V';
+                        this.saveSettings();
+                    }
+                    
+                    // 等待设置保存和热键注销
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    // 恢复系统Win+V并重启Explorer
+                    await invoke('enable_win_v_hotkey_with_restart');
+                    
+                    showNotification('已恢复系统Win+V快捷键，程序快捷键已改为Alt+V', 'success');
+                    this._updateRestoreWinVButton();
+                } catch (err) {
+                    await message('恢复系统Win+V失败: ' + err, {
+                        title: '错误',
+                        kind: 'error'
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('恢复系统Win+V失败:', err);
+        }
+    }
+
+    /**
+     * 更新恢复按钮状态
+     */
+    async _updateRestoreWinVButton() {
+        const restoreBtn = document.getElementById('restore-win-v-btn');
+        if (!restoreBtn) return;
+        
+        try {
+            const isDisabled = await invoke('is_win_v_hotkey_disabled');
+            restoreBtn.disabled = !isDisabled;
+            restoreBtn.title = isDisabled ? '点击恢复系统Win+V快捷键' : '系统Win+V未被禁用';
+        } catch (err) {
+            console.error('检查Win+V状态失败:', err);
+        }
     }
 
     /**
@@ -149,14 +313,16 @@ export class ShortcutManager {
     /**
      * 设置快捷键输入框
      */
-    _setupShortcutInput(input, settingKey, onRecordingChange = null) {
+    _setupShortcutInput(input, settingKey, onRecordingChange = null, onShortcutChange = null) {
         let isRecording = false;
+        let oldValue = this.settings[settingKey];
 
         input.addEventListener('focus', async () => {
             if (!isRecording) {
                 if (onRecordingChange) {
                     await onRecordingChange(true);
                 }
+                oldValue = this.settings[settingKey]; // 保存旧值
                 startRecording();
             }
         });
@@ -185,7 +351,13 @@ export class ShortcutManager {
             this.settings[settingKey] = shortcut;
 
             stopRecording();
-            this.saveSettings();
+            
+            // 触发快捷键更改回调
+            if (onShortcutChange) {
+                onShortcutChange(shortcut, oldValue);
+            } else {
+                this.saveSettings();
+            }
         });
 
         input.addEventListener('blur', () => {

@@ -6,7 +6,6 @@ use auto_launch::AutoLaunch;
 use super::converter::SettingsConverter;
 use super::model::AppSettings;
 use super::state;
-use super::storage::SettingsStorage;
 
 // 设置服务 - 专注于复杂的业务逻辑
 pub struct SettingsService;
@@ -112,15 +111,17 @@ impl SettingsService {
         _settings_filtered: &serde_json::Value,
         app_settings: &AppSettings,
     ) -> Result<(), String> {
-        #[cfg(windows)]
+        // 更新全局热键
         {
             // 更新主窗口快捷键
             let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
-                "Win+V".to_string()
+                "Alt+V".to_string()
             } else {
                 app_settings.toggle_shortcut.clone()
             };
-            crate::shortcut_interceptor::update_shortcut_to_intercept(&toggle_shortcut);
+            if let Err(e) = crate::hotkey_manager::update_toggle_hotkey(&toggle_shortcut) {
+                eprintln!("更新主窗口快捷键失败: {}", e);
+            }
 
             // 更新预览窗口快捷键
             let preview_shortcut = if app_settings.preview_shortcut.is_empty() {
@@ -128,7 +129,9 @@ impl SettingsService {
             } else {
                 app_settings.preview_shortcut.clone()
             };
-            crate::shortcut_interceptor::update_preview_shortcut_to_intercept(&preview_shortcut);
+            if let Err(e) = crate::hotkey_manager::update_preview_hotkey(&preview_shortcut) {
+                eprintln!("更新预览窗口快捷键失败: {}", e);
+            }
         }
 
         use tauri::Emitter;

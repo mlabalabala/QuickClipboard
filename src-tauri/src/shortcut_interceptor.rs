@@ -16,21 +16,6 @@ pub static SHORTCUT_INTERCEPTION_ENABLED: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 pub static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
 
-// 当前配置的主窗口快捷键
-#[cfg(windows)]
-static CURRENT_SHORTCUT: Mutex<Option<crate::global_state::ParsedShortcut>> = Mutex::new(None);
-
-// 当前配置的预览窗口快捷键
-#[cfg(windows)]
-static PREVIEW_SHORTCUT: Mutex<Option<crate::global_state::ParsedShortcut>> = Mutex::new(None);
-
-// 快捷键拦截标志（防止重复触发）
-#[cfg(windows)]
-static SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
-
-// 预览快捷键拦截标志
-#[cfg(windows)]
-static PREVIEW_SHORTCUT_TRIGGERED: AtomicBool = AtomicBool::new(false);
 
 // 导航按键监听状态
 #[cfg(windows)]
@@ -40,13 +25,6 @@ static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 static TRANSLATION_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
-// Win+V 特殊处理状态
-#[cfg(windows)]
-static WIN_V_INTERCEPTED: AtomicBool = AtomicBool::new(false);
-
-// V键是否仍然按下
-#[cfg(windows)]
-static V_KEY_PRESSED: AtomicBool = AtomicBool::new(false);
 
 // =================== 辅助函数 ===================
 
@@ -115,160 +93,6 @@ unsafe extern "system" fn shortcut_hook_proc(
         } else {
             false
         };
-
-        // 特殊处理Win+V组合键，防止触发系统Win菜单
-        match wparam.0 as u32 {
-            WM_KEYDOWN | WM_SYSKEYDOWN => {
-                if vk_code == 0x56 && win_pressed {
-                    // V键 + Win键
-                    V_KEY_PRESSED.store(true, Ordering::Relaxed);
-                    WIN_V_INTERCEPTED.store(true, Ordering::Relaxed);
-                } else if vk_code == 0x56 {
-                    // 单独的V键按下
-                    V_KEY_PRESSED.store(true, Ordering::Relaxed);
-                }
-            }
-            WM_KEYUP | WM_SYSKEYUP => {
-                if vk_code == 0x56 {
-                    // V键松开
-                    V_KEY_PRESSED.store(false, Ordering::Relaxed);
-
-                    // 如果之前拦截了Win+V，延迟1秒后发送Win键松开事件
-                    if WIN_V_INTERCEPTED.load(Ordering::Relaxed) {
-                        WIN_V_INTERCEPTED.store(false, Ordering::Relaxed);
-
-                        // 在新线程中延迟发送Win键松开事件
-                        std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(100));
-                            send_win_key_up();
-                        });
-                    }
-                } else if (vk_code == 0x5B || vk_code == 0x5C)
-                    && WIN_V_INTERCEPTED.load(Ordering::Relaxed)
-                {
-                    // Win键松开，但如果V键还没松开，则阻止Win键松开事件
-                    if V_KEY_PRESSED.load(Ordering::Relaxed) {
-                        return LRESULT(1); // 阻止Win键松开事件
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        if let Some(shortcut) = CURRENT_SHORTCUT.lock().unwrap().as_ref() {
-            if vk_code == shortcut.key_code {
-                match wparam.0 as u32 {
-                    WM_KEYDOWN | WM_SYSKEYDOWN => {
-                        if ctrl_pressed == shortcut.ctrl
-                            && shift_pressed == shortcut.shift
-                            && alt_pressed == shortcut.alt
-                            && win_pressed == shortcut.win
-                        {
-                            if !is_own_window {
-                                if !SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
-                                    SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
-
-                                    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                                        let window_clone = window.clone();
-                                        std::thread::spawn(move || {
-                                            crate::window_management::toggle_webview_window_visibility(window_clone);
-                                        });
-                                    }
-                                }
-
-                                return LRESULT(1);
-                            }
-                        }
-                    }
-                    WM_KEYUP | WM_SYSKEYUP => {
-                        if vk_code == shortcut.key_code
-                            || (shortcut.ctrl && vk_code == 0x11)
-                            || (shortcut.shift && vk_code == 0x10)
-                            || (shortcut.alt && vk_code == 0x12)
-                            || (shortcut.win && (vk_code == 0x5B || vk_code == 0x5C))
-                        {
-                            SHORTCUT_TRIGGERED.store(false, Ordering::Relaxed);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        if let Some(preview_shortcut) = PREVIEW_SHORTCUT.lock().unwrap().as_ref() {
-            if vk_code == preview_shortcut.key_code {
-                match wparam.0 as u32 {
-                                WM_KEYDOWN | WM_SYSKEYDOWN => {
-                                    if ctrl_pressed == preview_shortcut.ctrl
-                                        && shift_pressed == preview_shortcut.shift
-                                        && alt_pressed == preview_shortcut.alt
-                                        && win_pressed == preview_shortcut.win
-                                    {
-                                        let settings = crate::settings::get_global_settings();
-                                        if !settings.preview_enabled {
-                                            // 如果预览功能被禁用，不拦截事件
-                                            return CallNextHookEx(None, code, wparam, lparam);
-                                        }
-
-                                        if !is_own_window {
-                                            if !PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed) {
-                                                PREVIEW_SHORTCUT_TRIGGERED.store(true, Ordering::Relaxed);
-
-                                                if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-                                                    let app_handle = window.app_handle().clone();
-                                                    std::thread::spawn(move || {
-                                                        let _ = tauri::async_runtime::block_on(
-                                                            crate::preview_window::show_preview_window(
-                                                                app_handle,
-                                                            ),
-                                                        );
-                                                    });
-                                                }
-                                            }
-
-                                            return LRESULT(1);
-                                        }
-                                    }
-                                }
-                    WM_KEYUP | WM_SYSKEYUP => {
-                        if vk_code == preview_shortcut.key_code
-                            || (preview_shortcut.ctrl && vk_code == 0x11)
-                            || (preview_shortcut.shift && vk_code == 0x10)
-                            || (preview_shortcut.alt && vk_code == 0x12)
-                            || (preview_shortcut.win && (vk_code == 0x5B || vk_code == 0x5C))
-                        {
-                            if !is_own_window && PREVIEW_SHORTCUT_TRIGGERED.load(Ordering::Relaxed)
-                            {
-                                let settings = crate::settings::get_global_settings();
-                                if settings.preview_enabled {
-                                    let user_cancelled = crate::global_state::PREVIEW_CANCELLED_BY_USER
-                                        .load(std::sync::atomic::Ordering::SeqCst);
-
-                                    if user_cancelled {
-                                        crate::global_state::PREVIEW_CANCELLED_BY_USER
-                                            .store(false, std::sync::atomic::Ordering::SeqCst);
-                                        std::thread::spawn(move || {
-                                            let _ = tauri::async_runtime::block_on(
-                                                crate::preview_window::hide_preview_window(),
-                                            );
-                                        });
-                                    } else {
-                                        std::thread::spawn(move || {
-                                            let _ = tauri::async_runtime::block_on(
-                                                crate::preview_window::paste_current_preview_item(),
-                                            );
-                                        });
-                                    }
-                                }
-                            }
-
-                            PREVIEW_SHORTCUT_TRIGGERED.store(false, Ordering::Relaxed);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
 
         // 处理导航按键（仅当启用且窗口应该接收按键且翻译未进行时）
         if NAVIGATION_KEYS_ENABLED.load(Ordering::Relaxed)
@@ -355,32 +179,6 @@ fn emit_navigation_action(action: &str) {
     }
 }
 
-
-// 发送Win键松开事件
-#[cfg(windows)]
-fn send_win_key_up() {
-    use windows::Win32::UI::Input::KeyboardAndMouse::{
-        SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_LWIN,
-    };
-
-    unsafe {
-        let input = INPUT {
-            r#type: INPUT_KEYBOARD,
-            Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
-                ki: KEYBDINPUT {
-                    wVk: VK_LWIN,
-                    wScan: 0,
-                    dwFlags: KEYEVENTF_KEYUP,
-                    time: 0,
-                    dwExtraInfo: 0,
-                },
-            },
-        };
-
-        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
-    }
-}
-
 // =================== 公共接口 ===================
 
 // 初始化快捷键拦截器
@@ -428,23 +226,6 @@ pub fn is_interception_enabled() -> bool {
     SHORTCUT_INTERCEPTION_ENABLED.load(Ordering::SeqCst)
 }
 
-// 更新要拦截的快捷键
-#[cfg(windows)]
-pub fn update_shortcut_to_intercept(shortcut: &str) {
-    if let Some(parsed) = crate::global_state::parse_shortcut(shortcut) {
-        let mut current_shortcut = CURRENT_SHORTCUT.lock().unwrap();
-        *current_shortcut = Some(parsed.clone());
-    }
-}
-
-// 更新要拦截的预览快捷键
-#[cfg(windows)]
-pub fn update_preview_shortcut_to_intercept(shortcut: &str) {
-    if let Some(parsed) = crate::global_state::parse_shortcut(shortcut) {
-        let mut preview_shortcut = PREVIEW_SHORTCUT.lock().unwrap();
-        *preview_shortcut = Some(parsed.clone());
-    }
-}
 
 // 启用导航按键监听
 #[cfg(windows)]
@@ -479,12 +260,6 @@ pub fn enable_shortcut_interception() {}
 
 #[cfg(not(windows))]
 pub fn disable_shortcut_interception() {}
-
-#[cfg(not(windows))]
-pub fn update_shortcut_to_intercept(_shortcut: &str) {}
-
-#[cfg(not(windows))]
-pub fn update_preview_shortcut_to_intercept(_shortcut: &str) {}
 
 #[cfg(not(windows))]
 pub fn is_interception_enabled() -> bool {

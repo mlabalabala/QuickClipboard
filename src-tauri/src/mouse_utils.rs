@@ -23,7 +23,7 @@ pub fn get_cursor_point() -> Result<POINT, String> {
     }
 }
 
-/// 设置鼠标位置（物理像素坐标）
+// 设置鼠标位置（物理像素坐标）
 #[inline]
 pub fn set_cursor_position(x: i32, y: i32) -> Result<(), String> {
     unsafe {

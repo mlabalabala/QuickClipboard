@@ -398,6 +398,12 @@
   border-color: #adb5bd;
 }
 
+.theme-light .restore-system-btn:disabled {
+  background: #f5f5f5;
+  color: #bbb;
+  border-color: #e0e0e0;
+}
+
 .theme-light .shortcut-presets .setting-description {
   color: var(--text-secondary);
 }

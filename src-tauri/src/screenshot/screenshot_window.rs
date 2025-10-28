@@ -204,7 +204,7 @@ pub fn get_all_monitors(window: tauri::WebviewWindow) -> Result<Vec<super::scree
     ScreenshotWindowManager::get_all_monitors(&window)
 }
 
-/// 设置鼠标到指定的物理像素位置（用于方向键精确移动）
+// 设置鼠标到指定的物理像素位置（用于方向键精确移动）
 #[tauri::command]
 pub fn set_cursor_position_physical(x: i32, y: i32) -> Result<(), String> {
     crate::mouse_utils::set_cursor_position(x, y)
