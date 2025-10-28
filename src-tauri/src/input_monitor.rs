@@ -51,6 +51,9 @@ static KEYBOARD_STATE: Mutex<KeyboardState> = Mutex::new(KeyboardState {
 // 导航键焦点状态跟踪
 static NAVIGATION_KEY_FOCUSED: AtomicBool = AtomicBool::new(false);
 
+// 鼠标位置缓存
+static MOUSE_POSITION: Mutex<(f64, f64)> = Mutex::new((0.0, 0.0));
+
 // 启动输入监控系统
 pub fn start_input_monitoring() {
     if MONITORING_ACTIVE.load(Ordering::SeqCst) {
@@ -140,6 +143,15 @@ pub fn get_modifier_keys_state() -> (bool, bool, bool, bool) {
         (state.ctrl, state.alt, state.shift, state.meta)
     } else {
         (false, false, false, false)
+    }
+}
+
+// 获取当前鼠标位置
+pub fn get_mouse_position() -> Result<(i32, i32), String> {
+    if let Ok(pos) = MOUSE_POSITION.lock() {
+        Ok((pos.0 as i32, pos.1 as i32))
+    } else {
+        Err("获取鼠标位置失败".to_string())
     }
 }
 
@@ -564,8 +576,11 @@ fn handle_mouse_button_release(_button: rdev::Button) {
 }
 
 // 处理鼠标移动
-fn handle_mouse_move(_x: f64, _y: f64) {
-    // 可以在这里处理鼠标移动事件
+fn handle_mouse_move(x: f64, y: f64) {
+    // 更新鼠标位置缓存
+    if let Ok(mut pos) = MOUSE_POSITION.lock() {
+        *pos = (x, y);
+    }
 }
 
 // 处理鼠标滚轮
@@ -615,48 +630,32 @@ fn handle_click_outside() {
         return;
     }
 
-    #[cfg(windows)]
-    {
-        use windows::Win32::Foundation::POINT;
-        use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
-        
+    // 从 rdev 缓存获取鼠标位置
+    if let Ok((cursor_x, cursor_y)) = get_mouse_position() {
         if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-            unsafe {
-                let mut cursor_pos = POINT::default();
-                if GetCursorPos(&mut cursor_pos).is_ok() {
-                    if is_click_outside_window(window, cursor_pos) {
-                        let window_clone = window.clone();
-                        std::thread::spawn(move || {
-                            crate::window_management::hide_webview_window(window_clone);
-                        });
-                    }
-                }
+            if is_click_outside_window(window, cursor_x, cursor_y) {
+                let window_clone = window.clone();
+                std::thread::spawn(move || {
+                    crate::window_management::hide_webview_window(window_clone);
+                });
             }
         }
     }
 }
 
 // 检查点击是否在窗口区域外
-#[cfg(windows)]
-fn is_click_outside_window(window: &WebviewWindow, click_point: windows::Win32::Foundation::POINT) -> bool {
-    use windows::Win32::Foundation::RECT;
-    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
-
-    if let Ok(hwnd) = window.hwnd() {
-        let mut window_rect = RECT::default();
-        unsafe {
-            if GetWindowRect(
-                windows::Win32::Foundation::HWND(hwnd.0 as isize),
-                &mut window_rect,
-            )
-            .is_ok()
-            {
-                return click_point.x < window_rect.left
-                    || click_point.x > window_rect.right
-                    || click_point.y < window_rect.top
-                    || click_point.y > window_rect.bottom;
-            }
-        }
+fn is_click_outside_window(window: &WebviewWindow, click_x: i32, click_y: i32) -> bool {
+    if let (Ok(position), Ok(size)) = (window.outer_position(), window.outer_size()) {
+        let window_x = position.x;
+        let window_y = position.y;
+        let window_width = size.width as i32;
+        let window_height = size.height as i32;
+        
+        // 检查点击是否在窗口外
+        return click_x < window_x
+            || click_x > window_x + window_width
+            || click_y < window_y
+            || click_y > window_y + window_height;
     }
     true
 }
