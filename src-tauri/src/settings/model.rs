@@ -99,6 +99,7 @@ pub struct AppSettings {
     pub paste_with_format: bool,
 
     // === 快捷键设置 ===
+    pub hotkeys_enabled: bool,
     pub navigate_up_shortcut: String,
     pub navigate_down_shortcut: String,
     pub tab_left_shortcut: String,
@@ -211,6 +212,7 @@ impl Default for AppSettings {
             paste_with_format: true,
 
             // 快捷键设置
+            hotkeys_enabled: true,
             navigate_up_shortcut: "ArrowUp".to_string(),
             navigate_down_shortcut: "ArrowDown".to_string(),
             tab_left_shortcut: "ArrowLeft".to_string(),

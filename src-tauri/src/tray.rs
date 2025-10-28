@@ -19,9 +19,9 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let separator = PredefinedMenuItem::separator(app)?;
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let screenshot_item = MenuItem::with_id(app, "screenshot", "截屏", true, None::<&str>)?;
-    // 根据当前状态设置切换项的初始文本
-    let any_hotkeys_enabled = crate::input_monitor::is_monitoring_active();
-    let hotkeys_label = if any_hotkeys_enabled {
+    // 根据配置文件中的状态设置切换项的初始文本
+    let settings = crate::settings::get_global_settings();
+    let hotkeys_label = if settings.hotkeys_enabled {
         "禁用快捷键"
     } else {
         "启用快捷键"

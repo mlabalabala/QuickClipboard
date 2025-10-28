@@ -72,8 +72,7 @@ pub fn register_preview_hotkey(shortcut_str: &str) -> Result<(), String> {
 // 注销主窗口快捷键
 pub fn unregister_toggle_hotkey() {
     if let Some(app_handle) = APP_HANDLE.get() {
-        if let Some(shortcut_str) = CURRENT_TOGGLE_SHORTCUT.lock().unwrap().take() {
-
+        if let Some(shortcut_str) = CURRENT_TOGGLE_SHORTCUT.lock().unwrap().clone() {
             if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
                 let _ = app_handle.global_shortcut().unregister(shortcut);
                 println!("已注销主窗口切换快捷键: {}", shortcut_str);
@@ -85,7 +84,7 @@ pub fn unregister_toggle_hotkey() {
 // 注销预览窗口快捷键
 pub fn unregister_preview_hotkey() {
     if let Some(app_handle) = APP_HANDLE.get() {
-        if let Some(shortcut_str) = CURRENT_PREVIEW_SHORTCUT.lock().unwrap().take() {
+        if let Some(shortcut_str) = CURRENT_PREVIEW_SHORTCUT.lock().unwrap().clone() {
             if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
                 let _ = app_handle.global_shortcut().unregister(shortcut);
                 println!("已注销预览窗口快捷键: {}", shortcut_str);
@@ -121,7 +120,7 @@ pub fn register_screenshot_hotkey(shortcut_str: &str) -> Result<(), String> {
 // 注销截屏快捷键
 pub fn unregister_screenshot_hotkey() {
     if let Some(app_handle) = APP_HANDLE.get() {
-        if let Some(shortcut_str) = CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap().take() {
+        if let Some(shortcut_str) = CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap().clone() {
             if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
                 let _ = app_handle.global_shortcut().unregister(shortcut);
                 println!("已注销截屏快捷键: {}", shortcut_str);
@@ -147,22 +146,28 @@ pub fn update_preview_hotkey(shortcut_str: &str) -> Result<(), String> {
     register_preview_hotkey(shortcut_str)
 }
 
-// 启用所有热键
+// 启用所有热键（从配置文件重新读取并注册）
 pub fn enable_hotkeys() -> Result<(), String> {
     if HOTKEYS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
         return Ok(());
     }
 
-    if let Some(toggle_shortcut) = CURRENT_TOGGLE_SHORTCUT.lock().unwrap().clone() {
-        register_toggle_hotkey(&toggle_shortcut)?;
+    // 从配置文件读取快捷键设置
+    let settings = crate::settings::get_global_settings();
+    
+    // 注册主窗口切换快捷键
+    if !settings.toggle_shortcut.is_empty() {
+        register_toggle_hotkey(&settings.toggle_shortcut)?;
     }
     
-    if let Some(preview_shortcut) = CURRENT_PREVIEW_SHORTCUT.lock().unwrap().clone() {
-        register_preview_hotkey(&preview_shortcut)?;
+    // 注册预览窗口快捷键
+    if !settings.preview_shortcut.is_empty() {
+        register_preview_hotkey(&settings.preview_shortcut)?;
     }
     
-    if let Some(screenshot_shortcut) = CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap().clone() {
-        register_screenshot_hotkey(&screenshot_shortcut)?;
+    // 注册截屏快捷键
+    if !settings.screenshot_shortcut.is_empty() {
+        register_screenshot_hotkey(&settings.screenshot_shortcut)?;
     }
     
     HOTKEYS_ENABLED.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -287,10 +292,4 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
     
     normalized.parse::<Shortcut>()
         .map_err(|e| format!("无效的快捷键格式: {}", e))
-}
-
-// 检查快捷键是否是Win+V
-fn is_win_v_shortcut(shortcut_str: &str) -> bool {
-    let normalized = shortcut_str.to_uppercase().replace(" ", "");
-    normalized == "WIN+V" || normalized == "SUPER+V"
 }

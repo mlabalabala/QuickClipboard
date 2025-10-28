@@ -233,21 +233,30 @@ pub fn run() {
                 });
             }
             "toggle-hotkeys" => {
-                let monitoring_enabled = crate::input_monitor::is_monitoring_active();
                 let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
 
-                if monitoring_enabled || hotkeys_enabled {
-                    crate::input_monitor::stop_input_monitoring();
+                if hotkeys_enabled {
+                    // 禁用全局快捷键
                     crate::hotkey_manager::disable_hotkeys();
                     if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
                         let _ = item.set_text("启用快捷键");
                     }
+                    
+                    // 持久化到配置文件
+                    let mut app_settings = crate::settings::get_global_settings();
+                    app_settings.hotkeys_enabled = false;
+                    let _ = crate::settings::update_global_settings(app_settings);
                 } else {
-                    crate::input_monitor::start_input_monitoring();
+                    // 启用全局快捷键
                     let _ = crate::hotkey_manager::enable_hotkeys();
                     if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
                         let _ = item.set_text("禁用快捷键");
                     }
+                    
+                    // 持久化到配置文件
+                    let mut app_settings = crate::settings::get_global_settings();
+                    app_settings.hotkeys_enabled = true;
+                    let _ = crate::settings::update_global_settings(app_settings);
                 }
             }
             "toggle-clipboard-monitor" => {
@@ -396,7 +405,8 @@ pub fn run() {
             global_state::update_preview_shortcut_config(&app_settings.preview_shortcut);
 
             // 注册全局热键（使用tauri-plugin-global-shortcut）
-            {
+            // 只有在配置启用快捷键时才注册
+            if app_settings.hotkeys_enabled {
                 let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
                     "Alt+V".to_string()
                 } else {
@@ -424,6 +434,9 @@ pub fn run() {
                         eprintln!("注册截屏快捷键失败: {}", e);
                     }
                 }
+            } else {
+                // 快捷键已禁用，设置hotkey_manager的状态
+                hotkey_manager::disable_hotkeys();
             }
 
             // 应用音效设置
