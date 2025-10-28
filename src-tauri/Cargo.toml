@@ -52,6 +52,7 @@ urlencoding = "2.1"
 parking_lot = "0.12"
 tauri-plugin-http = "2.5.2"
 rstar = "0.12"
+rdev = "0.5"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.56.0", features = [

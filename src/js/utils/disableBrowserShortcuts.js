@@ -1,180 +1,90 @@
 // 禁用浏览器默认快捷键模块
 
-
 let isRecordingShortcut = false;
 
-
-window.setShortcutRecording = function(recording) {
+window.setShortcutRecording = function (recording) {
   isRecordingShortcut = recording;
   console.log('快捷键录制状态:', recording ? '开始' : '结束');
 };
 
-// 检查是否正在录制快捷键
 function isCurrentlyRecording() {
-
   if (isRecordingShortcut) return true;
 
-  const recordingInputs = document.querySelectorAll('.shortcut-input.recording');
-  if (recordingInputs.length > 0) return true;
-
   const activeElement = document.activeElement;
-  if (activeElement && activeElement.classList.contains('shortcut-input')) {
-    return true;
-  }
-  
-  return false;
+  if (activeElement && activeElement.classList.contains('shortcut-input')) return true;
+  return document.querySelector('.shortcut-input.recording') !== null;
 }
 
-// 需要禁用的快捷键组合
+// 禁用的浏览器快捷键列表
 const DISABLED_SHORTCUTS = [
-  // 浏览器导航快捷键
-  { ctrl: true, key: 'f' },      // 查找
-  { ctrl: true, key: 'g' },      // 查找下一个
-  { ctrl: true, shift: true, key: 'g' }, // 查找上一个
-  { ctrl: true, key: 'd' },      // 添加书签
-  { ctrl: true, key: 'e' },      // 搜索栏
-  { ctrl: true, key: 'h' },      // 历史记录
-  { ctrl: true, key: 'j' },      // 下载
-  { ctrl: true, key: 'k' },      // 搜索栏
-  { ctrl: true, key: 'l' },      // 地址栏
-  { ctrl: true, key: 'm' },      // 最小化
-  { ctrl: true, key: 'n' },      // 新窗口
-  { ctrl: true, key: 'o' },      // 打开文件
-  { ctrl: true, key: 'p' },      // 打印
-  { ctrl: true, key: 'q' },      // 退出
-  { ctrl: true, key: 'r' },      // 刷新
-  { ctrl: true, shift: true, key: 'r' }, // 强制刷新
-  { ctrl: true, key: 't' },      // 新标签页
-  { ctrl: true, key: 'u' },      // 查看源码
-  { ctrl: true, key: 'w' },      // 关闭标签页
-  { ctrl: true, shift: true, key: 'w' }, // 关闭窗口
-  { ctrl: true, key: 'y' },      // 历史记录
-  { ctrl: true, key: '=' },      // 放大
-  { ctrl: true, key: '+' },      // 放大
-  { ctrl: true, key: '-' },      // 缩小
-  { ctrl: true, key: '0' },      // 重置缩放
-  { ctrl: true, shift: true, key: 'delete' }, // 清除浏览数据
-  { ctrl: true, shift: true, key: 'n' }, // 隐身窗口
-  { ctrl: true, shift: true, key: 't' }, // 重新打开关闭的标签页
-  { ctrl: true, shift: true, key: 'b' }, // 书签管理器
-  { ctrl: true, shift: true, key: 'o' }, // 书签管理器
-  { ctrl: true, shift: true, key: 'h' }, // 历史记录页面
-  { ctrl: true, shift: true, key: 'y' }, // 历史记录页面
-  
-  // 开发者工具
-  { key: 'F12' },                // 开发者工具
-  { ctrl: true, shift: true, key: 'i' }, // 开发者工具
-  { ctrl: true, shift: true, key: 'j' }, // 控制台
-  { ctrl: true, shift: true, key: 'c' }, // 元素选择器
-  
+  // 系统级
+  { key: 'F1' }, { key: 'F3' }, { key: 'F5' }, { key: 'F11' }, { key: 'F12' },
+  { ctrl: true, key: 'F5' }, { ctrl: true, shift: true, key: 'r' },
+  { ctrl: true, key: 'r' }, { key: 'Escape' },
+
+  // 页面控制
+  { ctrl: true, key: 'p' }, { ctrl: true, key: 's' }, { ctrl: true, key: 'o' },
+  { ctrl: true, key: 'n' }, { ctrl: true, key: 't' }, { ctrl: true, key: 'w' },
+  { ctrl: true, key: 'u' }, { ctrl: true, shift: true, key: 'i' },
+  { ctrl: true, shift: true, key: 'j' }, { ctrl: true, shift: true, key: 'c' },
+  { ctrl: true, shift: true, key: 't' },
+
   // 标签页切换
-  { ctrl: true, key: 'Tab' },    // 切换标签页
-  { ctrl: true, shift: true, key: 'Tab' }, // 反向切换标签页
-  { ctrl: true, key: 'PageUp' }, // 上一个标签页
-  { ctrl: true, key: 'PageDown' }, // 下一个标签页
-  
-  // 数字键标签页切换
-  { ctrl: true, key: '1' },
-  { ctrl: true, key: '2' },
-  { ctrl: true, key: '3' },
-  { ctrl: true, key: '4' },
-  { ctrl: true, key: '5' },
-  { ctrl: true, key: '6' },
-  { ctrl: true, key: '7' },
-  { ctrl: true, key: '8' },
-  { ctrl: true, key: '9' },
-  
-  // 功能键
-  { key: 'F1' },                 // 帮助
-  { key: 'F3' },                 // 查找下一个
-  { key: 'F5' },                 // 刷新
-  { ctrl: true, key: 'F5' },     // 强制刷新
-  { key: 'F6' },                 // 地址栏
-  { key: 'F11' },                // 全屏
-  
+  { ctrl: true, key: 'Tab' }, { ctrl: true, shift: true, key: 'Tab' },
+  { ctrl: true, key: 'PageUp' }, { ctrl: true, key: 'PageDown' },
+  ...Array.from({ length: 9 }, (_, i) => ({ ctrl: true, key: (i + 1).toString() })),
+
   // Alt 组合键
-  { alt: true, key: 'ArrowLeft' }, // 后退
-  { alt: true, key: 'ArrowRight' }, // 前进
-  { alt: true, key: 'Home' },     // 首页
-  { alt: true, key: 'd' },        // 地址栏
-  { alt: true, key: 'f' },        // 文件菜单
-  
-  // 其他
-  { key: 'Escape', target: 'body' },
+  { alt: true, key: 'ArrowLeft' }, { alt: true, key: 'ArrowRight' },
+  { alt: true, key: 'Home' }, { alt: true, key: 'd' }, { alt: true, key: 'f' },
+
+  // 缩放
+  { ctrl: true, key: '+' }, { ctrl: true, key: '=' }, { ctrl: true, key: '-' }, { ctrl: true, key: '0' },
 ];
 
-// 检查按键组合是否匹配
 function matchesShortcut(event, shortcut) {
-  const ctrlMatch = shortcut.ctrl ? event.ctrlKey : !event.ctrlKey;
-  const altMatch = shortcut.alt ? event.altKey : !event.altKey;
-  const shiftMatch = shortcut.shift ? event.shiftKey : !event.shiftKey;
-  const keyMatch = shortcut.key.toLowerCase() === event.key.toLowerCase() || 
-                   shortcut.key.toLowerCase() === event.code.toLowerCase();
-  
-  return ctrlMatch && altMatch && shiftMatch && keyMatch;
+  return (
+    (!!shortcut.ctrl === event.ctrlKey) &&
+    (!!shortcut.alt === event.altKey) &&
+    (!!shortcut.shift === event.shiftKey) &&
+    (
+      shortcut.key.toLowerCase() === event.key.toLowerCase() ||
+      shortcut.key.toLowerCase() === event.code.replace('Key', '').toLowerCase()
+    )
+  );
 }
 
-// 全局键盘事件处理器
+// 全局事件处理器
 function handleKeyDown(event) {
-  if (isCurrentlyRecording()) {
-    return;
+  if (isCurrentlyRecording()) return;
+
+  const tag = event.target.tagName;
+  const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable;
+
+  // 放行输入框常用编辑操作
+  if (isInput) {
+    const allowed = ['ctrl+a', 'ctrl+c', 'ctrl+v', 'ctrl+x', 'ctrl+z', 'ctrl+y'];
+    const combo = `${event.ctrlKey ? 'ctrl+' : ''}${event.altKey ? 'alt+' : ''}${event.shiftKey ? 'shift+' : ''}${event.key.toLowerCase()}`;
+    if (allowed.includes(combo)) return;
   }
-  
-  // 检查是否匹配需要禁用的快捷键
+
   for (const shortcut of DISABLED_SHORTCUTS) {
     if (matchesShortcut(event, shortcut)) {
-      const isInputElement = event.target.tagName === 'INPUT' || 
-                             event.target.tagName === 'TEXTAREA' || 
-                             event.target.contentEditable === 'true';
-
-      if (isInputElement) {
-        const allowedInInput = [
-          'ctrl+a', 'ctrl+c', 'ctrl+v', 'ctrl+x', 'ctrl+z', 'ctrl+y',
-          'ctrl+s' 
-        ];
-        const currentShortcut = `${event.ctrlKey ? 'ctrl+' : ''}${event.altKey ? 'alt+' : ''}${event.shiftKey ? 'shift+' : ''}${event.key.toLowerCase()}`;
-        
-        if (allowedInInput.includes(currentShortcut)) {
-          continue;
-        }
-      }
-      
-      const isEditorContext = document.body.classList.contains('editor-context') || 
-                              document.querySelector('.editor-container') !== null;
-      
-      if (isEditorContext && (event.ctrlKey && event.key.toLowerCase() === 's')) {
-        continue;
-      }
-      
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       return false;
     }
   }
 }
 
-// 初始化浏览器快捷键禁用
+// 初始化函数
 export function initDisableBrowserShortcuts() {
   document.addEventListener('keydown', handleKeyDown, true);
-  document.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
-  });
-  
-  document.addEventListener('dragstart', (event) => {
-    event.preventDefault();
-  });
-  
-  document.addEventListener('selectstart', (event) => {
-    if (event.target.tagName !== 'INPUT' && 
-        event.target.tagName !== 'TEXTAREA' && 
-        event.target.contentEditable !== 'true') {
-    }
-  });
-  
-  console.log('浏览器默认快捷键已禁用');
+  document.addEventListener('contextmenu', e => e.preventDefault(), true);
+  document.addEventListener('dragstart', e => e.preventDefault(), true);
+  document.addEventListener('copy', e => e.stopPropagation(), true);
 }
 
 export function removeDisableBrowserShortcuts() {
   document.removeEventListener('keydown', handleKeyDown, true);
-  console.log('浏览器默认快捷键禁用已移除');
 }

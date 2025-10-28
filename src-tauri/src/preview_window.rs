@@ -127,7 +127,7 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         #[cfg(windows)]
         {
             crate::global_state::PREVIEW_CANCELLED_BY_USER.store(false, std::sync::atomic::Ordering::SeqCst);
-            crate::mouse_hook::request_mouse_monitoring("preview_window");
+            crate::input_monitor::request_mouse_monitoring("preview_window");
         }
 
         let _ = window.emit("preview-index-changed", json!({ "index": 0 }));
@@ -150,7 +150,7 @@ pub async fn hide_preview_window() -> Result<(), String> {
         PREVIEW_WINDOW_VISIBLE.store(false, Ordering::SeqCst);
 
         #[cfg(windows)]
-        crate::mouse_hook::release_mouse_monitoring("preview_window");
+        crate::input_monitor::release_mouse_monitoring("preview_window");
     }
 
     Ok(())
@@ -430,7 +430,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
 
         if state.tab == "clipboard" {
             // 粘贴剪贴板历史项
-            if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
+            if let Some(main_window) = crate::input_monitor::MAIN_WINDOW_HANDLE.get() {
                 // 获取剪贴板历史项ID
                 let items = crate::database::get_clipboard_history(None)?;
                 if index < items.len() {
@@ -453,7 +453,7 @@ pub async fn paste_current_preview_item() -> Result<(), String> {
 
             if index < quick_texts.len() {
                 let quick_text = &quick_texts[index];
-                if let Some(main_window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
+                if let Some(main_window) = crate::input_monitor::MAIN_WINDOW_HANDLE.get() {
                     // 使用统一的粘贴命令
                     let params = crate::services::paste_service::PasteContentParams {
                         clipboard_id: None,

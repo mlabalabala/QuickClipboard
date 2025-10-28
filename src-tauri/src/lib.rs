@@ -18,8 +18,7 @@ mod global_state;
 mod groups;
 mod hotkey_manager;
 mod image_manager;
-mod key_state_monitor;
-mod mouse_hook;
+mod input_monitor;
 mod registry_manager;
 mod mouse_utils;
 mod paste_utils;
@@ -34,7 +33,6 @@ mod screenshot;
 mod memory_manager;
 mod services;
 mod settings;
-mod shortcut_interceptor;
 mod sound_manager;
 mod text_input_simulator;
 mod tray;
@@ -235,41 +233,20 @@ pub fn run() {
                 });
             }
             "toggle-hotkeys" => {
-                #[cfg(windows)]
-                {
-                    let hook_enabled = crate::shortcut_interceptor::is_interception_enabled();
-                    let poll_enabled = crate::key_state_monitor::is_polling_active();
-                    let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
+                let monitoring_enabled = crate::input_monitor::is_monitoring_active();
+                let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
 
-                    if hook_enabled || poll_enabled || hotkeys_enabled {
-                        crate::shortcut_interceptor::disable_shortcut_interception();
-                        crate::key_state_monitor::stop_keyboard_polling_system();
-                        crate::hotkey_manager::disable_hotkeys();
-                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
-                            let _ = item.set_text("启用快捷键");
-                        }
-                    } else {
-                        crate::shortcut_interceptor::enable_shortcut_interception();
-                        crate::key_state_monitor::start_keyboard_polling_system();
-                        let _ = crate::hotkey_manager::enable_hotkeys();
-                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
-                            let _ = item.set_text("禁用快捷键");
-                        }
+                if monitoring_enabled || hotkeys_enabled {
+                    crate::input_monitor::stop_input_monitoring();
+                    crate::hotkey_manager::disable_hotkeys();
+                    if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                        let _ = item.set_text("启用快捷键");
                     }
-                }
-                #[cfg(not(windows))]
-                {
-                    let hotkeys_enabled = crate::hotkey_manager::is_hotkeys_enabled();
-                    if hotkeys_enabled {
-                        crate::hotkey_manager::disable_hotkeys();
-                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
-                            let _ = item.set_text("启用快捷键");
-                        }
-                    } else {
-                        let _ = crate::hotkey_manager::enable_hotkeys();
-                        if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
-                            let _ = item.set_text("禁用快捷键");
-                        }
+                } else {
+                    crate::input_monitor::start_input_monitoring();
+                    let _ = crate::hotkey_manager::enable_hotkeys();
+                    if let Some(item) = crate::tray::TOGGLE_HOTKEYS_ITEM.get() {
+                        let _ = item.set_text("禁用快捷键");
                     }
                 }
             }
@@ -330,12 +307,9 @@ pub fn run() {
             
             let _ = main_window.set_focusable(false);
             
-            #[cfg(windows)]
             {
-                mouse_hook::MAIN_WINDOW_HANDLE.set(main_window.clone()).ok();
-
-                // 初始化快捷键拦截器
-                shortcut_interceptor::initialize_shortcut_interceptor(main_window.clone());
+                // 设置主窗口句柄
+                input_monitor::MAIN_WINDOW_HANDLE.set(main_window.clone()).ok();
                 
                 // 初始化热键管理器
                 hotkey_manager::initialize_hotkey_manager(app.handle().clone(), main_window.clone());
@@ -421,12 +395,6 @@ pub fn run() {
             #[cfg(windows)]
             global_state::update_preview_shortcut_config(&app_settings.preview_shortcut);
 
-            // 配置快捷键拦截器并启用
-            #[cfg(windows)]
-            {
-                shortcut_interceptor::enable_shortcut_interception();
-            }
-            
             // 注册全局热键（使用tauri-plugin-global-shortcut）
             {
                 let toggle_shortcut = if app_settings.toggle_shortcut.is_empty() {
@@ -448,6 +416,13 @@ pub fn run() {
                 
                 if let Err(e) = hotkey_manager::register_preview_hotkey(&preview_shortcut) {
                     eprintln!("注册预览窗口热键失败: {}", e);
+                }
+
+                // 配置截屏快捷键
+                if app_settings.screenshot_enabled && !app_settings.screenshot_shortcut.is_empty() {
+                    if let Err(e) = hotkey_manager::register_screenshot_hotkey(&app_settings.screenshot_shortcut) {
+                        eprintln!("注册截屏快捷键失败: {}", e);
+                    }
                 }
             }
 
@@ -481,20 +456,10 @@ pub fn run() {
                 }
             });
 
-            // 注册全局快捷键
+            // 输入监控系统
             #[cfg(desktop)]
             {
-                // 启动按键监控系统（仅 Windows）
-                #[cfg(windows)]
-                {
-                    // 按键状态监控系统
-                    key_state_monitor::start_keyboard_polling_system();
-                    // 安装鼠标钩子（用于全局鼠标中键监听）
-                    mouse_hook::install_mouse_hook();
-
-                    // 安装快捷键拦截钩子
-                    shortcut_interceptor::install_shortcut_hook();
-                }
+                input_monitor::start_input_monitoring();
             }
 
             // 发送启动通知和检查Win+V配置

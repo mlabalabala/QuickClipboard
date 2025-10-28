@@ -245,11 +245,11 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     EDGE_SNAP_MANAGER.lock().is_hidden = true;
 
     #[cfg(windows)]
-    crate::mouse_hook::release_mouse_monitoring("main_window");
+    crate::input_monitor::release_mouse_monitoring("main_window");
 
     // 禁用导航按键，避免影响用户在其他应用中的操作
     #[cfg(windows)]
-    crate::shortcut_interceptor::disable_navigation_keys();
+    crate::input_monitor::disable_navigation_keys();
 
     // 保存贴边位置
     let mut settings = crate::settings::get_global_settings();
@@ -322,11 +322,11 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     EDGE_SNAP_MANAGER.lock().is_hidden = false;
 
     #[cfg(windows)]
-    crate::mouse_hook::request_mouse_monitoring("main_window");
+    crate::input_monitor::request_mouse_monitoring("main_window");
 
     // 重新启用导航按键
     #[cfg(windows)]
-    crate::shortcut_interceptor::enable_navigation_keys();
+    crate::input_monitor::enable_navigation_keys();
     Ok(())
 }
 
@@ -663,7 +663,7 @@ pub fn restore_edge_snap_on_startup(window: &WebviewWindow) -> Result<(), String
 
         // 禁用导航按键，避免影响用户在其他应用中的操作
         #[cfg(windows)]
-        crate::shortcut_interceptor::disable_navigation_keys();
+        crate::input_monitor::disable_navigation_keys();
 
         // 启动鼠标监听（此时窗口在隐藏位置但状态为显示，鼠标监听会根据鼠标位置决定是否隐藏）
         start_mouse_monitoring(window.clone())?;

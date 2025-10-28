@@ -15,7 +15,7 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
             let _ = crate::edge_snap::restore_window_from_snap(&window);
         } else {
             #[cfg(windows)]
-            crate::mouse_hook::request_mouse_monitoring("main_window");
+            crate::input_monitor::request_mouse_monitoring("main_window");
             // 贴边显示成功，直接返回
             return;
         }
@@ -71,9 +71,9 @@ pub fn show_webview_window(window: tauri::WebviewWindow) {
     #[cfg(windows)]
     {
         // 启用导航按键监听
-        crate::shortcut_interceptor::enable_navigation_keys();
+        crate::input_monitor::enable_navigation_keys();
         // 启用鼠标监听
-        crate::mouse_hook::request_mouse_monitoring("main_window");
+        crate::input_monitor::request_mouse_monitoring("main_window");
     }
 }
 
@@ -88,7 +88,7 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     if crate::edge_snap::is_window_edge_hidden() {
         // 如果窗口已经处于贴边隐藏状态，确保停止鼠标监听
         #[cfg(windows)]
-        crate::mouse_hook::release_mouse_monitoring("edge_snap");
+        crate::input_monitor::release_mouse_monitoring("edge_snap");
         // 窗口已经处于贴边隐藏状态，不需要再次隐藏
         return;
     }
@@ -103,7 +103,7 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
             // 贴边隐藏失败，使用正常隐藏
         } else {
             #[cfg(windows)]
-            crate::mouse_hook::release_mouse_monitoring("edge_snap");
+            crate::input_monitor::release_mouse_monitoring("edge_snap");
             // 贴边隐藏成功，直接返回
             return;
         }
@@ -122,11 +122,13 @@ pub fn hide_webview_window(window: tauri::WebviewWindow) {
     // 隐藏窗口前恢复焦点并停止鼠标监听
     let _ = restore_last_focus();
     let _ = window.hide();
+    
     #[cfg(windows)]
-    crate::mouse_hook::release_mouse_monitoring("main_window");
-    // 禁用导航按键监听
-    #[cfg(windows)]
-    crate::shortcut_interceptor::disable_navigation_keys();
+    {
+        crate::input_monitor::release_mouse_monitoring("main_window");
+        // 禁用导航键监听
+        crate::input_monitor::disable_navigation_keys();
+    }
 }
 
 // 切换窗口显示/隐藏状态

@@ -23,6 +23,7 @@ import './js/fileIconUtils.js';
 import './js/utils/htmlProcessor.js';
 import { initNavigation, initShortcutsHelpPanel } from './js/navigation.js';
 import { initShortcutDisplay } from './js/shortcutDisplay.js';
+import { initDisableBrowserShortcuts } from './js/utils/disableBrowserShortcuts.js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -151,6 +152,9 @@ async function initApp() {
 
   // 输出启动横幅
   printStartupBanner();
+
+  // 禁用浏览器默认快捷键
+  initDisableBrowserShortcuts();
 
   // 初始化DOM元素引用
   initDOMReferences();

@@ -9,6 +9,7 @@ static APP_HANDLE: OnceCell<tauri::AppHandle> = OnceCell::new();
 static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
 static CURRENT_TOGGLE_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 static CURRENT_PREVIEW_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
+static CURRENT_SCREENSHOT_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 static HOTKEYS_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 
 
@@ -93,10 +94,47 @@ pub fn unregister_preview_hotkey() {
     }
 }
 
+// 注册截屏快捷键
+pub fn register_screenshot_hotkey(shortcut_str: &str) -> Result<(), String> {
+    let app_handle = APP_HANDLE.get().ok_or("热键管理器未初始化")?;
+    
+    unregister_screenshot_hotkey();
+
+    let shortcut = parse_shortcut(shortcut_str)
+        .map_err(|e| format!("解析快捷键失败: {}", e))?;
+
+    app_handle
+        .global_shortcut()
+        .on_shortcut(shortcut.clone(), move |app, _shortcut, event| {
+            if event.state == ShortcutState::Pressed {
+                handle_screenshot_hotkey(app);
+            }
+        })
+        .map_err(|e| format!("注册截屏快捷键失败: {}", e))?;
+
+    *CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap() = Some(shortcut_str.to_string());
+    
+    println!("已注册截屏快捷键: {}", shortcut_str);
+    Ok(())
+}
+
+// 注销截屏快捷键
+pub fn unregister_screenshot_hotkey() {
+    if let Some(app_handle) = APP_HANDLE.get() {
+        if let Some(shortcut_str) = CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap().take() {
+            if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
+                let _ = app_handle.global_shortcut().unregister(shortcut);
+                println!("已注销截屏快捷键: {}", shortcut_str);
+            }
+        }
+    }
+}
+
 // 注销所有快捷键
 pub fn unregister_all_hotkeys() {
     unregister_toggle_hotkey();
     unregister_preview_hotkey();
+    unregister_screenshot_hotkey();
 }
 
 // 更新主窗口切换快捷键
@@ -121,6 +159,10 @@ pub fn enable_hotkeys() -> Result<(), String> {
     
     if let Some(preview_shortcut) = CURRENT_PREVIEW_SHORTCUT.lock().unwrap().clone() {
         register_preview_hotkey(&preview_shortcut)?;
+    }
+    
+    if let Some(screenshot_shortcut) = CURRENT_SCREENSHOT_SHORTCUT.lock().unwrap().clone() {
+        register_screenshot_hotkey(&screenshot_shortcut)?;
     }
     
     HOTKEYS_ENABLED.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -212,6 +254,29 @@ fn handle_preview_hotkey_released(_app: &tauri::AppHandle) {
             );
         });
     }
+}
+
+// 处理截屏热键
+fn handle_screenshot_hotkey(app: &tauri::AppHandle) {
+    let settings = crate::settings::get_global_settings();
+    
+    if !settings.screenshot_enabled {
+        return;
+    }
+
+    if settings.app_filter_enabled {
+        #[cfg(windows)]
+        if !crate::app_filter::is_current_app_allowed() {
+            return;
+        }
+    }
+
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = crate::commands::start_builtin_screenshot(app_handle) {
+            eprintln!("启动截屏失败: {}", e);
+        }
+    });
 }
 
 fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {

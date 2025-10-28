@@ -35,6 +35,10 @@ pub static PREVIEW_CANCELLED_BY_USER: AtomicBool = AtomicBool::new(false);
 #[cfg(windows)]
 pub static SHORTCUT_RECORDING: AtomicBool = AtomicBool::new(false);
 
+// 翻译进行状态（用于暂时禁用导航按键）
+#[cfg(windows)]
+pub static TRANSLATION_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+
 // 预览窗口快捷键配置
 #[cfg(windows)]
 #[derive(Debug, Clone)]

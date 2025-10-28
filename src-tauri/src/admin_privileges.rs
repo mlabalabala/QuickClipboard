@@ -88,15 +88,14 @@ pub fn restart_as_admin() -> Result<(), String> {
     Err("管理员权限功能仅在Windows平台可用".to_string())
 }
 
-// 用来检测是否有管理员权限的应用程序在运行
 #[cfg(windows)]
-pub fn check_admin_required_for_hooks() -> bool {
-    true
+pub fn check_admin_required_for_shortcuts() -> bool {
+    false
 }
 
 // 非Windows平台总是返回false
 #[cfg(not(windows))]
-pub fn check_admin_required_for_hooks() -> bool {
+pub fn check_admin_required_for_shortcuts() -> bool {
     false
 }
 
@@ -105,7 +104,7 @@ pub fn get_admin_status() -> AdminStatus {
     AdminStatus {
         is_admin: is_running_as_admin(),
         can_elevate: cfg!(windows),
-        admin_required_for_hooks: check_admin_required_for_hooks(),
+        admin_required_for_shortcuts: check_admin_required_for_shortcuts(),
     }
 }
 
@@ -116,6 +115,5 @@ pub struct AdminStatus {
     pub is_admin: bool,
     // 是否可以提升权限（仅Windows支持）
     pub can_elevate: bool,
-    // 是否需要管理员权限来使用全局快捷键
-    pub admin_required_for_hooks: bool,
+    pub admin_required_for_shortcuts: bool,
 }

@@ -20,11 +20,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let screenshot_item = MenuItem::with_id(app, "screenshot", "截屏", true, None::<&str>)?;
     // 根据当前状态设置切换项的初始文本
-    let any_hotkeys_enabled = {
-        let hook = crate::shortcut_interceptor::is_interception_enabled();
-        let poll = crate::key_state_monitor::is_polling_active();
-        hook || poll
-    };
+    let any_hotkeys_enabled = crate::input_monitor::is_monitoring_active();
     let hotkeys_label = if any_hotkeys_enabled {
         "禁用快捷键"
     } else {

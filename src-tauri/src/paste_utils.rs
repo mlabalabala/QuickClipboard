@@ -1,17 +1,15 @@
-// Windows 粘贴工具函数
+// 跨平台粘贴工具函数
 
 #[cfg(windows)]
 pub fn windows_paste() -> bool {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
+        SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
         KEYEVENTF_KEYUP, VK_CONTROL, VK_V, VK_MENU,
     };
 
     unsafe {
-
-        // 判断当前按键状态
-        let ctrl_pressed = (GetAsyncKeyState(VK_CONTROL.0 as i32) & 0x8000u16 as i16) != 0;
-        let alt_pressed = (GetAsyncKeyState(VK_MENU.0 as i32) & 0x8000u16 as i16) != 0;
+        // 从 input_monitor 获取当前按键状态
+        let (ctrl_pressed, alt_pressed, _, _) = crate::input_monitor::get_modifier_keys_state();
 
         // 生成按键序列
         let mut inputs: Vec<INPUT> = Vec::new();

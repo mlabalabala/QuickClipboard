@@ -1,4 +1,4 @@
-use crate::mouse_hook::{enable_mouse_monitoring, disable_mouse_monitoring};
+use crate::input_monitor::{enable_mouse_monitoring, disable_mouse_monitoring};
 
 // 鼠标监听服务 - 处理鼠标监听相关的业务逻辑
 pub struct MouseService;

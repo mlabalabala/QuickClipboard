@@ -155,7 +155,7 @@ pub fn init_state_manager() {
             StateChangeEvent::WindowPinned(pinned) => {
                 // 当取消固定时，如果贴边处于激活状态，重新启动监听
                 if !pinned && is_edge_snap_active() {
-                    if let Some(window) = crate::mouse_hook::MAIN_WINDOW_HANDLE.get() {
+                    if let Some(window) = crate::input_monitor::MAIN_WINDOW_HANDLE.get() {
                         let _ = crate::edge_snap::restart_mouse_monitoring_if_snapped(window);
                     }
                 }
