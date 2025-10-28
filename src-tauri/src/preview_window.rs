@@ -124,11 +124,7 @@ pub async fn show_preview_window(app: AppHandle) -> Result<(), String> {
         PREVIEW_WINDOW_VISIBLE.store(true, Ordering::SeqCst);
         PREVIEW_CURRENT_INDEX.store(0, Ordering::SeqCst);
 
-        #[cfg(windows)]
-        {
-            crate::global_state::PREVIEW_CANCELLED_BY_USER.store(false, std::sync::atomic::Ordering::SeqCst);
-            crate::input_monitor::request_mouse_monitoring("preview_window");
-        }
+        crate::global_state::PREVIEW_CANCELLED_BY_USER.store(false, std::sync::atomic::Ordering::SeqCst);
 
         let _ = window.emit("preview-index-changed", json!({ "index": 0 }));
         let _ = window.emit("clipboard-history-updated", ());
@@ -149,8 +145,6 @@ pub async fn hide_preview_window() -> Result<(), String> {
         window.hide().map_err(|e| format!("隐藏预览窗口失败: {}", e))?;
         PREVIEW_WINDOW_VISIBLE.store(false, Ordering::SeqCst);
 
-        #[cfg(windows)]
-        crate::input_monitor::release_mouse_monitoring("preview_window");
     }
 
     Ok(())

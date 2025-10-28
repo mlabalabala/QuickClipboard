@@ -2,7 +2,6 @@ use once_cell::sync::OnceCell;
 use rdev::{listen, Event, EventType, Key};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::collections::HashSet;
 use std::thread;
 use std::time::Duration;
 use tauri::{Emitter, WebviewWindow};
@@ -17,10 +16,6 @@ static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
 
 // 鼠标监听相关的全局状态
 pub static MOUSE_MONITORING_ENABLED: AtomicBool = AtomicBool::new(false);
-
-// 鼠标监听需求跟踪
-static MOUSE_MONITORING_REQUESTS: std::sync::LazyLock<Mutex<HashSet<String>>> =
-    std::sync::LazyLock::new(|| Mutex::new(HashSet::new()));
 
 // 按键状态跟踪
 struct KeyboardState {
@@ -79,7 +74,7 @@ pub fn start_input_monitoring() {
     }
 }
 
-// 停止输入监控系统
+// 禁用输入事件处理
 pub fn stop_input_monitoring() {
     MONITORING_ACTIVE.store(false, Ordering::SeqCst);
 }
@@ -104,35 +99,17 @@ pub fn is_navigation_keys_enabled() -> bool {
     NAVIGATION_KEYS_ENABLED.load(Ordering::SeqCst)
 }
 
-// 请求启用鼠标监听（带来源标识）
-pub fn request_mouse_monitoring(source: &str) {
-    if let Ok(mut requests) = MOUSE_MONITORING_REQUESTS.lock() {
-        requests.insert(source.to_string());
-    }
+// 启用鼠标点击外部隐藏功能
+pub fn enable_mouse_monitoring() {
     MOUSE_MONITORING_ENABLED.store(true, Ordering::Relaxed);
 }
 
-// 释放鼠标监听请求（带来源标识）
-pub fn release_mouse_monitoring(source: &str) {
-    if let Ok(mut requests) = MOUSE_MONITORING_REQUESTS.lock() {
-        requests.remove(source);
-        if requests.is_empty() {
-            MOUSE_MONITORING_ENABLED.store(false, Ordering::Relaxed);
-        }
-    }
-}
-
-// 启用鼠标监听
-pub fn enable_mouse_monitoring() {
-    request_mouse_monitoring("legacy");
-}
-
-// 禁用鼠标监听
+// 禁用鼠标点击外部隐藏功能
 pub fn disable_mouse_monitoring() {
-    release_mouse_monitoring("legacy");
+    MOUSE_MONITORING_ENABLED.store(false, Ordering::Relaxed);
 }
 
-// 检查鼠标监听是否启用
+// 检查鼠标点击外部隐藏是否启用
 pub fn is_mouse_monitoring_enabled() -> bool {
     MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed)
 }

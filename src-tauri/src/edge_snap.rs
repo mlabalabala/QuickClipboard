@@ -245,11 +245,10 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     EDGE_SNAP_MANAGER.lock().is_hidden = true;
 
     #[cfg(windows)]
-    crate::input_monitor::release_mouse_monitoring("main_window");
-
-    // 禁用导航按键，避免影响用户在其他应用中的操作
-    #[cfg(windows)]
-    crate::input_monitor::disable_navigation_keys();
+    {
+        crate::input_monitor::disable_mouse_monitoring();
+        crate::input_monitor::disable_navigation_keys();
+    }
 
     // 保存贴边位置
     let mut settings = crate::settings::get_global_settings();
@@ -322,20 +321,16 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     EDGE_SNAP_MANAGER.lock().is_hidden = false;
 
     #[cfg(windows)]
-    crate::input_monitor::request_mouse_monitoring("main_window");
-
-    // 重新启用导航按键
-    #[cfg(windows)]
-    crate::input_monitor::enable_navigation_keys();
+    {
+        crate::input_monitor::enable_mouse_monitoring();
+        crate::input_monitor::enable_navigation_keys();
+    }
     Ok(())
 }
 
 // 停止鼠标监听
 pub fn stop_mouse_monitoring() {
-    if MOUSE_MONITORING_ACTIVE.load(Ordering::Relaxed) {
-        println!("请求停止鼠标监听线程");
-        MOUSE_MONITORING_ACTIVE.store(false, Ordering::Relaxed);
-    }
+    MOUSE_MONITORING_ACTIVE.store(false, Ordering::Relaxed);
 }
 
 // 重新启动鼠标监听（如果窗口处于贴边状态）
@@ -354,20 +349,18 @@ pub fn restart_mouse_monitoring_if_snapped(window: &WebviewWindow) -> Result<(),
 
 // 启动鼠标监听
 fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
-    // 如果已有监听线程在运行，先停止它
-    if MOUSE_MONITORING_ACTIVE.load(Ordering::Relaxed) {
-        println!("停止之前的鼠标监听线程");
-        MOUSE_MONITORING_ACTIVE.store(false, Ordering::Relaxed);
-        // 等待之前的线程退出
-        std::thread::sleep(Duration::from_millis(100));
+    // 启用监听标志
+    let was_active = MOUSE_MONITORING_ACTIVE.swap(true, Ordering::Relaxed);
+    
+    // 如果线程已经在运行，直接返回
+    if was_active {
+        return Ok(());
     }
     
-    // 启动新的监听线程
-    MOUSE_MONITORING_ACTIVE.store(true, Ordering::Relaxed);
     let monitoring_active = &*MOUSE_MONITORING_ACTIVE;
     
+    // 首次调用时启动线程，之后保持运行
     std::thread::spawn(move || {
-        println!("启动新的鼠标监听线程");
         // 初始缓冲期，避免拖拽结束后的立即触发
         std::thread::sleep(Duration::from_millis(150));
 
@@ -378,10 +371,10 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
         let mut first_check = true;
 
         loop {
-            // 检查线程是否应该继续运行
+            // 检查线程是否应该处理事件
             if !monitoring_active.load(Ordering::Relaxed) {
-                println!("鼠标监听线程收到停止信号，退出");
-                break;
+                std::thread::sleep(Duration::from_millis(100));
+                continue;
             }
             
             // 检查是否还在吸附状态
@@ -389,8 +382,8 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
                 let state = EDGE_SNAP_MANAGER.lock();
 
                 if !state.is_enabled || !state.is_snapped {
-                    println!("贴边状态已取消，鼠标监听线程退出");
-                    break;
+                    std::thread::sleep(Duration::from_millis(100));
+                    continue;
                 }
 
                 (
@@ -468,16 +461,16 @@ fn start_mouse_monitoring(window: WebviewWindow) -> Result<(), String> {
 
                         last_near_state = is_near;
                     }
-                    Err(_) => break,
+                    Err(_) => {
+                        std::thread::sleep(Duration::from_millis(100));
+                        continue;
+                    }
                 }
             }
 
             std::thread::sleep(Duration::from_millis(50));
         }
         
-        // 线程退出时清理状态
-        monitoring_active.store(false, Ordering::Relaxed);
-        println!("鼠标监听线程已退出");
     });
 
     Ok(())
@@ -489,52 +482,45 @@ fn check_mouse_near_edge(
     edge: &SnapEdge,
     window_rect: (i32, i32, i32, i32),
 ) -> Result<bool, String> {
-    #[cfg(windows)]
-    {
-        let (cursor_x, cursor_y) = crate::mouse_utils::get_cursor_position()?;
+    let (cursor_x, cursor_y) = crate::input_monitor::get_mouse_position()?;
 
-        let (vx, vy, vw, vh) = get_virtual_screen_size()?;
-        let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
-            .map(|(_, my, _, mh)| my + mh)
-            .unwrap_or(vy + vh);
-        let trigger_distance = get_trigger_distance();
-        let (win_x, win_y, win_width, win_height) = window_rect;
+    let (vx, vy, vw, vh) = get_virtual_screen_size()?;
+    let monitor_bottom = crate::screenshot::screen_utils::ScreenUtils::get_monitor_bounds(window)
+        .map(|(_, my, _, mh)| my + mh)
+        .unwrap_or(vy + vh);
+    let trigger_distance = get_trigger_distance();
+    let (win_x, win_y, win_width, win_height) = window_rect;
 
-        // 检查鼠标是否在窗口内或接近对应边缘
-        let mouse_in_window = cursor_x >= win_x
-            && cursor_x <= win_x + win_width
-            && cursor_y >= win_y
-            && cursor_y <= win_y + win_height;
+    // 检查鼠标是否在窗口内或接近对应边缘
+    let mouse_in_window = cursor_x >= win_x
+        && cursor_x <= win_x + win_width
+        && cursor_y >= win_y
+        && cursor_y <= win_y + win_height;
 
-        let is_near = match edge {
-            SnapEdge::Left => {
-                cursor_x <= vx + trigger_distance
-                    && cursor_y >= win_y
-                    && cursor_y <= win_y + win_height
-            }
-            SnapEdge::Right => {
-                cursor_x >= vx + vw - trigger_distance
-                    && cursor_y >= win_y
-                    && cursor_y <= win_y + win_height
-            }
-            SnapEdge::Top => {
-                cursor_y <= vy + trigger_distance
-                    && cursor_x >= win_x
-                    && cursor_x <= win_x + win_width
-            }
-            SnapEdge::Bottom => {
-                cursor_y >= monitor_bottom - trigger_distance
-                    && cursor_x >= win_x
-                    && cursor_x <= win_x + win_width
-            }
-        };
+    let is_near = match edge {
+        SnapEdge::Left => {
+            cursor_x <= vx + trigger_distance
+                && cursor_y >= win_y
+                && cursor_y <= win_y + win_height
+        }
+        SnapEdge::Right => {
+            cursor_x >= vx + vw - trigger_distance
+                && cursor_y >= win_y
+                && cursor_y <= win_y + win_height
+        }
+        SnapEdge::Top => {
+            cursor_y <= vy + trigger_distance
+                && cursor_x >= win_x
+                && cursor_x <= win_x + win_width
+        }
+        SnapEdge::Bottom => {
+            cursor_y >= monitor_bottom - trigger_distance
+                && cursor_x >= win_x
+                && cursor_x <= win_x + win_width
+        }
+    };
 
-        Ok(is_near || mouse_in_window)
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(false)
-    }
+    Ok(is_near || mouse_in_window)
 }
 
 // 设置窗口位置
