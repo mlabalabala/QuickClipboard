@@ -206,6 +206,15 @@ pub fn hide_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     let edge = {
         let state = EDGE_SNAP_MANAGER.lock();
         if !state.is_snapped || state.is_hidden {
+            // 即使不需要隐藏，也要确保监听状态正确
+            #[cfg(windows)]
+            {
+                if state.is_hidden {
+                    // 窗口已经隐藏，确保监听已禁用
+                    crate::input_monitor::disable_mouse_monitoring();
+                    crate::input_monitor::disable_navigation_keys();
+                }
+            }
             return Ok(());
         }
         state
@@ -270,6 +279,15 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     let edge = {
         let state = EDGE_SNAP_MANAGER.lock();
         if !state.is_snapped || !state.is_hidden {
+            // 即使不需要显示，也要确保监听状态正确
+            #[cfg(windows)]
+            {
+                if state.is_snapped && !state.is_hidden {
+                    // 窗口处于贴边显示状态，确保监听已启用
+                    crate::input_monitor::enable_mouse_monitoring();
+                    crate::input_monitor::enable_navigation_keys();
+                }
+            }
             return Ok(());
         }
         state
@@ -310,14 +328,16 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
     }
 
     // 执行平滑显示动画
-    animate_window_position(
+    let animation_result = animate_window_position(
         window,
         window_rect.left,
         window_rect.top,
         show_x,
         show_y,
         200,
-    )?;
+    );
+    
+    // 无论动画是否成功，都要更新状态并启用监听
     EDGE_SNAP_MANAGER.lock().is_hidden = false;
 
     #[cfg(windows)]
@@ -325,7 +345,8 @@ pub fn show_snapped_window(window: &WebviewWindow) -> Result<(), String> {
         crate::input_monitor::enable_mouse_monitoring();
         crate::input_monitor::enable_navigation_keys();
     }
-    Ok(())
+    
+    animation_result
 }
 
 // 停止鼠标监听
