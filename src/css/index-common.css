@@ -1445,6 +1445,23 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+/* 常用文本模态框样式 */
+.quick-text-modal-content {
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-text-modal-content .modal-body {
+  padding: 10px 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0px;
+  margin-bottom: 0px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -1456,6 +1473,37 @@ body {
 .modal-header h3 {
   margin: 0;
   font-size: 16px;
+}
+
+.quick-text-modal-content .modal-header {
+  padding: 10px 20px;
+  flex-shrink: 0;
+}
+
+.quick-text-modal-content .modal-header h3 {
+  font-size: 15px;
+}
+
+.modal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-select-inline {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: var(--border-radius-small);
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-duration) ease;
+  min-width: 100px;
+}
+
+.group-select-inline:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(74, 137, 220, 0.2);
 }
 
 .modal-close {
@@ -1481,6 +1529,11 @@ body {
   gap: var(--padding-medium);
   padding: 2px 20px;
   border-top: 1px solid transparent;
+}
+
+.quick-text-modal-content .modal-footer {
+  padding: 12px 20px;
+  flex-shrink: 0;
 }
 
 /* =================== 表单样式 =================== */
@@ -1512,6 +1565,45 @@ body {
 .form-group textarea:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(74, 137, 220, 0.2);
+}
+
+/* 常用表单样式 */
+.form-group-compact {
+  margin-bottom: 12px;
+}
+
+.form-group-compact label {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.form-group-compact input,
+.form-group-compact select {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.form-group-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 12px;
+}
+
+.form-group-main label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* 常用文本内容文本框 */
+.quick-text-textarea {
+  resize: none;
+  flex: 1;
+  min-height: 180px;
+  line-height: 1.5;
+  padding: 10px 12px;
 }
 
 /* =================== 按钮样式 =================== */

@@ -623,6 +623,22 @@ export function setupQuickTexts() {
       hideQuickTextModal();
     }
   });
+
+  setupModalInputClickHandling();
+}
+
+// 模态框输入框点击处理
+function setupModalInputClickHandling() {
+  const modalInputs = [quickTextTitleInput, quickTextContentInput];
+  
+  modalInputs.forEach(input => {
+    if (!input) return;
+
+    input.addEventListener('mousedown', async () => {
+      if (!quickTextModal.classList.contains('active')) return;
+      await focusWindowImmediately();
+    });
+  });
 }
 
 // 初始化常用文本虚拟列表

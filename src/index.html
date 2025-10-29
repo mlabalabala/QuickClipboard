@@ -192,32 +192,31 @@
 
   <!-- 常用编辑模态框 -->
   <div class="modal-overlay" id="quick-text-modal">
-    <div class="modal-content">
+    <div class="modal-content quick-text-modal-content">
       <div class="modal-header">
         <h3 id="modal-title">添加常用</h3>
-        <button class="modal-close" id="modal-close-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+        <div class="modal-header-right">
+          <select id="quick-text-group" class="group-select group-select-inline">
+            <option value="all">全部</option>
+            <!-- 分组动态添加 -->
+          </select>
+          <button class="modal-close" id="modal-close-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="modal-body">
-        <div class="form-group">
+        <div class="form-group form-group-compact">
           <label for="quick-text-title">标题</label>
           <input type="text" id="quick-text-title" placeholder="请输入标题..." autocomplete="off" />
         </div>
-        <div class="form-group">
+        <div class="form-group form-group-main">
           <label for="quick-text-content">内容</label>
-          <textarea id="quick-text-content" class="quick-text-content" placeholder="请输入文本内容..." rows="6"
+          <textarea id="quick-text-content" class="quick-text-textarea" placeholder="请输入文本内容..."
             autocomplete="off"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="quick-text-group">分组</label>
-          <select id="quick-text-group" class="group-select">
-            <option value="all">全部</option>
-            <!-- 分组选项将通过JavaScript动态添加 -->
-          </select>
         </div>
       </div>
       <div class="modal-footer">
