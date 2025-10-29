@@ -148,6 +148,25 @@ export async function disableWindowFocus() {
   }
 }
 
+// 立即启用窗口焦点
+export async function focusWindowImmediately() {
+  if (blurDebounceTimer) {
+    clearTimeout(blurDebounceTimer);
+    blurDebounceTimer = null;
+  }
+  if (focusDebounceTimer) {
+    clearTimeout(focusDebounceTimer);
+    focusDebounceTimer = null;
+  }
+  
+  try {
+    await invoke('focus_clipboard_window');
+    currentFocusState = 'focused';
+  } catch (error) {
+    console.error('立即启用窗口焦点失败:', error);
+  }
+}
+
 // 恢复焦点
 export async function restoreFocus() {
   try {

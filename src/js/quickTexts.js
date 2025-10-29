@@ -27,6 +27,7 @@ import { matchesFilter, matchesSearch } from './utils/typeFilter.js';
 import { VirtualList } from './virtualList.js';
 import { showContextMenu } from './contextMenu.js';
 import { detectColor, generateColorPreviewHTML } from './utils/colorUtils.js';
+import { focusWindowImmediately } from './focus.js';
 
 
 // 虚拟列表实例
@@ -313,7 +314,7 @@ export function filterQuickTexts() {
 }
 
 // 显示常用文本模态框（用于添加新文本）
-export function showQuickTextModal(text = null) {
+export async function showQuickTextModal(text = null) {
   setEditingQuickTextId(text ? text.id : null);
 
   // 更新分组选择下拉框
@@ -332,6 +333,8 @@ export function showQuickTextModal(text = null) {
   }
 
   quickTextModal.classList.add('active');
+  
+  await focusWindowImmediately();
   quickTextTitleInput.focus();
 }
 
