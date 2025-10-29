@@ -1,8 +1,10 @@
 use once_cell::sync::OnceCell;
-use rdev::{grab, Event, EventType, Key};
+use rdev::{listen, Event, EventType, Key};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::{Emitter, WebviewWindow, AppHandle};
+use std::thread;
+use std::time::Duration;
+use tauri::{Emitter, WebviewWindow};
 
 // 全局状态
 pub static MAIN_WINDOW_HANDLE: OnceCell<WebviewWindow> = OnceCell::new();
@@ -16,38 +18,53 @@ static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static MOUSE_MONITORING_ENABLED: AtomicBool = AtomicBool::new(false);
 
 // 按键状态跟踪
-static CTRL_PRESSED: AtomicBool = AtomicBool::new(false);
-static ALT_PRESSED: AtomicBool = AtomicBool::new(false);
-static SHIFT_PRESSED: AtomicBool = AtomicBool::new(false);
-static META_PRESSED: AtomicBool = AtomicBool::new(false);
+struct KeyboardState {
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+    meta: bool,
+}
+
+impl Default for KeyboardState {
+    fn default() -> Self {
+        Self {
+            ctrl: false,
+            alt: false,
+            shift: false,
+            meta: false,
+        }
+    }
+}
+
+static KEYBOARD_STATE: Mutex<KeyboardState> = Mutex::new(KeyboardState {
+    ctrl: false,
+    alt: false,
+    shift: false,
+    meta: false,
+});
+
+// 导航键焦点状态跟踪
+static NAVIGATION_KEY_FOCUSED: AtomicBool = AtomicBool::new(false);
 
 // 鼠标位置缓存
 static MOUSE_POSITION: Mutex<(f64, f64)> = Mutex::new((0.0, 0.0));
 
-// 用于发送导航动作的结构
-#[derive(Clone, serde::Serialize)]
-struct NavigationAction {
-    action: &'static str,
-}
-
 // 启动输入监控系统
-pub fn start_input_monitoring(app_handle: AppHandle, main_window: WebviewWindow) {
+pub fn start_input_monitoring() {
     if MONITORING_ACTIVE.load(Ordering::SeqCst) {
         return;
     }
 
     MONITORING_ACTIVE.store(true, Ordering::SeqCst);
 
-    let monitoring_handle = std::thread::spawn(move || {
-        let callback = move |event: Event| -> Option<Event> {
+    let monitoring_handle = std::thread::spawn(|| {
+        if let Err(error) = listen(move |event| {
             if !MONITORING_ACTIVE.load(Ordering::SeqCst) {
-                return Some(event);
+                return;
             }
             
-            handle_input_event_with_grab(event, &app_handle, &main_window)
-        };
-
-        if let Err(error) = grab(callback) {
+            handle_input_event(event);
+        }) {
             eprintln!("输入监控错误: {:?}", error);
         }
     });
@@ -99,12 +116,11 @@ pub fn is_mouse_monitoring_enabled() -> bool {
 
 // 获取当前键盘修饰键状态（供其他模块使用）
 pub fn get_modifier_keys_state() -> (bool, bool, bool, bool) {
-    (
-        CTRL_PRESSED.load(Ordering::Relaxed),
-        ALT_PRESSED.load(Ordering::Relaxed),
-        SHIFT_PRESSED.load(Ordering::Relaxed),
-        META_PRESSED.load(Ordering::Relaxed),
-    )
+    if let Ok(state) = KEYBOARD_STATE.lock() {
+        (state.ctrl, state.alt, state.shift, state.meta)
+    } else {
+        (false, false, false, false)
+    }
 }
 
 // 获取当前鼠标位置
@@ -117,46 +133,28 @@ pub fn get_mouse_position() -> Result<(i32, i32), String> {
 }
 
 // 处理输入事件
-fn handle_input_event_with_grab(
-    event: Event,
-    app_handle: &AppHandle,
-    main_window: &WebviewWindow,
-) -> Option<Event> {
+fn handle_input_event(event: Event) {
     match event.event_type {
-        EventType::KeyPress(key) => {
-            handle_key_press_with_grab(key, event, app_handle, main_window)
-        }
-        EventType::KeyRelease(key) => handle_key_release_with_grab(key, event),
-        EventType::ButtonPress(button) => handle_mouse_button_press_with_grab(button, event),
-        EventType::ButtonRelease(_button) => Some(event),
-        EventType::MouseMove { x, y } => {
-            handle_mouse_move(x, y);
-            Some(event)
-        }
-        EventType::Wheel { delta_x, delta_y } => {
-            if handle_mouse_wheel(delta_x, delta_y) {
-                None
-            } else {
-                Some(event)
-            }
-        }
+        EventType::KeyPress(key) => handle_key_press(key),
+        EventType::KeyRelease(key) => handle_key_release(key),
+        EventType::ButtonPress(button) => handle_mouse_button_press(button),
+        EventType::ButtonRelease(button) => handle_mouse_button_release(button),
+        EventType::MouseMove { x, y } => handle_mouse_move(x, y),
+        EventType::Wheel { delta_x, delta_y } => handle_mouse_wheel(delta_x, delta_y),
     }
 }
 
 // 处理按键按下
-fn handle_key_press_with_grab(
-    key: Key,
-    event: Event,
-    app_handle: &AppHandle,
-    main_window: &WebviewWindow,
-) -> Option<Event> {
+fn handle_key_press(key: Key) {
     // 更新修饰键状态
-    match key {
-        Key::ControlLeft | Key::ControlRight => CTRL_PRESSED.store(true, Ordering::Relaxed),
-        Key::Alt | Key::AltGr => ALT_PRESSED.store(true, Ordering::Relaxed),
-        Key::ShiftLeft | Key::ShiftRight => SHIFT_PRESSED.store(true, Ordering::Relaxed),
-        Key::MetaLeft | Key::MetaRight => META_PRESSED.store(true, Ordering::Relaxed),
-        _ => {}
+    if let Ok(mut state) = KEYBOARD_STATE.lock() {
+        match key {
+            Key::ControlLeft | Key::ControlRight => state.ctrl = true,
+            Key::Alt | Key::AltGr => state.alt = true,
+            Key::ShiftLeft | Key::ShiftRight => state.shift = true,
+            Key::MetaLeft | Key::MetaRight => state.meta = true,
+            _ => {}
+        }
     }
 
     // 检查应用过滤
@@ -164,87 +162,121 @@ fn handle_key_press_with_grab(
     if settings.app_filter_enabled {
         #[cfg(windows)]
         if !crate::app_filter::is_current_app_allowed() {
-            return Some(event);
+            return;
         }
     }
 
-    // 检查主窗口是否可见
-    let is_main_window_visible = main_window.is_visible().unwrap_or(false);
-
-    // 如果主窗口可见且导航键启用，处理导航快捷键
-    if is_main_window_visible && NAVIGATION_KEYS_ENABLED.load(Ordering::SeqCst) {
-        if handle_navigation_hotkey(app_handle, key) {
-            return None; 
+    // 处理导航快捷键（按下时获得焦点）
+    if NAVIGATION_KEYS_ENABLED.load(Ordering::SeqCst) {
+        if let Some(need_focus) = handle_navigation_key_press(key) {
+            // 导航键被触发，根据需要获得焦点
+            if need_focus {
+                acquire_focus_for_navigation();
+            }
         }
     }
 
-    // 处理数字快捷键
-    if handle_number_shortcut(key) {
-        return None;
-    }
+    handle_number_shortcut(key);
 
-    // 处理粘贴音效
     handle_paste_sound(key);
 
-    // 处理翻译取消
     handle_translation_cancel(key);
-
-    Some(event)
 }
 
 // 处理按键释放
-fn handle_key_release_with_grab(key: Key, event: Event) -> Option<Event> {
-    match key {
-        Key::ControlLeft | Key::ControlRight => CTRL_PRESSED.store(false, Ordering::Relaxed),
-        Key::Alt | Key::AltGr => ALT_PRESSED.store(false, Ordering::Relaxed),
-        Key::ShiftLeft | Key::ShiftRight => SHIFT_PRESSED.store(false, Ordering::Relaxed),
-        Key::MetaLeft | Key::MetaRight => META_PRESSED.store(false, Ordering::Relaxed),
-        _ => {}
+fn handle_key_release(key: Key) {
+    if let Ok(mut state) = KEYBOARD_STATE.lock() {
+        match key {
+            Key::ControlLeft | Key::ControlRight => state.ctrl = false,
+            Key::Alt | Key::AltGr => state.alt = false,
+            Key::ShiftLeft | Key::ShiftRight => state.shift = false,
+            Key::MetaLeft | Key::MetaRight => state.meta = false,
+            _ => {}
+        }
     }
-    
-    Some(event)
 }
 
-// 处理导航热键
-fn handle_navigation_hotkey(app_handle: &AppHandle, key: Key) -> bool {
+// 处理导航键按下（返回是否触发了导航动作，以及是否需要获取焦点）
+fn handle_navigation_key_press(key: Key) -> Option<bool> {
+    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+        if !crate::window_management::should_receive_navigation_keys(window) {
+            return None;
+        }
+    } else {
+        return None;
+    }
+
+    let settings = crate::settings::get_global_settings();
+    
     // 检查翻译进行状态
     #[cfg(windows)]
     if crate::global_state::TRANSLATION_IN_PROGRESS.load(Ordering::SeqCst) {
-        return false;
+        return None;
     }
 
-    // 从配置读取快捷键设置
-    let settings = crate::settings::get_global_settings();
-    
     let shortcuts = [
-        (&settings.navigate_up_shortcut, "navigate-up"),
-        (&settings.navigate_down_shortcut, "navigate-down"),
-        (&settings.tab_left_shortcut, "tab-left"),
-        (&settings.tab_right_shortcut, "tab-right"),
-        (&settings.focus_search_shortcut, "focus-search"),
-        (&settings.hide_window_shortcut, "hide-window"),
-        (&settings.execute_item_shortcut, "execute-item"),
-        (&settings.previous_group_shortcut, "previous-group"),
-        (&settings.next_group_shortcut, "next-group"),
-        (&settings.toggle_pin_shortcut, "toggle-pin"),
+        (&settings.navigate_up_shortcut, "navigate-up", true),
+        (&settings.navigate_down_shortcut, "navigate-down", true),
+        (&settings.tab_left_shortcut, "tab-left", true),
+        (&settings.tab_right_shortcut, "tab-right", true),
+        (&settings.focus_search_shortcut, "focus-search", false),
+        (&settings.hide_window_shortcut, "hide-window", false),
+        (&settings.execute_item_shortcut, "execute-item", false),
+        (&settings.previous_group_shortcut, "previous-group", true),
+        (&settings.next_group_shortcut, "next-group", true),
+        (&settings.toggle_pin_shortcut, "toggle-pin", true),
     ];
 
-    for (shortcut_str, action) in shortcuts {
+    for (shortcut_str, action, need_focus) in shortcuts {
         if check_shortcut_match(key, shortcut_str) {
-            let _ = app_handle.emit("navigation-action", NavigationAction { action });
-            return true;
+            emit_navigation_action(action);
+            return Some(need_focus);
         }
     }
     
-    false
+    None
+}
+
+// 为导航获得焦点
+fn acquire_focus_for_navigation() {
+    let was_focused = NAVIGATION_KEY_FOCUSED.swap(true, Ordering::SeqCst);
+    
+    if !was_focused {
+        #[cfg(windows)]
+        {
+            use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+            unsafe {
+                let hwnd = GetForegroundWindow();
+                crate::window_management::set_last_focus_hwnd(hwnd.0);
+            }
+        }
+
+        if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+            let _ = window.set_focus();
+        }
+    }
+
+    thread::spawn(|| {
+        thread::sleep(Duration::from_millis(100));
+        restore_focus_from_navigation();
+    });
+}
+
+// 从导航恢复焦点
+fn restore_focus_from_navigation() {
+    if !NAVIGATION_KEY_FOCUSED.load(Ordering::SeqCst) {
+        return;
+    }
+
+    // 恢复之前保存的焦点
+    let _ = crate::window_management::restore_last_focus();
+
+    NAVIGATION_KEY_FOCUSED.store(false, Ordering::SeqCst);
 }
 
 // 检查当前按键是否匹配快捷键字符串
 fn check_shortcut_match(key: Key, shortcut_str: &str) -> bool {
-    let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-    let alt = ALT_PRESSED.load(Ordering::Relaxed);
-    let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-    let meta = META_PRESSED.load(Ordering::Relaxed);
+    let state = KEYBOARD_STATE.lock().unwrap();
 
     let parts: Vec<&str> = shortcut_str.split('+').collect();
 
@@ -264,10 +296,10 @@ fn check_shortcut_match(key: Key, shortcut_str: &str) -> bool {
         }
     }
 
-    if ctrl != required_ctrl || 
-       alt != required_alt || 
-       shift != required_shift || 
-       meta != required_meta {
+    if state.ctrl != required_ctrl || 
+       state.alt != required_alt || 
+       state.shift != required_shift || 
+       state.meta != required_meta {
         return false;
     }
 
@@ -290,10 +322,6 @@ fn match_key(key: Key, key_str: &str) -> bool {
         "Space" => matches!(key, Key::Space),
         "Backspace" => matches!(key, Key::Backspace),
         "Delete" => matches!(key, Key::Delete),
-        "Home" => matches!(key, Key::Home),
-        "End" => matches!(key, Key::End),
-        "PageUp" => matches!(key, Key::PageUp),
-        "PageDown" => matches!(key, Key::PageDown),
         
         // 字母键
         "A" => matches!(key, Key::KeyA),
@@ -353,34 +381,41 @@ fn match_key(key: Key, key_str: &str) -> bool {
     }
 }
 
+// 发送导航动作事件
+fn emit_navigation_action(action: &str) {
+    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+        let _ = window.emit(
+            "navigation-action",
+            serde_json::json!({
+                "action": action
+            }),
+        );
+    }
+}
 
 // 处理数字快捷键
-fn handle_number_shortcut(key: Key) -> bool {
+fn handle_number_shortcut(key: Key) {
     use crate::global_state::*;
 
     if !NUMBER_SHORTCUTS_ENABLED.load(Ordering::SeqCst) {
-        return false;
+        return;
     }
 
-    let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-    let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-    let alt = ALT_PRESSED.load(Ordering::Relaxed);
-    let meta = META_PRESSED.load(Ordering::Relaxed);
-
+    let state = KEYBOARD_STATE.lock().unwrap();
     let modifier = get_number_shortcuts_modifier();
 
     let modifier_matches = match modifier.as_str() {
-        "Ctrl" => ctrl && !shift && !alt && !meta,
-        "Alt" => !ctrl && !shift && alt && !meta,
-        "Shift" => !ctrl && shift && !alt && !meta,
-        "Ctrl+Shift" => ctrl && shift && !alt && !meta,
-        "Ctrl+Alt" => ctrl && !shift && alt && !meta,
-        "Alt+Shift" => !ctrl && shift && alt && !meta,
-        _ => ctrl && !shift && !alt && !meta,
+        "Ctrl" => state.ctrl && !state.shift && !state.alt && !state.meta,
+        "Alt" => !state.ctrl && !state.shift && state.alt && !state.meta,
+        "Shift" => !state.ctrl && state.shift && !state.alt && !state.meta,
+        "Ctrl+Shift" => state.ctrl && state.shift && !state.alt && !state.meta,
+        "Ctrl+Alt" => state.ctrl && !state.shift && state.alt && !state.meta,
+        "Alt+Shift" => !state.ctrl && state.shift && state.alt && !state.meta,
+        _ => state.ctrl && !state.shift && !state.alt && !state.meta,
     };
 
     if !modifier_matches {
-        return false;
+        return;
     }
 
     let index = match key {
@@ -398,10 +433,7 @@ fn handle_number_shortcut(key: Key) -> bool {
 
     if let Some(index) = index {
         handle_number_paste(index);
-        return true;
     }
-
-    false
 }
 
 // 处理数字快捷键粘贴
@@ -445,12 +477,8 @@ fn handle_number_paste(index: usize) {
 // 处理Ctrl+V粘贴音效
 fn handle_paste_sound(key: Key) {
     if let Key::KeyV = key {
-        let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-        let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-        let alt = ALT_PRESSED.load(Ordering::Relaxed);
-        let meta = META_PRESSED.load(Ordering::Relaxed);
-        
-        if ctrl && !shift && !alt && !meta {
+        let state = KEYBOARD_STATE.lock().unwrap();
+        if state.ctrl && !state.shift && !state.alt && !state.meta {
             std::thread::spawn(|| {
                 crate::sound_manager::play_paste_sound();
             });
@@ -469,12 +497,8 @@ fn handle_translation_cancel(key: Key) {
         }
 
         if let Key::Escape = key {
-            let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-            let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-            let alt = ALT_PRESSED.load(Ordering::Relaxed);
-            let meta = META_PRESSED.load(Ordering::Relaxed);
-            
-            if ctrl && shift && !alt && !meta {
+            let state = KEYBOARD_STATE.lock().unwrap();
+            if state.ctrl && state.shift && !state.alt && !state.meta {
                 if let Some(window) = MAIN_WINDOW_HANDLE.get() {
                     let window_clone = window.clone();
                     std::thread::spawn(move || {
@@ -490,7 +514,7 @@ fn handle_translation_cancel(key: Key) {
 }
 
 // 处理鼠标按钮按下
-fn handle_mouse_button_press_with_grab(button: rdev::Button, event: Event) -> Option<Event> {
+fn handle_mouse_button_press(button: rdev::Button) {
     let settings = crate::settings::get_global_settings();
     
     // 中键始终检查
@@ -498,22 +522,22 @@ fn handle_mouse_button_press_with_grab(button: rdev::Button, event: Event) -> Op
         if settings.app_filter_enabled {
             #[cfg(windows)]
             if !crate::app_filter::is_current_app_allowed() {
-                return Some(event);
+                return;
             }
         }
         handle_middle_button_press();
-        return Some(event);
+        return;
     }
     
     // 其他按钮需要启用鼠标监听
     if !MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed) {
-        return Some(event);
+        return;
     }
 
     if settings.app_filter_enabled {
         #[cfg(windows)]
         if !crate::app_filter::is_current_app_allowed() {
-            return Some(event);
+            return;
         }
     }
 
@@ -521,8 +545,11 @@ fn handle_mouse_button_press_with_grab(button: rdev::Button, event: Event) -> Op
         rdev::Button::Left | rdev::Button::Right => handle_click_outside(),
         _ => {}
     }
+}
 
-    Some(event)
+// 处理鼠标按钮释放
+fn handle_mouse_button_release(_button: rdev::Button) {
+    // 可以在这里处理按钮释放事件
 }
 
 // 处理鼠标移动
@@ -534,13 +561,12 @@ fn handle_mouse_move(x: f64, y: f64) {
 }
 
 // 处理鼠标滚轮
-fn handle_mouse_wheel(_delta_x: i64, delta_y: i64) -> bool {
+fn handle_mouse_wheel(_delta_x: i64, delta_y: i64) {
+    // 检查是否在预览窗口上滚动
     if crate::preview_window::is_preview_window_visible() {
         let direction = if delta_y > 0 { "up" } else { "down" };
         let _ = crate::preview_window::handle_preview_scroll(direction);
-        return true;
     }
-    false
 }
 
 // 处理鼠标中键点击
@@ -550,20 +576,17 @@ fn handle_middle_button_press() {
         return;
     }
 
-    let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-    let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-    let alt = ALT_PRESSED.load(Ordering::Relaxed);
-    let meta = META_PRESSED.load(Ordering::Relaxed);
+    let state = KEYBOARD_STATE.lock().unwrap();
     
     let modifier_matches = match settings.mouse_middle_button_modifier.as_str() {
-        "None" => !ctrl && !alt && !shift && !meta,
-        "Ctrl" => ctrl && !alt && !shift && !meta,
-        "Alt" => !ctrl && alt && !shift && !meta,
-        "Shift" => !ctrl && !alt && shift && !meta,
-        "Ctrl+Shift" => ctrl && !alt && shift && !meta,
-        "Ctrl+Alt" => ctrl && alt && !shift && !meta,
-        "Alt+Shift" => !ctrl && alt && shift && !meta,
-        _ => !ctrl && !alt && !shift && !meta,
+        "None" => !state.ctrl && !state.alt && !state.shift && !state.meta,
+        "Ctrl" => state.ctrl && !state.alt && !state.shift && !state.meta,
+        "Alt" => !state.ctrl && state.alt && !state.shift && !state.meta,
+        "Shift" => !state.ctrl && !state.alt && state.shift && !state.meta,
+        "Ctrl+Shift" => state.ctrl && !state.alt && state.shift && !state.meta,
+        "Ctrl+Alt" => state.ctrl && state.alt && !state.shift && !state.meta,
+        "Alt+Shift" => !state.ctrl && state.alt && state.shift && !state.meta,
+        _ => !state.ctrl && !state.alt && !state.shift && !state.meta,
     };
 
     if modifier_matches {
@@ -613,4 +636,3 @@ fn is_click_outside_window(window: &WebviewWindow, click_x: i32, click_y: i32) -
     }
     true
 }
-

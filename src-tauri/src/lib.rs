@@ -472,7 +472,7 @@ pub fn run() {
             // 输入监控系统
             #[cfg(desktop)]
             {
-                input_monitor::start_input_monitoring();
+                input_monitor::start_input_monitoring(app.handle().clone(), main_window.clone());
             }
 
             // 发送启动通知和检查Win+V配置
