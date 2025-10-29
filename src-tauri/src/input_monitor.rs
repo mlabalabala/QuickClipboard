@@ -1,5 +1,5 @@
 use once_cell::sync::OnceCell;
-use rdev::{grab, Event, EventType, Key};
+use rdev::{grab, listen, Event, EventType, Key};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{Emitter, WebviewWindow, AppHandle};
@@ -8,6 +8,8 @@ use tauri::{Emitter, WebviewWindow, AppHandle};
 pub static MAIN_WINDOW_HANDLE: OnceCell<WebviewWindow> = OnceCell::new();
 static MONITORING_ACTIVE: AtomicBool = AtomicBool::new(false);
 static MONITORING_THREAD_HANDLE: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
+static MOUSE_LISTENER_ACTIVE: AtomicBool = AtomicBool::new(false);
+static MOUSE_LISTENER_THREAD_HANDLE: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
 // 导航键启用状态
 static NAVIGATION_KEYS_ENABLED: AtomicBool = AtomicBool::new(false);
@@ -38,6 +40,7 @@ pub fn start_input_monitoring(app_handle: AppHandle, main_window: WebviewWindow)
 
     MONITORING_ACTIVE.store(true, Ordering::SeqCst);
 
+    // 启动grab线程（用于按键和需要拦截的事件）
     let monitoring_handle = std::thread::spawn(move || {
         let callback = move |event: Event| -> Option<Event> {
             if !MONITORING_ACTIVE.load(Ordering::SeqCst) {
@@ -55,11 +58,52 @@ pub fn start_input_monitoring(app_handle: AppHandle, main_window: WebviewWindow)
     if let Ok(mut handle) = MONITORING_THREAD_HANDLE.lock() {
         *handle = Some(monitoring_handle);
     }
+    start_mouse_position_listener();
+}
+
+// 启动鼠标事件监听
+fn start_mouse_position_listener() {
+    if MOUSE_LISTENER_ACTIVE.load(Ordering::SeqCst) {
+        return;
+    }
+
+    MOUSE_LISTENER_ACTIVE.store(true, Ordering::SeqCst);
+
+    let listener_handle = std::thread::spawn(|| {
+        if let Err(error) = listen(move |event| {
+            if !MOUSE_LISTENER_ACTIVE.load(Ordering::SeqCst) {
+                return;
+            }
+
+            match event.event_type {
+                // 鼠标移动 - 更新位置缓存
+                EventType::MouseMove { x, y } => {
+                    if let Ok(mut pos) = MOUSE_POSITION.lock() {
+                        *pos = (x, y);
+                    }
+                }
+                // 鼠标按钮按下
+                EventType::ButtonPress(button) => {
+                    handle_mouse_button_press(button);
+                }
+                // 鼠标按钮释放
+                EventType::ButtonRelease(_button) => {}
+                _ => {}
+            }
+        }) {
+            eprintln!("鼠标事件监听错误: {:?}", error);
+        }
+    });
+
+    if let Ok(mut handle) = MOUSE_LISTENER_THREAD_HANDLE.lock() {
+        *handle = Some(listener_handle);
+    }
 }
 
 // 禁用输入事件处理
 pub fn stop_input_monitoring() {
     MONITORING_ACTIVE.store(false, Ordering::SeqCst);
+    MOUSE_LISTENER_ACTIVE.store(false, Ordering::SeqCst);
 }
 
 // 查询监控是否处于活动状态
@@ -123,16 +167,13 @@ fn handle_input_event_with_grab(
     main_window: &WebviewWindow,
 ) -> Option<Event> {
     match event.event_type {
+        // 键盘事件
         EventType::KeyPress(key) => {
             handle_key_press_with_grab(key, event, app_handle, main_window)
         }
         EventType::KeyRelease(key) => handle_key_release_with_grab(key, event),
-        EventType::ButtonPress(button) => handle_mouse_button_press_with_grab(button, event),
-        EventType::ButtonRelease(_button) => Some(event),
-        EventType::MouseMove { x, y } => {
-            handle_mouse_move(x, y);
-            Some(event)
-        }
+        
+        // 鼠标滚轮 
         EventType::Wheel { delta_x, delta_y } => {
             if handle_mouse_wheel(delta_x, delta_y) {
                 None
@@ -140,6 +181,7 @@ fn handle_input_event_with_grab(
                 Some(event)
             }
         }
+        _ => Some(event),
     }
 }
 
@@ -176,11 +218,6 @@ fn handle_key_press_with_grab(
         if handle_navigation_hotkey(app_handle, key) {
             return None; 
         }
-    }
-
-    // 处理数字快捷键
-    if handle_number_shortcut(key) {
-        return None;
     }
 
     // 处理粘贴音效
@@ -354,94 +391,6 @@ fn match_key(key: Key, key_str: &str) -> bool {
 }
 
 
-// 处理数字快捷键
-fn handle_number_shortcut(key: Key) -> bool {
-    use crate::global_state::*;
-
-    if !NUMBER_SHORTCUTS_ENABLED.load(Ordering::SeqCst) {
-        return false;
-    }
-
-    let ctrl = CTRL_PRESSED.load(Ordering::Relaxed);
-    let shift = SHIFT_PRESSED.load(Ordering::Relaxed);
-    let alt = ALT_PRESSED.load(Ordering::Relaxed);
-    let meta = META_PRESSED.load(Ordering::Relaxed);
-
-    let modifier = get_number_shortcuts_modifier();
-
-    let modifier_matches = match modifier.as_str() {
-        "Ctrl" => ctrl && !shift && !alt && !meta,
-        "Alt" => !ctrl && !shift && alt && !meta,
-        "Shift" => !ctrl && shift && !alt && !meta,
-        "Ctrl+Shift" => ctrl && shift && !alt && !meta,
-        "Ctrl+Alt" => ctrl && !shift && alt && !meta,
-        "Alt+Shift" => !ctrl && shift && alt && !meta,
-        _ => ctrl && !shift && !alt && !meta,
-    };
-
-    if !modifier_matches {
-        return false;
-    }
-
-    let index = match key {
-        Key::Num1 => Some(0),
-        Key::Num2 => Some(1),
-        Key::Num3 => Some(2),
-        Key::Num4 => Some(3),
-        Key::Num5 => Some(4),
-        Key::Num6 => Some(5),
-        Key::Num7 => Some(6),
-        Key::Num8 => Some(7),
-        Key::Num9 => Some(8),
-        _ => None,
-    };
-
-    if let Some(index) = index {
-        handle_number_paste(index);
-        return true;
-    }
-
-    false
-}
-
-// 处理数字快捷键粘贴
-fn handle_number_paste(index: usize) {
-    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
-        let window_clone = window.clone();
-        std::thread::spawn(move || {
-            use crate::window_management::set_last_focus_hwnd;
-            
-            #[cfg(windows)]
-            {
-                use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
-                let hwnd = unsafe { GetForegroundWindow() };
-                set_last_focus_hwnd(hwnd.0);
-            }
-
-            let clipboard_id = match crate::database::get_clipboard_history(None) {
-                Ok(items) => {
-                    if index < items.len() {
-                        Some(items[index].id)
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => None,
-            };
-            
-            if let Some(id) = clipboard_id {
-                tauri::async_runtime::spawn(async move {
-                    let params = crate::services::paste_service::PasteContentParams {
-                        clipboard_id: Some(id),
-                        quick_text_id: None,
-                    };
-                    let _ = crate::commands::paste_content(params, window_clone).await;
-                });
-            }
-        });
-    }
-}
-
 // 处理Ctrl+V粘贴音效
 fn handle_paste_sound(key: Key) {
     if let Key::KeyV = key {
@@ -490,7 +439,7 @@ fn handle_translation_cancel(key: Key) {
 }
 
 // 处理鼠标按钮按下
-fn handle_mouse_button_press_with_grab(button: rdev::Button, event: Event) -> Option<Event> {
+fn handle_mouse_button_press(button: rdev::Button) {
     let settings = crate::settings::get_global_settings();
     
     // 中键始终检查
@@ -498,38 +447,28 @@ fn handle_mouse_button_press_with_grab(button: rdev::Button, event: Event) -> Op
         if settings.app_filter_enabled {
             #[cfg(windows)]
             if !crate::app_filter::is_current_app_allowed() {
-                return Some(event);
+                return;
             }
         }
         handle_middle_button_press();
-        return Some(event);
+        return;
     }
     
     // 其他按钮需要启用鼠标监听
     if !MOUSE_MONITORING_ENABLED.load(Ordering::Relaxed) {
-        return Some(event);
+        return;
     }
 
     if settings.app_filter_enabled {
         #[cfg(windows)]
         if !crate::app_filter::is_current_app_allowed() {
-            return Some(event);
+            return;
         }
     }
 
     match button {
         rdev::Button::Left | rdev::Button::Right => handle_click_outside(),
         _ => {}
-    }
-
-    Some(event)
-}
-
-// 处理鼠标移动
-fn handle_mouse_move(x: f64, y: f64) {
-    // 更新鼠标位置缓存
-    if let Ok(mut pos) = MOUSE_POSITION.lock() {
-        *pos = (x, y);
     }
 }
 

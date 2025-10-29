@@ -10,6 +10,7 @@ static MAIN_WINDOW_HANDLE: OnceCell<tauri::WebviewWindow> = OnceCell::new();
 static CURRENT_TOGGLE_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 static CURRENT_PREVIEW_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 static CURRENT_SCREENSHOT_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
+static CURRENT_NUMBER_SHORTCUTS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 static HOTKEYS_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 
 
@@ -129,11 +130,97 @@ pub fn unregister_screenshot_hotkey() {
     }
 }
 
+// 注册数字快捷键 (1-9)
+pub fn register_number_shortcuts(modifier: &str) -> Result<(), String> {
+    let app_handle = APP_HANDLE.get().ok_or("热键管理器未初始化")?;
+    
+    // 先注销旧的数字快捷键
+    unregister_number_shortcuts();
+    
+    let mut registered_shortcuts = Vec::new();
+    
+    // 注册 1-9 的快捷键
+    for num in 1..=9 {
+        let shortcut_str = format!("{}+{}", modifier, num);
+        
+        if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
+            let index = num - 1;
+            
+            app_handle
+                .global_shortcut()
+                .on_shortcut(shortcut.clone(), move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        handle_number_shortcut(app, index);
+                    }
+                })
+                .map_err(|e| format!("注册数字快捷键 {} 失败: {}", shortcut_str, e))?;
+            
+            registered_shortcuts.push(shortcut_str.clone());
+            println!("已注册数字快捷键: {}", shortcut_str);
+        }
+    }
+    
+    *CURRENT_NUMBER_SHORTCUTS.lock().unwrap() = registered_shortcuts;
+    
+    Ok(())
+}
+
+// 注销数字快捷键
+pub fn unregister_number_shortcuts() {
+    if let Some(app_handle) = APP_HANDLE.get() {
+        let shortcuts = CURRENT_NUMBER_SHORTCUTS.lock().unwrap().clone();
+        for shortcut_str in shortcuts {
+            if let Ok(shortcut) = parse_shortcut(&shortcut_str) {
+                let _ = app_handle.global_shortcut().unregister(shortcut);
+            }
+        }
+        CURRENT_NUMBER_SHORTCUTS.lock().unwrap().clear();
+        println!("已注销所有数字快捷键");
+    }
+}
+
+// 处理数字快捷键
+fn handle_number_shortcut(_app: &tauri::AppHandle, index: usize) {
+    if let Some(window) = MAIN_WINDOW_HANDLE.get() {
+        let window_clone = window.clone();
+        std::thread::spawn(move || {
+            #[cfg(windows)]
+            {
+                use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+                let hwnd = unsafe { GetForegroundWindow() };
+                crate::window_management::set_last_focus_hwnd(hwnd.0);
+            }
+
+            let clipboard_id = match crate::database::get_clipboard_history(None) {
+                Ok(items) => {
+                    if index < items.len() {
+                        Some(items[index].id)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            };
+            
+            if let Some(id) = clipboard_id {
+                tauri::async_runtime::spawn(async move {
+                    let params = crate::services::paste_service::PasteContentParams {
+                        clipboard_id: Some(id),
+                        quick_text_id: None,
+                    };
+                    let _ = crate::commands::paste_content(params, window_clone).await;
+                });
+            }
+        });
+    }
+}
+
 // 注销所有快捷键
 pub fn unregister_all_hotkeys() {
     unregister_toggle_hotkey();
     unregister_preview_hotkey();
     unregister_screenshot_hotkey();
+    unregister_number_shortcuts();
 }
 
 // 更新主窗口切换快捷键
@@ -168,6 +255,17 @@ pub fn enable_hotkeys() -> Result<(), String> {
     // 注册截屏快捷键
     if !settings.screenshot_shortcut.is_empty() {
         register_screenshot_hotkey(&settings.screenshot_shortcut)?;
+    }
+    
+    // 注册数字快捷键
+    #[cfg(windows)]
+    if settings.number_shortcuts {
+        let modifier = if settings.number_shortcuts_modifier.is_empty() {
+            "Ctrl"
+        } else {
+            &settings.number_shortcuts_modifier
+        };
+        register_number_shortcuts(modifier)?;
     }
     
     HOTKEYS_ENABLED.store(true, std::sync::atomic::Ordering::Relaxed);

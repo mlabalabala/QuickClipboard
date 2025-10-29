@@ -434,6 +434,20 @@ pub fn run() {
                         eprintln!("注册截屏快捷键失败: {}", e);
                     }
                 }
+
+                // 配置数字快捷键
+                #[cfg(windows)]
+                if app_settings.number_shortcuts {
+                    let modifier = if app_settings.number_shortcuts_modifier.is_empty() {
+                        "Ctrl"
+                    } else {
+                        &app_settings.number_shortcuts_modifier
+                    };
+                    
+                    if let Err(e) = hotkey_manager::register_number_shortcuts(modifier) {
+                        eprintln!("注册数字快捷键失败: {}", e);
+                    }
+                }
             } else {
                 // 快捷键已禁用，设置hotkey_manager的状态
                 hotkey_manager::disable_hotkeys();
