@@ -4,7 +4,7 @@ import { LogicalPosition, LogicalSize } from '@tauri-apps/api/window';
 import {
   appWindow
 } from './config.js';
-import { refreshClipboardHistory } from './clipboard.js';
+import { refreshClipboardHistory } from './clipboardManager.js';
 import { forceClosePanel } from './toolsPanel.js';
 import { hideShortcutsHelp } from './navigation.js'
 
@@ -16,7 +16,7 @@ export async function setupClipboardEventListener() {
       const { item, is_new } = event.payload;
       
       // 调用增量添加函数
-      const { addClipboardItemIncremental } = await import('./clipboard.js');
+      const { addClipboardItemIncremental } = await import('./clipboardManager.js');
       addClipboardItemIncremental(item, true);
 
       // 检查是否需要复制时翻译（仅新增项）
@@ -49,7 +49,7 @@ export async function setupClipboardEventListener() {
       const { item } = event.payload;
       
       // 调用增量添加函数
-      const { addClipboardItemIncremental } = await import('./clipboard.js');
+      const { addClipboardItemIncremental } = await import('./clipboardManager.js');
       addClipboardItemIncremental(item, false);
     });
 
@@ -63,7 +63,7 @@ export async function setupClipboardEventListener() {
     // 监听常用文本刷新事件
     await listen('refreshQuickTexts', () => {
       console.log('收到常用文本刷新通知');
-      import('../js/quickTexts.js').then(module => {
+      import('./quickTextManager.js').then(module => {
         module.refreshQuickTexts();
       });
     });

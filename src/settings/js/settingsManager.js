@@ -1,7 +1,7 @@
 // 设置管理器 - 主窗口的设置状态同步和应用
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { refreshClipboardHistory } from '../../js/clipboard.js';
+import { refreshClipboardHistory } from '../../js/clipboardManager.js';
 import { setPasteWithFormat } from '../../js/config.js';
 import { updateFormatButtonStatus } from '../../js/toolsPanel.js';
 import { applyBackgroundImage } from '../../js/backgroundManager.js';

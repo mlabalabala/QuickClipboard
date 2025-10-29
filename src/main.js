@@ -61,7 +61,7 @@ import {
   refreshClipboardHistory,
   filterClipboardItems,
   renderClipboardItems
-} from './js/clipboard.js';
+} from './js/clipboardManager.js';
 
 import {
   setupVirtualScrollScrolling
@@ -72,7 +72,7 @@ import {
   filterQuickTexts,
   setupQuickTexts,
   renderQuickTexts
-} from './js/quickTexts.js';
+} from './js/quickTextManager.js';
 
 
 
