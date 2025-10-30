@@ -139,9 +139,9 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/mosheng1/QuickClipboard/releases/latest/download/latest.json"
+        "https://github.com/mlabalabala/QuickClipboard/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCMDU4RTQxRTUyRTg3Q0MKUldUTWh5N2xRWTRGbTVxWUFhdXJPUzVKTkZkcjF6OE55dzg3UUJlRGF4em8yczliUUpTR29CKzQK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU4ODZGNTI0RjM0RTIyNkQKUldSdElrN3pKUFdHV0VlYTY2U0J2a2xqcjdrc2ZLUDBJTzdiV2hjN2h5N1pzdGlndWN4QndRVmEK"
     }
   }
 }
